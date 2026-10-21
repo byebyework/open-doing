@@ -1,0 +1,16 @@
+{
+  "name": "open-doing",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.32.1",
+  "scripts": {
+    "dev": "pnpm --filter @open-doing/web dev",
+    "build": "pnpm --filter @open-doing/web build",
+    "start": "pnpm --filter @open-doing/web start",
+    "lint": "pnpm -r lint",
+    "typecheck": "pnpm -r typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}
