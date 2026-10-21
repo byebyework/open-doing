@@ -1,0 +1,1254 @@
+<!doctype html>
+<html lang="en"><head><script data-od-srcdoc-transport-activation>(function(){
+  var generation = "";
+  var bodyComplete = false;
+  function containsCompletionMarker(node){
+    if (!node || node.nodeType !== 1) return false;
+    if (node.tagName === 'TEMPLATE' && node.getAttribute('data-od-srcdoc-transport-body-complete') === generation) return true;
+    var candidates = node.querySelectorAll ? node.querySelectorAll('template[data-od-srcdoc-transport-body-complete]') : [];
+    for (var i = 0; i < candidates.length; i += 1) {
+      if (candidates[i].getAttribute('data-od-srcdoc-transport-body-complete') === generation) return true;
+    }
+    return false;
+  }
+  var completionObserver = typeof MutationObserver === 'function' ? new MutationObserver(function(records){
+    if (bodyComplete) return;
+    for (var i = 0; i < records.length; i += 1) {
+      var added = records[i].addedNodes || [];
+      for (var j = 0; j < added.length; j += 1) {
+        if (!containsCompletionMarker(added[j])) continue;
+        bodyComplete = true;
+        completionObserver.disconnect();
+        return;
+      }
+    }
+  }) : null;
+  if (completionObserver && document.documentElement) {
+    completionObserver.observe(document.documentElement, { childList: true, subtree: true });
+  }
+  function announceReady(probeId){
+    if (!generation) return;
+    try {
+      if (window.parent && window.parent !== window) {
+        var message = { type: 'od:srcdoc-transport-activated', generation: generation };
+        if (typeof probeId === 'string' && probeId) message.probeId = probeId;
+        message.bodyComplete = bodyComplete;
+        message.documentReadyState = document.readyState;
+        message.bodyPresent = !!document.body;
+        message.bodyChildCount = document.body ? document.body.children.length : 0;
+        message.documentElementChildCount = document.documentElement ? document.documentElement.children.length : 0;
+        window.parent.postMessage(message, '*');
+      }
+    } catch (_) { /* sandboxed parent */ }
+  }
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (data && data.type === 'od:srcdoc-transport-ready-probe') {
+      if (data.generation === generation) announceReady(data.probeId);
+      return;
+    }
+    if (!data || data.type !== 'od:srcdoc-transport-activate' || typeof data.html !== 'string' || typeof data.generation !== 'string' || !data.generation) return;
+    // document.open/write keeps the current Window realm. Re-running an
+    // authored classic script there can fail before execution when it declares
+    // a top-level let/const that the previous document already declared. Ask
+    // the host to remount the shared bootstrap so this generation gets a fresh
+    // realm, then let the one-shot shell perform the initial write.
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({
+          type: 'od:srcdoc-transport-reset-required',
+          generation: data.generation
+        }, '*');
+      }
+    } catch (_) { /* sandboxed parent — host recovery will remount on timeout */ }
+  });
+  announceReady();
+})();</script><script data-od-preview-redirect-guard>(function(){
+  var NAME_PREFIX = '__odRedirectGuard=';
+  var MAX_HOPS = 15;
+  var WINDOW_MS = 4000;
+  var SELF_MIN_DELAY_MS = 2000;
+  var MESSAGE_TYPE = "od:redirect-loop-blocked";
+  var BLOCK_LOAD_TIME_SCRIPT_REDIRECT = false;
+  function nowMs(){ try { return Date.now(); } catch (_) { return 0; } }
+  function readState(){
+    try {
+      var raw = window.name;
+      if (typeof raw === 'string' && raw.indexOf(NAME_PREFIX) === 0) {
+        var parsed = JSON.parse(raw.slice(NAME_PREFIX.length));
+        if (parsed && typeof parsed.hops === 'number' && typeof parsed.windowStart === 'number') return parsed;
+      }
+    } catch (_) {}
+    return null;
+  }
+  function writeState(state){
+    try { window.name = NAME_PREFIX + JSON.stringify({ hops: state.hops, windowStart: state.windowStart }); } catch (_) {}
+  }
+  function clearState(){
+    try { if (typeof window.name === 'string' && window.name.indexOf(NAME_PREFIX) === 0) window.name = ''; } catch (_) {}
+  }
+  function nextState(){
+    var t = nowMs();
+    var prev = readState();
+    var withinWindow = prev && (t - prev.windowStart) <= WINDOW_MS;
+    return { hops: (withinWindow ? prev.hops : 0) + 1, windowStart: withinWindow ? prev.windowStart : t };
+  }
+  function scheduleCandidateReset(state){
+    try {
+      if (typeof setTimeout !== 'function') return;
+      setTimeout(function(){
+        try {
+          var current = readState();
+          if (current && current.hops === state.hops && current.windowStart === state.windowStart) clearState();
+        } catch (_) {}
+      }, WINDOW_MS + 1);
+    } catch (_) {}
+  }
+  function recordScriptRedirectCandidate(){
+    if (!BLOCK_LOAD_TIME_SCRIPT_REDIRECT) return;
+    var state = nextState();
+    if (state.hops > MAX_HOPS) {
+      clearState();
+      report(state.hops);
+      return;
+    }
+    writeState(state);
+    scheduleCandidateReset(state);
+  }
+  function metaRefreshes(){
+    var out = [];
+    try {
+      var metas = document.getElementsByTagName('meta');
+      for (var i = 0; i < metas.length; i++) {
+        var equiv = metas[i].getAttribute ? metas[i].getAttribute('http-equiv') : null;
+        if (equiv && String(equiv).toLowerCase() === 'refresh') out.push(metas[i]);
+      }
+    } catch (_) {}
+    return out;
+  }
+  function parseContent(meta){
+    var content = '';
+    try { content = String(meta.getAttribute('content') || ''); } catch (_) {}
+    var delayMatch = content.match(/^\s*([0-9]+(?:\.[0-9]+)?)/);
+    var delayMs = delayMatch ? Math.round(parseFloat(delayMatch[1]) * 1000) : 0;
+    var urlMatch = content.match(/[;,]\s*url\s*=\s*['"]?\s*([^'"\s]+)/i);
+    return { delayMs: delayMs, url: urlMatch ? urlMatch[1] : '' };
+  }
+  function currentArtifactHref(){
+    try {
+      var href = String(location.href || '');
+      if (href === 'about:srcdoc') {
+        return String(document.baseURI || href);
+      }
+      return href;
+    } catch (_) {
+      return '';
+    }
+  }
+  function isSelfTarget(url){
+    if (!url) return true; // no url => refresh the current document
+    try {
+      var base = (document.baseURI) || location.href;
+      return new URL(url, base).href === currentArtifactHref();
+    } catch (_) { return false; }
+  }
+  function isFastSrcdocUrlHop(parsed){
+    if (!parsed.url || parsed.delayMs > SELF_MIN_DELAY_MS) return false;
+    try { return String(location.href || '') === 'about:srcdoc'; } catch (_) { return false; }
+  }
+  function neutralize(metas){
+    for (var i = 0; i < metas.length; i++) {
+      try { metas[i].parentNode && metas[i].parentNode.removeChild(metas[i]); } catch (_) {}
+    }
+    try { if (window.stop) window.stop(); } catch (_) {}
+  }
+  function report(hops){
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage({ type: MESSAGE_TYPE, hops: hops }, '*');
+      }
+    } catch (_) {}
+  }
+  function evaluate(){
+    var metas = metaRefreshes();
+    if (!metas.length) {
+      // No refresh directive: this document breaks any accumulating chain.
+      if (!BLOCK_LOAD_TIME_SCRIPT_REDIRECT) clearState();
+      return;
+    }
+    var selfLoop = false;
+    for (var i = 0; i < metas.length; i++) {
+      var parsed = parseContent(metas[i]);
+      if (parsed.delayMs <= SELF_MIN_DELAY_MS && isSelfTarget(parsed.url)) { selfLoop = true; break; }
+      if (isFastSrcdocUrlHop(parsed)) { selfLoop = true; break; }
+    }
+    var state = nextState();
+    if (selfLoop || state.hops > MAX_HOPS) {
+      neutralize(metas);
+      clearState();
+      report(state.hops);
+      return;
+    }
+    writeState(state);
+  }
+  recordScriptRedirectCandidate();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', evaluate);
+  } else {
+    evaluate();
+  }
+})();</script><script data-od-sandbox-shim>(function(){
+  function makeStore(){
+    var data = {};
+    var api = {
+      getItem: function(k){ return Object.prototype.hasOwnProperty.call(data, k) ? data[k] : null; },
+      setItem: function(k, v){ data[k] = String(v); },
+      removeItem: function(k){ delete data[k]; },
+      clear: function(){ data = {}; },
+      key: function(i){ return Object.keys(data)[i] || null; }
+    };
+    Object.defineProperty(api, 'length', { get: function(){ return Object.keys(data).length; } });
+    return api;
+  }
+  function tryShim(name){
+    var works = false;
+    try { works = !!window[name] && typeof window[name].getItem === 'function'; void window[name].length; }
+    catch (_) { works = false; }
+    if (works) return;
+    try { Object.defineProperty(window, name, { configurable: true, value: makeStore() }); }
+    catch (_) { try { window[name] = makeStore(); } catch (__) {} }
+  }
+  tryShim('localStorage');
+  tryShim('sessionStorage');
+  // A <base href> pointing at the artifact's real /raw/ URL (injectBaseHref,
+  // below) is what lets relative asset paths resolve inside this opaque
+  // srcDoc document. That same base is what breaks history.pushState /
+  // replaceState: a bare-hash call like replaceState(null, '', '#/3') — the
+  // exact pattern generated decks use for their own slide routing — resolves
+  // against the <base> into a real http(s) URL, and the browser throws
+  // SecurityError because the DOCUMENT's own origin is the opaque "null" of
+  // about:srcdoc, which can never match a concrete origin. A deck whose own
+  // navigation function calls replaceState before it finishes updating the
+  // slide DOM (ordering varies by generated template) aborts mid-navigation
+  // on that throw, leaving the main canvas blank until a manual reload —
+  // the thumbnail rail is unaffected because it does not run the deck's
+  // script per-thumbnail. Wrap both methods so that failure degrades to a
+  // no-op instead of interrupting the caller: the iframe's address bar was
+  // never visible to the user anyway, so losing the hash update here is
+  // invisible.
+  function shimHistoryMethod(name){
+    try {
+      var h = window.history;
+      var original = h && h[name];
+      if (typeof original !== 'function') return;
+      h[name] = function(state, title, url){
+        try {
+          return original.call(h, state, title, url);
+        } catch (_) {
+          return undefined;
+        }
+      };
+    } catch (_) {}
+  }
+  shimHistoryMethod('pushState');
+  shimHistoryMethod('replaceState');
+  document.addEventListener('click', (e) => {
+    if (!e.target || !(e.target instanceof Element)) return;
+    var link = e.target.closest('a[href]');
+    if (!link) return;
+    var href = link.getAttribute('href');
+    if (href === null) return;
+    var isAnchor = href.startsWith('#') || href === '';
+    if (isAnchor) {
+      e.preventDefault();
+      if (href === '' || href === '#') {
+        window.scrollTo({ top: 0 });
+        history.replaceState(null, '', ' ');
+      } else {
+        var targetId = href.slice(1);
+        var target = targetId ? document.getElementById(targetId) : null;
+        if (target) {
+          target.scrollIntoView();
+          location.hash === href && history.replaceState(null, '', ' ');
+          location.hash = href;
+        }
+      }
+    } else if (link.getAttribute('target') === '_blank') {
+      e.preventDefault();
+      let safe = false;
+      try {
+        var url = new URL(href, location.href);
+        safe =
+          url.protocol === 'http:' ||
+          url.protocol === 'https:' ||
+          url.protocol === 'mailto:';
+      } catch (_) {}
+      safe && window.open(href, '_blank', 'noopener,noreferrer');
+    }
+  });
+})();</script>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Canva — design system preview</title>
+  <style>
+    :root {
+      --bg: #7d2ae8;
+      --fg: #ff5757;
+      --accent: #0e1318;
+      --muted: #5f6368;
+      --border: #e1e3e6;
+      --surface: #f4f5f7;
+      --display: Canva is sans-only across all surfaces; serifs appear only as user-selectable template fonts inside the editor.;
+      --body: matching strong category color.;
+      --mono: ui-monospace, 'JetBrains Mono', monospace;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--body);
+      line-height: 1.55;
+      font-size: 16px;
+    }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 56px 32px 96px; }
+    .badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    h1 {
+      font-family: var(--display);
+      font-size: clamp(40px, 6vw, 72px);
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      margin: 0 0 16px;
+    }
+    .lede {
+      max-width: 60ch;
+      font-size: 18px;
+      color: var(--muted);
+      margin: 0 0 56px;
+    }
+    section { margin-bottom: 72px; }
+    .section-title {
+      font-family: var(--display);
+      font-size: 22px;
+      font-weight: 600;
+      margin: 0 0 16px;
+      letter-spacing: -0.01em;
+    }
+    .palette {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 16px;
+    }
+    .swatch {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      background: var(--surface);
+    }
+    .swatch .chip {
+      height: 96px;
+    }
+    .swatch .meta {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .swatch .name { font-size: 13px; font-weight: 500; }
+    .swatch .hex { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+    .typo-row {
+      display: grid;
+      grid-template-columns: 88px 1fr;
+      gap: 24px;
+      padding: 18px 0;
+      border-top: 1px solid var(--border);
+    }
+    .typo-row:first-child { border-top: none; padding-top: 0; }
+    .typo-row .label {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      padding-top: 4px;
+    }
+    .typo-display { font-family: var(--display); font-size: 40px; line-height: 1.1; letter-spacing: -0.02em; }
+    .typo-body { font-family: var(--body); font-size: 16px; }
+    .typo-mono { font-family: var(--mono); font-size: 14px; color: var(--muted); }
+    .components {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+    @media (max-width: 640px) { .components { grid-template-columns: 1fr; } }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 24px;
+    }
+    .card .eyebrow {
+      font-family: var(--mono);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .card h3 {
+      font-family: var(--display);
+      font-size: 20px;
+      margin: 0 0 8px;
+      letter-spacing: -0.01em;
+    }
+    .card p { margin: 0; color: var(--muted); }
+    .btn-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+    button {
+      font: inherit;
+      cursor: pointer;
+      border-radius: 8px;
+      padding: 10px 18px;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #ffffff;
+      border: 1px solid var(--accent);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--fg);
+      border: 1px solid var(--border);
+    }
+    .btn-link {
+      background: transparent;
+      border: none;
+      color: var(--accent);
+      padding: 10px 0;
+      font-weight: 500;
+    }
+    .prose {
+      border-top: 1px solid var(--border);
+      padding-top: 32px;
+      color: var(--fg);
+    }
+    .prose h1, .prose h2, .prose h3 { font-family: var(--display); letter-spacing: -0.01em; }
+    .prose h1 { font-size: 28px; margin-top: 0; }
+    .prose h2 { font-size: 20px; margin-top: 32px; }
+    .prose h3 { font-size: 16px; margin-top: 24px; }
+    .prose p, .prose ul, .prose ol { margin: 12px 0; }
+    .prose code { font-family: var(--mono); background: var(--surface); border: 1px solid var(--border); padding: 1px 5px; border-radius: 4px; font-size: 0.92em; }
+    .prose blockquote { margin: 16px 0; padding: 8px 16px; border-left: 3px solid var(--accent); color: var(--muted); }
+    .prose ul, .prose ol { padding-left: 22px; }
+    .prose pre { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; overflow: auto; font-family: var(--mono); font-size: 12.5px; line-height: 1.55; }
+    .prose pre code { background: transparent; border: none; padding: 0; font-size: inherit; }
+    .prose hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+    .prose a { color: var(--accent); text-decoration: none; border-bottom: 1px solid transparent; }
+    .prose a:hover { border-bottom-color: var(--accent); }
+    .prose img { max-width: 100%; height: auto; border-radius: 6px; }
+    .prose .table-wrap { overflow-x: auto; margin: 18px 0; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+    .prose table { width: 100%; border-collapse: collapse; font-size: 13.5px; line-height: 1.5; }
+    .prose th, .prose td { padding: 9px 14px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--border); }
+    .prose th { background: var(--bg); font-weight: 600; font-size: 12px; letter-spacing: 0.02em; text-transform: uppercase; color: var(--muted); }
+    .prose tr:last-child td { border-bottom: none; }
+    .prose td code, .prose th code { white-space: nowrap; }
+    .prose td[align="right"], .prose th[align="right"] { text-align: right; }
+    .prose td[align="center"], .prose th[align="center"] { text-align: center; }
+  </style>
+<style data-od-tweaks-bridge-style>
+[data-od-tweaks-hidden] .tw-panel {
+  transform: translateX(calc(100% + 32px)) !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+.tw-restore { display: none !important; }
+</style><script data-od-tweaks-bridge>(function(){
+  // Synchronously hide BEFORE the artifact body parses so the panel never
+  // flashes on initial paint. The host removes the attribute via postMessage
+  // once it knows the desired state.
+  document.documentElement.setAttribute('data-od-tweaks-hidden', '');
+
+  var suppressEcho = false;
+  var observer = null;
+
+  function panelEl(){ return document.querySelector('.tw-panel'); }
+
+  function applyClassesToPanel(visible){
+    var panel = panelEl();
+    if (panel) panel.classList.toggle('tw-hidden', !visible);
+  }
+
+  function setPanelVisible(visible){
+    suppressEcho = true;
+    document.documentElement.toggleAttribute('data-od-tweaks-hidden', !visible);
+    applyClassesToPanel(visible);
+    // Clear flag after the MutationObserver has had a chance to fire for this
+    // change so we don't echo our own host-driven toggles back to the host.
+    Promise.resolve().then(function(){ suppressEcho = false; });
+  }
+
+  function postState(){
+    var panel = panelEl();
+    if (!panel) return;
+    try {
+      parent.postMessage({
+        type: 'od:tweaks-panel-state',
+        visible: !panel.classList.contains('tw-hidden'),
+      }, '*');
+    } catch (e) {}
+  }
+
+  function postAvailability(){
+    try {
+      parent.postMessage({
+        type: 'od:tweaks-available',
+        available: !!panelEl(),
+      }, '*');
+    } catch (e) {}
+  }
+
+  function attachObserver(){
+    var panel = panelEl();
+    if (!panel || observer) return;
+    observer = new MutationObserver(function(){
+      if (suppressEcho) return;
+      postState();
+    });
+    observer.observe(panel, { attributes: true, attributeFilter: ['class'] });
+  }
+
+  function onReady(){
+    // Capture the panel authored visibility BEFORE we apply the host hidden
+    // attribute. The bridge sets data-od-tweaks-hidden synchronously in head
+    // (before the body parses), so on entry to onReady the attribute is
+    // always present even though the artifact may have authored the panel
+    // as default-visible. Reading the panel class first is the only place
+    // we can still observe the author intent. Then drive the attribute,
+    // classes, and posted state from that captured value so a default
+    // visible tw-panel reports visible:true and the toolbar toggle starts
+    // ON. Issue surfaced in PR #1643 review.
+    var panel = panelEl();
+    var initialVisible = !!panel && !panel.classList.contains('tw-hidden');
+    document.documentElement.toggleAttribute('data-od-tweaks-hidden', !initialVisible);
+    applyClassesToPanel(initialVisible);
+    attachObserver();
+    postAvailability();
+    // Post the captured initial visibility so the toolbar toggle reflects
+    // the default state on mount. Without this the toggle reads OFF while
+    // a default-visible tw-panel artifact clearly shows its panel and the
+    // user would have to click toggle-on then toggle-off to actually hide.
+    postState();
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', onReady);
+  } else {
+    onReady();
+  }
+
+  window.addEventListener('message', function(ev){
+    if (!ev.data || ev.data.type !== 'od:tweaks-panel-visible') return;
+    setPanelVisible(!!ev.data.visible);
+  });
+})();</script></head>
+<body>
+  <main class="wrap" data-od-id="path-0">
+    <span class="badge">Design system preview · canva</span>
+    <h1 data-od-id="path-0-1">Canva</h1>
+    <p class="lede">Visual creation platform. Vivid purple-blue gradient, generous spacing, friendly geometry.</p>
+
+    <section data-od-id="path-0-3">
+      <h2 class="section-title" data-od-id="path-0-3-0">Palette</h2>
+      <div class="palette" data-od-id="path-0-3-1">
+        <div class="swatch">
+              <div class="chip" style="background:#ffffff;"></div>
+              <div class="meta">
+                <span class="name">Text</span>
+                <span class="hex">#ffffff</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#7d2ae8;"></div>
+              <div class="meta">
+                <span class="name">Background</span>
+                <span class="hex">#7d2ae8</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#6815d4;"></div>
+              <div class="meta">
+                <span class="name">Hover</span>
+                <span class="hex">#6815d4</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#ffffff;"></div>
+              <div class="meta">
+                <span class="name">Background</span>
+                <span class="hex">#ffffff</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#0e1318;"></div>
+              <div class="meta">
+                <span class="name">Text</span>
+                <span class="hex">#0e1318</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#7d2ae8;"></div>
+              <div class="meta">
+                <span class="name">Text</span>
+                <span class="hex">#7d2ae8</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#7d2ae8;"></div>
+              <div class="meta">
+                <span class="name">purple-to-blue gradient</span>
+                <span class="hex">#7d2ae8</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#7d2ae8;"></div>
+              <div class="meta">
+                <span class="name">Canva Purple</span>
+                <span class="hex">#7d2ae8</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#00c4cc;"></div>
+              <div class="meta">
+                <span class="name">Canva Cyan</span>
+                <span class="hex">#00c4cc</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#ff5757;"></div>
+              <div class="meta">
+                <span class="name">Canva Pink</span>
+                <span class="hex">#ff5757</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#ffffff;"></div>
+              <div class="meta">
+                <span class="name">Canvas</span>
+                <span class="hex">#ffffff</span>
+              </div>
+            </div><div class="swatch">
+              <div class="chip" style="background:#f4f5f7;"></div>
+              <div class="meta">
+                <span class="name">Surface Subtle</span>
+                <span class="hex">#f4f5f7</span>
+              </div>
+            </div>
+      </div>
+    </section>
+
+    <section data-od-id="path-0-4">
+      <h2 class="section-title" data-od-id="path-0-4-0">Typography</h2>
+      <div class="typo-row" data-od-id="path-0-4-1">
+        <span class="label">Display</span>
+        <div class="typo-display">The grid carries weight; the line carries pace.</div>
+      </div>
+      <div class="typo-row" data-od-id="path-0-4-2">
+        <span class="label">Body</span>
+        <div class="typo-body">Body copy reads at sixteen pixels with a 1.55 leading. Restraint and rhythm matter more than novelty — pick a stack that earns the page.</div>
+      </div>
+      <div class="typo-row" data-od-id="path-0-4-3">
+        <span class="label">Mono</span>
+        <div class="typo-mono">/* monospace · ui-monospace */</div>
+      </div>
+    </section>
+
+    <section data-od-id="path-0-5">
+      <h2 class="section-title" data-od-id="path-0-5-0">Components</h2>
+      <div class="components" data-od-id="path-0-5-1">
+        <div class="card">
+          <div class="eyebrow">Card</div>
+          <h3 data-od-id="path-0-5-1-0-1">Production-quality artifact</h3>
+          <p>Sample card showing how surfaces, borders, and accent text behave in this system.</p>
+        </div>
+        <div class="card">
+          <div class="eyebrow">Buttons</div>
+          <h3 data-od-id="path-0-5-1-1-1">Three weights, one accent</h3>
+          <div class="btn-row" style="margin-top: 12px;">
+            <button class="btn-primary" data-od-id="path-0-5-1-1-2-0">Primary</button>
+            <button class="btn-secondary" data-od-id="path-0-5-1-1-2-1">Secondary</button>
+            <button class="btn-link" data-od-id="path-0-5-1-1-2-2">Link →</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="prose" data-od-id="path-0-6">
+      <h1 data-od-id="path-0-6-0">Design System Inspired by Canva</h1>
+<blockquote>
+<p>Category: Design &amp; Creative</p>
+<p>Visual creation platform. Vivid purple-blue gradient, generous spacing, friendly geometry.</p>
+</blockquote>
+<h2 data-od-id="path-0-6-2">1. Visual Theme &amp; Atmosphere</h2>
+<p>Canva is the friendly face of design tools — the brand makes a point of looking inviting where Adobe looks intimidating. The page is built on a clean white canvas (<code>#ffffff</code>) with a signature <strong>purple-to-blue gradient</strong> (<code>#7d2ae8</code> → <code>#00c4cc</code>) used in the brand mark, hero buttons, and Pro/Magic moments. Surfaces are generously padded, edges are gently rounded (8–16px), and shadows are soft and cool-toned.</p>
+<p>Typography uses <strong>Canva Sans</strong> (a custom geometric sans) for chrome and prose, with rounded letterforms that share DNA with brands like Airbnb and Asana. Weight contrast does the heavy lifting — 800 for hero display, 700 for section heads, 400 for body — while size hierarchy is more compressed than typical product brands so cards and templates read at a glance.</p>
+<p>The shape system is ultra-soft: 12px on most cards, 16–20px on larger panels, 9999px on chips. Buttons are rectangles with a subtle elevation shadow (<code>0 2px 8px rgba(0,0,0,0.06)</code>) that grows on hover. Iconography is filled and rounded, never line-only — Canva's icons speak the same shape language as its UI.</p>
+<p><strong>Key Characteristics:</strong></p>
+<ul>
+<li>White canvas with a violet-to-cyan gradient (<code>#7d2ae8</code> → <code>#00c4cc</code>)</li>
+<li>Canva Sans (rounded geometric) for everything; weight contrast over color</li>
+<li>12–20px radii everywhere; 9999px pills for chips and tags</li>
+<li>Soft cool-toned shadows that grow on hover</li>
+<li>Filled rounded iconography — never outlined</li>
+<li>Vibrant secondary palette (coral, mint, tangerine) for category tags</li>
+<li>Pro/Magic moments lit by a static gradient — no animation</li>
+</ul>
+<h2 data-od-id="path-0-6-8">2. Color Palette &amp; Roles</h2>
+<h3 data-od-id="path-0-6-9">Brand Gradient</h3>
+<ul>
+<li><strong>Canva Purple</strong> (<code>#7d2ae8</code>): Brand primary; gradient origin.</li>
+<li><strong>Canva Cyan</strong> (<code>#00c4cc</code>): Brand secondary; gradient terminus.</li>
+<li><strong>Canva Pink</strong> (<code>#ff5757</code>): Tertiary brand accent (Magic Studio).</li>
+</ul>
+<h3 data-od-id="path-0-6-11">Surface</h3>
+<ul>
+<li><strong>Canvas</strong> (<code>#ffffff</code>): Primary background.</li>
+<li><strong>Surface Subtle</strong> (<code>#f4f5f7</code>): Section break, sidebar.</li>
+<li><strong>Surface Inset</strong> (<code>#e8eaed</code>): Disabled, inset block.</li>
+<li><strong>Surface Cool</strong> (<code>#eef0fc</code>): Hover tint on purple-themed cards.</li>
+</ul>
+<h3 data-od-id="path-0-6-13">Ink &amp; Text</h3>
+<ul>
+<li><strong>Ink Primary</strong> (<code>#0e1318</code>): Primary text.</li>
+<li><strong>Ink Secondary</strong> (<code>#3c4043</code>): Body prose.</li>
+<li><strong>Ink Muted</strong> (<code>#5f6368</code>): Captions, descriptions.</li>
+<li><strong>Ink Faint</strong> (<code>#9aa0a6</code>): Placeholder, disabled label.</li>
+</ul>
+<h3 data-od-id="path-0-6-15">Semantic</h3>
+<ul>
+<li><strong>Success</strong> (<code>#00b894</code>): Saved, exported.</li>
+<li><strong>Warning</strong> (<code>#ffb020</code>): Storage limit, advisory.</li>
+<li><strong>Error</strong> (<code>#ff5757</code>): Validation, destructive.</li>
+<li><strong>Info</strong> (<code>#0d99ff</code>): Tip, link.</li>
+</ul>
+<h3 data-od-id="path-0-6-17">Category Accents (Template Tags)</h3>
+<ul>
+<li><strong>Coral</strong> (<code>#ff7059</code>): Social posts.</li>
+<li><strong>Tangerine</strong> (<code>#ff9633</code>): Marketing.</li>
+<li><strong>Mint</strong> (<code>#48c997</code>): Education.</li>
+<li><strong>Sky</strong> (<code>#3ea6ff</code>): Business.</li>
+<li><strong>Lavender</strong> (<code>#9b87f5</code>): Personal.</li>
+</ul>
+<h3 data-od-id="path-0-6-19">Border</h3>
+<ul>
+<li><strong>Border Default</strong> (<code>#e1e3e6</code>): Standard hairline.</li>
+<li><strong>Border Strong</strong> (<code>#c7cdd3</code>): Emphasized border, hover state.</li>
+</ul>
+<h2 data-od-id="path-0-6-21">3. Typography Rules</h2>
+<h3 data-od-id="path-0-6-22">Font Family</h3>
+<ul>
+<li><strong>Display / UI / Body</strong>: <code>Canva Sans</code>, with fallback: <code>'YS Text', system-ui, -apple-system, sans-serif</code></li>
+<li><strong>Editorial (rare)</strong>: <code>Canva Sans Display</code>, with fallback: <code>'Canva Sans', sans-serif</code></li>
+<li><strong>Code (devtools only)</strong>: <code>JetBrains Mono</code>, with fallback: <code>ui-monospace, Menlo, Consolas, monospace</code></li>
+</ul>
+<h3 data-od-id="path-0-6-24">Hierarchy</h3>
+<div class="table-wrap" data-od-id="path-0-6-25"><table><thead><tr><th>Role</th><th>Font</th><th>Size</th><th>Weight</th><th>Line Height</th><th>Letter Spacing</th><th>Notes</th></tr></thead><tbody><tr><td>Hero</td><td>Canva Sans</td><td>64px (4rem)</td><td>800</td><td>1.05</td><td>-0.02em</td><td>Marketing hero, "Design anything."</td></tr><tr><td>H1</td><td>Canva Sans</td><td>36px (2.25rem)</td><td>700</td><td>1.15</td><td>-0.01em</td><td>Page heading</td></tr><tr><td>H2</td><td>Canva Sans</td><td>24px (1.5rem)</td><td>700</td><td>1.2</td><td>-0.005em</td><td>Section heading</td></tr><tr><td>H3</td><td>Canva Sans</td><td>18px (1.125rem)</td><td>600</td><td>1.3</td><td>normal</td><td>Sub-section, card title</td></tr><tr><td>Body Large</td><td>Canva Sans</td><td>16px (1rem)</td><td>400</td><td>1.55</td><td>normal</td><td>Lede, marketing body</td></tr><tr><td>Body</td><td>Canva Sans</td><td>14px (0.875rem)</td><td>400</td><td>1.5</td><td>normal</td><td>Standard UI prose</td></tr><tr><td>Caption</td><td>Canva Sans</td><td>12px (0.75rem)</td><td>500</td><td>1.4</td><td>0.005em</td><td>Metadata, hint text</td></tr><tr><td>Button</td><td>Canva Sans</td><td>14px (0.875rem)</td><td>600</td><td>1.2</td><td>normal</td><td>Default button label</td></tr><tr><td>Tag</td><td>Canva Sans</td><td>11px (0.6875rem)</td><td>600</td><td>1.2</td><td>0.04em</td><td>Uppercase category chip</td></tr></tbody></table></div>
+<h3 data-od-id="path-0-6-26">Principles</h3>
+<ul>
+<li><strong>Weight contrast over color contrast</strong>: hierarchy steps via 800→700→600→400; the surface stays neutral.</li>
+<li><strong>Tight line-height for cards</strong>: card titles use 1.15–1.2 so a 3-line title still fits a 4:3 thumbnail.</li>
+<li><strong>No display serif</strong>: Canva is sans-only across all surfaces; serifs appear only as user-selectable template fonts inside the editor.</li>
+</ul>
+<h2 data-od-id="path-0-6-28">4. Component Stylings</h2>
+<h3 data-od-id="path-0-6-29">Buttons</h3>
+<p><strong>Primary (Gradient)</strong></p>
+<ul>
+<li>Background: <code>linear-gradient(135deg, #7d2ae8, #00c4cc)</code></li>
+<li>Text: <code>#ffffff</code></li>
+<li>Padding: 12px 20px</li>
+<li>Radius: 8px</li>
+<li>Shadow: <code>0 2px 8px rgba(125, 42, 232, 0.2)</code></li>
+<li>Hover: shadow grows to <code>0 4px 14px rgba(125, 42, 232, 0.3)</code></li>
+<li>Use: hero CTAs, "Try Canva Pro"</li>
+</ul>
+<p><strong>Primary (Solid Purple)</strong></p>
+<ul>
+<li>Background: <code>#7d2ae8</code></li>
+<li>Text: <code>#ffffff</code></li>
+<li>Padding: 12px 20px</li>
+<li>Radius: 8px</li>
+<li>Hover: <code>#6815d4</code></li>
+</ul>
+<p><strong>Secondary</strong></p>
+<ul>
+<li>Background: <code>#ffffff</code></li>
+<li>Text: <code>#0e1318</code></li>
+<li>Border: 1px solid <code>#e1e3e6</code></li>
+<li>Radius: 8px</li>
+<li>Hover: background <code>#f4f5f7</code>, border <code>#c7cdd3</code></li>
+</ul>
+<p><strong>Subtle / Tertiary</strong></p>
+<ul>
+<li>Background: <code>rgba(125, 42, 232, 0.08)</code></li>
+<li>Text: <code>#7d2ae8</code></li>
+<li>Hover: background <code>rgba(125, 42, 232, 0.14)</code></li>
+</ul>
+<h3 data-od-id="path-0-6-38">Cards / Template Tiles</h3>
+<ul>
+<li>Background: <code>#ffffff</code></li>
+<li>Border: 1px solid <code>#e1e3e6</code></li>
+<li>Radius: 12px</li>
+<li>Shadow at rest: <code>0 1px 3px rgba(0,0,0,0.04)</code></li>
+<li>Shadow on hover: <code>0 8px 24px rgba(0,0,0,0.08)</code>, lift 2px</li>
+<li>Aspect ratio: thumbnail respects template (1:1, 4:3, 9:16)</li>
+</ul>
+<h3 data-od-id="path-0-6-40">Inputs</h3>
+<ul>
+<li>Background: <code>#ffffff</code></li>
+<li>Border: 1px solid <code>#e1e3e6</code></li>
+<li>Radius: 8px</li>
+<li>Padding: 10px 14px</li>
+<li>Focus: border <code>#7d2ae8</code>, ring <code>0 0 0 3px rgba(125, 42, 232, 0.16)</code></li>
+</ul>
+<h3 data-od-id="path-0-6-42">Chips / Tags</h3>
+<ul>
+<li>Background: category-tinted soft.</li>
+<li>Text: matching strong category color.</li>
+<li>Padding: 4px 10px</li>
+<li>Radius: 9999px</li>
+<li>Font: 11px / 600 / uppercase</li>
+</ul>
+<h3 data-od-id="path-0-6-44">Pro Badge</h3>
+<ul>
+<li>Background: <code>linear-gradient(135deg, #7d2ae8, #ff5757)</code></li>
+<li>Text: <code>#ffffff</code></li>
+<li>Padding: 2px 8px</li>
+<li>Radius: 9999px</li>
+<li>Font: 10px / 700 / uppercase</li>
+</ul>
+<h2 data-od-id="path-0-6-46">5. Spacing &amp; Layout</h2>
+<ul>
+<li><strong>Base unit</strong>: 4px. Scale: 4, 8, 12, 16, 24, 32, 48, 64, 96.</li>
+<li><strong>Container</strong>: max 1320px, 32px gutter.</li>
+<li><strong>Sidebar (editor)</strong>: 320px wide; collapses to 56px icons.</li>
+<li><strong>Card grid gap</strong>: 16px on mobile, 24px on desktop.</li>
+</ul>
+<h2 data-od-id="path-0-6-48">6. Motion</h2>
+<ul>
+<li><strong>Duration</strong>: 180ms for hover; 280ms for menu open; 420ms for editor sidebar collapse.</li>
+<li><strong>Easing</strong>: <code>cubic-bezier(0.4, 0, 0.2, 1)</code> (Material-style).</li>
+<li><strong>Card lift</strong>: translateY(-2px) + shadow grow on hover, single transition.</li>
+</ul>
+<h2 data-od-id="path-0-6-50">7. Usage Guardrails</h2>
+<ul>
+<li>Keep the white canvas dominant; the purple-to-cyan gradient should signal brand, Pro, Magic, or one primary CTA moment.</li>
+<li>Use filled rounded icons and soft 12-20px geometry rather than sharp enterprise controls.</li>
+<li>Keep category colors in tags, templates, and supporting metadata; do not let them compete with the main gradient action.</li>
+<li>Preserve the friendly editor/product tone: dense tool UI is fine, but it should stay approachable and visually generous.</li>
+</ul>
+    </section>
+  </main>
+
+<script data-od-preview-content-size-bridge>(function(){
+  if (window.__odPreviewContentSizeBridge) return;
+  window.__odPreviewContentSizeBridge = true;
+  var pending = false;
+  var lastRequest = null;
+  var documentEpoch = "";
+  function measure(){
+    var root = document.documentElement;
+    var body = document.body || root;
+    if (!root) return null;
+    var scrollValues = [
+      root.scrollWidth,
+      body && body.scrollWidth,
+    ];
+    var clientValues = [
+      root.clientWidth,
+      body && body.clientWidth
+    ];
+    var scrollWidth = 0;
+    var clientWidth = 0;
+    for (var i = 0; i < scrollValues.length; i += 1) {
+      var nextScroll = Number(scrollValues[i] || 0);
+      if (Number.isFinite(nextScroll) && nextScroll > scrollWidth) scrollWidth = nextScroll;
+    }
+    for (var j = 0; j < clientValues.length; j += 1) {
+      var nextClient = Number(clientValues[j] || 0);
+      if (Number.isFinite(nextClient) && nextClient > clientWidth) clientWidth = nextClient;
+    }
+    return {
+      scrollWidth: scrollWidth > 0 ? Math.ceil(scrollWidth) : null,
+      clientWidth: clientWidth > 0 ? Math.ceil(clientWidth) : null
+    };
+  }
+  function post(){
+    if (!lastRequest) return;
+    var size = measure();
+    try {
+      window.parent.postMessage({
+        type: 'od:preview-content-size',
+        measurementId: lastRequest.measurementId,
+        generation: lastRequest.generation,
+        documentEpoch: documentEpoch,
+        scrollWidth: size && size.scrollWidth,
+        clientWidth: size && size.clientWidth
+      }, '*');
+    } catch (_) {}
+  }
+  function schedule(){
+    if (pending) return;
+    pending = true;
+    window.requestAnimationFrame(function(){
+      pending = false;
+      post();
+    });
+  }
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (!data || data.type !== 'od:preview-content-size-request') return;
+    if (typeof data.measurementId !== 'string' || typeof data.generation !== 'string') return;
+    lastRequest = {
+      measurementId: data.measurementId,
+      generation: data.generation
+    };
+    schedule();
+  });
+  window.addEventListener('resize', schedule);
+  if (typeof ResizeObserver !== 'undefined') {
+    try {
+      var observer = new ResizeObserver(schedule);
+      observer.observe(document.documentElement);
+      if (document.body) observer.observe(document.body);
+    } catch (_) {}
+  }
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', schedule);
+  } else {
+    setTimeout(schedule, 0);
+  }
+  setTimeout(schedule, 80);
+  setTimeout(schedule, 260);
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(schedule).catch(function(){});
+  }
+})();</script><script data-od-snapshot-bridge>(function(){
+  var SNAPSHOT_STYLE_PROPS = [
+    'display','position','box-sizing','width','height','min-width','max-width','min-height','max-height',
+    'margin','margin-top','margin-right','margin-bottom','margin-left',
+    'padding','padding-top','padding-right','padding-bottom','padding-left',
+    'border','border-top','border-right','border-bottom','border-left','border-radius',
+    'font','font-family','font-size','font-weight','font-style','line-height','letter-spacing',
+    'color','background-color','opacity','transform','transform-origin','overflow','overflow-x','overflow-y',
+    'white-space','text-align','vertical-align','object-fit','object-position',
+    'flex','flex-direction','flex-wrap','flex-grow','flex-shrink','flex-basis',
+    'grid','grid-template-columns','grid-template-rows','grid-column','grid-row',
+    'gap','row-gap','column-gap','align-items','align-content','align-self',
+    'justify-items','justify-content','justify-self','inset','top','right','bottom','left',
+    'z-index','box-shadow','text-shadow'
+  ];
+  function copyComputedStyle(source, target){
+    if (!source || !target || source.nodeType !== 1 || target.nodeType !== 1) return;
+    var computed = window.getComputedStyle(source);
+    var style = target.getAttribute('style') || '';
+    for (var i = 0; i < SNAPSHOT_STYLE_PROPS.length; i++){
+      var prop = SNAPSHOT_STYLE_PROPS[i];
+      var value = computed.getPropertyValue(prop);
+      if (value) style += prop + ':' + value + ';';
+    }
+    target.setAttribute('style', style);
+  }
+  function syncElementState(source, target){
+    var tag = source.tagName ? source.tagName.toLowerCase() : '';
+    if (tag === 'img' && source.currentSrc) target.setAttribute('src', source.currentSrc);
+    if (tag === 'input' || tag === 'textarea') target.setAttribute('value', source.value || '');
+    if (tag === 'canvas') {
+      try {
+        var img = document.createElement('img');
+        img.setAttribute('src', source.toDataURL('image/png'));
+        img.setAttribute('style', target.getAttribute('style') || '');
+        target.parentNode && target.parentNode.replaceChild(img, target);
+      } catch (_) {}
+    }
+  }
+  function inlineSnapshotStyles(originalRoot, cloneRoot){
+    copyComputedStyle(originalRoot, cloneRoot);
+    syncElementState(originalRoot, cloneRoot);
+    var originals = originalRoot.querySelectorAll('*');
+    var clones = cloneRoot.querySelectorAll('*');
+    var count = Math.min(originals.length, clones.length, 3500);
+    for (var i = 0; i < count; i++){
+      copyComputedStyle(originals[i], clones[i]);
+      syncElementState(originals[i], clones[i]);
+    }
+  }
+  // Must run AFTER pruneHiddenSnapshotNodes: prune pairs originalRoot/cloneRoot
+  // querySelectorAll('*') lists by index, so removing clone nodes (scripts,
+  // links) before it shifts every later clone under the wrong original and the
+  // misdirected removals can delete the visible content (or the body itself),
+  // yielding a uniform "empty-render" frame.
+  function stripSnapshotResources(cloneRoot){
+    var scripts = cloneRoot.querySelectorAll('script');
+    for (var s = scripts.length - 1; s >= 0; s--) scripts[s].remove();
+    var links = cloneRoot.querySelectorAll('link[rel~="stylesheet"], link[rel~="preload"], link[rel~="preconnect"]');
+    for (var l = links.length - 1; l >= 0; l--) links[l].remove();
+    var styles = cloneRoot.querySelectorAll('style');
+    for (var st = 0; st < styles.length; st++) {
+      styles[st].textContent = (styles[st].textContent || '')
+        .replace(/@import[^;]+;/gi, '')
+        .replace(/@font-face\s*\{[^}]*\}/gi, '');
+    }
+    // HTML tolerates attribute names XML rejects (@click, :href, {shorthand}).
+    // One such attribute anywhere makes the whole foreignObject SVG unparseable,
+    // so drop any attribute whose name is not a valid XML Name.
+    var XML_NAME = /^[A-Za-z_][A-Za-z0-9_.-]*(?::[A-Za-z_][A-Za-z0-9_.-]*)?$/;
+    var all = cloneRoot.querySelectorAll('*');
+    for (var e = 0; e < all.length; e++) {
+      var attrs = all[e].attributes;
+      for (var a = attrs.length - 1; a >= 0; a--) {
+        if (!XML_NAME.test(attrs[a].name)) all[e].removeAttribute(attrs[a].name);
+      }
+    }
+  }
+  // innerHTML uses the HTML serializer, which emits void elements (<br>, <img>)
+  // without self-closing slashes — invalid XML, so the foreignObject SVG image
+  // fails to parse (img.onerror → 'snapshot image failed'). XMLSerializer emits
+  // well-formed XHTML instead.
+  function serializeSnapshotXhtml(node){
+    try {
+      var serializer = new XMLSerializer();
+      var out = '';
+      for (var i = 0; i < node.childNodes.length; i++) out += serializer.serializeToString(node.childNodes[i]);
+      return out;
+    } catch (_) { return node.innerHTML || ''; }
+  }
+  function pruneHiddenSnapshotNodes(originalRoot, cloneRoot){
+    var originals = originalRoot.querySelectorAll('*');
+    var clones = cloneRoot.querySelectorAll('*');
+    var count = Math.min(originals.length, clones.length);
+    var removals = [];
+    for (var i = 0; i < count; i++){
+      var original = originals[i];
+      var clone = clones[i];
+      if (!original || !clone || !clone.parentNode) continue;
+      var computed = window.getComputedStyle(original);
+      if (computed && (computed.display === 'none' || computed.visibility === 'hidden')) {
+        removals.push(clone);
+      }
+    }
+    for (var r = removals.length - 1; r >= 0; r--){
+      if (removals[r].parentNode) removals[r].parentNode.removeChild(removals[r]);
+    }
+  }
+  function waitForImages(){
+    var imgs = Array.prototype.slice.call(document.images || []);
+    return Promise.all(imgs.map(function(img){
+      if (img.complete) return Promise.resolve();
+      return new Promise(function(resolve){
+        img.addEventListener('load', resolve, { once: true });
+        img.addEventListener('error', resolve, { once: true });
+      });
+    }));
+  }
+  function scrollOffset(){
+    var doc = document.documentElement;
+    var body = document.body;
+    return {
+      x: Math.max(window.scrollX || 0, doc ? doc.scrollLeft || 0 : 0, body ? body.scrollLeft || 0 : 0),
+      y: Math.max(window.scrollY || 0, doc ? doc.scrollTop || 0 : 0, body ? body.scrollTop || 0 : 0)
+    };
+  }
+  function escapeAttribute(value){
+    return String(value || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;');
+  }
+  function snapshotBackgroundColor(){
+    try {
+      var probe = window.getComputedStyle(document.body || document.documentElement);
+      var bg = probe && probe.backgroundColor || '';
+      if (!bg || bg === 'transparent' || bg === 'rgba(0, 0, 0, 0)') return '#ffffff';
+      return bg;
+    } catch (_) { return '#ffffff'; }
+  }
+  // After painting, sample the canvas: a uniform (single-color) bitmap means
+  // the foreignObject rasterizer painted nothing — Chromium frequently refuses
+  // to paint <foreignObject> HTML loaded via <img>. Treating that as an honest
+  // 'empty-render' error (instead of shipping the background-only frame) lets
+  // the host fall back / surface a real failure rather than a silent black PNG.
+  function canvasLooksBlank(ctx, cw, ch){
+    try {
+      var data = ctx.getImageData(0, 0, cw, ch).data;
+      var step = Math.max(4, Math.floor((cw * ch) / 4096)) * 4;
+      var first = null, samples = 0;
+      for (var i = 0; i + 3 < data.length; i += step){
+        samples++;
+        if (!first){ first = [data[i], data[i+1], data[i+2], data[i+3]]; continue; }
+        if (Math.abs(data[i]-first[0]) > 6 || Math.abs(data[i+1]-first[1]) > 6 ||
+            Math.abs(data[i+2]-first[2]) > 6 || Math.abs(data[i+3]-first[3]) > 6) return false;
+      }
+      return samples > 8;
+    } catch (_) { return false; }
+  }
+  // Rasterize the current view (or the whole document, when opts.full) via an
+  // SVG <foreignObject>. Returns a Promise so it can be reused by both the
+  // od:snapshot message handler AND the export-capture bridge (image export /
+  // PDF) — the foreignObject path is fast and never blocks on external
+  // image network loads the way a DOM-cloning rasterizer does.
+  function captureSnapshot(opts){
+    opts = opts || {};
+    return new Promise(function(resolve, reject){
+      var w = Math.max(1, window.innerWidth || document.documentElement.clientWidth || 1);
+      var h = Math.max(1, window.innerHeight || document.documentElement.clientHeight || 1);
+      var dpr = window.devicePixelRatio || 1;
+      var bgColor = snapshotBackgroundColor();
+      var docW = Math.max(w, document.documentElement.scrollWidth || 0, document.body ? document.body.scrollWidth : 0);
+      var docH = Math.max(h, document.documentElement.scrollHeight || 0, document.body ? document.body.scrollHeight : 0);
+      var full = !!opts.full;
+      var capW = full ? docW : w;
+      var capH = full ? docH : h;
+      var clone = document.documentElement.cloneNode(true);
+      clone.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+      inlineSnapshotStyles(document.documentElement, clone);
+      pruneHiddenSnapshotNodes(document.documentElement, clone);
+      stripSnapshotResources(clone);
+      var scroll = full ? { x: 0, y: 0 } : scrollOffset();
+      var cloneBody = clone.querySelector('body');
+      var rootStyle = clone.getAttribute('style') || '';
+      var bodyStyle = cloneBody ? cloneBody.getAttribute('style') || '' : '';
+      var bodyContent = serializeSnapshotXhtml(cloneBody || clone);
+      var wrapperStyle = rootStyle + bodyStyle +
+        'margin:0;position:relative;left:' + (-scroll.x) + 'px;top:' + (-scroll.y) + 'px;' +
+        'width:' + docW + 'px;height:' + docH + 'px;overflow:visible;';
+      var html = '<div xmlns="http://www.w3.org/1999/xhtml" style="' + escapeAttribute(wrapperStyle) + '">' + bodyContent + '</div>';
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + capW + '" height="' + capH + '" viewBox="0 0 ' + capW + ' ' + capH + '">' +
+        '<foreignObject x="0" y="0" width="' + docW + '" height="' + docH + '">' +
+        html +
+        '</foreignObject></svg>';
+      var img = new Image();
+      img.onload = function(){
+        try {
+          var canvas = document.createElement('canvas');
+          canvas.width = Math.max(1, Math.floor(capW * dpr));
+          canvas.height = Math.max(1, Math.floor(capH * dpr));
+          var ctx = canvas.getContext('2d');
+          if (!ctx) throw new Error('no 2d context');
+          ctx.scale(dpr, dpr);
+          // Opaque base so a transparent (un-painted) raster never flattens to
+          // pure black in clipboards / PNG viewers.
+          ctx.fillStyle = bgColor;
+          ctx.fillRect(0, 0, capW, capH);
+          ctx.drawImage(img, 0, 0, capW, capH);
+          if (canvasLooksBlank(ctx, canvas.width, canvas.height)) {
+            reject(new Error('empty-render'));
+            return;
+          }
+          resolve({ dataUrl: canvas.toDataURL('image/png'), w: canvas.width, h: canvas.height });
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error(String(err && err.message || err)));
+        }
+      };
+      img.onerror = function(){ reject(new Error('snapshot image failed')); };
+      img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+    });
+  }
+  // Exposed so the export-capture bridge (same document) can reuse this renderer.
+  window.__odCaptureSnapshot = function(opts){
+    return waitForImages().then(function(){ return captureSnapshot(opts || {}); });
+  };
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (!data || data.type !== 'od:snapshot' || !data.id) return;
+    window.__odCaptureSnapshot({ full: !!data.full }).then(function(res){
+      window.parent.postMessage({ type: 'od:snapshot:result', id: String(data.id), dataUrl: res.dataUrl, w: res.w, h: res.h }, '*');
+    }, function(err){
+      window.parent.postMessage({ type: 'od:snapshot:result', id: String(data.id), error: String(err && err.message || err) }, '*');
+    });
+  });
+})();</script><script data-od-export-capture-bridge>(function(){
+  function raf(){ return new Promise(function(r){ requestAnimationFrame(function(){ r(); }); }); }
+  function settle(){
+    var fonts = (document.fonts && document.fonts.ready) ? document.fonts.ready.catch(function(){}) : Promise.resolve();
+    var imgs = Promise.all(Array.prototype.slice.call(document.images||[]).map(function(img){
+      if (img.complete) return Promise.resolve();
+      return new Promise(function(r){ img.addEventListener('load', r, {once:true}); img.addEventListener('error', r, {once:true}); });
+    }));
+    return Promise.all([fonts, imgs]).then(raf).then(raf);
+  }
+  function deckState(){
+    try { if (typeof window.__odDeckSlideState === 'function') return window.__odDeckSlideState(); } catch(_){}
+    return { active: 0, count: 1 };
+  }
+  function navTo(index, delay){
+    return new Promise(function(resolve){
+      try { window.postMessage({ type:'od:slide', action:'go', index: index }, '*'); } catch(_){}
+      var tries = 0;
+      function check(){
+        tries++;
+        if (deckState().active === index || tries > 14) { resolve(); return; }
+        setTimeout(check, 80);
+      }
+      setTimeout(check, Math.max(60, delay||0));
+    });
+  }
+  function captureImage(deck){
+    // Reuse the shared SVG-foreignObject renderer (injectSnapshotBridge). For a
+    // deck the active slide fills the viewport, so a viewport capture IS the
+    // slide; a non-deck page captures the full document.
+    if (typeof window.__odCaptureSnapshot !== 'function') {
+      return Promise.reject(new Error('snapshot renderer unavailable'));
+    }
+    return window.__odCaptureSnapshot({ full: !deck });
+  }
+  function notes(){
+    var el = document.getElementById('speaker-notes');
+    if (el) {
+      var t = el.textContent || '';
+      try { var j = JSON.parse(t); if (Array.isArray(j)) return j; } catch(_){}
+      var plain = t.replace(/\s+/g,' ').trim();
+      if (plain) return plain;
+    }
+    var list = [];
+    // Match every .slide in document order — per-slide notes must line up
+    // 1:1 with the slide list regardless of the deck's container nesting.
+    var slideNodes = document.querySelectorAll('.slide');
+    for (var i = 0; i < slideNodes.length; i++) {
+      var noteEl = slideNodes[i].querySelector('.notes');
+      list.push(noteEl ? (noteEl.textContent || '').replace(/\s+/g, ' ').trim() : '');
+    }
+    return list.length ? list : '';
+  }
+  function send(msg){ try { window.parent.postMessage(msg, '*'); } catch(_){} }
+  function run(req){
+    var id = req.id;
+    var deck = !!req.deck;
+    var single = !!req.single;
+    var delay = req.delay || 350;
+    Promise.resolve().then(function(){
+      var st = deckState();
+      var total = (!single && deck && st.count > 1) ? st.count : 1;
+      var notesAll = notes();
+      function noteFor(i){ return Array.isArray(notesAll) ? (notesAll[i]||'') : (i===0 ? notesAll : ''); }
+      var idx = 0;
+      function step(){
+        if (idx >= total){ send({ type:'od:export-capture:done', id:id, total: total }); return; }
+        var i = idx;
+        var navP = (!single && deck && total > 1) ? navTo(i, delay) : Promise.resolve();
+        navP.then(settle).then(function(){
+          try {
+            captureImage(deck).then(function(img){
+              send({ type:'od:export-capture:slide', id:id, index:i, total:total, dataUrl: img.dataUrl, w: img.w, h: img.h, notes: noteFor(i) });
+              idx++; setTimeout(step, 0);
+            }).catch(function(err){ send({ type:'od:export-capture:error', id:id, error: String(err && err.message || err) }); });
+          } catch(err){ send({ type:'od:export-capture:error', id:id, error: String(err && err.message || err) }); }
+        });
+      }
+      step();
+    }).catch(function(err){
+      send({ type:'od:export-capture:error', id:id, error: String(err && err.message || err) });
+    });
+  }
+  window.addEventListener('message', function(ev){
+    var data = ev && ev.data;
+    if (!data || data.type !== 'od:export-capture' || !data.id) return;
+    run(data);
+  });
+})();</script><template data-od-srcdoc-transport-body-complete=""></template></body></html>

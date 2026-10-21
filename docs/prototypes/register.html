@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>注册 · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <aside class="auth-aside">
+      <div class="brand">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </div>
+      <div class="auth-hero">
+        <p class="quote">从一件正在做的事<br />开始。</p>
+        <p class="by">注册后自动获得个人空间与专属 UID。</p>
+        <div class="auth-points">
+          <div class="point"><span class="tick">✓</span> 用 UID 被队友邀请进团队</div>
+          <div class="point"><span class="tick">✓</span> 子任务自动汇总任务进度</div>
+          <div class="point"><span class="tick">✓</span> 到期、指派、评论系统内通知</div>
+        </div>
+      </div>
+      <div class="text-faint" style="color:rgba(255,255,255,.45);font-size:12px;">© 2026 Open Doing</div>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-card anim-in">
+        <span class="brand-mark" style="display:inline-grid;">O</span>
+        <h1 class="h1" style="margin-bottom:8px;font-size:26px;">创建账号</h1>
+        <p class="text-muted" style="margin:0 0 24px;font-size:14px;">只需用户名和密码，无需邮箱</p>
+
+        <form onsubmit="return false">
+          <div class="form-row">
+            <label class="label" for="username">用户名</label>
+            <input class="input" id="username" placeholder="给自己起个名字，全局唯一" />
+            <div class="hint">4–20 位字母、数字或下划线，注册后用于登录与显示</div>
+          </div>
+          <div class="form-row">
+            <label class="label" for="password">密码</label>
+            <input class="input" id="password" type="password" placeholder="至少 8 位" />
+          </div>
+          <div class="form-row">
+            <label class="label" for="password2">确认密码</label>
+            <input class="input has-error" id="password2" type="password" placeholder="再次输入密码" value="1234567" />
+            <div class="error-text">⚠ 两次输入的密码不一致</div>
+          </div>
+
+          <div class="callout info" style="margin-bottom:20px;">
+            <span>ℹ</span>
+            <span>注册成功后系统会自动生成形如 <b class="mono">doing_xxxx</b> 的专属 UID，队友通过 UID 邀请你加入团队。</span>
+          </div>
+
+          <button class="btn btn-gradient btn-lg btn-block" type="submit">注 册</button>
+        </form>
+
+        <p class="auth-switch">已有账号？<a href="login.html">直接登录</a></p>
+      </div>
+    </main>
+  </div>
+  <script src="assets/prototype.js"></script>
+</body>
+</html>

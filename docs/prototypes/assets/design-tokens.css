@@ -1,0 +1,205 @@
+/* ==========================================================================
+   Open Doing Design Tokens — 三层架构
+   Primitive（原始值） → Semantic（语义别名） → Component（组件令牌）
+   来源：docs/design/（Canva 风格设计系统），生产实现映射到 antd v6 ConfigProvider
+   ========================================================================== */
+
+:root {
+  /* ------------------------------------------------------------------------
+     1. PRIMITIVE — 原始色板与尺度（不直接在组件中使用）
+     ------------------------------------------------------------------------ */
+
+  /* 品牌紫 */
+  --purple-700: #6815d4;
+  --purple-600: #7d2ae8;
+  --purple-100: #eef0fc;
+  --purple-08: rgba(125, 42, 232, 0.08);
+  --purple-14: rgba(125, 42, 232, 0.14);
+  --purple-20: rgba(125, 42, 232, 0.2);
+  --purple-30: rgba(125, 42, 232, 0.3);
+
+  /* 品牌辅助色 */
+  --cyan-500: #00c4cc;
+  --pink-500: #ff5757;
+
+  /* 墨色 / 文本 */
+  --ink-900: #0e1318;
+  --ink-700: #3c4043;
+  --ink-500: #5f6368;
+  --ink-400: #9aa0a6;
+
+  /* 表面 */
+  --surface-white: #ffffff;
+  --surface-subtle: #f4f5f7;
+  --surface-inset: #e8eaed;
+  --surface-cool: #eef0fc;
+
+  /* 描边 */
+  --border-default: #e1e3e6;
+  --border-strong: #c7cdd3;
+
+  /* 语义色 */
+  --success-500: #00b894;
+  --success-bg: rgba(0, 184, 148, 0.1);
+  --warning-500: #ffb020;
+  --warning-bg: rgba(255, 176, 32, 0.12);
+  --error-500: #ff5757;
+  --error-bg: rgba(255, 87, 87, 0.1);
+  --info-500: #0d99ff;
+  --info-bg: rgba(13, 153, 255, 0.1);
+
+  /* 分类点缀色（头像、标签等辅助元数据，不与主操作竞争） */
+  --accent-coral: #ff7059;
+  --accent-tangerine: #ff9633;
+  --accent-mint: #48c997;
+  --accent-sky: #3ea6ff;
+  --accent-lavender: #9b87f5;
+  --accent-coral-bg: rgba(255, 112, 89, 0.12);
+  --accent-tangerine-bg: rgba(255, 150, 51, 0.12);
+  --accent-mint-bg: rgba(72, 201, 151, 0.12);
+  --accent-sky-bg: rgba(62, 166, 255, 0.12);
+  --accent-lavender-bg: rgba(155, 135, 245, 0.14);
+
+  /* 字体 */
+  --font-sans: "Canva Sans", "YS Text", system-ui, -apple-system, "PingFang SC",
+    "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* 字号 */
+  --text-hero: 40px;
+  --text-h1: 30px;
+  --text-h2: 22px;
+  --text-h3: 16px;
+  --text-lg: 15px;
+  --text-base: 14px;
+  --text-sm: 13px;
+  --text-caption: 12px;
+  --text-tag: 11px;
+
+  /* 4px 基准间距 */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+  --space-8: 64px;
+
+  /* 圆角 */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-btn: 8px;
+  --radius-card: 12px;
+  --radius-panel: 16px;
+  --radius-pill: 9999px;
+
+  /* 阴影 */
+  --shadow-rest: 0 1px 3px rgba(14, 19, 24, 0.04);
+  --shadow-card-hover: 0 8px 24px rgba(14, 19, 24, 0.08);
+  --shadow-btn: 0 2px 8px rgba(125, 42, 232, 0.2);
+  --shadow-btn-hover: 0 4px 14px rgba(125, 42, 232, 0.3);
+  --shadow-popover: 0 12px 32px rgba(14, 19, 24, 0.12);
+  --shadow-modal: 0 24px 64px rgba(14, 19, 24, 0.18);
+
+  /* 动效 —— Corporate 人格：干净、克制、专业
+     签名缓动 cubic-bezier(0.4, 0, 0.2, 1) 覆盖 80% 场景 */
+  --duration-micro: 120ms;   /* 按压、勾选、图标切换 */
+  --duration-quick: 180ms;   /* hover、徽章、输入框 */
+  --duration-card: 220ms;    /* 卡片抬升、列表项进出 */
+  --duration-sheet: 280ms;   /* 菜单、弹窗、抽屉 */
+  --duration-panel: 420ms;   /* 侧栏、整页面板 */
+  --ease-standard: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-decelerate: cubic-bezier(0, 0, 0.2, 1); /* 入场：快起步、轻柔落位 */
+  --ease-accelerate: cubic-bezier(0.3, 0, 1, 1);  /* 退场：轻起步、快速离开 */
+
+  /* ------------------------------------------------------------------------
+     2. SEMANTIC — 语义别名（组件只允许引用这一层）
+     ------------------------------------------------------------------------ */
+
+  --color-bg: var(--surface-subtle);
+  --color-surface: var(--surface-white);
+  --color-surface-hover: var(--surface-subtle);
+  --color-surface-selected: var(--surface-cool);
+  --color-surface-inset: var(--surface-inset);
+
+  --color-text: var(--ink-900);
+  --color-text-secondary: var(--ink-700);
+  --color-text-muted: var(--ink-500);
+  --color-text-faint: var(--ink-400);
+  --color-text-on-primary: #ffffff;
+
+  --color-primary: var(--purple-600);
+  --color-primary-hover: var(--purple-700);
+  --color-primary-bg: var(--purple-08);
+  --color-primary-bg-hover: var(--purple-14);
+  --color-focus-ring: var(--purple-20);
+  --color-brand-gradient: linear-gradient(135deg, #7d2ae8 0%, #00c4cc 100%);
+
+  --color-border: var(--border-default);
+  --color-border-strong: var(--border-strong);
+
+  --color-success: var(--success-500);
+  --color-success-bg: var(--success-bg);
+  --color-warning: var(--warning-500);
+  --color-warning-bg: var(--warning-bg);
+  --color-error: var(--error-500);
+  --color-error-bg: var(--error-bg);
+  --color-info: var(--info-500);
+  --color-info-bg: var(--info-bg);
+
+  /* 任务状态 */
+  --color-todo: var(--ink-500);
+  --color-todo-bg: var(--surface-subtle);
+  --color-progress: var(--purple-600);
+  --color-progress-bg: var(--purple-100);
+  --color-done: var(--success-500);
+  --color-done-bg: var(--success-bg);
+  --color-overdue: var(--error-500);
+  --color-overdue-bg: var(--error-bg);
+  --color-due-soon: var(--warning-500);
+  --color-due-soon-bg: var(--warning-bg);
+
+  /* ------------------------------------------------------------------------
+     3. COMPONENT — 组件级令牌
+     ------------------------------------------------------------------------ */
+
+  /* 按钮 */
+  --button-padding: 8px 16px;
+  --button-radius: var(--radius-btn);
+  --button-font-size: var(--text-base);
+  --button-shadow: var(--shadow-btn);
+  --button-shadow-hover: var(--shadow-btn-hover);
+
+  /* 卡片 */
+  --card-bg: var(--color-surface);
+  --card-radius: var(--radius-card);
+  --card-border: 1px solid var(--color-border);
+  --card-padding: var(--space-5);
+  --card-shadow: var(--shadow-rest);
+  --card-shadow-hover: var(--shadow-card-hover);
+
+  /* 输入 */
+  --input-height: 38px;
+  --input-padding: 9px 13px;
+  --input-radius: var(--radius-btn);
+  --input-border: 1px solid var(--color-border);
+
+  /* 布局 */
+  --sidebar-width: 232px;
+  --topbar-height: 60px;
+  --content-max-width: 1320px;
+  --content-gutter: var(--space-6);
+
+  /* 标签 */
+  --tag-radius: var(--radius-pill);
+  --tag-padding: 2px 10px;
+  --tag-font-size: var(--text-caption);
+
+  /* 进度条 */
+  --progress-height: 6px;
+  --progress-radius: var(--radius-pill);
+}
+
+/* 可选：暗色主题预留入口（v1 只做亮色）
+   [data-theme="dark"] { … } */

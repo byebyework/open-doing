@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Open Doing · 设计原型</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+</head>
+<body>
+  <main class="content proto-index" style="max-width:1080px;">
+    <div class="page-header anim-in" style="margin-top:var(--space-6);">
+      <div class="text">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px;">
+          <span class="brand-mark" style="width:34px;height:34px;font-size:18px;">O</span>
+          <span class="brand-name" style="font-size:18px;">Open Doing</span>
+          <span class="tag tag-lavender no-dot">v1 原型 · 静态</span>
+        </div>
+        <h1 class="h1">设计原型总览</h1>
+        <div class="sub">项目任务进度管理系统 · Canva 风格设计系统（紫青渐变 / 白色画布 / 软圆角） · 桌面端优先</div>
+      </div>
+      <div class="page-actions">
+        <a class="btn btn-default" href="../design/index.html">参考设计源</a>
+        <a class="btn btn-primary" href="my-tasks.html">进入应用 →</a>
+      </div>
+    </div>
+
+    <div class="proto-grid stagger">
+      <a class="proto-tile" href="login.html">
+        <div class="num">01</div>
+        <div class="h3">登录</div>
+        <p>品牌渐变叙事侧栏 + 用户名密码登录，v1 无密码找回入口。</p>
+      </a>
+      <a class="proto-tile" href="register.html">
+        <div class="num">02</div>
+        <div class="h3">注册</div>
+        <p>仅用户名与密码；说明注册后自动生成 doing_xxxx 专属 UID。</p>
+      </a>
+      <a class="proto-tile" href="my-tasks.html">
+        <div class="num">03</div>
+        <div class="h3">我的任务</div>
+        <p>登录后默认页：个人任务（含个人项目）+ 跨团队「我负责的」任务两段聚合；可新建个人项目；通知中心、新建任务弹窗。</p>
+      </a>
+      <a class="proto-tile" href="personal-project.html">
+        <div class="num">04</div>
+        <div class="h3">个人项目 · 列表</div>
+        <p>个人空间内的项目（仅自己可见）：任务列表、状态/日期筛选排序、新建任务；无责任人概念。</p>
+      </a>
+      <a class="proto-tile" href="personal-project-board.html">
+        <div class="num">05</div>
+        <div class="h3">个人项目 · 看板</div>
+        <p>个人项目看板视图，三列拖卡即手动切换任务状态（原型可实际拖拽演示）。</p>
+      </a>
+      <a class="proto-tile" href="team-overview.html">
+        <div class="num">06</div>
+        <div class="h3">团队概览</div>
+        <p>主管视角只读仪表盘：项目健康度、逾期/临期风险区、成员负载与未指派任务。</p>
+      </a>
+      <a class="proto-tile" href="project-list.html">
+        <div class="num">07</div>
+        <div class="h3">团队项目 · 列表视图</div>
+        <p>按状态/责任人/截止日期筛选排序，子任务进度内联展示。</p>
+      </a>
+      <a class="proto-tile" href="project-board.html">
+        <div class="num">08</div>
+        <div class="h3">团队项目 · 看板视图</div>
+        <p>三列看板，拖卡即手动切换任务状态（原型可实际拖拽演示）。</p>
+      </a>
+      <a class="proto-tile" href="task-detail.html">
+        <div class="num">09</div>
+        <div class="h3">任务详情</div>
+        <p>子任务勾选联动进度（3/5=60%）、全员评论流、按权限显隐的编辑操作。</p>
+      </a>
+      <a class="proto-tile" href="invites.html">
+        <div class="num">10</div>
+        <div class="h3">待处理邀请</div>
+        <p>按 UID 收到的团队邀请，接受/拒绝，以及历史处理记录。</p>
+      </a>
+      <a class="proto-tile" href="team-settings.html">
+        <div class="num">11</div>
+        <div class="h3">团队设置</div>
+        <p>团队信息、UID 邀请、成员角色管理、离开/解散团队的危险操作与二次确认。</p>
+      </a>
+    </div>
+
+    <div class="card anim-in" style="margin-top:var(--space-5);">
+      <div class="card-header"><h2 class="h3">演示账号与示例数据</h2></div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:12px 32px;font-size:13.5px;color:var(--color-text-secondary);">
+        <div>当前用户：<b>林夏</b> <span class="mono text-faint">doing_x7k2m9</span>（管理员）</div>
+        <div>团队：增长突击队（5 名成员）</div>
+        <div>团队项目：官网改版 / Q4 用户增长活动 / 移动端 2.0</div>
+        <div>个人项目：学习成长 / 生活琐事（仅本人可见）</div>
+        <div>基准日期：2026-10-21（周三），「明天/逾期」均相对此日期</div>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

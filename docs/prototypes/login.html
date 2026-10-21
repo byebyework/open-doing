@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>登录 · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <aside class="auth-aside">
+      <div class="brand">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </div>
+      <div class="auth-hero">
+        <p class="quote">让每个人的进展，<br />都被看见。</p>
+        <p class="by">个人任务、团队项目、进度概览，一处掌握。</p>
+        <div class="auth-points">
+          <div class="point"><span class="tick">✓</span> 个人空间理清自己的待办</div>
+          <div class="point"><span class="tick">✓</span> 团队项目进度实时同步</div>
+          <div class="point"><span class="tick">✓</span> 项目健康度与成员负载一览</div>
+        </div>
+      </div>
+      <div class="text-faint" style="color:rgba(255,255,255,.45);font-size:12px;">© 2026 Open Doing</div>
+    </aside>
+
+    <main class="auth-main">
+      <div class="auth-card anim-in">
+        <span class="brand-mark" style="display:inline-grid;">O</span>
+        <h1 class="h1" style="margin-bottom:8px;">欢迎回来</h1>
+        <p class="text-muted" style="margin:0 0 28px;font-size:14px;">登录你的 Open Doing 账号</p>
+
+        <form onsubmit="return false">
+          <div class="form-row">
+            <label class="label" for="username">用户名</label>
+            <input class="input" id="username" placeholder="请输入用户名" value="linxia" />
+          </div>
+          <div class="form-row">
+            <label class="label" for="password">密码</label>
+            <input class="input" id="password" type="password" placeholder="请输入密码" value="12345678" />
+          </div>
+          <div style="display:flex;justify-content:flex-end;margin:-6px 0 20px;">
+            <span class="text-caption" style="color:var(--color-text-faint);">v1 暂不支持找回密码</span>
+          </div>
+          <button class="btn btn-gradient btn-lg btn-block" type="submit">登 录</button>
+        </form>
+
+        <p class="auth-switch">还没有账号？<a href="register.html">立即注册</a></p>
+      </div>
+    </main>
+  </div>
+  <script src="assets/prototype.js"></script>
+</body>
+</html>
