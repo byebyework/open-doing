@@ -63,7 +63,7 @@ packages/
 | 数据库 | PostgreSQL | 关系完整性、级联删除、唯一约束（用户名、UID） |
 | ORM | Drizzle | 轻量、SQL 贴近、类型推断好，迁移工具内置 |
 | 本地数据库 | Docker compose | 环境一致，零手工安装 |
-| 认证 | 用户名 + 密码，安全 cookie session；密码用成熟哈希算法（如 argon2） | 设计文档第 3 节；具体库实现阶段定 |
+| 认证 | 用户名 + 密码；jose HS256 **无状态签名** httpOnly cookie（`od_session`，sameSite lax，30 天，payload `{ userId }`）+ `@node-rs/argon2`（Argon2id） | 不建 sessions 表：免查库校验、免会话清理任务；Argon2id 抗 GPU 破解且原生实现性能好；签名密钥来自 `SESSION_SECRET` |
 | 数据变更 | Server Actions 为主 | 与 App Router 表单/渐进增强契合 |
 | 定时任务 | 受保护 Route Handler + cron | 不引入 worker，部署简单 |
 | 包管理 | pnpm workspaces | 已定 |
@@ -185,8 +185,7 @@ notifications
   actor_id -> users.id（系统产生的通知为空）
   created_at
 
-sessions（如选择自管会话）
-  id, user_id, expires_at
+sessions（v1 不建：使用 jose 无状态签名 cookie，见 §3）
 ```
 
 关键约束与行为：

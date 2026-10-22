@@ -1,10 +1,13 @@
 "use client";
 
 import type { User } from "@open-doing/types";
-import { Input } from "antd";
+import { Dropdown, Input, type MenuProps } from "antd";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 
-import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { logoutAction } from "@/features/auth/actions";
+import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 
 /** Topbar 入参。 */
 export interface TopbarProps {
@@ -19,6 +22,28 @@ export interface TopbarProps {
  * 搜索框在空间/全局搜索接线前保持禁用，≤860px 隐藏（与原型一致）。
  */
 export function Topbar({ user }: TopbarProps) {
+  const router = useRouter();
+  const [loggingOut, setLoggingOut] = useState(false);
+
+  const userMenuItems: MenuProps["items"] = [
+    { key: "logout", label: "退出登录", danger: true },
+  ];
+
+  async function handleUserMenuClick({ key }: { key: string }) {
+    if (key !== "logout" || loggingOut) return;
+
+    setLoggingOut(true);
+    try {
+      const result = await logoutAction();
+      if (result.ok) {
+        router.push("/login");
+        router.refresh();
+      }
+    } finally {
+      setLoggingOut(false);
+    }
+  }
+
   return (
     <header className="sticky top-0 z-20 flex h-[60px] items-center gap-3 border-b border-[#e1e3e6] bg-[rgba(255,255,255,0.85)] px-4 backdrop-blur min-[861px]:gap-4 min-[861px]:px-6">
       {/* 移动端无侧栏时保留品牌标识 */}
@@ -62,9 +87,21 @@ export function Topbar({ user }: TopbarProps) {
       {/* 通知入口占位：N-2 替换实现，路径不变 */}
       <NotificationBell />
 
-      {/* 用户头像区；F-6 前 user 为 null，展示中性占位 */}
+      {/* 用户头像区：点击打开用户菜单（v1 仅退出登录） */}
       {user ? (
-        <UserAvatar username={user.username} size={30} />
+        <Dropdown
+          trigger={["click"]}
+          disabled={loggingOut}
+          menu={{ items: userMenuItems, onClick: handleUserMenuClick }}
+        >
+          <button
+            type="button"
+            aria-label={`当前用户 ${user.username}，打开用户菜单`}
+            className="cursor-pointer rounded-full border-0 bg-transparent p-0"
+          >
+            <UserAvatar username={user.username} size={30} />
+          </button>
+        </Dropdown>
       ) : (
         <span
           className="h-[30px] w-[30px] shrink-0 rounded-full bg-[#e8eaed]"
