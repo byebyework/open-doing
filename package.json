@@ -8,9 +8,13 @@
     "build": "pnpm --filter @open-doing/web build",
     "start": "pnpm --filter @open-doing/web start",
     "lint": "pnpm -r lint",
-    "typecheck": "pnpm -r typecheck"
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:run": "vitest run"
   },
   "devDependencies": {
-    "typescript": "^5"
+    "@vitest/coverage-v8": "^5.0.5",
+    "typescript": "^5",
+    "vitest": "^5.0.5"
   }
 }

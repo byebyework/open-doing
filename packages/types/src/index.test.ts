@@ -1,6 +1,6 @@
-// @ts-nocheck —— Task 1 阶段尚未安装 vitest（Task 2 统一安装）；安装后可移除本行。
 import { describe, expect, it } from "vitest";
 import {
+  addDays,
   aggregateProjectProgress,
   getTaskProgress,
   isDueSoon,
@@ -47,6 +47,16 @@ describe("aggregateProjectProgress", () => {
   });
 });
 
+describe("addDays", () => {
+  it("跨年：2026-12-31 + 1 天 = 2027-01-01", () => {
+    expect(addDays("2026-12-31", 1)).toBe("2027-01-01");
+  });
+
+  it("跨月：2026-10-31 + 1 天 = 2026-11-01", () => {
+    expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
+  });
+});
+
 describe("isOverdue / isDueSoon（today = 2026-10-21）", () => {
   const today = "2026-10-21";
 
@@ -64,6 +74,10 @@ describe("isOverdue / isDueSoon（today = 2026-10-21）", () => {
     expect(isDueSoon("2026-10-22", "todo", today)).toBe(true);
   });
 
+  it("明天未完成且进行中：临期", () => {
+    expect(isDueSoon("2026-10-22", "in_progress", today)).toBe(true);
+  });
+
   it("今天已完成：逾期与临期均不触发", () => {
     expect(isOverdue("2026-10-21", "done", today)).toBe(false);
     expect(isDueSoon("2026-10-21", "done", today)).toBe(false);
@@ -72,5 +86,11 @@ describe("isOverdue / isDueSoon（today = 2026-10-21）", () => {
   it("更早且已完成：逾期与临期均不触发", () => {
     expect(isOverdue("2026-10-19", "done", today)).toBe(false);
     expect(isDueSoon("2026-10-19", "done", today)).toBe(false);
+  });
+});
+
+describe("isDueSoon 跨月边界（today = 2026-10-31）", () => {
+  it("2026-11-01 为明天：临期", () => {
+    expect(isDueSoon("2026-11-01", "in_progress", "2026-10-31")).toBe(true);
   });
 });
