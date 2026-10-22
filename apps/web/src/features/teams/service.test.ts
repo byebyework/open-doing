@@ -6,7 +6,15 @@ import type { DbClient } from "@/server/db/client";
 import { teamMemberships, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
-import { TeamError, createTeam, getTeamBySlug, listTeamsForUser } from "./service";
+import { TeamPermissionError, getMembership } from "./permissions";
+import {
+  TeamError,
+  createTeam,
+  getTeamBySlug,
+  listMembers,
+  listTeamsForUser,
+  renameTeam,
+} from "./service";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -109,5 +117,58 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
 
     expect(await getTeamBySlug(team.slug, db)).toEqual(team);
     expect(await getTeamBySlug("no-such-team", db)).toBeNull();
+  });
+
+  it("getMembership：命中返回成员关系，未加入返回 null", async () => {
+    const owner = await createUser(db, "alice");
+    const outsider = await createUser(db, "outsider");
+    const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
+
+    const membership = await getMembership(team.id, owner.id, db);
+    expect(membership).toMatchObject({ teamId: team.id, userId: owner.id, role: "owner" });
+    expect(await getMembership(team.id, outsider.id, db)).toBeNull();
+  });
+
+  it("renameTeam：owner/admin 可改名且 slug 不变，member 与非成员被拒", async () => {
+    const owner = await createUser(db, "owner");
+    const member = await createUser(db, "member");
+    const outsider = await createUser(db, "outsider");
+    const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
+    await db.insert(teamMemberships).values({ teamId: team.id, userId: member.id, role: "member" });
+
+    const renamed = await renameTeam({ teamId: team.id, actorId: owner.id, name: "增长突击队" }, db);
+    expect(renamed.name).toBe("增长突击队");
+    expect(renamed.slug).toBe(team.slug);
+
+    await expect(
+      renameTeam({ teamId: team.id, actorId: member.id, name: "Again" }, db),
+    ).rejects.toBeInstanceOf(TeamPermissionError);
+    await expect(
+      renameTeam({ teamId: team.id, actorId: outsider.id, name: "Again" }, db),
+    ).rejects.toBeInstanceOf(TeamPermissionError);
+  });
+
+  it("renameTeam：改名沿用团队名校验", async () => {
+    const owner = await createUser(db, "owner");
+    const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
+
+    await expect(
+      renameTeam({ teamId: team.id, actorId: owner.id, name: "团" }, db),
+    ).rejects.toMatchObject({ code: "VALIDATION", field: "name" });
+  });
+
+  it("listMembers：返回成员视图并按加入时间升序", async () => {
+    const owner = await createUser(db, "owner");
+    const member = await createUser(db, "member");
+    const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
+    await db.insert(teamMemberships).values({ teamId: team.id, userId: member.id, role: "member" });
+
+    const members = await listMembers(team.id, db);
+
+    expect(members.map((view) => view.user.username)).toEqual(["owner", "member"]);
+    expect(members[0]).toMatchObject({
+      membership: { role: "owner", teamId: team.id },
+      user: { id: owner.id, username: "owner", uid: expect.stringMatching(/^doing_/) },
+    });
   });
 });

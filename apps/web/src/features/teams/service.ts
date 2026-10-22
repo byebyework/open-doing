@@ -1,10 +1,12 @@
-import { and, asc, eq, like } from "drizzle-orm";
+import { asc, eq, like } from "drizzle-orm";
 import type { Team, TeamMembership } from "@open-doing/types";
 
 import { slugWithCounter, slugifyName } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
-import { teamMemberships, teams } from "@/server/db/schema";
+import { teamMemberships, teams, users } from "@/server/db/schema";
+
+import { assertCan, getMembership, toMembership } from "./permissions";
 
 /** slug 计数探测上限与唯一冲突重试上限。 */
 const MAX_SLUG_SCAN = 50;
@@ -47,16 +49,6 @@ function toTeam(row: typeof teams.$inferSelect): Team {
     slug: row.slug,
     ownerId: row.ownerId,
     createdAt: row.createdAt.toISOString(),
-  };
-}
-
-function toMembership(row: typeof teamMemberships.$inferSelect): TeamMembership {
-  return {
-    id: row.id,
-    teamId: row.teamId,
-    userId: row.userId,
-    role: row.role,
-    joinedAt: row.joinedAt.toISOString(),
   };
 }
 
@@ -170,16 +162,54 @@ export async function listTeamsForUser(
   return rows.map((row) => toTeam(row.team));
 }
 
-/** 查询成员关系，未加入返回 null（权限判定层 T-4 消费）。 */
-export async function getTeamMembership(
-  teamId: string,
-  userId: string,
+/**
+ * 修改团队名称：owner/admin 可操作，slug 保持不变。
+ */
+export async function renameTeam(
+  input: { teamId: string; actorId: string; name: string },
   client: DbClient = db,
-): Promise<TeamMembership | null> {
+): Promise<Team> {
+  const name = validateName(input?.name);
+
+  const membership = await getMembership(input.teamId, input.actorId, client);
+  assertCan(membership?.role ?? null, "team:rename");
+
   const [row] = await client
-    .select()
+    .update(teams)
+    .set({ name })
+    .where(eq(teams.id, input.teamId))
+    .returning();
+
+  return toTeam(row!);
+}
+
+/** 成员视图：成员关系 + 展示用的用户信息。 */
+export interface MemberView {
+  membership: TeamMembership;
+  user: { id: string; uid: string; username: string };
+}
+
+/** 团队成员只读列表，按加入时间升序。 */
+export async function listMembers(
+  teamId: string,
+  client: DbClient = db,
+): Promise<MemberView[]> {
+  const rows = await client
+    .select({
+      membership: teamMemberships,
+      user: {
+        id: users.id,
+        uid: users.uid,
+        username: users.username,
+      },
+    })
     .from(teamMemberships)
-    .where(and(eq(teamMemberships.teamId, teamId), eq(teamMemberships.userId, userId)))
-    .limit(1);
-  return row ? toMembership(row) : null;
+    .innerJoin(users, eq(users.id, teamMemberships.userId))
+    .where(eq(teamMemberships.teamId, teamId))
+    .orderBy(asc(teamMemberships.joinedAt));
+
+  return rows.map((row) => ({
+    membership: toMembership(row.membership),
+    user: row.user,
+  }));
 }
