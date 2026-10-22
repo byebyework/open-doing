@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | F | 基座（串行） | M0 | | ✅ |
 | P | 个人空间 | M1 | | ⬜ |
-| T | 团队 / 邀请 / 角色 | M1 | | ⬜ |
+| T | 团队 / 邀请 / 角色 | M1 | asher | 🟡 |
 | J | 团队项目与任务 | M2（Depends T） | | ⬜ |
 | N | 通知与 cron | M2（接口 M0 冻结） | | ⬜ |
 | D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
@@ -298,14 +298,14 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 ### 轨道 T：团队 / UID 邀请 / 角色
 
-#### T-1 创建团队与成员关系　`S`　Depends: F-6
+#### T-1 [~] 创建团队与成员关系　`S`　Depends: F-6
 
 - Files: `features/teams/{service,actions}.ts`、`teams/new/page.tsx` 与表单
 - 验收：
   - [ ] 创建者自动成为 owner；slug 生成；团队名必填。
   - [ ] 创建后出现在侧栏团队段（接线只改 F-5 播种的 `features/teams/components/TeamsNav.tsx`，不得改 dashboard layout）。
 
-#### T-2 按 UID 发起邀请与撤销　`M`　Depends: T-1
+#### T-2 [~] 按 UID 发起邀请与撤销　`M`　Depends: T-1
 
 - Files: `features/teams/invites/{service,actions}.ts`、团队设置页邀请区（G 轨道之前由 T 建页面骨架）、`features/users/service.ts` 的 `findByUid`
 - 验收：
@@ -313,7 +313,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [ ] owner/admin 可发起与撤销；member 调用 action 被拒（不只是隐藏入口）。
   - [ ] 邀请无有效期；发起/撤销调用 `createNotification('team_invite')`（N 未完成前允许 no-op 桩，但调用点必须存在且类型正确）。
 
-#### T-3 邀请接受 / 拒绝与邀请页　`M`　Depends: T-2
+#### T-3 [~] 邀请接受 / 拒绝与邀请页　`M`　Depends: T-2
 
 - Files: `(dashboard)/invites/page.tsx`、features/teams/invites actions
 - 对照 `invites.html`：
@@ -321,14 +321,14 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [ ] 团队在响应前被解散/邀请被撤销时给出失效提示而非报错。
   - [ ] 接受后团队出现在侧栏；通知（如已实现）标记相应已读逻辑在 N 线补，本任务留接口。
 
-#### T-4 角色与权限判定层　`M`　Depends: T-1
+#### T-4 [~] 角色与权限判定层　`M`　Depends: T-1
 
 - Files: `features/teams/permissions.ts`（`getMembership`、`can`/`assertCan`）、成员只读列表
 - 验收：
   - [ ] 覆盖设计文档 §5 矩阵每一行（含 owner 与 admin 仅治理差异：解散/转让仅 owner），表驱动测试。
   - [ ] 非成员访问团队任何数据 → null/403；权限函数只抛一类可映射 403 的错误。
 
-#### T-5 团队改名（设置页基础）　`S`　Depends: T-4
+#### T-5 [~] 团队改名（设置页基础）　`S`　Depends: T-4
 
 - 验收：[ ] owner/admin 可改团队名（slug 不变）；member 不可；设置页按角色显隐区块但 action 同样鉴权。
 
