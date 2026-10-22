@@ -39,7 +39,7 @@ packages/
 
 ### 0. 前置条件
 
-- Node.js >= 20.9（Next.js 16 要求）
+- Node.js >= 20.11（含 Next.js 16 与 vitest 配置所需）
 - pnpm 10（`corepack enable` 后由根 `packageManager` 字段自动选择版本）
 - Docker（含 Compose v2）
 
@@ -117,6 +117,7 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 测试说明：
 
+- 运行测试前先加载环境变量（vitest 不读取 `apps/web/.env.local`，否则数据库用例会静默跳过）：`set -a; source apps/web/.env.local; set +a`（bash/zsh），再执行 `pnpm test`。
 - 数据库用例只读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空**测试库**，因此需要先 `docker compose up -d`；未设置该变量时用例会跳过并打印提示。开发服务器始终连接 `DATABASE_URL`，运行测试不会清空开发数据。
 - 多个测试文件共用同一个测试库，Vitest 配置为串行执行测试文件，避免互相清库。
 - 类型检查顺序：Next 16 的路由类型由构建生成。干净 checkout 上请按 **`pnpm build`（或 `pnpm --filter @open-doing/web exec next typegen`）→ `pnpm typecheck`** 的顺序执行（本地与 CI 同序）；已有 `.next` 构建产物时可直接 `pnpm typecheck`。
