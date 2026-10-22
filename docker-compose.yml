@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: open-doing
+      POSTGRES_PASSWORD: open-doing
+      POSTGRES_DB: open_doing
+    ports:
+      # 默认 5432；若本机端口被占用，可用 POSTGRES_PORT=5433 docker compose up -d 覆盖。
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U open-doing -d open_doing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  postgres_data:
