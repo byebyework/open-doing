@@ -1,18 +1,29 @@
 import { NavSection } from "@/components/layout/NavSection";
+import { getCurrentUser } from "@/features/auth/session";
+import { listTeamsForUser } from "../service";
+import { TeamsNavItem } from "./TeamsNavItem";
 
 /**
- * 团队空间导航桩（M0 占位）。
+ * 团队空间导航（T 轨道接线）。
  *
- * 所有权归 T 轨道：届时替换为团队列表 / 团队概览 / 项目 / 设置等入口，
- * 并在个人空间上下文（如 `/my`）下自行返回 null。
+ * 未登录返回 null；已登录渲染「我的团队」分组（团队项 + 创建入口）。
+ * 侧栏同时在个人空间与团队上下文展示本分组（与原型一致），
  * `(dashboard)/layout.tsx` 只 import 本文件，T 轨道不得修改布局。
  */
-export function TeamsNav() {
+export async function TeamsNav() {
+  const user = await getCurrentUser();
+  if (!user) return null;
+
+  const teams = await listTeamsForUser(user.id);
+
   return (
     <NavSection title="我的团队">
-      <span className="px-3 py-2 text-[13px] text-[#9aa0a6]">
-        团队导航待接入
-      </span>
+      {teams.map((team) => (
+        <TeamsNavItem key={team.id} href={`/teams/${team.slug}/settings`}>
+          {team.name}
+        </TeamsNavItem>
+      ))}
+      <TeamsNavItem href="/teams/new">＋ 创建团队</TeamsNavItem>
     </NavSection>
   );
 }
