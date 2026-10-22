@@ -74,16 +74,18 @@ cp .env.example apps/web/.env.local
 
 | 变量 | 用途 |
 |---|---|
-| `DATABASE_URL` | 开发库连接串（默认 `open_doing`） |
-| `TEST_DATABASE_URL` | 测试库连接串（默认 `open_doing_test`，`pnpm test` 的数据库用例使用；未设置时相关用例跳过） |
+| `DATABASE_URL` | **应用运行时 + 迁移**使用的开发库连接串（默认 `open_doing`） |
+| `TEST_DATABASE_URL` | **仅测试**使用的独立测试库连接串（默认 `open_doing_test`）；由 `src/server/db/testing.ts` 重放迁移并清库，应用运行时永不使用 |
 | `SESSION_SECRET` | 会话签名密钥；生产环境必须换成强随机值（如 `openssl rand -base64 32`） |
 | `CRON_SECRET` | cron 路由鉴权密钥；生产环境同样必须替换 |
+
+两个数据库必须指向**不同的库**（开发库 `open_doing` / 测试库 `open_doing_test`）：测试会清空 `TEST_DATABASE_URL` 指向的库，但不会触碰开发库。`TEST_DATABASE_URL` 未设置时数据库用例会跳过并打印提示。
 
 `.env.local` 已被 `.gitignore` 忽略，不入库；需要新增变量时同步更新根目录的 `.env.example`。
 
 ### 4. 运行数据库迁移
 
-drizzle-kit 读取的是 **shell 环境变量**（它不会自动加载 `apps/web/.env.local`），先把变量导入当前 shell，再执行迁移：
+迁移只针对 `DATABASE_URL`（开发库）。drizzle-kit 读取的是 **shell 环境变量**（它不会自动加载 `apps/web/.env.local`），先把变量导入当前 shell，再执行迁移：
 
 ```bash
 set -a; source apps/web/.env.local; set +a
@@ -115,9 +117,9 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 测试说明：
 
-- 数据库用例读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空测试库，因此需要先 `docker compose up -d`；未设置该变量时用例会跳过并打印提示。
+- 数据库用例只读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空**测试库**，因此需要先 `docker compose up -d`；未设置该变量时用例会跳过并打印提示。开发服务器始终连接 `DATABASE_URL`，运行测试不会清空开发数据。
 - 多个测试文件共用同一个测试库，Vitest 配置为串行执行测试文件，避免互相清库。
-- 干净 checkout 上直接跑 `pnpm typecheck` 可能失败：Next 16 的路由类型在构建时生成，请先跑一次 `pnpm build`，再跑 `pnpm typecheck`（或用 `pnpm --filter @open-doing/web exec next typegen` 单独生成类型）。
+- 类型检查顺序：Next 16 的路由类型由构建生成。干净 checkout 上请按 **`pnpm build`（或 `pnpm --filter @open-doing/web exec next typegen`）→ `pnpm typecheck`** 的顺序执行（本地与 CI 同序）；已有 `.next` 构建产物时可直接 `pnpm typecheck`。
 
 新增内部包：在 `packages/` 下创建目录，以 `@open-doing/*` 命名，应用中通过 `"workspace:*"` 引用。
 

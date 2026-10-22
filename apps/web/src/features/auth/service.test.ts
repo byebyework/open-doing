@@ -43,7 +43,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("注册成功：返回带 doing_ 前缀 UID 的 User，密码以 argon2id 哈希落库", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" });
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
 
     expect(user.username).toBe("alice");
     expect(user.uid).toMatch(/^doing_[a-z2-9]{6}$/);
@@ -56,15 +56,15 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("注册时用户名首尾空白会被裁剪", async () => {
-    const user = await registerUser({ username: "  bob  ", password: "password123" });
+    const user = await registerUser({ username: "  bob  ", password: "password123" }, db);
 
     expect(user.username).toBe("bob");
   });
 
   it("用户名重复：抛出「用户名已存在」类错误", async () => {
-    await registerUser({ username: "alice", password: "password123" });
+    await registerUser({ username: "alice", password: "password123" }, db);
 
-    const error = await registerUser({ username: "alice", password: "password456" }).catch(
+    const error = await registerUser({ username: "alice", password: "password456" }, db).catch(
       (caught: unknown) => caught,
     );
 
@@ -77,7 +77,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("UID 碰撞：依赖数据库唯一约束重新生成 UID 后注册成功", async () => {
-    const first = await registerUser({ username: "existing", password: "password123" });
+    const first = await registerUser({ username: "existing", password: "password123" }, db);
     const freshUid = uidModule.generateUid();
 
     mockGenerateUid.mockReset();
@@ -85,7 +85,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
       .mockImplementationOnce(() => first.uid)
       .mockImplementationOnce(() => freshUid);
 
-    const user = await registerUser({ username: "newcomer", password: "password123" });
+    const user = await registerUser({ username: "newcomer", password: "password123" }, db);
 
     expect(mockGenerateUid).toHaveBeenCalledTimes(2);
     expect(user.uid).toBe(freshUid);
@@ -93,35 +93,35 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("注册校验：用户名 2–20 字符、密码至少 8 位", async () => {
-    await expect(registerUser({ username: "a", password: "password123" })).rejects.toMatchObject({
+    await expect(registerUser({ username: "a", password: "password123" }, db)).rejects.toMatchObject({
       code: "VALIDATION",
       field: "username",
     });
     await expect(
-      registerUser({ username: "a".repeat(21), password: "password123" }),
+      registerUser({ username: "a".repeat(21), password: "password123" }, db),
     ).rejects.toMatchObject({ code: "VALIDATION", field: "username" });
-    await expect(registerUser({ username: "alice", password: "short" })).rejects.toMatchObject({
+    await expect(registerUser({ username: "alice", password: "short" }, db)).rejects.toMatchObject({
       code: "VALIDATION",
       field: "password",
     });
   });
 
   it("登录成功：正确密码返回 User（不含密码哈希）", async () => {
-    const registered = await registerUser({ username: "alice", password: "password123" });
+    const registered = await registerUser({ username: "alice", password: "password123" }, db);
 
-    const loggedIn = await login({ username: "alice", password: "password123" });
+    const loggedIn = await login({ username: "alice", password: "password123" }, db);
 
     expect(loggedIn).toEqual(registered);
     expect(loggedIn).not.toHaveProperty("passwordHash");
   });
 
   it("登录失败：错误密码与不存在的用户名抛出同一「用户名或密码错误」", async () => {
-    await registerUser({ username: "alice", password: "password123" });
+    await registerUser({ username: "alice", password: "password123" }, db);
 
-    const wrongPassword = await login({ username: "alice", password: "wrongpass" }).catch(
+    const wrongPassword = await login({ username: "alice", password: "wrongpass" }, db).catch(
       (caught: unknown) => caught,
     );
-    const missingUser = await login({ username: "nobody", password: "password123" }).catch(
+    const missingUser = await login({ username: "nobody", password: "password123" }, db).catch(
       (caught: unknown) => caught,
     );
 
@@ -140,11 +140,11 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("users service：按 id / uid 查询返回领域 User，未命中返回 null", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" });
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
 
-    await expect(getUserById(user.id)).resolves.toEqual(user);
-    await expect(findByUid(user.uid)).resolves.toEqual(user);
-    await expect(getUserById("00000000-0000-0000-0000-000000000000")).resolves.toBeNull();
-    await expect(findByUid("doing_zzzzzz")).resolves.toBeNull();
+    await expect(getUserById(user.id, db)).resolves.toEqual(user);
+    await expect(findByUid(user.uid, db)).resolves.toEqual(user);
+    await expect(getUserById("00000000-0000-0000-0000-000000000000", db)).resolves.toBeNull();
+    await expect(findByUid("doing_zzzzzz", db)).resolves.toBeNull();
   });
 });

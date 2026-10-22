@@ -5,19 +5,21 @@ import * as schema from "./schema";
 /**
  * 数据库连接单例。
  *
- * - 连接串优先级：TEST_DATABASE_URL > DATABASE_URL（测试库优先，符合 F-2 约定）。
+ * - 运行时只使用 `DATABASE_URL`（开发库），**绝不回退到 `TEST_DATABASE_URL`**：
+ *   否则开发服务器会连上测试库，而 `pnpm test` 会 TRUNCATE 该库，导致开发数据丢失。
+ * - `TEST_DATABASE_URL` 仅由 `testing.ts` 在数据库测试中使用（迁移 + 清库）。
  * - 缓存到 globalThis，避免 Next.js 开发热重载时反复创建连接池。
- * - 仅当两个变量都缺失时使用本地默认值，防止构建/工具链在导入阶段直接崩溃；
+ * - 仅当变量缺失时使用本地默认值，防止构建/工具链在导入阶段直接崩溃；
  *   生产环境缺失配置会显式报错。
  */
 type Database = PostgresJsDatabase<typeof schema>;
 
 function resolveConnectionString(): string {
-  const url = process.env.TEST_DATABASE_URL || process.env.DATABASE_URL;
+  const url = process.env.DATABASE_URL;
   if (url) return url;
 
   if (process.env.NODE_ENV === "production") {
-    throw new Error("缺少 DATABASE_URL（或 TEST_DATABASE_URL）环境变量");
+    throw new Error("缺少 DATABASE_URL 环境变量");
   }
 
   return "postgres://open-doing:open-doing@localhost:5432/open_doing";
