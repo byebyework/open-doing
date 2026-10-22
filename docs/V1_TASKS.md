@@ -14,7 +14,7 @@
 
 | 轨道 | 名称 | 波次 | 负责人 | 状态 |
 |---|---|---|---|---|
-| F | 基座（串行） | M0 | | ⬜ |
+| F | 基座（串行） | M0 | | ✅ |
 | P | 个人空间 | M1 | | ⬜ |
 | T | 团队 / 邀请 / 角色 | M1 | | ⬜ |
 | J | 团队项目与任务 | M2（Depends T） | | ⬜ |
@@ -177,40 +177,40 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 - Files: `packages/types/src/index.ts`（重写）、`packages/types/src/progress.ts`、`date.ts`（新建，按纯函数拆分）、`packages/types/src/index.test.ts`
 - 现状：`index.ts` 仍是旧模型（`email`/`token`/`expiresAt`、`Subtask.assigneeId`），整体按 §3 契约重写。
 - 验收：
-  - [ ] 类型与 §3 完全一致；`dueDate` 为 `YYYY-MM-DD` 字符串而非 `Date`；`Project` 同时支持 `teamId` / `ownerId` 二选一。
-  - [ ] `getTaskProgress`：3/5 子任务完成 = 0.6；无子任务三态 = 0/0.5/1；空数组不除零。
-  - [ ] `isOverdue/isDueSoon` 以 `2026-10-21` 为 today：`2026-10-20` 未完成=逾期、`2026-10-21/22`=临期、`2026-10-21` 已完成=都不是。
-  - [ ] `pnpm --filter @open-doing/types typecheck` 通过；纯函数零依赖、不传 `Date`/时区（today 由调用方注入）。
+  - [x] 类型与 §3 完全一致；`dueDate` 为 `YYYY-MM-DD` 字符串而非 `Date`；`Project` 同时支持 `teamId` / `ownerId` 二选一。
+  - [x] `getTaskProgress`：3/5 子任务完成 = 0.6；无子任务三态 = 0/0.5/1；空数组不除零。
+  - [x] `isOverdue/isDueSoon` 以 `2026-10-21` 为 today：`2026-10-20` 未完成=逾期、`2026-10-21/22`=临期、`2026-10-21` 已完成=都不是。
+  - [x] `pnpm --filter @open-doing/types typecheck` 通过；纯函数零依赖、不传 `Date`/时区（today 由调用方注入）。
 
 ### F-2 测试设施与全部依赖预装　`M`　Depends: F-1
 
 - Files: `vitest.config.ts`（根级 workspace 模式覆盖两个包）、各 `package.json` 的 `test` 脚本、根 `package.json` 加 `test`/`test:run`
 - 验收：
-  - [ ] 选定 **Vitest**；`pnpm -r test` 可跑通 types 单测；DB 相关用独立 PG 库（`open_doing_test`，连接串走 `DATABASE_URL`，跑前清空或事务回滚；无库时 skip 并打印提示）。
-  - [ ] **依赖一次装齐（关键并行约定）**：M0 内装好 v1 全部依赖——`vitest`+`@vitest/coverage-v8`；DB：`drizzle-orm`/`drizzle-kit`/`postgres`；会话与哈希：`jose`（无状态签名 cookie，故不建 sessions 表）+ `@node-rs/argon2`；UI：`antd@^6`、`@ant-design/nextjs-registry`、`dayjs`；看板：`@dnd-kit/core`+`@dnd-kit/sortable`+`@dnd-kit/utilities`。**M0 后任何 worktree 不得自行改 `package.json`/lockfile，新增依赖走集成负责人**；Playwright 例外，由 X-1 安装。
-  - [ ] `pnpm typecheck && pnpm lint && pnpm build` 在干净仓库全绿。
+  - [x] 选定 **Vitest**；`pnpm -r test` 可跑通 types 单测；DB 相关用独立 PG 库（`open_doing_test`，连接串走 `TEST_DATABASE_URL`，跑前清空或事务回滚；无库时 skip 并打印提示）。
+  - [x] **依赖一次装齐（关键并行约定）**：M0 内装好 v1 全部依赖——`vitest`+`@vitest/coverage-v8`；DB：`drizzle-orm`/`drizzle-kit`/`postgres`；会话与哈希：`jose`（无状态签名 cookie，故不建 sessions 表）+ `@node-rs/argon2`；UI：`antd@^6`、`@ant-design/nextjs-registry`、`dayjs`；看板：`@dnd-kit/core`+`@dnd-kit/sortable`+`@dnd-kit/utilities`。**M0 后任何 worktree 不得自行改 `package.json`/lockfile，新增依赖走集成负责人**；Playwright 例外，由 X-1 安装。
+  - [x] `pnpm typecheck && pnpm lint && pnpm build` 在干净仓库全绿。
 
 ### F-3 Postgres + Drizzle 全量 schema 与首个迁移　`L`　Depends: F-1, F-2
 
 - Files: `docker-compose.yml`（仓库根）、`.env.example`、`apps/web/src/server/db/schema.ts`、`client.ts`（单例）、`drizzle.config.ts`、`drizzle/0000_init.sql`、`src/server/db/schema.test.ts`、`src/features/notifications/service.ts`（桩，见末条）
 - 按 ARCHITECTURE §6 建**全部表**（users / teams / team_memberships / team_invites / projects / tasks / subtasks / comments / notifications；不建 sessions——F-2 已定 jose 无状态 cookie），一次到位避免并行期反复迁移：
-  - [ ] `users.uid`、`users.username` 唯一；uid 生成器（`doing_` + 随机串，唯一且不易枚举）带单测。
-  - [ ] `projects`：`team_id`/`owner_id` 互斥 CHECK；`UNIQUE(team_id,slug)` 与 `UNIQUE(owner_id,slug)`（部分索引）。
-  - [ ] `tasks`：`project_id` 可空（不属于项目的个人任务），`assignee_id` 可空；个人空间任务 `assignee_id` 恒为本人（应用约束 + 可加触发器/校验，记录所选方案）。
-  - [ ] 邀请部分唯一索引 `UNIQUE(team_id, invitee_id) WHERE status='pending'`。
-  - [ ] **通知幂等索引（N-3 依赖）**：`UNIQUE(user_id, task_id, type) WHERE task_id IS NOT NULL`；普通索引 `notifications(user_id, read)`。
-  - [ ] **查询索引（D/N 依赖，M0 一次建齐）**：`tasks(assignee_id)`、`tasks(status, due_date)`、`tasks(space_type)`、`team_memberships(user_id)`、`projects(owner_id)`。
-  - [ ] 级联路径在 schema 外键上全部 `onDelete: 'cascade'`（删项目→任务→子任务/评论/相关通知；解散团队→全部）。
-  - [ ] `docker compose up -d` 起库；`db:generate/db:migrate` 脚本可用；迁移可在空库重放。
-  - [ ] **播种通知服务桩**：创建 `features/notifications/service.ts` 实现 §3 签名的 `createNotification(input)`——只做同事务 INSERT（调用方传入事务 client），无任何业务规则；另建 `app/api/notifications/route.ts` 返回空列表的 401 占位。N 轨道 M2 只替换内部实现，签名与文件路径不变，T/J/G 在 M1 即可真实 import 调用。
+  - [x] `users.uid`、`users.username` 唯一；uid 生成器（`doing_` + 随机串，唯一且不易枚举）带单测。
+  - [x] `projects`：`team_id`/`owner_id` 互斥 CHECK；`UNIQUE(team_id,slug)` 与 `UNIQUE(owner_id,slug)`（部分索引）。
+  - [x] `tasks`：`project_id` 可空（不属于项目的个人任务），`assignee_id` 可空；个人空间任务 `assignee_id` 恒为本人（应用约束 + 可加触发器/校验，记录所选方案）。
+  - [x] 邀请部分唯一索引 `UNIQUE(team_id, invitee_id) WHERE status='pending'`。
+  - [x] **通知幂等索引（N-3 依赖）**：`UNIQUE(user_id, task_id, type) WHERE task_id IS NOT NULL`；普通索引 `notifications(user_id, read)`。
+  - [x] **查询索引（D/N 依赖，M0 一次建齐）**：`tasks(assignee_id)`、`tasks(status, due_date)`、`tasks(space_type)`、`team_memberships(user_id)`、`projects(owner_id)`。
+  - [x] 级联路径在 schema 外键上全部 `onDelete: 'cascade'`（删项目→任务→子任务/评论/相关通知；解散团队→全部）。
+  - [x] `docker compose up -d` 起库；`db:generate/db:migrate` 脚本可用；迁移可在空库重放。
+  - [x] **播种通知服务桩**：创建 `features/notifications/service.ts` 实现 §3 签名的 `createNotification(input)`——只做同事务 INSERT（调用方传入事务 client），无任何业务规则；另建 `app/api/notifications/route.ts` 返回空列表的 401 占位。N 轨道 M2 只替换内部实现，签名与文件路径不变，T/J/G 在 M1 即可真实 import 调用。
 
 ### F-4 antd v6 + 主题令牌接入　`M`　Depends: F-2（依赖由 F-2 预装；M0 内串行执行）
 
 - Files: `apps/web/src/app/theme.ts`、`providers.tsx`（AntdRegistry + ConfigProvider `zh_CN` + dayjs locale）、`layout.tsx`（接 providers）、`globals.css`（改为只引 `tailwindcss/theme` + `utilities`，**不引 preflight/base**，删默认深色媒体查询与 Arial 样式）、`tailwind.config`/CSS 变量映射
 - 验收：
-  - [ ] ConfigProvider token 与原型 README 的映射表逐项一致（`colorPrimary #7d2ae8`、success/warning/error/info、`borderRadius 8/12`、`controlHeight 38` 等）；品牌渐变仅用于 Logo/认证页。
-  - [ ] 任意一个临时演示页上 antd Button/Input/Table/Modal 无样式闪烁、无 Tailwind 重置污染；演示页提交前删除。
-  - [ ] `zh_CN` 与 dayjs 中文生效（DatePicker 周始于周一、中文文案）。
+  - [x] ConfigProvider token 与原型 README 的映射表逐项一致（`colorPrimary #7d2ae8`、success/warning/error/info、`borderRadius 8/12`、`controlHeight 38` 等）；品牌渐变仅用于 Logo/认证页。
+  - [x] 任意一个临时演示页上 antd Button/Input/Table/Modal 无样式闪烁、无 Tailwind 重置污染；演示页提交前删除。
+  - [x] `zh_CN` 与 dayjs 中文生效（DatePicker 周始于周一、中文文案）。
 
 ### F-5 应用外壳、导航桩与共享基础组件　`M`　Depends: F-4
 
@@ -219,21 +219,25 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 - **共享基础组件（M0 预置，防各轨道重复造）**放 `src/components/ui/`：`UserAvatar`（用户名首字母 + 点缀色）、`StatusTag`（未开始/进行中/已完成）、`ProgressBar`、`ConfirmModal`、`EmptyState`、`DueText`（逾期/临期/普通日期着色）。props 在本任务定稿并写组件内 JSDoc。
 - 参考 `prototypes/my-tasks.html` 与 `team-overview.html` 的外壳；空间切换器渲染原型同款静态菜单（数据接线随 P/T 完成）。
 - 验收：
-  - [ ] 桌面 1440 与 375 宽度均无横向溢出；侧栏 ≤860px 隐藏（移动端导航入口可仅占位，v1 桌面优先）。
-  - [ ] 顶栏预留 `<NotificationBell />` 位（import 一个渲染 null 的同名占位组件，N-2 替换实现、路径不变）与搜索框位（禁用态）。
-  - [ ] 上述 6 个基础组件在占位页有最小 demo 状态；未命中路由走 antd 风格 404；`(dashboard)` 与 `(auth)` 布局分离。
+  - [x] 桌面 1440 与 375 宽度均无横向溢出；侧栏 ≤860px 隐藏（移动端导航入口可仅占位，v1 桌面优先）。
+  - [x] 顶栏预留 `<NotificationBell />` 位（import 一个渲染 null 的同名占位组件，N-2 替换实现、路径不变）与搜索框位（禁用态）。
+  - [x] 上述 6 个基础组件在占位页有最小 demo 状态；未命中路由走 antd 风格 404；`(dashboard)` 与 `(auth)` 布局分离。
 
 ### F-6 认证与会话、路由守卫　`L`　Depends: F-3, F-5
 
 - Files: `src/features/auth/{actions,service,session}.ts`、`components/`（登录/注册表单 client 组件）、`src/features/users/service.ts`（按 uid 查询）、`(auth)/login/page.tsx`、`register/page.tsx`（复刻原型两屏）、`(dashboard)/layout.tsx` 接 `requireUser`
 - 决策已定（F-2 预装）：jose 签名的无状态 httpOnly cookie session（无 sessions 表）+ `@node-rs/argon2` 哈希；`SESSION_SECRET` 走 `.env.local`。把该选择补写进 ARCHITECTURE §3 决策表"理由"列。
 - 验收：
-  - [ ] 注册只收用户名+密码（校验规则与错误文案中文，参考 register 原型），成功后生成 `doing_xxxx` 并可登录。
-  - [ ] 用户名重复、UID 极小概率碰撞的重试路径有测试；会话为 httpOnly 安全 cookie；登出失效。
-  - [ ] 未登录访问任何 `(dashboard)` 路由 → `/login`；已登录访问 `/login` → `/my`。
-  - [ ] 服务层测试覆盖：错误密码、不存在用户、重复注册。
+  - [x] 注册只收用户名+密码（校验规则与错误文案中文，参考 register 原型），成功后生成 `doing_xxxx` 并可登录。
+  - [x] 用户名重复、UID 极小概率碰撞的重试路径有测试；会话为 httpOnly 安全 cookie；登出失效。
+  - [x] 未登录访问任何 `(dashboard)` 路由 → `/login`；已登录访问 `/login` → `/my`。
+  - [x] 服务层测试覆盖：错误密码、不存在用户、重复注册。
 
-**M0 出口检查（冻结点）**：三人各自 clone 后按 README 能起库、跑迁移、注册登录看到空外壳；§3 契约评审通过并锁签名；合入 main 后 **`git tag m0-frozen`**，各轨道按 §4.1 拉 worktree。
+**M0 出口检查（冻结点）**（以下三项由集成负责人执行，尚未完成）：
+
+- [ ] 三人各自 clone 后按 README 能起库、跑迁移、注册登录看到空外壳。
+- [ ] §3 契约评审通过并锁签名。
+- [ ] 合入 main 后 **`git tag m0-frozen`**，各轨道按 §4.1 拉 worktree。
 
 ---
 
