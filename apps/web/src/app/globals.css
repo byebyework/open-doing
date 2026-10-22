@@ -7,6 +7,7 @@
 
 /* 全局基础样式：取值自设计令牌（docs/prototypes/assets/design-tokens.css） */
 body {
+  margin: 0;
   background: var(--surface-subtle, #f4f5f7);
   color: var(--ink-900, #0e1318);
   font-family: "Canva Sans", "YS Text", system-ui, -apple-system, "PingFang SC",
