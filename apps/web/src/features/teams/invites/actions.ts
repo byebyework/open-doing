@@ -1,12 +1,18 @@
 "use server";
 
-import type { TeamInvite } from "@open-doing/types";
+import type { Team, TeamInvite } from "@open-doing/types";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
 
-import { InviteError, createInvite, rescindInvite, type CreateInviteInput } from "./service";
+import {
+  InviteError,
+  createInvite,
+  rescindInvite,
+  respondToInvite,
+  type CreateInviteInput,
+} from "./service";
 
 export type { CreateInviteInput } from "./service";
 
@@ -54,5 +60,22 @@ export async function rescindInviteAction(
     return { ok: true, data: invite };
   } catch (error) {
     return toFailure(error, "撤销邀请失败，请稍后重试");
+  }
+}
+
+/** 被邀请人接受 / 拒绝邀请。 */
+export async function respondToInviteAction(
+  input: { inviteId: string; accept: boolean },
+): Promise<ActionResult<Team>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { ok: false, errors: { form: "请先登录" } };
+    }
+
+    const team = await respondToInvite({ inviteId: input.inviteId, actorId: user.id, accept: input.accept });
+    return { ok: true, data: team };
+  } catch (error) {
+    return toFailure(error, "处理邀请失败，请稍后重试");
   }
 }

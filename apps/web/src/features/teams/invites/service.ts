@@ -1,10 +1,10 @@
-import { and, desc, eq } from "drizzle-orm";
-import type { TeamInvite } from "@open-doing/types";
+import { and, desc, eq, sql } from "drizzle-orm";
+import type { Team, TeamInvite } from "@open-doing/types";
 
 import { findByUid } from "@/features/users/service";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
-import { teamInvites, users } from "@/server/db/schema";
+import { teamInvites, teamMemberships, teams, users } from "@/server/db/schema";
 
 import { assertCan, getMembership } from "../permissions";
 import { createNotification } from "@/features/notifications/service";
@@ -187,6 +187,81 @@ export async function rescindInvite(
   return client === db ? db.transaction(run) : run(client);
 }
 
+export interface RespondInviteInput {
+  inviteId: string;
+  actorId: string;
+  accept: boolean;
+}
+
+/**
+ * 被邀请人响应邀请：接受写入 member 成员关系，拒绝仅落状态。
+ *
+ * 邀请必须属于本人且仍为 pending，否则统一抛 `INVALID`
+ * （覆盖已撤销 / 已响应 / 团队已解散级联删除等失效场景）。
+ * 成员关系、邀请状态与通知同事务提交。
+ */
+export async function respondToInvite(
+  input: RespondInviteInput,
+  client: DbClient = db,
+): Promise<Team> {
+  if (!input?.inviteId) {
+    throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+  }
+
+  const run = async (tx: DbClient): Promise<Team> => {
+    const [row] = await tx
+      .select()
+      .from(teamInvites)
+      .where(eq(teamInvites.id, input.inviteId))
+      .limit(1);
+
+    if (!row || row.status !== "pending" || row.inviteeId !== input.actorId) {
+      throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+    }
+
+    const respondedAt = new Date();
+    const [inviteRow] = await tx
+      .update(teamInvites)
+      .set({ status: input.accept ? "accepted" : "declined", respondedAt })
+      .where(eq(teamInvites.id, row.id))
+      .returning();
+
+    let teamRow: typeof teams.$inferSelect | undefined;
+    if (input.accept) {
+      await tx
+        .insert(teamMemberships)
+        .values({ teamId: row.teamId, userId: row.inviteeId, role: "member" });
+      [teamRow] = await tx.select().from(teams).where(eq(teams.id, row.teamId)).limit(1);
+    } else {
+      [teamRow] = await tx.select().from(teams).where(eq(teams.id, row.teamId)).limit(1);
+    }
+    if (!teamRow) {
+      throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+    }
+
+    // 通知邀请人（发出/接受/拒绝/撤销统一走 team_invite 类型）。
+    await createNotification(
+      {
+        userId: row.invitedById,
+        type: "team_invite",
+        teamId: row.teamId,
+        actorId: input.actorId,
+      },
+      tx,
+    );
+
+    return {
+      id: teamRow.id,
+      name: teamRow.name,
+      slug: teamRow.slug,
+      ownerId: teamRow.ownerId,
+      createdAt: teamRow.createdAt.toISOString(),
+    };
+  };
+
+  return client === db ? db.transaction(run) : run(client);
+}
+
 export interface SentInviteView {
   invite: TeamInvite;
   invitee: { id: string; uid: string; username: string };
@@ -208,4 +283,43 @@ export async function listPendingSentInvites(
     .orderBy(desc(teamInvites.createdAt));
 
   return rows.map((row) => ({ invite: toInvite(row.invite), invitee: row.invitee }));
+}
+
+export interface ReceivedInviteView {
+  invite: TeamInvite;
+  team: { id: string; name: string; slug: string };
+  invitedBy: { id: string; username: string; uid: string };
+  /** 邀请团队当前成员数（原型「团队 N 人」）。 */
+  memberCount: number;
+}
+
+/** 用户收到的全部邀请（全状态），pending 在前，其余按响应/发出时间倒序。 */
+export async function listReceivedInvites(
+  userId: string,
+  client: DbClient = db,
+): Promise<ReceivedInviteView[]> {
+  const rows = await client
+    .select({
+      invite: teamInvites,
+      team: { id: teams.id, name: teams.name, slug: teams.slug },
+      invitedBy: { id: users.id, username: users.username, uid: users.uid },
+      memberCount: sql<number>`(select count(*)::int from ${teamMemberships} where ${teamMemberships.teamId} = ${teams.id})`,
+    })
+    .from(teamInvites)
+    .innerJoin(teams, eq(teams.id, teamInvites.teamId))
+    .innerJoin(users, eq(users.id, teamInvites.invitedById))
+    .where(eq(teamInvites.inviteeId, userId))
+    .orderBy(
+      // pending 在前；其余按响应时间（未响应按发出时间）倒序。
+      sql`case when ${teamInvites.status} = 'pending' then 0 else 1 end`,
+      desc(teamInvites.respondedAt),
+      desc(teamInvites.createdAt),
+    );
+
+  return rows.map((row) => ({
+    invite: toInvite(row.invite),
+    team: row.team,
+    invitedBy: row.invitedBy,
+    memberCount: row.memberCount,
+  }));
 }

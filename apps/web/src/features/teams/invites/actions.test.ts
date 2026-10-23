@@ -4,8 +4,8 @@ import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
 import type { TeamInvite } from "@open-doing/types";
 
-import { createInviteAction, rescindInviteAction } from "./actions";
-import { InviteError, createInvite, rescindInvite } from "./service";
+import { createInviteAction, rescindInviteAction, respondToInviteAction } from "./actions";
+import { InviteError, createInvite, rescindInvite, respondToInvite } from "./service";
 
 /**
  * actions 层只负责 session -> actorId -> service 的衔接与错误映射
@@ -18,12 +18,13 @@ vi.mock("@/features/auth/session", async (importOriginal) => {
 
 vi.mock("./service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./service")>();
-  return { ...actual, createInvite: vi.fn(), rescindInvite: vi.fn() };
+  return { ...actual, createInvite: vi.fn(), rescindInvite: vi.fn(), respondToInvite: vi.fn() };
 });
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockCreateInvite = vi.mocked(createInvite);
 const mockRescindInvite = vi.mocked(rescindInvite);
+const mockRespondToInvite = vi.mocked(respondToInvite);
 
 const fakeInvite: TeamInvite = {
   id: "00000000-0000-0000-0000-000000000003",
@@ -110,5 +111,44 @@ describe("邀请 actions", () => {
       teamId: fakeInvite.teamId,
       actorId: "owner-id",
     });
+  });
+
+  it("respondToInviteAction：以会话用户为 actorId 调 service", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: "invitee-id",
+      uid: "doing_9ar45e",
+      username: "invitee",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    mockRespondToInvite.mockResolvedValue({
+      id: "team-id",
+      name: "效率工程部",
+      slug: "team",
+      ownerId: "owner-id",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+
+    const result = await respondToInviteAction({ inviteId: fakeInvite.id, accept: true });
+
+    expect(result).toMatchObject({ ok: true, data: { id: "team-id" } });
+    expect(mockRespondToInvite).toHaveBeenCalledWith({
+      inviteId: fakeInvite.id,
+      actorId: "invitee-id",
+      accept: true,
+    });
+  });
+
+  it("respondToInviteAction：失效邀请返回友好的 form 错误（不 500）", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: "invitee-id",
+      uid: "doing_9ar45e",
+      username: "invitee",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    mockRespondToInvite.mockRejectedValue(new InviteError("INVALID", "邀请不存在或已失效", "form"));
+
+    const result = await respondToInviteAction({ inviteId: fakeInvite.id, accept: true });
+
+    expect(result).toEqual({ ok: false, errors: { form: "邀请不存在或已失效" } });
   });
 });

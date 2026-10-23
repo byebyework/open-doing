@@ -3,12 +3,19 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { notifications, teamInvites, teamMemberships, users } from "@/server/db/schema";
+import { notifications, teamInvites, teamMemberships, teams, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { TeamPermissionError, getMembership } from "../permissions";
-import { createTeam } from "../service";
-import { InviteError, createInvite, listPendingSentInvites, rescindInvite } from "./service";
+import { createTeam, listTeamsForUser } from "../service";
+import {
+  InviteError,
+  createInvite,
+  listPendingSentInvites,
+  listReceivedInvites,
+  rescindInvite,
+  respondToInvite,
+} from "./service";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -177,5 +184,104 @@ describe.skipIf(!hasTestDatabase)("邀请 service", () => {
     await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
 
     expect(await getMembership(team.id, outsider.id, db)).toBeNull();
+  });
+
+  it("接受：写入 member 成员关系、邀请置 accepted、通知邀请人、团队进入我的团队", async () => {
+    const { owner, outsider, team } = await seedTeam(db);
+    const invite = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+
+    const teamResult = await respondToInvite({ inviteId: invite.id, actorId: outsider.id, accept: true }, db);
+
+    expect(teamResult.id).toBe(team.id);
+    expect(await getMembership(team.id, outsider.id, db)).toMatchObject({
+      role: "member",
+      userId: outsider.id,
+    });
+
+    const [inviteRow] = await db.select().from(teamInvites).where(eq(teamInvites.id, invite.id));
+    expect(inviteRow!.status).toBe("accepted");
+    expect(inviteRow!.respondedAt).not.toBeNull();
+
+    const accepted = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, owner.id), eq(notifications.type, "team_invite")));
+    expect(accepted.length).toBe(1);
+
+    expect((await listTeamsForUser(outsider.id, db)).map((t) => t.id)).toContain(team.id);
+  });
+
+  it("拒绝：邀请置 declined、不建立成员关系、通知邀请人", async () => {
+    const { owner, outsider, team } = await seedTeam(db);
+    const invite = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+
+    await respondToInvite({ inviteId: invite.id, actorId: outsider.id, accept: false }, db);
+
+    const [inviteRow] = await db.select().from(teamInvites).where(eq(teamInvites.id, invite.id));
+    expect(inviteRow!.status).toBe("declined");
+    expect(inviteRow!.respondedAt).not.toBeNull();
+    expect(await getMembership(team.id, outsider.id, db)).toBeNull();
+  });
+
+  it("失效响应：已撤销 / 已响应 / 非本人 均返回「邀请不存在或已失效」", async () => {
+    const { owner, outsider, team } = await seedTeam(db);
+    const invite = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+
+    // 已撤销。
+    await rescindInvite({ inviteId: invite.id, teamId: team.id, actorId: owner.id }, db);
+    await expect(
+      respondToInvite({ inviteId: invite.id, actorId: outsider.id, accept: true }, db),
+    ).rejects.toMatchObject({ code: "INVALID", message: "邀请不存在或已失效" });
+
+    // 已响应。
+    const second = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+    await respondToInvite({ inviteId: second.id, actorId: outsider.id, accept: true }, db);
+    await expect(
+      respondToInvite({ inviteId: second.id, actorId: outsider.id, accept: true }, db),
+    ).rejects.toMatchObject({ code: "INVALID" });
+
+    // 非本人：对另一待邀请人发出的邀请，用 outsider 的身份响应。
+    const other = await createUser(db, "other");
+    const third = await createInvite({ teamId: team.id, actorId: owner.id, uid: other.uid }, db);
+    await expect(
+      respondToInvite({ inviteId: third.id, actorId: outsider.id, accept: true }, db),
+    ).rejects.toMatchObject({ code: "INVALID" });
+  });
+
+  it("团队解散后邀请行被级联删除，响应返回「邀请不存在或已失效」而非 500", async () => {
+    const { owner, outsider, team } = await seedTeam(db);
+    const invite = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+
+    // 模拟解散团队：级联删除 teams 行（邀请随之删除）。
+    await db.delete(teams).where(eq(teams.id, team.id));
+
+    await expect(
+      respondToInvite({ inviteId: invite.id, actorId: outsider.id, accept: true }, db),
+    ).rejects.toBeInstanceOf(InviteError);
+  });
+
+  it("listReceivedInvites：pending 在前且带团队/邀请人/成员数", async () => {
+    const { owner, admin, member, outsider, team } = await seedTeam(db);
+
+    const first = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+    await respondToInvite({ inviteId: first.id, actorId: outsider.id, accept: true }, db);
+
+    // 第二个团队的新 pending 邀请。
+    const team2 = await createTeam({ name: "效率工程部" }, admin.id, db);
+    await db.insert(teamMemberships).values({ teamId: team2.id, userId: member.id, role: "member" });
+    await createInvite({ teamId: team2.id, actorId: admin.id, uid: outsider.uid }, db);
+
+    const received = await listReceivedInvites(outsider.id, db);
+
+    expect(received).toHaveLength(2);
+    expect(received[0]!.invite.status).toBe("pending");
+    expect(received[0]).toMatchObject({
+      team: { id: team2.id, name: "效率工程部" },
+      invitedBy: { id: admin.id },
+      memberCount: 2,
+    });
+    expect(received[1]!.invite.status).toBe("accepted");
+    // 团队 1：owner + admin + member + 刚接受邀请的 outsider。
+    expect(received[1]).toMatchObject({ team: { id: team.id }, memberCount: 4 });
   });
 });
