@@ -64,6 +64,8 @@ export interface TaskDetailClientProps {
   task: TaskDetailModel;
   /** 「← 返回项目」地址：所属项目页，或 `/my`。 */
   backHref: string;
+  /** 当前登录用户 ID（个人任务恒为责任人）。 */
+  currentUserId: string;
 }
 
 /**
@@ -73,7 +75,11 @@ export interface TaskDetailClientProps {
  * 删除任务例外：跳转离开由 `TaskDetailView` 负责，避免先刷新已删除的
  * 详情页造成 404 闪屏。
  */
-export function TaskDetailClient({ task, backHref }: TaskDetailClientProps) {
+export function TaskDetailClient({
+  task,
+  backHref,
+  currentUserId,
+}: TaskDetailClientProps) {
   const router = useRouter();
 
   const onAction: TaskDetailViewActions = {
@@ -125,6 +131,7 @@ export function TaskDetailClient({ task, backHref }: TaskDetailClientProps) {
       permissions={{ canEdit: true, canDelete: true, canAssign: false }}
       onAction={onAction}
       backHref={backHref}
+      currentUserId={currentUserId}
     />
   );
 }

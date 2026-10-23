@@ -203,6 +203,7 @@ export function TaskDetailView({
   permissions,
   onAction,
   backHref = "/my",
+  currentUserId,
 }: TaskDetailViewProps) {
   const router = useRouter();
   const today = todayInShanghai();
@@ -396,7 +397,7 @@ export function TaskDetailView({
           </h2>
           <CommentBox
             comments={task.comments}
-            currentUserId={task.assigneeId ?? ""}
+            currentUserId={currentUserId ?? task.assigneeId ?? ""}
             onAdd={onAction.addComment}
             onDelete={onAction.deleteComment}
           />
