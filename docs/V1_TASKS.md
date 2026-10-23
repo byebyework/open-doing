@@ -15,13 +15,13 @@
 | 轨道 | 名称 | 波次 | 负责人 | 状态 |
 |---|---|---|---|---|
 | F | 基座（串行） | M0 | | ✅ |
-| P | 个人空间 | M1 | | 🟡 |
+| P | 个人空间 | M1 | | ✅ |
 | T | 团队 / 邀请 / 角色 | M1 | asher | ✅ |
 | J | 团队项目与任务 | M2（Depends T） | | ⬜ |
 | N | 通知与 cron | M2（接口 M0 冻结） | | ⬜ |
 | D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
 | G | 团队治理 | M3（Depends T/J） | | ⬜ |
-| INT | 波次集成（单一集成负责人） | 每波次末 | | ⬜ |
+| INT | 波次集成（单一集成负责人） | 每波次末 | | 🟡 |
 | X | 收尾与发布 | M4 | | ⬜ |
 
 状态图例：⬜ 未开始 / 🟡 进行中 / ✅ 完成
@@ -254,7 +254,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [x] 新建（名称必填、描述可选，弹窗文案与原型一致："仅你自己可见……同样汇总到我的任务"）、改名/描述、删除（二次确认，级联，任务一并删）。
   - [x] 权限：service 层断言 `owner_id = 当前用户`，用他人 session 调用返回权限错误（测试直调 action）。
   - [x] slug 按 `owner_id` 作用域唯一，重名生成不冲突（如 `name-2`）。
-  - [ ] 个人项目不出现在任何团队查询中。
+  - [ ] 个人项目不出现在任何团队查询中。（团队项目查询在 J-1/M2 落地，由 INT-2 核验）
 
 #### P-2 个人任务 / 子任务 / 评论服务与操作　`L`　Depends: P-1
 
@@ -294,7 +294,10 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 #### P-5 侧栏个人段接入　`S`　Depends: P-1
 
 - Files: 只改 F-5 播种的桩文件 `features/personal/components/PersonalNav.tsx`（我的任务 + 个人项目列表 + 新建项目入口）；**不得改 dashboard layout**
-- 验收：[ ] 新建项目后侧栏即时出现；当前路由高亮；个人空间上下文下不渲染团队导航。
+- 验收：
+  - [x] 新建项目后侧栏即时出现。
+  - [x] 当前路由高亮。
+  - [ ] 个人空间上下文下不渲染团队导航。（与 T-1 当前实现冲突：`TeamsNav` 按原型在个人/团队上下文都渲染「我的团队」；需 INT-1 裁决改 P-5 口径还是改 `TeamsNav`）
 
 ### 轨道 T：团队 / UID 邀请 / 角色
 
@@ -335,11 +338,12 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 #### INT-1 集成 M1（P + T → main）　`M`　Depends: P-1..P-5, T-1..T-5
 
 由单一集成负责人执行（不是新业务开发）：
-- [ ] 从 `m0-frozen` 起分别合入 `track/personal`、`track/teams`；冲突预期只在导航桩接线、`components/ui` 复用处，按"layout 不改、只改桩文件"原则解。
+- [x] 合入 `track/personal`（合并提交 `c5c0bb7`；`track/teams` 此前已线性进入 main）。冲突已解：`lib/slug.ts` / `slug.test.ts` 保留两条轨道的 API（`slugifyName`/`slugWithCounter` 与 `generateUniqueSlug`）并共用 `toSlugBase`；`docs/V1_TASKS.md` 轨道表合并。
 - [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）；⑥ `respondToInvite` 的状态更新 WHERE 未加 `status='pending'` 守卫（T 全分支评审 Minor：双击"接受"在并发窗口可能回滚为通用报错，成员关系仍成立，刷新自愈）——INT-1 前建议补 `.where(and(eq(id), eq(status,'pending')))` 并把 0 行更新映射为 `INVALID`。
-- [ ] 全量 `typecheck/lint/test/build` 绿；双人浏览器实测出口检查全流程。
+- [x] 全量 `typecheck/lint/test/build` 绿（合并树：123/123 测试通过，build/typecheck 通过，lint 0 error）。
+- [ ] 双人浏览器实测出口检查全流程。
 - [ ] 核验 T-2/T-3 中 `createNotification` 调用点对 F-3 桩真实生效（写库可查）。
-- [ ] 合入 main，打 tag **`m1-frozen`**，删除两条 track worktree；N/J 从此 tag 拉新 worktree。
+- [ ] 打 tag **`m1-frozen`**，删除两条 track worktree；N/J 从此 tag 拉新 worktree。
 
 **M1 出口检查**：两个不同浏览器会话（两个账号）能完成：注册→互查 UID→邀请→接受→同团队可见；个人侧全流程可用。
 
