@@ -16,7 +16,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button, message } from "antd";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useSyncExternalStore } from "react";
 
 import { DueText } from "@/components/ui/DueText";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -48,14 +48,49 @@ export interface PersonalKanbanProps {
   projects: { id: string; name: string }[];
 }
 
+/** 与 Tailwind `min-[861px]` 断点保持一致：仅桌面端启用拖拽。 */
+const DESKTOP_MEDIA_QUERY = "(min-width: 861px)";
+
+function subscribeDesktop(callback: () => void) {
+  const query = window.matchMedia(DESKTOP_MEDIA_QUERY);
+  query.addEventListener("change", callback);
+
+  return () => query.removeEventListener("change", callback);
+}
+
+function getDesktopSnapshot() {
+  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
+}
+
+/** 服务端（及水合首帧）按窄屏处理：不渲染任何拖拽行为。 */
+function getDesktopServerSnapshot() {
+  return false;
+}
+
+/**
+ * 是否处于桌面宽度。
+ *
+ * 窄屏下看板退化为单列 + 状态按钮，卡片主体必须把触摸滚动交还浏览器：
+ * 拖拽监听会吞掉 touch 滚动，因此按断点整体关闭，而不是仅隐藏样式。
+ */
+function useIsDesktop(): boolean {
+  return useSyncExternalStore(
+    subscribeDesktop,
+    getDesktopSnapshot,
+    getDesktopServerSnapshot,
+  );
+}
+
 /** 可拖拽的任务卡片。 */
 function KanbanCard({
   task,
   today,
+  draggable,
   onChanged,
 }: {
   task: ProjectTask;
   today: string;
+  draggable: boolean;
   onChanged: () => void;
 }) {
   const {
@@ -64,7 +99,7 @@ function KanbanCard({
     setNodeRef,
     transform,
     isDragging,
-  } = useDraggable({ id: task.id });
+  } = useDraggable({ id: task.id, disabled: !draggable });
 
   const done = task.status === "done";
   const hasSubtasks = task.subtasks.length > 0;
@@ -92,12 +127,15 @@ function KanbanCard({
         isDragging ? "opacity-50" : ""
       } ${done ? "opacity-[0.62]" : ""}`}
     >
-      {/* 拖拽把手覆盖卡片主体（标题 / 进度 / 截止）；移动端状态按钮留在把手外。 */}
+      {/* 拖拽把手覆盖卡片主体（标题 / 进度 / 截止）；移动端状态按钮留在把手外。
+          窄屏不挂拖拽监听，且 touch-action 保持默认，让浏览器接管纵向滚动。 */}
       <div
-        {...attributes}
+        {...(draggable ? attributes : {})}
         {...listeners}
         aria-label={task.title}
-        className="cursor-grab touch-none select-none"
+        className={`select-none min-[861px]:cursor-grab min-[861px]:touch-none ${
+          draggable ? "" : "cursor-auto"
+        }`}
       >
         <div
           className={`text-[13.5px] font-semibold leading-[1.35] ${
@@ -139,12 +177,14 @@ function KanbanColumn({
   status,
   tasks,
   today,
+  draggable,
   onNewTask,
   onChanged,
 }: {
   status: TaskStatus;
   tasks: ProjectTask[];
   today: string;
+  draggable: boolean;
   onNewTask: () => void;
   onChanged: () => void;
 }) {
@@ -191,6 +231,7 @@ function KanbanColumn({
               key={task.id}
               task={task}
               today={today}
+              draggable={draggable}
               onChanged={onChanged}
             />
           ))
@@ -214,6 +255,7 @@ export function PersonalKanban({
   projects,
 }: PersonalKanbanProps) {
   const router = useRouter();
+  const isDesktop = useIsDesktop();
   const [items, setItems] = useState<ProjectTask[]>(tasks);
   const [syncedTasks, setSyncedTasks] = useState<ProjectTask[]>(tasks);
   const [newTaskOpen, setNewTaskOpen] = useState(false);
@@ -305,6 +347,7 @@ export function PersonalKanban({
               status={status}
               tasks={grouped[status]}
               today={today}
+              draggable={isDesktop}
               onNewTask={() => setNewTaskOpen(true)}
               onChanged={() => router.refresh()}
             />
