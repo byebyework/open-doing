@@ -13,11 +13,14 @@ export function TeamsNavItem({
   href,
   children,
   trailing,
+  depth,
 }: {
   href: string;
   children: ReactNode;
   /** 右侧附加内容（如待处理数角标）。 */
   trailing?: ReactNode;
+  /** 二级项（团队下的项目）：缩进 + 略小字号。 */
+  depth?: "child";
 }) {
   const pathname = usePathname();
   const active = pathname === href || pathname.startsWith(`${href}/`);
@@ -26,7 +29,9 @@ export function TeamsNavItem({
     <Link
       href={href}
       aria-current={active ? "page" : undefined}
-      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-[13px] no-underline transition-colors ${
+      className={`flex items-center gap-2 rounded-lg py-2 text-[13px] no-underline transition-colors ${
+        depth === "child" ? "pl-8 pr-3 text-[12.5px]" : "px-3"
+      } ${
         active
           ? "bg-[#f3ecfd] font-semibold text-[#7d2ae8]"
           : "text-[#3c4043] hover:bg-[#f5f6f7]"
