@@ -10,6 +10,7 @@ import {
   type TeamProjectView,
 } from "@/features/tasks/components/TeamProjectHeader";
 import { TeamProjectTaskTable } from "@/features/tasks/components/TeamProjectTaskTable";
+import { TeamKanban } from "@/features/tasks/components/TeamKanban";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
@@ -108,18 +109,33 @@ export default async function TeamProjectPage({
       </header>
 
       <div className="mt-5">
-        <TeamProjectTaskTable
-          teamId={team.id}
-          teamSlug={team.slug}
-          tasks={tasks}
-          members={members}
-          today={today}
-          projectId={project.id}
-          projects={projectOptions}
-          role={membership.role}
-          actorId={user.id}
-          projectSlug={project.slug}
-        />
+        {view === "board" ? (
+          <TeamKanban
+            teamId={team.id}
+            teamSlug={team.slug}
+            tasks={tasks}
+            members={members}
+            today={today}
+            projectId={project.id}
+            projects={projectOptions}
+            role={membership.role}
+            actorId={user.id}
+            projectSlug={project.slug}
+          />
+        ) : (
+          <TeamProjectTaskTable
+            teamId={team.id}
+            teamSlug={team.slug}
+            tasks={tasks}
+            members={members}
+            today={today}
+            projectId={project.id}
+            projects={projectOptions}
+            role={membership.role}
+            actorId={user.id}
+            projectSlug={project.slug}
+          />
+        )}
       </div>
     </div>
   );
