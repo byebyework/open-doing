@@ -336,7 +336,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 由单一集成负责人执行（不是新业务开发）：
 - [ ] 从 `m0-frozen` 起分别合入 `track/personal`、`track/teams`；冲突预期只在导航桩接线、`components/ui` 复用处，按"layout 不改、只改桩文件"原则解。
-- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）。
+- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）；⑥ `respondToInvite` 的状态更新 WHERE 未加 `status='pending'` 守卫（T 全分支评审 Minor：双击"接受"在并发窗口可能回滚为通用报错，成员关系仍成立，刷新自愈）——INT-1 前建议补 `.where(and(eq(id), eq(status,'pending')))` 并把 0 行更新映射为 `INVALID`。
 - [ ] 全量 `typecheck/lint/test/build` 绿；双人浏览器实测出口检查全流程。
 - [ ] 核验 T-2/T-3 中 `createNotification` 调用点对 F-3 桩真实生效（写库可查）。
 - [ ] 合入 main，打 tag **`m1-frozen`**，删除两条 track worktree；N/J 从此 tag 拉新 worktree。
