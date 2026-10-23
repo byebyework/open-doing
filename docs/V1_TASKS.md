@@ -16,7 +16,7 @@
 |---|---|---|---|---|
 | F | 基座（串行） | M0 | | ✅ |
 | P | 个人空间 | M1 | | ⬜ |
-| T | 团队 / 邀请 / 角色 | M1 | asher | 🟡 |
+| T | 团队 / 邀请 / 角色 | M1 | asher | ✅ |
 | J | 团队项目与任务 | M2（Depends T） | | ⬜ |
 | N | 通知与 cron | M2（接口 M0 冻结） | | ⬜ |
 | D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
@@ -298,37 +298,37 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 ### 轨道 T：团队 / UID 邀请 / 角色
 
-#### T-1 [~] 创建团队与成员关系　`S`　Depends: F-6
+#### T-1 创建团队与成员关系　`S`　Depends: F-6
 
 - Files: `features/teams/{service,actions}.ts`、`teams/new/page.tsx` 与表单
 - 验收：
-  - [ ] 创建者自动成为 owner；slug 生成；团队名必填。
-  - [ ] 创建后出现在侧栏团队段（接线只改 F-5 播种的 `features/teams/components/TeamsNav.tsx`，不得改 dashboard layout）。
+  - [x] 创建者自动成为 owner；slug 生成；团队名必填。
+  - [x] 创建后出现在侧栏团队段（接线只改 F-5 播种的 `features/teams/components/TeamsNav.tsx`，不得改 dashboard layout）。
 
-#### T-2 [~] 按 UID 发起邀请与撤销　`M`　Depends: T-1
+#### T-2 按 UID 发起邀请与撤销　`M`　Depends: T-1
 
 - Files: `features/teams/invites/{service,actions}.ts`、团队设置页邀请区（G 轨道之前由 T 建页面骨架）、`features/users/service.ts` 的 `findByUid`
 - 验收：
-  - [ ] UID 不存在 → 字段错误"UID 无效"；对同一人存在 pending 邀请 → 阻止（数据库部分索引兜底 + 友好错误）。
-  - [ ] owner/admin 可发起与撤销；member 调用 action 被拒（不只是隐藏入口）。
-  - [ ] 邀请无有效期；发起/撤销调用 `createNotification('team_invite')`（N 未完成前允许 no-op 桩，但调用点必须存在且类型正确）。
+  - [x] UID 不存在 → 字段错误"UID 无效"；对同一人存在 pending 邀请 → 阻止（数据库部分索引兜底 + 友好错误）。
+  - [x] owner/admin 可发起与撤销；member 调用 action 被拒（不只是隐藏入口）。
+  - [x] 邀请无有效期；发起/撤销调用 `createNotification('team_invite')`（N 未完成前允许 no-op 桩，但调用点必须存在且类型正确）。
 
-#### T-3 [~] 邀请接受 / 拒绝与邀请页　`M`　Depends: T-2
+#### T-3 邀请接受 / 拒绝与邀请页　`M`　Depends: T-2
 
 - Files: `(dashboard)/invites/page.tsx`、features/teams/invites actions
 - 对照 `invites.html`：
-  - [ ] 待处理列表含团队名/邀请人/时间；接受后写 membership(member)、邀请置 accepted；拒绝置 declined；历史分区可查。
-  - [ ] 团队在响应前被解散/邀请被撤销时给出失效提示而非报错。
-  - [ ] 接受后团队出现在侧栏；通知（如已实现）标记相应已读逻辑在 N 线补，本任务留接口。
+  - [x] 待处理列表含团队名/邀请人/时间；接受后写 membership(member)、邀请置 accepted；拒绝置 declined；历史分区可查。
+  - [x] 团队在响应前被解散/邀请被撤销时给出失效提示而非报错。
+  - [x] 接受后团队出现在侧栏；通知（如已实现）标记相应已读逻辑在 N 线补，本任务留接口。
 
-#### T-4 [~] 角色与权限判定层　`M`　Depends: T-1
+#### T-4 角色与权限判定层　`M`　Depends: T-1
 
 - Files: `features/teams/permissions.ts`（`getMembership`、`can`/`assertCan`）、成员只读列表
 - 验收：
-  - [ ] 覆盖设计文档 §5 矩阵每一行（含 owner 与 admin 仅治理差异：解散/转让仅 owner），表驱动测试。
-  - [ ] 非成员访问团队任何数据 → null/403；权限函数只抛一类可映射 403 的错误。
+  - [x] 覆盖设计文档 §5 矩阵每一行（含 owner 与 admin 仅治理差异：解散/转让仅 owner），表驱动测试。
+  - [x] 非成员访问团队任何数据 → null/403；权限函数只抛一类可映射 403 的错误。
 
-#### T-5 [~] 团队改名（设置页基础）　`S`　Depends: T-4
+#### T-5 团队改名（设置页基础）　`S`　Depends: T-4
 
 - 验收：[ ] owner/admin 可改团队名（slug 不变）；member 不可；设置页按角色显隐区块但 action 同样鉴权。
 
@@ -336,6 +336,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 由单一集成负责人执行（不是新业务开发）：
 - [ ] 从 `m0-frozen` 起分别合入 `track/personal`、`track/teams`；冲突预期只在导航桩接线、`components/ui` 复用处，按"layout 不改、只改桩文件"原则解。
+- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）。
 - [ ] 全量 `typecheck/lint/test/build` 绿；双人浏览器实测出口检查全流程。
 - [ ] 核验 T-2/T-3 中 `createNotification` 调用点对 F-3 桩真实生效（写库可查）。
 - [ ] 合入 main，打 tag **`m1-frozen`**，删除两条 track worktree；N/J 从此 tag 拉新 worktree。

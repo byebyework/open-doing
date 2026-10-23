@@ -64,7 +64,7 @@ export function InviteMemberForm({ teamId }: { teamId: string }) {
           rules={[{ required: true, message: "请输入 UID 后缀" }]}
           extra="UID 必须属于已注册用户；不允许对同一人重复发起待处理邀请。"
         >
-          <Input addonBefore="doing_" placeholder="输入 UID 后缀，如 x7k2m9" maxLength={6} autoFocus />
+          <Input prefix="doing_" placeholder="输入 UID 后缀，如 x7k2m9" maxLength={6} autoFocus />
         </Form.Item>
 
         <Button type="primary" htmlType="submit" loading={submitting}>
