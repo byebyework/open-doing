@@ -7,6 +7,7 @@ import type {
 import { getTaskProgress } from "@open-doing/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 
+import type { TaskDetailModel } from "@/components/ui/task-detail/types";
 import { DomainError } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import {
@@ -32,44 +33,6 @@ export interface PersonalTaskInput {
   description?: string;
   dueDate?: string | null;
   projectId?: string | null;
-}
-
-/**
- * 任务详情里的评论：额外带上作者用户名。
- *
- * Task 4 会把该定义迁到 `components/ui/task-detail/types.ts`，
- * 届时本文件改为从共享类型重新导出 / 导入。
- */
-export interface TaskDetailComment {
-  id: string;
-  taskId: string;
-  authorId: string;
-  authorName: string;
-  content: string;
-  createdAt: string;
-}
-
-/**
- * 任务详情聚合模型（本任务先本地定义，Task 4 迁入共享类型）。
- *
- * 字段与 Task 4 冻结契约逐字一致，避免后续迁移时出现类型漂移。
- */
-export interface TaskDetailModel {
-  id: string;
-  projectId: string | null;
-  spaceType: "personal" | "team";
-  title: string;
-  description?: string;
-  status: TaskStatus;
-  assigneeId: string | null;
-  assigneeName: string | null;
-  dueDate?: string;
-  createdAt: string;
-  updatedAt: string;
-  projectName: string | null;
-  progress: number;
-  subtasks: Subtask[];
-  comments: TaskDetailComment[];
 }
 
 type TaskRow = typeof tasks.$inferSelect;
