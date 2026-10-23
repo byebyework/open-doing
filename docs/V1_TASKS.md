@@ -17,7 +17,7 @@
 | F | 基座（串行） | M0 | | ✅ |
 | P | 个人空间 | M1 | | ✅ |
 | T | 团队 / 邀请 / 角色 | M1 | asher | ✅ |
-| J | 团队项目与任务 | M2（Depends T） | asher | 🟡 |
+| J | 团队项目与任务 | M2（Depends T） | asher | ✅ |
 | N | 通知与 cron | M2（接口 M0 冻结） | | ⬜ |
 | D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
 | G | 团队治理 | M3（Depends T/J） | | ⬜ |
@@ -353,35 +353,38 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 ### 轨道 J：团队项目与任务
 
-#### [~] J-1 团队项目 CRUD　`M`　Depends: T-4
+#### [x] J-1 团队项目 CRUD　`M`　Depends: T-4
 
 - Files: `features/projects/{service,actions}.ts`、项目新建/编辑/删除入口（项目设置放项目页内轻量入口；危险删除在 G-4 完善 UI，本任务先有权限保护的 action + 基础确认）
 - 验收：
-  - [ ] 仅 owner/admin 可建/改/删；member 直调 action 被拒；slug 在团队内唯一。
-  - [ ] 删除二次确认 + 级联任务/子任务/评论/通知。
-  - [ ] 项目出现在团队侧栏段与团队概览数据源（页面 D-1 再消费）。
+  - [x] 仅 owner/admin 可建/改/删；member 直调 action 被拒；slug 在团队内唯一。
+  - [x] 删除二次确认 + 级联任务/子任务/评论/通知。
+  - [x] 项目出现在团队侧栏段（`TeamsNav` 由 J 直接扩展，所有权例外已记 §4）与团队概览数据源（页面 D-1 再消费）。
 
-#### [~] J-2 团队任务服务：创建/编辑/指派/删除　`L`　Depends: J-1（分支自 `m1-frozen`，P-4 的 TaskDetailView 与纯函数已在基线中）
+#### [x] J-2 团队任务服务：创建/编辑/指派/删除　`L`　Depends: J-1（分支自 `m1-frozen`，P-4 的 TaskDetailView 与纯函数已在基线中）
 
 - Files: `features/tasks/{service,actions}.ts`
 - 验收：
-  - [ ] 成员均可建任务，默认指派创建者，可指派给**团队内任何人**（不能跨团队/外部 UID）；未指派允许（仅系统在成员离开时产生，UI 可保留未指派态）。
-  - [ ] member 只能编辑/删除**自己负责**的任务；owner/admin 可操作任意任务；编辑他人负责任务触发 `task_changed_by_admin` 通知；指派触发 `task_assigned`。
-  - [ ] 子任务/评论规则同 P-2；团队任务评论全员可发、本人可删。
-  - [ ] 每条权限分支一个服务层测试。
+  - [x] 成员均可建任务，默认指派创建者，可指派给**团队内任何人**（不能跨团队/外部 UID）；未指派允许（仅系统在成员离开时产生；UI 保留未指派展示，不提供主动清空）。
+  - [x] member 只能编辑/删除**自己负责**的任务；owner/admin 可操作任意任务；编辑他人负责任务触发 `task_changed_by_admin` 通知；指派触发 `task_assigned`（指派给自己不产生通知）。
+  - [x] 子任务/评论规则同 P-2；团队任务评论全员可发、本人可删。
+  - [x] 每条权限分支一个服务层测试（`service.test.ts` 25 例 + `permissions.test.ts` 矩阵）。
 
-#### [~] J-3 团队项目页：列表视图　`M`　Depends: J-2
+#### [x] J-3 团队项目页：列表视图　`M`　Depends: J-2
 
 - 对照 `project-list.html`：状态/责任人/截止日期筛选排序、分页、9+ 行密度、进度内联（子任务比例 + 无子任务状态映射文案）、新建任务弹窗（项目选择含个人空间三项 + 本团队项目，与我的任务页同口径）、已完成置灰。
+- 落地与原型差异（控制器裁决）：新建任务弹窗只列**本团队项目**（团队页面上建个人任务会把入口与权限混在一起）；不做「按责任人」排序（只做筛选）。
 
-#### [~] J-4 团队项目页：看板拖拽　`M`　Depends: J-2
+#### [x] J-4 团队项目页：看板拖拽　`M`　Depends: J-2
 
 - 对照 `project-board.html`：选定拖拽库（记录选型理由）；三列拖放即改状态、乐观更新失败回滚；移动端降级为可用（按钮或单列，不要求拖拽）。
+- 选型：`@dnd-kit/core`（`PointerSensor` 6px 激活距离 + `KeyboardSensor`），不依赖 HTML5 DnD，键盘可达。冒烟时用鼠标指针序列验证拖放（Playwright `dragTo` 走 HTML5 事件，不触发 dnd-kit，不要用它判断回归）。
 
-#### [~] J-5 团队任务详情页　`M`　Depends: J-2
+#### [x] J-5 团队任务详情页　`M`　Depends: J-2
 
 - Files: `teams/[teamSlug]/projects/[projectSlug]/tasks/[taskId]/page.tsx`
 - 对照 `task-detail.html`：编辑控件按角色/责任人显隐且 action 端再校验；跨空间 URL 不可互访（个人任务 URL 用团队路径访问返回 404）。
+- 冒烟修正：只读态（member 打开他人任务）原先仍显示「更改」「标记为已完成」与子任务勾选/增删入口，已在共享件 `TaskDetailView` 按 `permissions.canEdit` 统一门禁（`TaskDetailView.test.ts` 回归）。
 
 ### 轨道 N：通知与 cron
 
@@ -415,6 +418,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 - [ ] 从 `m1-frozen` 合入 J、N 两条 track；核验 N-1 接线清单每个调用点存在、参数正确、个人空间无指派/评论类通知。
 - [ ] 全量检查绿；cron 在共享测试库手跑两次，验证幂等（同任务同类型仅一条）。
 - [ ] 合入 main，打 tag **`m2-frozen`**，删 track worktree；D/G 从此 tag 拉。
+- [ ] J 轨道移交的集成议题：① N-1 接线清单必须覆盖 J-2 的 `task_assigned / task_changed_by_admin / task_commented`（调用点已在 `features/tasks/service.ts`：创建/改派 → `task_assigned`；owner/admin 改内容 → `task_changed_by_admin`；评论 → `task_commented`，均跳过本人）；② J 侧 `notifySafely`（嵌套事务 savepoint 捕获 23505）是 N-1 交付前的临时去重，N-1 实现幂等后可移除；③ 团队侧栏 `TeamsNav` 由 J-1 直接扩展（所有权例外，§4）；④ 新 worktree 跑 typecheck 前先 `pnpm exec next typegen`（`PageProps` 全局类型由 Next 生成）；⑤ `pnpm --filter @open-doing/web build` 需显式 `DATABASE_URL`（`db/client.ts` 生产态抛错）；⑥ 浏览器冒烟遗留物：`message` 静态调用警告为全仓既有模式（T 已记 INT-1 议题 ⑤：`providers.tsx` 加 antd `App` 包裹）。
 
 **M2 出口检查**：团队项目协作全流程（建项→派活→评论→拖看板→收到通知）；cron 手动触发产生且只产生一条提醒。
 

@@ -418,11 +418,20 @@ export function TaskDetailView({
           <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
             子任务 · {completed}/{total}
           </h2>
+          {/* 子任务与状态同属编辑权：只读态下复选框禁用、增删入口隐藏。 */}
           <SubtaskList
             subtasks={subtasks}
-            onToggle={handleToggleSubtask}
-            onAdd={onAction.addSubtask ? handleAddSubtask : undefined}
-            onRemove={onAction.removeSubtask ? handleRemoveSubtask : undefined}
+            onToggle={permissions.canEdit ? handleToggleSubtask : undefined}
+            onAdd={
+              permissions.canEdit && onAction.addSubtask
+                ? handleAddSubtask
+                : undefined
+            }
+            onRemove={
+              permissions.canEdit && onAction.removeSubtask
+                ? handleRemoveSubtask
+                : undefined
+            }
           />
 
           <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
@@ -441,20 +450,24 @@ export function TaskDetailView({
           <div>
             <MetaRow label="状态">
               <StatusTag status={status} />
-              <Dropdown
-                trigger={["click"]}
-                disabled={statusPending !== null}
-                menu={{
-                  items: statusMenuItems,
-                  onClick: ({ key }) => {
-                    void changeStatus(key as TaskStatus);
-                  },
-                }}
-              >
-                <Button type="text" size="small" className="px-1">
-                  更改
-                </Button>
-              </Dropdown>
+              {/* 只读（团队态非责任人 / 非管理员）时不给状态切换入口：
+                  服务层同样会拒绝，但界面不应先给出可点的假象。 */}
+              {permissions.canEdit ? (
+                <Dropdown
+                  trigger={["click"]}
+                  disabled={statusPending !== null}
+                  menu={{
+                    items: statusMenuItems,
+                    onClick: ({ key }) => {
+                      void changeStatus(key as TaskStatus);
+                    },
+                  }}
+                >
+                  <Button type="text" size="small" className="px-1">
+                    更改
+                  </Button>
+                </Dropdown>
+              ) : null}
             </MetaRow>
 
             <MetaRow label="责任人">
@@ -588,16 +601,18 @@ export function TaskDetailView({
               </Button>
             ) : null}
 
-            <Button
-              block
-              loading={statusPending === nextStatus}
-              disabled={statusPending !== null}
-              onClick={() => {
-                void changeStatus(nextStatus);
-              }}
-            >
-              {status === "done" ? "标记为未完成" : "标记为已完成"}
-            </Button>
+            {permissions.canEdit ? (
+              <Button
+                block
+                loading={statusPending === nextStatus}
+                disabled={statusPending !== null}
+                onClick={() => {
+                  void changeStatus(nextStatus);
+                }}
+              >
+                {status === "done" ? "标记为未完成" : "标记为已完成"}
+              </Button>
+            ) : null}
 
             {permissions.canDelete ? (
               <Button danger block onClick={() => setDeleteOpen(true)}>

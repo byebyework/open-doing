@@ -4,12 +4,12 @@ import type { Subtask } from "@open-doing/types";
 import { Button, Checkbox, Input } from "antd";
 import { useState } from "react";
 
-/** 子任务列表入参（`onAdd` / `onRemove` 缺省时隐藏对应 UI）。 */
+/** 子任务列表入参（`onToggle` / `onAdd` / `onRemove` 缺省时对应 UI 只读或隐藏）。 */
 export interface SubtaskListProps {
   /** 子任务列表（保持调用方给定顺序）。 */
   subtasks: Subtask[];
-  /** 勾选 / 取消勾选子任务。 */
-  onToggle: (subtaskId: string, completed: boolean) => Promise<void>;
+  /** 勾选 / 取消勾选子任务；缺省时复选框只读（团队只读态）。 */
+  onToggle?: (subtaskId: string, completed: boolean) => Promise<void>;
   /** 新增子任务；缺省时隐藏底部输入行。 */
   onAdd?: (title: string) => Promise<void>;
   /** 删除子任务；缺省时隐藏每项的删除按钮。 */
@@ -33,7 +33,7 @@ export function SubtaskList({
   const [adding, setAdding] = useState(false);
 
   async function handleToggle(subtask: Subtask, completed: boolean) {
-    if (pendingId) return;
+    if (!onToggle || pendingId) return;
 
     setPendingId(subtask.id);
     try {
@@ -86,8 +86,9 @@ export function SubtaskList({
             >
               <Checkbox
                 checked={subtask.completed}
-                disabled={pendingId === subtask.id}
+                disabled={!onToggle || pendingId === subtask.id}
                 onChange={(event) => {
+                  if (!onToggle) return;
                   void handleToggle(subtask, event.target.checked);
                 }}
               >
