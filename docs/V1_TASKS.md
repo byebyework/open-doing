@@ -270,7 +270,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 - Files: `my/projects/[projectSlug]/page.tsx`（列表段）、同目录看板（query/seg 切换均可）、`components/ProjectTaskTable.tsx`、`PersonalKanban.tsx`
 - 对照原型 `personal-project.html` / `-board.html`：
-  - [ ] 4 列表格（无责任人列）、状态/排序筛选、共 N 条；无子任务行展示"无子任务，按状态计 50%"；已完成行置灰删除线。
+  - [x] 4 列表格（无责任人列）、状态/排序筛选、共 N 条；无子任务行展示"无子任务，按状态计 50%"；已完成行置灰删除线。
   - [x] 看板三列（未开始/进行中/已完成），HTML5/拖拽库拖卡即调 action 改状态，失败回滚并 message 提示。
   - [x] 列表/看板视图切换；新建任务弹窗项目选择仅本人项目 + "不属于项目"，无责任人字段。
   - [x] 面包屑「个人空间 / 项目名」；空项目有空状态引导。
