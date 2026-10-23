@@ -88,4 +88,15 @@ export interface TaskDetailViewProps {
    * 显式传入，避免非责任人看不到自己评论的删除入口。
    */
   currentUserId?: string;
+  /**
+   * 可指派成员选项（J-5 加法扩展）：仅在团队态、`permissions.canAssign`
+   * 为 true 且同时提供 `onAssign` 时渲染责任人选择器；个人页不传，
+   * 行为零变化。
+   */
+  assigneeOptions?: { id: string; name: string }[];
+  /**
+   * 改派回调（J-5 加法扩展）。失败时应抛出，组件据此回滚选中值；
+   * 提示文案由调用方负责。
+   */
+  onAssign?: (assigneeId: string) => Promise<void>;
 }

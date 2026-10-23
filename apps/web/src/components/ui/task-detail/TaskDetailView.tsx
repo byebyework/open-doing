@@ -12,6 +12,7 @@ import {
   Form,
   Input,
   Modal,
+  Select,
   type MenuProps,
 } from "antd";
 import Link from "next/link";
@@ -193,7 +194,8 @@ function EditTaskModal({
  *
  * 两栏布局对照 `docs/prototypes/task-detail.html`；个人态文案适配：
  * - 隐藏团队语境的 info callout 与「全员可评论」后缀；
- * - 责任人只展示本人，不提供选择器（团队选择器留给 J-5）；
+ * - 个人态责任人只展示本人，不提供选择器；团队态在可改派时渲染选择器
+ *   （J-5 加法扩展，见 `assigneeOptions` / `onAssign`）；
  * - 无子任务时进度按任务状态计算。
  *
  * 所有交互都通过 `onAction` 回调上抛，本组件不直接依赖 Server Actions。
@@ -205,6 +207,8 @@ export function TaskDetailView({
   onAction,
   backHref = "/my",
   currentUserId,
+  assigneeOptions,
+  onAssign,
 }: TaskDetailViewProps) {
   const router = useRouter();
   const today = todayInShanghai();
@@ -226,6 +230,17 @@ export function TaskDetailView({
     setSyncedSubtasks(task.subtasks);
     setSubtasks(task.subtasks);
   }
+
+  // 责任人选择器（J-5）：乐观选中，失败回滚；服务端刷新后以 props 为准。
+  const [assigneeId, setAssigneeId] = useState<string | null>(task.assigneeId);
+  const [syncedAssigneeId, setSyncedAssigneeId] = useState<string | null>(
+    task.assigneeId,
+  );
+  if (task.assigneeId !== syncedAssigneeId) {
+    setSyncedAssigneeId(task.assigneeId);
+    setAssigneeId(task.assigneeId);
+  }
+  const [assigneePending, setAssigneePending] = useState(false);
 
   const [statusPending, setStatusPending] = useState<TaskStatus | null>(null);
   const [editOpen, setEditOpen] = useState(false);
@@ -297,6 +312,23 @@ export function TaskDetailView({
       await onAction.removeSubtask(subtaskId);
     } catch {
       setSubtasks(previous);
+    }
+  }
+
+  async function handleAssign(nextAssigneeId: string) {
+    if (!onAssign || nextAssigneeId === assigneeId) return;
+
+    const previous = assigneeId;
+    setAssigneeId(nextAssigneeId);
+    setAssigneePending(true);
+
+    try {
+      await onAssign(nextAssigneeId);
+    } catch {
+      // 失败提示由 onAssign 实现负责；回滚选中值。
+      setAssigneeId(previous);
+    } finally {
+      setAssigneePending(false);
     }
   }
 
@@ -426,7 +458,43 @@ export function TaskDetailView({
             </MetaRow>
 
             <MetaRow label="责任人">
-              {task.assigneeName ? (
+              {space === "team" &&
+              permissions.canAssign &&
+              assigneeOptions &&
+              onAssign ? (
+                <Select
+                  size="small"
+                  showSearch
+                  optionFilterProp="label"
+                  aria-label="责任人"
+                  style={{ width: 170 }}
+                  value={assigneeId ?? undefined}
+                  placeholder="未指派"
+                  loading={assigneePending}
+                  disabled={assigneePending}
+                  // 未指派是占位，不是可选项：成员离职后任务保留未指派状态，
+                  // 但改派只能指向团队内成员（控制器裁决 5）。
+                  options={[
+                    ...assigneeOptions,
+                    ...(assigneeId &&
+                    !assigneeOptions.some((option) => option.id === assigneeId)
+                      ? [
+                          {
+                            id: assigneeId,
+                            name: task.assigneeName ?? "已离开成员",
+                          },
+                        ]
+                      : []),
+                  ].map((option) => ({
+                    value: option.id,
+                    label: option.name,
+                    disabled: option.id === assigneeId,
+                  }))}
+                  onChange={(value) => {
+                    void handleAssign(value);
+                  }}
+                />
+              ) : task.assigneeName ? (
                 <>
                   <UserAvatar username={task.assigneeName} size={24} />
                   <span className="min-w-0 break-words">
