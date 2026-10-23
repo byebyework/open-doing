@@ -17,7 +17,7 @@
 | F | 基座（串行） | M0 | | ✅ |
 | P | 个人空间 | M1 | | ✅ |
 | T | 团队 / 邀请 / 角色 | M1 | asher | ✅ |
-| J | 团队项目与任务 | M2（Depends T） | | ⬜ |
+| J | 团队项目与任务 | M2（Depends T） | asher | 🟡 |
 | N | 通知与 cron | M2（接口 M0 冻结） | | ⬜ |
 | D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
 | G | 团队治理 | M3（Depends T/J） | | ⬜ |
@@ -138,7 +138,7 @@ createNotification(input: {...}): Promise<void>         // features/notification
 | `src/app/theme.ts`、`src/app/providers.tsx`、`globals.css` | F | 不改 |
 | `src/components/layout/**`、`src/app/(dashboard)/layout.tsx` | F（M0 后冻结） | **任何轨道不得再改**；导航一律改两个桩文件 |
 | 导航桩 `features/personal/components/PersonalNav.tsx` | F 播种 → P（P-5 接线） | 只渲染，不改结构 |
-| 导航桩 `features/teams/components/TeamsNav.tsx` | F 播种 → T（T-1 接线） | 同上 |
+| 导航桩 `features/teams/components/TeamsNav.tsx` | F 播种 → T（T-1 接线）→ **J（J-1 例外：单人开发，团队项目二级导航由 J 直接扩）** | 同上 |
 | `src/features/auth/**`、`src/features/users/**` | F/T | 只读 `getCurrentUser` 等 |
 | `src/features/personal/**`（新建目录，含个人项目/任务页面私有件） | P | 不碰 |
 | `src/features/teams/**` | T、G（G 在 M3 接管治理部分） | J 只读权限函数 |
@@ -353,7 +353,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 ### 轨道 J：团队项目与任务
 
-#### J-1 团队项目 CRUD　`M`　Depends: T-4
+#### [~] J-1 团队项目 CRUD　`M`　Depends: T-4
 
 - Files: `features/projects/{service,actions}.ts`、项目新建/编辑/删除入口（项目设置放项目页内轻量入口；危险删除在 G-4 完善 UI，本任务先有权限保护的 action + 基础确认）
 - 验收：
@@ -361,7 +361,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [ ] 删除二次确认 + 级联任务/子任务/评论/通知。
   - [ ] 项目出现在团队侧栏段与团队概览数据源（页面 D-1 再消费）。
 
-#### J-2 团队任务服务：创建/编辑/指派/删除　`L`　Depends: J-1（分支自 `m1-frozen`，P-4 的 TaskDetailView 与纯函数已在基线中）
+#### [~] J-2 团队任务服务：创建/编辑/指派/删除　`L`　Depends: J-1（分支自 `m1-frozen`，P-4 的 TaskDetailView 与纯函数已在基线中）
 
 - Files: `features/tasks/{service,actions}.ts`
 - 验收：
@@ -370,15 +370,15 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [ ] 子任务/评论规则同 P-2；团队任务评论全员可发、本人可删。
   - [ ] 每条权限分支一个服务层测试。
 
-#### J-3 团队项目页：列表视图　`M`　Depends: J-2
+#### [~] J-3 团队项目页：列表视图　`M`　Depends: J-2
 
 - 对照 `project-list.html`：状态/责任人/截止日期筛选排序、分页、9+ 行密度、进度内联（子任务比例 + 无子任务状态映射文案）、新建任务弹窗（项目选择含个人空间三项 + 本团队项目，与我的任务页同口径）、已完成置灰。
 
-#### J-4 团队项目页：看板拖拽　`M`　Depends: J-2
+#### [~] J-4 团队项目页：看板拖拽　`M`　Depends: J-2
 
 - 对照 `project-board.html`：选定拖拽库（记录选型理由）；三列拖放即改状态、乐观更新失败回滚；移动端降级为可用（按钮或单列，不要求拖拽）。
 
-#### J-5 团队任务详情页　`M`　Depends: J-2
+#### [~] J-5 团队任务详情页　`M`　Depends: J-2
 
 - Files: `teams/[teamSlug]/projects/[projectSlug]/tasks/[taskId]/page.tsx`
 - 对照 `task-detail.html`：编辑控件按角色/责任人显隐且 action 端再校验；跨空间 URL 不可互访（个人任务 URL 用团队路径访问返回 404）。
