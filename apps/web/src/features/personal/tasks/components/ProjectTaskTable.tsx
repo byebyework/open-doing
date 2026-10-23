@@ -195,10 +195,10 @@ export function ProjectTaskTable({
                         <div className="flex min-w-0 items-center gap-1">
                           <Link
                             href={`/my/tasks/${task.id}`}
-                            className={`min-w-0 break-words font-medium no-underline hover:underline ${
+                            className={`min-w-0 break-words font-medium ${
                               done
                                 ? "text-[#9aa0a6] line-through"
-                                : "text-[#0e1318]"
+                                : "text-[#0e1318] no-underline hover:underline"
                             }`}
                           >
                             {task.title}
