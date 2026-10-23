@@ -282,6 +282,40 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       expect(row).toMatchObject({ userId: member.id, actorId: owner.id });
     });
 
+    it("owner 原样保存（字段值未变）不产生 task_changed_by_admin，也不推进 updatedAt", async () => {
+      const { owner, team, project } = await setupTeamWithProject(db);
+      const member = await createUser(db, uniqueName("member"));
+      await addMember(db, team.id, member.id, "member");
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "待办",
+          description: "原始描述",
+          dueDate: "2026-11-01",
+          assigneeId: member.id,
+        },
+        db,
+      );
+
+      // 编辑弹窗会原样回传全部字段：值都没变时不应算作「管理员改动」。
+      const saved = await updateTeamTask(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          title: "待办",
+          description: "原始描述",
+          dueDate: "2026-11-01",
+        },
+        db,
+      );
+
+      expect(await countNotifications(db, task.id, "task_changed_by_admin")).toBe(0);
+      expect(saved.updatedAt).toBe(task.updatedAt);
+    });
+
     it("owner 改自己负责的任务不产生 task_changed_by_admin", async () => {
       const { owner, team, project } = await setupTeamWithProject(db);
       const task = await createTeamTask(

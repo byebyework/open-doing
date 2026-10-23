@@ -149,6 +149,7 @@ function TeamKanbanCard({
   today,
   assigneeName,
   draggable,
+  editable,
   onChanged,
 }: {
   teamId: string;
@@ -156,6 +157,7 @@ function TeamKanbanCard({
   today: string;
   assigneeName: string | null;
   draggable: boolean;
+  editable: boolean;
   onChanged: () => void;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } =
@@ -227,7 +229,7 @@ function TeamKanbanCard({
         <TeamTaskStatusButtons
           teamId={teamId}
           task={task}
-          editable={draggable}
+          editable={editable}
           onChanged={onChanged}
         />
       </div>
@@ -243,6 +245,7 @@ function TeamKanbanColumn({
   today,
   assigneeNames,
   canDragTask,
+  canEditThisTask,
   onNewTask,
   onChanged,
 }: {
@@ -252,6 +255,7 @@ function TeamKanbanColumn({
   today: string;
   assigneeNames: Map<string, string>;
   canDragTask: (task: TeamTaskRow) => boolean;
+  canEditThisTask: (task: TeamTaskRow) => boolean;
   onNewTask: () => void;
   onChanged: () => void;
 }) {
@@ -305,6 +309,7 @@ function TeamKanbanColumn({
                   : null
               }
               draggable={canDragTask(task)}
+              editable={canEditThisTask(task)}
               onChanged={onChanged}
             />
           ))
@@ -381,9 +386,13 @@ export function TeamKanban({
     return result;
   }, [filtered]);
 
-  function canDragTask(task: TeamTaskRow): boolean {
-    if (!isDesktop) return false;
+  /** 编辑权只看角色/责任人，与视口无关；窄屏同样可用状态按钮流转。 */
+  function canEditThisTask(task: TeamTaskRow): boolean {
     return canEditTask({ role, actorId, assigneeId: task.assigneeId });
+  }
+
+  function canDragTask(task: TeamTaskRow): boolean {
+    return isDesktop && canEditThisTask(task);
   }
 
   async function handleDragEnd(event: DragEndEvent) {
@@ -490,6 +499,7 @@ export function TeamKanban({
               today={today}
               assigneeNames={assigneeNames}
               canDragTask={canDragTask}
+              canEditThisTask={canEditThisTask}
               onNewTask={() => setNewTaskOpen(true)}
               onChanged={() => router.refresh()}
             />

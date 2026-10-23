@@ -311,23 +311,42 @@ export async function updateTeamTask(
       | "updatedAt"
     >
   > = {};
+  // 出现内容字段即要求 `task:edit`（防止用原值探测权限）；
+  // 只有值真的变了才写库、推进 `updatedAt` 或通知原责任人。
   let hasContentChange = false;
+  let hasValueChange = false;
 
   if (input.title !== undefined) {
-    changes.title = validateTaskTitle(input.title);
     hasContentChange = true;
+    const title = validateTaskTitle(input.title);
+    if (title !== existing.task.title) {
+      changes.title = title;
+      hasValueChange = true;
+    }
   }
   if (input.description !== undefined) {
-    changes.description = normalizeTaskDescription(input.description);
     hasContentChange = true;
+    const description = normalizeTaskDescription(input.description);
+    if ((description ?? null) !== (existing.task.description ?? null)) {
+      changes.description = description;
+      hasValueChange = true;
+    }
   }
   if (input.dueDate !== undefined) {
-    changes.dueDate = validateTaskDueDate(input.dueDate);
     hasContentChange = true;
+    const dueDate = validateTaskDueDate(input.dueDate);
+    if ((dueDate ?? null) !== (existing.task.dueDate ?? null)) {
+      changes.dueDate = dueDate;
+      hasValueChange = true;
+    }
   }
   if (input.status !== undefined) {
-    changes.status = validateTaskStatus(input.status);
     hasContentChange = true;
+    const status = validateTaskStatus(input.status);
+    if (status !== existing.task.status) {
+      changes.status = status;
+      hasValueChange = true;
+    }
   }
 
   if (hasContentChange) {
@@ -382,7 +401,7 @@ export async function updateTeamTask(
 
     const isAdminEdit = existing.role === "owner" || existing.role === "admin";
     if (
-      hasContentChange &&
+      hasValueChange &&
       isAdminEdit &&
       currentAssigneeId !== null &&
       currentAssigneeId !== actorId
