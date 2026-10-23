@@ -1,10 +1,11 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentUser } from "@/features/auth/session";
+import { TeamPermissionError } from "@/features/teams/permissions";
 import type { Team } from "@open-doing/types";
 
-import { createTeamAction } from "./actions";
-import { TeamError, createTeam } from "./service";
+import { createTeamAction, renameTeamAction } from "./actions";
+import { TeamError, createTeam, renameTeam } from "./service";
 
 /**
  * actions 层只负责 session -> actorId -> service 的衔接与错误映射。
@@ -19,11 +20,12 @@ vi.mock("@/features/auth/session", async (importOriginal) => {
 
 vi.mock("./service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./service")>();
-  return { ...actual, createTeam: vi.fn() };
+  return { ...actual, createTeam: vi.fn(), renameTeam: vi.fn() };
 });
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockCreateTeam = vi.mocked(createTeam);
+const mockRenameTeam = vi.mocked(renameTeam);
 
 const fakeTeam: Team = {
   id: "00000000-0000-0000-0000-000000000001",
@@ -74,5 +76,47 @@ describe("团队 actions", () => {
     const result = await createTeamAction({ name: "团" });
 
     expect(result).toEqual({ ok: false, errors: { name: "团队名称需为 2–30 个字符" } });
+  });
+
+  it("renameTeamAction：未登录返回「请先登录」", async () => {
+    mockGetCurrentUser.mockResolvedValue(null);
+
+    expect(await renameTeamAction({ teamId: fakeTeam.id, name: "新名字" })).toEqual({
+      ok: false,
+      errors: { form: "请先登录" },
+    });
+  });
+
+  it("renameTeamAction：member 直调被拒（权限错误映射为 form 错误）", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: "member-id",
+      uid: "doing_2vbd81",
+      username: "member",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    mockRenameTeam.mockRejectedValue(new TeamPermissionError("team:rename"));
+
+    const result = await renameTeamAction({ teamId: fakeTeam.id, name: "新名字" });
+
+    expect(result).toEqual({ ok: false, errors: { form: "没有权限执行该操作" } });
+  });
+
+  it("renameTeamAction：成功路径以会话用户为 actorId 调 service", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: fakeTeam.ownerId,
+      uid: "doing_x7k2m9",
+      username: "alice",
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    mockRenameTeam.mockResolvedValue({ ...fakeTeam, name: "新名字" });
+
+    const result = await renameTeamAction({ teamId: fakeTeam.id, name: "新名字" });
+
+    expect(result).toEqual({ ok: true, data: { ...fakeTeam, name: "新名字" } });
+    expect(mockRenameTeam).toHaveBeenCalledWith({
+      teamId: fakeTeam.id,
+      actorId: fakeTeam.ownerId,
+      name: "新名字",
+    });
   });
 });
