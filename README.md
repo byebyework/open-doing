@@ -37,32 +37,53 @@ packages/
 
 ## 本地开发（Quickstart）
 
-### 0. 前置条件
+### 方式 A：一键启动（全部在 Docker 中运行）
+
+```bash
+docker compose up --build
+```
+
+首次启动会构建镜像、安装依赖、执行数据库迁移，然后启动 Next.js 开发服务器；打开 http://localhost:3000 即可使用。
+
+- 修改源码会自动热更新；修改 `package.json` / `pnpm-lock.yaml` 后需 `docker compose up --build` 重建镜像。
+- 基础镜像默认 `node:20-alpine`（满足项目 `>=20.11` 要求；网络允许时可设 `NODE_VERSION=22` 或 `24` 升级）；依赖源默认 `https://registry.npmmirror.com`（适配国内网络），海外环境可设 `NPM_REGISTRY=https://registry.npmjs.org`。
+- 数据保存在 `postgres_data` 卷中；`docker compose down` 停止，`docker compose down -v` 连同数据一起清空。
+- 可在仓库根 `.env`（不入库）中覆盖 `WEB_PORT`（默认 3000）、`POSTGRES_PORT`（默认 5432）、`SESSION_SECRET`、`CRON_SECRET`。容器内 `DATABASE_URL` 固定指向 `postgres` 服务，**不需要** `apps/web/.env.local`。
+- 与下面的「方式 B」不能同时运行（都会占用 3000 端口，PostgreSQL 端口也相同）。
+- 若 macOS/Windows 下热更新不生效，先确认 Docker Desktop 的文件共享正常；compose 已为应用容器设置 `WATCHPACK_POLLING=true`。
+
+### 方式 B：宿主机运行应用，Docker 只提供 PostgreSQL
+
+以下步骤均在宿主机执行。
+
+#### 0. 前置条件
 
 - Node.js >= 20.11（含 Next.js 16 与 vitest 配置所需）
 - pnpm 10（`corepack enable` 后由根 `packageManager` 字段自动选择版本）
 - Docker（含 Compose v2）
 
-### 1. 安装依赖
+#### 1. 安装依赖
 
 ```bash
 pnpm install
 ```
 
-### 2. 启动 PostgreSQL
+#### 2. 启动 PostgreSQL
 
 在仓库根目录执行：
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
-`docker-compose.yml`（仓库根）启动 `postgres:17-alpine`，容器内创建开发库 `open_doing`，并由 `docker/initdb/01-create-test-db.sh` 创建测试库 `open_doing_test`。
+这里只启动 `postgres` 服务；直接 `docker compose up -d` 会连同 web 应用一起启动（见「方式 A」），与宿主机 `pnpm dev` 争用 3000 端口。
 
-- 本机 5432 端口被占用时，用环境变量换端口：`POSTGRES_PORT=5433 docker compose up -d`。`POSTGRES_PORT` 只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
+`docker-compose.yml`（仓库根）的 `postgres` 服务使用 `postgres:17-alpine`，容器内创建开发库 `open_doing`，并由 `docker/initdb/01-create-test-db.sh` 创建测试库 `open_doing_test`。
+
+- 本机 5432 端口被占用时，用环境变量换端口：`POSTGRES_PORT=5433 docker compose up -d postgres`。`POSTGRES_PORT` 只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
 - 初始化脚本只在数据卷为空时执行。若数据卷是早期创建的、测试库不存在：`docker compose down -v` 后重新启动（会清空数据），或手动 `CREATE DATABASE open_doing_test;`。
 
-### 3. 配置环境变量
+#### 3. 配置环境变量
 
 Next.js 从 `apps/web` 目录解析环境变量（不是仓库根），因此把示例文件复制到 `apps/web/.env.local`：
 
@@ -83,7 +104,7 @@ cp .env.example apps/web/.env.local
 
 `.env.local` 已被 `.gitignore` 忽略，不入库；需要新增变量时同步更新根目录的 `.env.example`。
 
-### 4. 运行数据库迁移
+#### 4. 运行数据库迁移
 
 迁移只针对 `DATABASE_URL`（开发库）。drizzle-kit 读取的是 **shell 环境变量**（它不会自动加载 `apps/web/.env.local`），先把变量导入当前 shell，再执行迁移：
 
@@ -94,7 +115,7 @@ pnpm --filter @open-doing/web db:migrate
 
 修改 `apps/web/src/server/db/schema.ts` 后，用 `pnpm --filter @open-doing/web db:generate` 生成新迁移，再执行 `db:migrate`。迁移可在空库上重放。
 
-### 5. 启动应用
+#### 5. 启动应用
 
 ```bash
 pnpm dev
@@ -118,7 +139,7 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 测试说明：
 
 - 运行测试前先加载环境变量（vitest 不读取 `apps/web/.env.local`，否则数据库用例会静默跳过）：`set -a; source apps/web/.env.local; set +a`（bash/zsh），再执行 `pnpm test`。
-- 数据库用例只读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空**测试库**，因此需要先 `docker compose up -d`；未设置该变量时用例会跳过并打印提示。开发服务器始终连接 `DATABASE_URL`，运行测试不会清空开发数据。
+- 数据库用例只读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空**测试库**，因此需要先 `docker compose up -d postgres`；未设置该变量时用例会跳过并打印提示。开发服务器始终连接 `DATABASE_URL`，运行测试不会清空开发数据。
 - 多个测试文件共用同一个测试库，Vitest 配置为串行执行测试文件，避免互相清库。
 - 类型检查顺序：Next 16 的路由类型由构建生成。干净 checkout 上请按 **`pnpm build`（或 `pnpm --filter @open-doing/web exec next typegen`）→ `pnpm typecheck`** 的顺序执行（本地与 CI 同序）；已有 `.next` 构建产物时可直接 `pnpm typecheck`。
 

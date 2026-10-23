@@ -1,0 +1,16 @@
+# 依赖与构建产物由容器内重新生成
+**/node_modules
+**/.next
+**/coverage
+**/*.tsbuildinfo
+
+# 本地环境变量与机密不入镜像
+**/.env*
+!**/.env.example
+
+# 无需进入镜像的本地/文档文件
+.git
+.gitignore
+.DS_Store
+docs
+**/*.log

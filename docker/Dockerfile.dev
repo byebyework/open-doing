@@ -1,0 +1,36 @@
+# 本地一键启动的开发镜像（docker compose up 使用）。
+# 运行时源码通过 bind mount 覆盖 /app，依赖装在命名卷里由 entrypoint 对齐 lockfile。
+# 默认 Node 20（本机镜像源可稳定拉取，满足项目 >=20.11 的要求）；
+# 网络允许时可设 NODE_VERSION=22 或 24 升级基础镜像。
+ARG NODE_VERSION=20
+FROM node:${NODE_VERSION}-alpine
+
+# 依赖下载源。国内网络默认走 npmmirror（由 docker-compose.yml 传入），
+# 其他环境可用 NPM_REGISTRY=https://registry.npmjs.org docker compose build 覆盖。
+ARG NPM_REGISTRY=https://registry.npmjs.org
+ENV npm_config_registry=$NPM_REGISTRY
+ENV COREPACK_NPM_REGISTRY=$NPM_REGISTRY
+
+ENV PNPM_HOME=/pnpm
+ENV PATH=$PNPM_HOME:$PATH
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN corepack enable && corepack prepare pnpm@10.32.1 --activate
+
+WORKDIR /app
+
+# 先只拷贝 workspace 清单，源码变化不会让依赖层缓存失效。
+# 新增 workspace 包时，需要在这里补一行 COPY。
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY packages/types/package.json ./packages/types/package.json
+COPY apps/web/package.json ./apps/web/package.json
+
+RUN pnpm install --frozen-lockfile
+
+# 源码同时打进镜像，便于不挂载源码时直接运行；正常 compose 启动时会被 bind mount 覆盖。
+COPY . .
+
+EXPOSE 3000
+
+ENTRYPOINT ["sh", "/app/docker/entrypoint.dev.sh"]
+CMD ["pnpm", "dev"]
