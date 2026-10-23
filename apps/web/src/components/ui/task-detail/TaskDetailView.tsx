@@ -26,6 +26,7 @@ import { CommentBox } from "@/features/personal/tasks/components/CommentBox";
 import { SubtaskList } from "@/features/personal/tasks/components/SubtaskList";
 import { todayInShanghai } from "@/lib/today";
 
+import { assigneeCalloutText, shouldShowAssigneeCallout } from "./callout";
 import type { TaskDetailModel, TaskDetailViewProps } from "./types";
 
 /** 状态展示顺序（与项目页 / 看板一致）。 */
@@ -490,9 +491,16 @@ export function TaskDetailView({
             </p>
           </div>
 
-          {/* 团队态差异控件判断位：个人态永不渲染原型里的团队语境 callout；
-              责任人选择器留给 J-5（仅保留 canAssign 判断位）。 */}
-          {space === "team" && permissions.canAssign ? (
+          {/* 团队态差异控件：个人态永不渲染原型里的团队语境 callout；
+              文案以责任人视角写成，故按身份（assigneeId === currentUserId）
+              判断——canAssign 表示「可以改派」，owner/admin 也拥有，用它判断
+              会让非责任人看到「你是此任务的责任人」。责任人选择器留给 J-5。 */}
+          {shouldShowAssigneeCallout({
+            space,
+            currentUserId,
+            assigneeId: task.assigneeId,
+            canEdit: permissions.canEdit,
+          }) ? (
             <div
               className="mt-4 flex items-start gap-2 rounded-lg px-3 py-2.5 text-[12px] leading-relaxed"
               style={{
@@ -501,9 +509,7 @@ export function TaskDetailView({
               }}
             >
               <span aria-hidden="true">ℹ</span>
-              <span>
-                你是此任务的责任人，可以编辑任务内容；团队所有成员都可以发表评论。
-              </span>
+              <span>{assigneeCalloutText(permissions.canEdit)}</span>
             </div>
           ) : null}
 
