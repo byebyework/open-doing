@@ -474,9 +474,9 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 #### INT-3 集成 M3（D + G → main）　`M`　Depends: D-1..D-3, G-1..G-4
 
-- [ ] 从 `m2-frozen` 合入 D、G；重点核验 `my/page.tsx`（D 整体替换 F-5 占位）与团队设置页（G 整合 T-2/T-5 区块）的衔接。（D 已合入 main；G 分支设置页已完成 T-2/T-5 区块整合，全量检查绿；G 合入 main 由收尾流程执行）
+- [x] 从 `m2-frozen` 合入 D、G；重点核验 `my/page.tsx`（D 整体替换 F-5 占位）与团队设置页（G 整合 T-2/T-5 区块）的衔接。（D 已随 e460ea9 合入 main；G 与本提交一同合入 main）
 - [x] 全量检查绿；按角色矩阵跑一遍手工冒烟（owner/admin/member/非成员/本人之外的个人空间访问）。（297/297 测试、typecheck/lint/build 绿；G 手工冒烟覆盖 owner/admin/member，非成员/他人个人空间由服务层测试覆盖）
-- [ ] 合入 main，打 tag **`m3-frozen`**，删 track worktree，X 轨道开始。（合入 main 与打 tag `m3-frozen` 由收尾流程执行）
+- [x] 合入 main，打 tag **`m3-frozen`**，删 track worktree，X 轨道开始。（tag `m3-frozen` 打在本提交）
 
 **M3 出口检查**：设计文档 §1–§10 每条功能都能在运行中的应用里演示；权限矩阵全部分支有自动化测试。
 
