@@ -11,6 +11,9 @@ import { InviteMemberForm } from "@/features/teams/components/InviteMemberForm";
 import { MemberList } from "@/features/teams/components/MemberList";
 import { RenameTeamForm } from "@/features/teams/components/RenameTeamForm";
 import { RescindInviteButton } from "@/features/teams/components/RescindInviteButton";
+import { DissolveTeamButton } from "@/features/teams/members/components/DissolveTeamButton";
+import { LeaveTeamButton } from "@/features/teams/members/components/LeaveTeamButton";
+import { TransferTeamButton } from "@/features/teams/members/components/TransferTeamButton";
 import { listPendingSentInvites } from "@/features/teams/invites/service";
 
 export const metadata: Metadata = {
@@ -21,8 +24,7 @@ export const metadata: Metadata = {
  * 团队设置页（T 轨道骨架）。
  *
  * 所有成员可进：member 仅见只读成员表；owner/admin 额外见邀请区。
- * 改名/危险操作等区块按角色显隐，写操作一律在 action 端再校验。
- * 离开/解散/转让等危险区由 G 轨道在此追加（本轨道不渲染）。
+ * 改名/成员管理/危险操作等区块按角色显隐（G-4），写操作一律在 action 端再校验。
  */
 export default async function TeamSettingsPage(
   props: PageProps<"/teams/[teamSlug]/settings">,
@@ -36,8 +38,21 @@ export default async function TeamSettingsPage(
   if (!team || !membership) notFound();
 
   const canManage = can(membership.role, "team:invite");
+  const canRemoveMember = can(membership.role, "team:remove_member");
+  const canLeave = can(membership.role, "team:leave");
+  const canTransfer = can(membership.role, "team:transfer");
+  const canDissolve = can(membership.role, "team:dissolve");
+
   const members = await listMembers(team.id);
   const pendingSent = canManage ? await listPendingSentInvites(team.id) : [];
+  // 受让人下拉排除当前 owner（转让给自己由 service 拒绝）。
+  const transferCandidates = members
+    .filter(({ membership: memberMembership }) => memberMembership.role !== "owner")
+    .map(({ user: memberUser }) => ({
+      userId: memberUser.id,
+      username: memberUser.username,
+      uid: memberUser.uid,
+    }));
 
   return (
     <div className="mx-auto w-full max-w-[820px] py-8 min-[861px]:py-10">
@@ -92,7 +107,58 @@ export default async function TeamSettingsPage(
 
       <section className="rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
         <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">成员（{members.length}）</h2>
-        <MemberList members={members} />
+        <MemberList members={members} teamSlug={team.slug} canManage={canRemoveMember} />
+      </section>
+
+      <section className="mt-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <h2
+          className="mb-2 text-[15px] font-bold"
+          style={{ color: "var(--ant-color-error)" }}
+        >
+          危险操作
+        </h2>
+
+        {canLeave ? (
+          <div className="flex items-center gap-4 py-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-semibold text-[#0e1318]">退出团队</div>
+              <div className="mt-1 text-[13px] text-[#5f6368]">
+                退出后你负责的任务将变为未指派，由管理员重新分配。
+              </div>
+            </div>
+            <div className="flex-none">
+              <LeaveTeamButton teamSlug={team.slug} />
+            </div>
+          </div>
+        ) : null}
+
+        {canTransfer ? (
+          <div className={canLeave ? "flex items-center gap-4 border-t border-[#e1e3e6] py-3" : "flex items-center gap-4 py-3"}>
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-semibold text-[#0e1318]">转让团队</div>
+              <div className="mt-1 text-[13px] text-[#5f6368]">
+                转让后受让人成为所有者，你将变为管理员；团队内容不受影响。
+              </div>
+            </div>
+            <div className="flex-none">
+              <TransferTeamButton teamSlug={team.slug} candidates={transferCandidates} />
+            </div>
+          </div>
+        ) : null}
+
+        {canDissolve ? (
+          <div className="flex items-center gap-4 border-t border-[#e1e3e6] py-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-[14px] font-semibold text-[#0e1318]">解散团队</div>
+              <div className="mt-1 text-[13px] text-[#5f6368]">
+                仅所有者可操作；将永久删除团队下全部项目、任务、评论与通知。
+              </div>
+            </div>
+            <div className="flex-none">
+              <DissolveTeamButton teamSlug={team.slug} teamName={team.name} />
+            </div>
+          </div>
+        ) : null}
       </section>
     </div>
   );
