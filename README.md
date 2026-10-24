@@ -128,8 +128,8 @@ pnpm --filter @open-doing/web db:seed
 
 | 用户名 | UID | 团队角色 |
 |---|---|---|
-| 林夏 | `doing_x7k2m9` | 所有者（原型中的「管理员」） |
-| 周牧 | `doing_8f3qk2` | 管理员 |
+| 林夏 | `doing_x7k2m9` | 管理员 |
+| 周牧 | `doing_8f3qk2` | 所有者 |
 | 陈默 | `doing_2vbd81` | 成员 |
 | 苏晓 | `doing_5nqc04` | 成员 |
 | 高远 | `doing_6wtp77` | 成员 |

@@ -16,8 +16,9 @@
  *
  * 说明：
  * - 密码统一为 `seed-password`，哈希参数与注册流程一致（@node-rs/argon2 默认参数，Argon2id）。
- * - 角色映射：原型中的「管理员」林夏在本应用中作为团队所有者（owner）；
- *   原型中的所有者周牧映射为管理员（admin），其余成员为 member。
+ * - 角色映射与原型一致：周牧为团队所有者（owner），林夏为管理员（admin），
+ *   其余成员为 member。owner 仅用于转让/解散等重要操作，管理员可重命名、
+ *   邀请、移除成员和管理项目。
  * - 仅读取 `DATABASE_URL`（开发库），绝不触碰测试库 / e2e 库。
  */
 import type { TaskStatus } from "@open-doing/types";
@@ -54,8 +55,8 @@ interface SeedUser {
 
 /** 5 位成员，UID 与角色对照 docs/prototypes/team-settings.html。 */
 const SEED_USERS: readonly SeedUser[] = [
-  { username: "林夏", uid: "doing_x7k2m9", role: "owner" },
-  { username: "周牧", uid: "doing_8f3qk2", role: "admin" },
+  { username: "林夏", uid: "doing_x7k2m9", role: "admin" },
+  { username: "周牧", uid: "doing_8f3qk2", role: "owner" },
   { username: "陈默", uid: "doing_2vbd81", role: "member" },
   { username: "苏晓", uid: "doing_5nqc04", role: "member" },
   { username: "高远", uid: "doing_6wtp77", role: "member" },
@@ -543,7 +544,7 @@ async function seed(): Promise<void> {
         .values({
           name: "增长突击队",
           slug: "growth-squad",
-          ownerId: requireId(userIdByName, "林夏"),
+          ownerId: requireId(userIdByName, "周牧"),
           createdAt: timestampFromOffset(today, -21, 10),
         })
         .returning({ id: teams.id });
