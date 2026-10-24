@@ -170,6 +170,30 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 新增内部包：在 `packages/` 下创建目录，以 `@open-doing/*` 命名，应用中通过 `"workspace:*"` 引用。
 
+## Playwright e2e 测试
+
+五条关键用户流（个人项目与子任务、团队 UID 邀请、看板拖拽、cron 到期提醒幂等、解散团队）位于 `apps/web/e2e/flows/`，使用真实浏览器 + Server Action + 数据库，不依赖种子数据。
+
+前置条件：
+
+- PostgreSQL 已启动（`docker compose up -d postgres`）；e2e 库 `open_doing_e2e` 由 `docker/initdb/02-create-e2e-db.sh` 在数据卷初始化时创建。
+- 首次运行需安装与 `@playwright/test` 版本匹配的 Chromium：`pnpm --filter @open-doing/web exec playwright install chromium`。
+
+运行（在仓库根目录）：
+
+```bash
+pnpm --filter @open-doing/web test:e2e
+# 只跑某一条流
+pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts
+```
+
+运行机制：
+
+- Playwright 在 **3100** 端口启动独立的 `next dev`（不与 docker compose 的 web/3000 冲突），并在 `webServer.env` 中显式注入 `DATABASE_URL=…/open_doing_e2e`、测试专用 `SESSION_SECRET` / `CRON_SECRET`，因此**不需要** `apps/web/.env.local`。
+- 全局准备（`apps/web/e2e/global-setup.ts`）先断言库名必须是 `open_doing_e2e`，再重放 `apps/web/drizzle` 迁移并 TRUNCATE 全部业务表；测试因此可重复运行。
+- `test:e2e` 由 `apps/web/scripts/e2e-with-db-guard.sh` 包裹：运行前后分别打印 `open_doing` 与 `open_doing_test` 的逐表行数，任一发生变化即判失败，证明 e2e 只写 `open_doing_e2e`。
+- 用例串行执行；每个用例通过注册页自建唯一账号。
+
 ## 到期提醒 cron
 
 `POST /api/cron/due-scan` 供外部 cron 定时调用：扫描「未完成、已指派、有截止日期」的任务，为今天/明天到期的任务生成 `task_due_soon` 通知，为已逾期的任务生成 `task_overdue` 通知。鉴权使用 `CRON_SECRET`（见上方环境变量表）：支持 `Authorization: Bearer <secret>` 或 `x-cron-key: <secret>`；`CRON_SECRET` 未配置或为空时一律返回 401。
