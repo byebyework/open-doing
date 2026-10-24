@@ -78,10 +78,10 @@ docker compose up -d postgres
 
 这里只启动 `postgres` 服务；直接 `docker compose up -d` 会连同 web 应用一起启动（见「方式 A」），与宿主机 `pnpm dev` 争用 3000 端口。
 
-`docker-compose.yml`（仓库根）的 `postgres` 服务使用 `postgres:17-alpine`，容器内创建开发库 `open_doing`，并由 `docker/initdb/01-create-test-db.sh` 创建测试库 `open_doing_test`。
+`docker-compose.yml`（仓库根）的 `postgres` 服务使用 `postgres:17-alpine`，容器内创建开发库 `open_doing`，并由 `docker/initdb` 下的初始化脚本创建测试库 `open_doing_test`（`01-create-test-db.sh`）与 Playwright e2e 库 `open_doing_e2e`（`02-create-e2e-db.sh`，供 e2e 用例使用）。
 
 - 本机 5432 端口被占用时，用环境变量换端口：`POSTGRES_PORT=5433 docker compose up -d postgres`。`POSTGRES_PORT` 只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
-- 初始化脚本只在数据卷为空时执行。若数据卷是早期创建的、测试库不存在：`docker compose down -v` 后重新启动（会清空数据），或手动 `CREATE DATABASE open_doing_test;`。
+- `docker/initdb` 中的脚本**只在数据卷为空时执行一次**。若数据卷是早期创建的、`open_doing_test` / `open_doing_e2e` 不存在：`docker compose down -v` 后重新启动（会清空数据），或手动执行 `CREATE DATABASE open_doing_test;` / `CREATE DATABASE open_doing_e2e;`。
 
 #### 3. 配置环境变量
 
@@ -115,7 +115,32 @@ pnpm --filter @open-doing/web db:migrate
 
 修改 `apps/web/src/server/db/schema.ts` 后，用 `pnpm --filter @open-doing/web db:generate` 生成新迁移，再执行 `db:migrate`。迁移可在空库上重放。
 
-#### 5. 启动应用
+#### 5. 写入示例数据（可选）
+
+想直接看到与 `docs/prototypes` 一致的演示数据（团队、项目、任务、子任务、评论），在完成迁移后执行：
+
+```bash
+set -a; source apps/web/.env.local; set +a
+pnpm --filter @open-doing/web db:seed
+```
+
+`db:seed` 会先重放迁移（空库也能直接执行），再写入以下数据：
+
+| 用户名 | UID | 团队角色 |
+|---|---|---|
+| 林夏 | `doing_x7k2m9` | 所有者（原型中的「管理员」） |
+| 周牧 | `doing_8f3qk2` | 管理员 |
+| 陈默 | `doing_2vbd81` | 成员 |
+| 苏晓 | `doing_5nqc04` | 成员 |
+| 高远 | `doing_6wtp77` | 成员 |
+
+- 统一密码：`seed-password`（仅用于本地开发）。推荐用 `林夏` 登录查看 `/my` 与「增长突击队」概览。
+- 数据范围：团队「增长突击队」（3 个团队项目：官网改版 / 移动端 2.0 / Q4 用户增长活动）+ 林夏的 2 个个人项目（学习成长 / 生活琐事），共 29 个任务，覆盖逾期、今天/明天临期、已完成、无截止日期，以及子任务、评论和 1 个未指派团队任务。
+- **日期以执行当天为锚**：原型基准日为 2026-10-21，原型日期 `D` 按 `今天 + (D - 2026-10-21)` 天落库，因此「今天/明天到期、已逾期」的相对状态在任何一天执行都成立。
+- **幂等（守卫式跳过）**：脚本检测到 `林夏` / `doing_x7k2m9` 已存在时，打印「已初始化」并直接退出，不写入、不覆盖任何数据；全部写入在单个事务中完成，失败自动回滚。需要重建示例数据时，先清空开发库（例如 `docker compose down -v`，**会同时清空测试库与 e2e 库，慎用**）后重跑。
+- seed 只读取 `DATABASE_URL`（开发库），不会触碰 `open_doing_test` / `open_doing_e2e`。
+
+#### 6. 启动应用
 
 ```bash
 pnpm dev
@@ -153,6 +178,12 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 ```bash
 curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/due-scan
+```
+
+crontab 示例（每天 09:00 触发一次；cron 使用所在服务器的时区，可配合 `CRON_TZ=Asia/Shanghai` 固定为上海时区）：
+
+```cron
+0 9 * * * curl -fsS -X POST -H "Authorization: Bearer <CRON_SECRET>" http://localhost:3000/api/cron/due-scan
 ```
 
 成功返回 `{ "ok": true, "dueSoon": <本次新增数>, "overdue": <本次新增数> }`。
