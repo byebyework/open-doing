@@ -107,16 +107,16 @@ export default async function TeamSettingsPage(
 
       <section className="rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
         <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">成员（{members.length}）</h2>
-        <MemberList members={members} teamSlug={team.slug} canManage={canRemoveMember} />
+        <MemberList
+          members={members}
+          teamSlug={team.slug}
+          canManage={canRemoveMember}
+          currentUserId={user.id}
+        />
       </section>
 
       <section className="mt-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-        <h2
-          className="mb-2 text-[15px] font-bold"
-          style={{ color: "var(--ant-color-error)" }}
-        >
-          危险操作
-        </h2>
+        <h2 className="mb-2 text-[15px] font-bold text-[#ff5757]">危险操作</h2>
 
         {canLeave ? (
           <div className="flex items-center gap-4 py-3">

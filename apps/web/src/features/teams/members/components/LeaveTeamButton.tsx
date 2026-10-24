@@ -11,7 +11,7 @@ import { leaveTeamAction } from "../actions";
 /**
  * 「退出团队」按钮（member/admin 可见，owner 由页面隐藏）。
  *
- * 退出后任务保留、assignee 置空；成功离开当前团队页（页面将 404）。
+ * 退出后任务保留、assignee 置空；成功后跳转 /my（原团队页已无权访问）。
  */
 export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
   const router = useRouter();

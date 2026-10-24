@@ -19,15 +19,22 @@ export interface MemberListProps {
   teamSlug?: string;
   /** owner/admin 可移除成员；member 只读。 */
   canManage?: boolean;
+  /** 当前登录用户：自己所在行不显示移除按钮（避免自移除后落到 404）。 */
+  currentUserId?: string;
 }
 
 /**
  * 团队成员列表（server 组件）。
  *
- * 只读展示；owner/admin 额外看到每行「移除」按钮（owner 行除外），
+ * 只读展示；owner/admin 额外看到每行「移除」按钮（owner 行与自己的行除外），
  * 成员行的移除操作在 client 组件内二次确认并调用 server action。
  */
-export function MemberList({ members, teamSlug, canManage = false }: MemberListProps) {
+export function MemberList({
+  members,
+  teamSlug,
+  canManage = false,
+  currentUserId,
+}: MemberListProps) {
   const actionTeamSlug = canManage ? teamSlug : undefined;
 
   return (
@@ -60,7 +67,7 @@ export function MemberList({ members, teamSlug, canManage = false }: MemberListP
               <td className="py-2.5 text-[#5f6368]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
               {actionTeamSlug ? (
                 <td className="py-2.5 text-right">
-                  {membership.role === "owner" ? null : (
+                  {membership.role === "owner" || membership.userId === currentUserId ? null : (
                     <RemoveMemberButton
                       teamSlug={actionTeamSlug}
                       targetUserId={user.id}
