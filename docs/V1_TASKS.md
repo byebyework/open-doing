@@ -415,10 +415,10 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 #### INT-2 集成 M2（J + N → main）　`M`　Depends: J-1..J-5, N-1..N-3
 
-- [ ] 从 `m1-frozen` 合入 J、N 两条 track；核验 N-1 接线清单每个调用点存在、参数正确、个人空间无指派/评论类通知。
-- [ ] 全量检查绿；cron 在共享测试库手跑两次，验证幂等（同任务同类型仅一条）。
-- [ ] 合入 main，打 tag **`m2-frozen`**，删 track worktree；D/G 从此 tag 拉。
-- [ ] J 轨道移交的集成议题：① N-1 接线清单必须覆盖 J-2 的 `task_assigned / task_changed_by_admin / task_commented`（调用点已在 `features/tasks/service.ts`：创建/改派 → `task_assigned`；owner/admin 改内容 → `task_changed_by_admin`；评论 → `task_commented`，均跳过本人）；② J 侧 `notifySafely`（嵌套事务 savepoint 捕获 23505）是 N-1 交付前的临时去重，N-1 实现幂等后可移除（N 轨道已用部分唯一索引 + `features/notifications/due-scan.ts` 的裸 `onConflictDoNothing` 实现幂等；`features/tasks/service.ts` 中 `notifySafely` 的移除由集成负责人酌情裁决）；③ 团队侧栏 `TeamsNav` 由 J-1 直接扩展（所有权例外，§4）；④ 新 worktree 跑 typecheck 前先 `pnpm exec next typegen`（`PageProps` 全局类型由 Next 生成）；⑤ `pnpm --filter @open-doing/web build` 需显式 `DATABASE_URL`（`db/client.ts` 生产态抛错）；⑥ 浏览器冒烟遗留物：`message` 静态调用警告为全仓既有模式（T 已记 INT-1 议题 ⑤：`providers.tsx` 加 antd `App` 包裹）。
+- [x] 从 `m1-frozen` 合入 J、N 两条 track；核验 N-1 接线清单每个调用点存在、参数正确、个人空间无指派/评论类通知。（单人开发：J/N 均在 `asher/m33` 分支完成，2026-10-24 fast-forward 合入 main；接线清单 5 个调用点核验一致——`createInvite`/`respondToInvite`、`tasks/service.ts` 262/392/409/578 行；`features/personal/**` 0 处 `createNotification`）
+- [x] 全量检查绿；cron 在共享测试库手跑两次，验证幂等（同任务同类型仅一条）。（255/255 测试、typecheck/lint/build 绿；`due-scan.test.ts` 连跑两次幂等用例 + N-6 冒烟实测 dev 库两次 cron `200 {dueSoon:1,overdue:1}` → `200 {dueSoon:0,overdue:0}`）
+- [x] 合入 main，打 tag **`m2-frozen`**，删 track worktree；D/G 从此 tag 拉。（单人开发无独立 track worktree；`od-personal` 为 M1 遗留、另有 INT-1 未勾项，保留待 INT 清理）
+- [x] J 轨道移交的集成议题：① N-1 接线清单覆盖 J-2 三类通知，已核验（`docs/notifications-wiring.md`）；② **集成裁决：`notifySafely` 保留不移除**——同类型重复通知仍会发生（任务改派回原责任人 → 第二条 `task_assigned` 撞 `(user_id, task_id, type)` 唯一索引），其 savepoint 捕获正是事务内 `onConflictDoNothing` 的等价物，移除会使改派回环报错；③ 团队侧栏 `TeamsNav` 由 J-1 直接扩展（所有权例外，§4），已落；④ 新 worktree 跑 typecheck 前先 `pnpm exec next typegen`（`PageProps` 全局类型由 Next 生成）；⑤ `pnpm --filter @open-doing/web build` 需显式 `DATABASE_URL`（`db/client.ts` 生产态抛错）；⑥ 浏览器冒烟遗留物：`message` 静态调用警告为全仓既有模式（T 已记 INT-1 议题 ⑤：`providers.tsx` 加 antd `App` 包裹）。
 
 **M2 出口检查**：团队项目协作全流程（建项→派活→评论→拖看板→收到通知）；cron 手动触发产生且只产生一条提醒。
 
