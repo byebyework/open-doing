@@ -19,7 +19,7 @@
 | T | 团队 / 邀请 / 角色 | M1 | asher | ✅ |
 | J | 团队项目与任务 | M2（Depends T） | asher | ✅ |
 | N | 通知与 cron | M2（接口 M0 冻结） | asher | ✅ |
-| D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
+| D | 聚合仪表盘 | M3（Depends P/J） | asher | ✅ |
 | G | 团队治理 | M3（Depends T/J） | | ⬜ |
 | INT | 波次集成（单一集成负责人） | 每波次末 | | 🟡 |
 | X | 收尾与发布 | M4 | | ⬜ |
@@ -339,7 +339,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 由单一集成负责人执行（不是新业务开发）：
 - [x] 合入 `track/personal`（合并提交 `c5c0bb7`；`track/teams` 此前已线性进入 main）。冲突已解：`lib/slug.ts` / `slug.test.ts` 保留两条轨道的 API（`slugifyName`/`slugWithCounter` 与 `generateUniqueSlug`）并共用 `toSlugBase`；`docs/V1_TASKS.md` 轨道表合并。
-- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）；⑥ `respondToInvite` 的状态更新 WHERE 未加 `status='pending'` 守卫（T 全分支评审 Minor：双击"接受"在并发窗口可能回滚为通用报错，成员关系仍成立，刷新自愈）——INT-1 前建议补 `.where(and(eq(id), eq(status,'pending')))` 并把 0 行更新映射为 `INVALID`。
+- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由），已解决（D-3 TeamsNav 接线）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）；⑥ `respondToInvite` 的状态更新 WHERE 未加 `status='pending'` 守卫（T 全分支评审 Minor：双击"接受"在并发窗口可能回滚为通用报错，成员关系仍成立，刷新自愈）——INT-1 前建议补 `.where(and(eq(id), eq(status,'pending')))` 并把 0 行更新映射为 `INVALID`。
 - [x] 全量 `typecheck/lint/test/build` 绿（合并树：123/123 测试通过，build/typecheck 通过，lint 0 error）。
 - [ ] 双人浏览器实测出口检查全流程。
 - [ ] 核验 T-2/T-3 中 `createNotification` 调用点对 F-3 桩真实生效（写库可查）。
@@ -432,23 +432,23 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 - Files: `(dashboard)/my/page.tsx`（所有权归 D，P 提供个人数据访问函数）、统计卡组件
 - 对照 `my-tasks.html`：
-  - [ ] 个人任务段含**个人项目内任务**（带项目 chip，无项目显示"不属于项目"口径）；团队任务段跨所有团队按 assignee=本人聚合；默认按截止日期升序（无日期排后）。
-  - [ ] 顶部统计（进行中/今日明日到期/已逾期/本周已完成）口径与纯函数一致；"新建任务"弹窗项目选择跨空间全列。
-  - [ ] 聚合在 SQL 侧完成（计数/平均），不全表拉内存；空段有空状态。
+  - [x] 个人任务段含**个人项目内任务**（带项目 chip，无项目显示"不属于项目"口径）；团队任务段跨所有团队按 assignee=本人聚合；默认按截止日期升序（无日期排后）。
+  - [x] 顶部统计（进行中/今日明日到期/已逾期/本周已完成）口径与纯函数一致；"新建任务"弹窗项目选择跨空间全列。
+  - [x] 聚合在 SQL 侧完成（计数/平均），不全表拉内存；空段有空状态。
 
 #### D-2 团队概览：项目健康度 + 风险区　`L`　Depends: J-1, J-2
 
 - Files: `teams/[teamSlug]/page.tsx`
 - 对照 `team-overview.html`：
-  - [ ] 各项目进度条（任务等权平均，空项目 0%），按项目下未完成任务的逾期/临期存在性标色（阈值记录常量，可调）。
-  - [ ] 风险区：逾期任务、临期任务排最前，点击进任务详情。
-  - [ ] 只读：任何成员可访问，页面无任何写操作按钮（主管无催办/改派）。
+  - [x] 各项目进度条（任务等权平均，空项目 0%），按项目下未完成任务的逾期/临期存在性标色（阈值记录常量，可调）。
+  - [x] 风险区：逾期任务、临期任务排最前，点击进任务详情。
+  - [x] 只读：任何成员可访问，页面无任何写操作按钮（主管无催办/改派）。
 
 #### D-3 成员负载与未指派区　`M`　Depends: D-2
 
 - 验收：
-  - [ ] 每成员：进行中任务数、即将到期数；可下钻看该成员各项目任务。
-  - [ ] 未指派任务单独成区（为离开成员置空的数据场景），提示 admin 重新指派（链接到任务详情，不在概览页直接改）。
+  - [x] 每成员：进行中任务数、即将到期数；可下钻看该成员各项目任务。
+  - [x] 未指派任务单独成区（为离开成员置空的数据场景），提示 admin 重新指派（链接到任务详情，不在概览页直接改）。
 
 ### 轨道 G：团队治理与生命周期
 
