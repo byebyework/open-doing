@@ -49,8 +49,9 @@ export async function getMyTaskStats(
       dueSoon: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} in (${today}::date, ${tomorrow}::date)))::int`,
       // 逾期：未完成且截止日期早于今天（当天不算逾期）。
       overdue: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today}::date))::int`,
-      // 本周完成：以 updatedAt 归入本周（周一为起点）。
-      doneThisWeek: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.updatedAt} >= ${weekStart}::date))::int`,
+      // 本周完成：以 updatedAt 归入本周（周一为起点）。`weekStart` 是上海本地
+      // 日历日，显式按 Asia/Shanghai 换算为 timestamptz，避免跟随数据库会话时区。
+      doneThisWeek: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.updatedAt} >= (${weekStart}::timestamp AT TIME ZONE 'Asia/Shanghai')))::int`,
     })
     .from(tasks)
     .where(eq(tasks.assigneeId, userId));

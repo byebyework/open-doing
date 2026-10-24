@@ -102,6 +102,24 @@ async function seedStats(db: DbClient) {
       createdById: member.id,
       updatedAt: new Date("2026-10-20T00:00:00Z"),
     },
+    // 边界：上海时区周一 03:00（UTC 尚是周日）→ 应计入本周完成。
+    {
+      spaceType: "personal",
+      title: "上海周一凌晨完成",
+      status: "done",
+      assigneeId: member.id,
+      createdById: member.id,
+      updatedAt: new Date("2026-10-18T19:00:00Z"),
+    },
+    // 边界：上海时区周日 23:30 → 不应计入本周完成。
+    {
+      spaceType: "personal",
+      title: "上海周日深夜完成",
+      status: "done",
+      assigneeId: member.id,
+      createdById: member.id,
+      updatedAt: new Date("2026-10-18T15:30:00Z"),
+    },
     // 团队任务：本人已指派（无截止日期，不改变四项计数）。
     { spaceType: "team", projectId: teamProject.id, title: "我的团队任务", assigneeId: member.id, createdById: other.id },
     // 排除：未指派团队任务。
@@ -289,7 +307,9 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
 
     const stats = await getMyTaskStats({ userId: member.id, today: TODAY, weekStart: WEEK_START }, db);
 
-    expect(stats).toEqual({ inProgress: 1, dueSoon: 2, overdue: 1, doneThisWeek: 1 });
+    // doneThisWeek = 2：「本周完成」+ 上海周一 03:00 完成；
+    // 上海周日 23:30 完成的任务不得跨周计入。
+    expect(stats).toEqual({ inProgress: 1, dueSoon: 2, overdue: 1, doneThisWeek: 2 });
   });
 
   it("getMyTaskStats 无任务时四项均为 0", async () => {
