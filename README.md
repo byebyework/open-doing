@@ -145,6 +145,21 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 新增内部包：在 `packages/` 下创建目录，以 `@open-doing/*` 命名，应用中通过 `"workspace:*"` 引用。
 
+## 到期提醒 cron
+
+`POST /api/cron/due-scan` 供外部 cron 定时调用：扫描「未完成、已指派、有截止日期」的任务，为今天/明天到期的任务生成 `task_due_soon` 通知，为已逾期的任务生成 `task_overdue` 通知。鉴权使用 `CRON_SECRET`（见上方环境变量表）：支持 `Authorization: Bearer <secret>` 或 `x-cron-key: <secret>`；`CRON_SECRET` 未配置或为空时一律返回 401。
+
+本地手动触发（默认应用端口 3000）：
+
+```bash
+curl -X POST -H "Authorization: Bearer $CRON_SECRET" http://localhost:3000/api/cron/due-scan
+```
+
+成功返回 `{ "ok": true, "dueSoon": <本次新增数>, "overdue": <本次新增数> }`。
+
+- **日期口径为 Asia/Shanghai**：「今天」按上海时区计算，与任务的截止日期（数据库 `date` 列）保持同一口径。
+- **幂等**：重复调用不会重复生成通知；返回的 `dueSoon` / `overdue` 只统计本次真正新增的通知条数，因此紧接着再跑一次通常为 0（可用于验证幂等）。
+
 ## 领域模型要点
 
 - 每个用户默认拥有**个人空间**；可创建**团队空间**并通过邀请加入成员。
