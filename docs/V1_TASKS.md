@@ -18,7 +18,7 @@
 | P | 个人空间 | M1 | | ✅ |
 | T | 团队 / 邀请 / 角色 | M1 | asher | ✅ |
 | J | 团队项目与任务 | M2（Depends T） | asher | ✅ |
-| N | 通知与 cron | M2（接口 M0 冻结） | | ⬜ |
+| N | 通知与 cron | M2（接口 M0 冻结） | asher | ✅ |
 | D | 聚合仪表盘 | M3（Depends P/J） | | ⬜ |
 | G | 团队治理 | M3（Depends T/J） | | ⬜ |
 | INT | 波次集成（单一集成负责人） | 每波次末 | | 🟡 |
@@ -393,32 +393,32 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 - Files: `features/notifications/service.ts`（替换 F-3 桩的内部实现，**签名不变**）、`docs/notifications-wiring.md`（接线清单）
 - 边界（保护文件所有权）：N **不改** T/J/G 的 action 文件；接线动作由各轨道在自己的任务里完成（T-2/T-3、J-2、G-1/G-3 的验收已包含 `createNotification` 调用点）。
 - 验收：
-  - [ ] 服务支持调用方传入事务 client，通知与业务写操作在**同一事务**内提交/回滚；类型覆盖 6 种（`team_invite/task_assigned/task_due_soon/task_overdue/task_commented/task_changed_by_admin`）；通知含类型、接收人、关联对象、触发者、已读、时间。
-  - [ ] 接线清单逐行列出：在哪个 action、什么条件、通知谁、关联对象怎么取（含"邀请接受不通知自己""评论不通知本人""个人空间只产生到期类提醒"）；每个接线点在 INT-2 由集成负责人核验存在且参数正确。
-  - [ ] 提供 N-2 需要的查询函数（未读数、分页列表、标记已读）。
+  - [x] 服务支持调用方传入事务 client，通知与业务写操作在**同一事务**内提交/回滚；类型覆盖 6 种（`team_invite/task_assigned/task_due_soon/task_overdue/task_commented/task_changed_by_admin`）；通知含类型、接收人、关联对象、触发者、已读、时间。
+  - [x] 接线清单（`docs/notifications-wiring.md`）逐行列出：在哪个 action、什么条件、通知谁、关联对象怎么取（含"邀请接受不通知自己""评论不通知本人""个人空间只产生到期类提醒"）；每个接线点在 INT-2 由集成负责人核验存在且参数正确。
+  - [x] 提供 N-2 需要的查询函数（未读数、分页列表、标记已读，见 `features/notifications/queries.ts`）。
 
 #### N-2 通知中心 UI 与未读角标　`M`　Depends: N-1, F-5
 
 - Files: `features/notifications/components/NotificationBell.tsx`、轮询 Route Handler（`/api/notifications` 是通知中心自身需要，属 §2 API 例外，在板上记录）、列表/标记已读
 - 对照原型顶栏 popover：
-  - [ ] 未读角标轮询刷新；点击单条标记已读并跳转关联任务；全部已读；空态文案。
-  - [ ] 个人任务到期提醒能出现（见 N-3）；个人项目不产生指派/评论/改动类通知。
+  - [x] 未读角标轮询刷新；点击单条标记已读并跳转关联任务；全部已读；空态文案。
+  - [x] 个人任务到期提醒能出现（见 N-3）；个人项目不产生指派/评论/改动类通知。
 
 #### N-3 到期扫描 cron　`M`　Depends: N-1
 
 - Files: `app/api/cron/due-scan/route.ts`、`features/notifications/due-scan.ts`
 - 验收：
-  - [ ] `CRON_SECRET`（Bearer 或自定义头）校验，错误密钥 401。
-  - [ ] 扫描**全部空间**（含个人）未完成任务：按 Asia/Shanghai 当天判定临期（今天/明天）与逾期（今天 > due_date）。
-  - [ ] 幂等：`(user_id, task_id, type)` 去重约束或等价检查，重复扫描不产生重复通知；任务转 done 后不再产生新通知（历史保留）。
-  - [ ] 有可本地运行的触发命令写入 `.env.example` 注释/ README。
+  - [x] `CRON_SECRET`（Bearer 或自定义头）校验，错误密钥 401。
+  - [x] 扫描**全部空间**（含个人）未完成任务：按 Asia/Shanghai 当天判定临期（今天/明天）与逾期（今天 > due_date）。
+  - [x] 幂等：`(user_id, task_id, type)` 去重约束或等价检查，重复扫描不产生重复通知；任务转 done 后不再产生新通知（历史保留）。
+  - [x] 有可本地运行的触发命令写入 `.env.example` 注释/ README。
 
 #### INT-2 集成 M2（J + N → main）　`M`　Depends: J-1..J-5, N-1..N-3
 
 - [ ] 从 `m1-frozen` 合入 J、N 两条 track；核验 N-1 接线清单每个调用点存在、参数正确、个人空间无指派/评论类通知。
 - [ ] 全量检查绿；cron 在共享测试库手跑两次，验证幂等（同任务同类型仅一条）。
 - [ ] 合入 main，打 tag **`m2-frozen`**，删 track worktree；D/G 从此 tag 拉。
-- [ ] J 轨道移交的集成议题：① N-1 接线清单必须覆盖 J-2 的 `task_assigned / task_changed_by_admin / task_commented`（调用点已在 `features/tasks/service.ts`：创建/改派 → `task_assigned`；owner/admin 改内容 → `task_changed_by_admin`；评论 → `task_commented`，均跳过本人）；② J 侧 `notifySafely`（嵌套事务 savepoint 捕获 23505）是 N-1 交付前的临时去重，N-1 实现幂等后可移除；③ 团队侧栏 `TeamsNav` 由 J-1 直接扩展（所有权例外，§4）；④ 新 worktree 跑 typecheck 前先 `pnpm exec next typegen`（`PageProps` 全局类型由 Next 生成）；⑤ `pnpm --filter @open-doing/web build` 需显式 `DATABASE_URL`（`db/client.ts` 生产态抛错）；⑥ 浏览器冒烟遗留物：`message` 静态调用警告为全仓既有模式（T 已记 INT-1 议题 ⑤：`providers.tsx` 加 antd `App` 包裹）。
+- [ ] J 轨道移交的集成议题：① N-1 接线清单必须覆盖 J-2 的 `task_assigned / task_changed_by_admin / task_commented`（调用点已在 `features/tasks/service.ts`：创建/改派 → `task_assigned`；owner/admin 改内容 → `task_changed_by_admin`；评论 → `task_commented`，均跳过本人）；② J 侧 `notifySafely`（嵌套事务 savepoint 捕获 23505）是 N-1 交付前的临时去重，N-1 实现幂等后可移除（N 轨道已用部分唯一索引 + `features/notifications/due-scan.ts` 的裸 `onConflictDoNothing` 实现幂等；`features/tasks/service.ts` 中 `notifySafely` 的移除由集成负责人酌情裁决）；③ 团队侧栏 `TeamsNav` 由 J-1 直接扩展（所有权例外，§4）；④ 新 worktree 跑 typecheck 前先 `pnpm exec next typegen`（`PageProps` 全局类型由 Next 生成）；⑤ `pnpm --filter @open-doing/web build` 需显式 `DATABASE_URL`（`db/client.ts` 生产态抛错）；⑥ 浏览器冒烟遗留物：`message` 静态调用警告为全仓既有模式（T 已记 INT-1 议题 ⑤：`providers.tsx` 加 antd `App` 包裹）。
 
 **M2 出口检查**：团队项目协作全流程（建项→派活→评论→拖看板→收到通知）；cron 手动触发产生且只产生一条提醒。
 
