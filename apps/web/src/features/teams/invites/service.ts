@@ -7,6 +7,7 @@ import { isUniqueViolation } from "@/server/db/errors";
 import { teamInvites, teamMemberships, teams, users } from "@/server/db/schema";
 
 import { assertCan, getMembership } from "../permissions";
+import { markTeamInviteNotificationsRead } from "@/features/notifications/queries";
 import { createNotification } from "@/features/notifications/service";
 
 export type InviteErrorCode =
@@ -238,6 +239,10 @@ export async function respondToInvite(
     if (!teamRow) {
       throw new InviteError("INVALID", "邀请不存在或已失效", "form");
     }
+
+    // T-3 明文授权的唯一跨文件接线（N 轨道）：响应邀请后把被邀请人本人的
+    // team_invite 通知置为已读；接受/拒绝均在分支汇合处、同事务内生效。
+    await markTeamInviteNotificationsRead({ userId: row.inviteeId, teamId: row.teamId }, tx);
 
     // 通知邀请人（发出/接受/拒绝/撤销统一走 team_invite 类型）。
     await createNotification(

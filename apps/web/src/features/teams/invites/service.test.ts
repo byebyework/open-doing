@@ -211,6 +211,25 @@ describe.skipIf(!hasTestDatabase)("邀请 service", () => {
     expect((await listTeamsForUser(outsider.id, db)).map((t) => t.id)).toContain(team.id);
   });
 
+  it("接受：被邀请人本人的 team_invite 通知在同一事务内置为已读（N-1 接线）", async () => {
+    const { owner, outsider, team } = await seedTeam(db);
+    const invite = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
+
+    const [before] = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, outsider.id), eq(notifications.type, "team_invite")));
+    expect(before).toMatchObject({ teamId: team.id, read: false });
+
+    await respondToInvite({ inviteId: invite.id, actorId: outsider.id, accept: true }, db);
+
+    const [after] = await db
+      .select()
+      .from(notifications)
+      .where(and(eq(notifications.userId, outsider.id), eq(notifications.type, "team_invite")));
+    expect(after).toMatchObject({ teamId: team.id, read: true });
+  });
+
   it("拒绝：邀请置 declined、不建立成员关系、通知邀请人", async () => {
     const { owner, outsider, team } = await seedTeam(db);
     const invite = await createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db);
