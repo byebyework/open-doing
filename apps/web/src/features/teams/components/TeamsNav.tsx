@@ -58,7 +58,7 @@ export async function TeamsNav() {
 
           return (
             <div key={team.id} className="flex flex-col">
-              <TeamsNavItem href={`/teams/${team.slug}/settings`}>
+              <TeamsNavItem href={`/teams/${team.slug}`}>
                 {team.name}
               </TeamsNavItem>
 
