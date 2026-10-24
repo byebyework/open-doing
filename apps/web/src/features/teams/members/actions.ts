@@ -7,11 +7,18 @@ import { getCurrentUser } from "@/features/auth/session";
 import { getMembership, TeamPermissionError } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
 
-import { MemberError, leaveTeam, removeMember } from "./service";
+import {
+  GovernanceError,
+  MemberError,
+  dissolveTeam,
+  leaveTeam,
+  removeMember,
+  transferTeam,
+} from "./service";
 
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
 function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
-  if (error instanceof MemberError) {
+  if (error instanceof MemberError || error instanceof GovernanceError) {
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
@@ -86,5 +93,60 @@ export async function leaveTeamAction(input: { teamSlug: string }): Promise<Acti
     return { ok: true, data: null };
   } catch (error) {
     return toFailure(error, "退出团队失败，请稍后重试");
+  }
+}
+
+/** 转让团队所有权（仅 owner）。 */
+export async function transferTeamAction(input: {
+  teamSlug: string;
+  targetUserId: string;
+}): Promise<ActionResult<null>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { ok: false, errors: { form: "请先登录" } };
+    }
+
+    const team = await resolveTeamForActor(input.teamSlug, user.id);
+    if (!team) {
+      return { ok: false, errors: { form: "团队不存在或无权访问" } };
+    }
+
+    await transferTeam({
+      teamId: team.id,
+      targetUserId: input.targetUserId,
+      actorId: user.id,
+    });
+
+    // 角色与 owner 变化会影响侧栏与设置页分区。
+    revalidatePath("/", "layout");
+    return { ok: true, data: null };
+  } catch (error) {
+    return toFailure(error, "转让团队失败，请稍后重试");
+  }
+}
+
+/** 解散团队（仅 owner）；成功后由 UI 负责跳转，本 action 只返回 ok。 */
+export async function dissolveTeamAction(input: {
+  teamSlug: string;
+}): Promise<ActionResult<null>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { ok: false, errors: { form: "请先登录" } };
+    }
+
+    const team = await resolveTeamForActor(input.teamSlug, user.id);
+    if (!team) {
+      return { ok: false, errors: { form: "团队不存在或无权访问" } };
+    }
+
+    await dissolveTeam({ teamId: team.id, actorId: user.id });
+
+    // 团队已删除：侧栏「我的团队」与所有团队页面随之刷新。
+    revalidatePath("/", "layout");
+    return { ok: true, data: null };
+  } catch (error) {
+    return toFailure(error, "解散团队失败，请稍后重试");
   }
 }

@@ -1,7 +1,7 @@
 import { and, eq, inArray } from "drizzle-orm";
 
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks, teamMemberships } from "@/server/db/schema";
+import { projects, tasks, teamMemberships, teams } from "@/server/db/schema";
 
 import {
   assertCan,
@@ -38,6 +38,37 @@ class TeamPolicyError extends TeamPermissionError {
     super(action);
     // Error.message 在构造后可写；实例仍是 TeamPermissionError。
     this.message = message;
+  }
+}
+
+export type GovernanceErrorCode = "TEAM_NOT_FOUND" | "TARGET_NOT_MEMBER" | "SELF_TRANSFER";
+
+/**
+ * 转让 / 解散领域错误。
+ *
+ * 与权限错误区分：团队目标已不存在、受让人不是成员、转让给自己等
+ * 属于业务约束而非角色权限，供 Server Action 映射为表单错误。
+ */
+export class GovernanceError extends Error {
+  readonly code: GovernanceErrorCode;
+  readonly field = "form" as const;
+
+  constructor(code: GovernanceErrorCode, message: string) {
+    super(message);
+    this.name = "GovernanceError";
+    this.code = code;
+  }
+}
+
+/** 团队行必须存在：解散后（或错误 id）统一报「团队不存在」。 */
+async function assertTeamExists(tx: DbClient, teamId: string): Promise<void> {
+  const [row] = await tx
+    .select({ id: teams.id })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  if (!row) {
+    throw new GovernanceError("TEAM_NOT_FOUND", "团队不存在");
   }
 }
 
@@ -146,6 +177,92 @@ export async function leaveTeam(
       teamId: input.teamId,
       userId: input.actorId,
     });
+  };
+
+  return client === db ? db.transaction(run) : run(client);
+}
+
+export interface TransferTeamInput {
+  teamId: string;
+  targetUserId: string;
+  actorId: string;
+}
+
+/**
+ * 转让团队所有权：仅 owner 可操作。
+ *
+ * - 受让人必须是现有成员（不能转让给外人，也不能转让给自己）；
+ * - 同一事务内完成三处写入：`teams.owner_id`、受让人 membership → owner、
+ *   原 owner membership → admin，保证团队内恰一个 owner（Review Focus 3）。
+ */
+export async function transferTeam(
+  input: TransferTeamInput,
+  client: DbClient = db,
+): Promise<void> {
+  const run = async (tx: DbClient): Promise<void> => {
+    await assertTeamExists(tx, input.teamId);
+
+    const actorMembership = await getMembership(input.teamId, input.actorId, tx);
+    assertCan(actorMembership?.role ?? null, "team:transfer");
+
+    if (input.targetUserId === input.actorId) {
+      throw new GovernanceError("SELF_TRANSFER", "不能转让给自己");
+    }
+
+    const targetMembership = await getMembership(input.teamId, input.targetUserId, tx);
+    if (!targetMembership) {
+      throw new GovernanceError("TARGET_NOT_MEMBER", "目标用户不是团队成员");
+    }
+
+    await tx
+      .update(teams)
+      .set({ ownerId: input.targetUserId })
+      .where(eq(teams.id, input.teamId));
+    await tx
+      .update(teamMemberships)
+      .set({ role: "owner" })
+      .where(
+        and(
+          eq(teamMemberships.teamId, input.teamId),
+          eq(teamMemberships.userId, input.targetUserId),
+        ),
+      );
+    await tx
+      .update(teamMemberships)
+      .set({ role: "admin" })
+      .where(
+        and(
+          eq(teamMemberships.teamId, input.teamId),
+          eq(teamMemberships.userId, input.actorId),
+        ),
+      );
+  };
+
+  return client === db ? db.transaction(run) : run(client);
+}
+
+export interface DissolveTeamInput {
+  teamId: string;
+  actorId: string;
+}
+
+/**
+ * 解散团队：仅 owner 可操作。
+ *
+ * 只删除 `teams` 行；项目 / 任务 / 子任务 / 评论 / 邀请 / 成员关系 / 通知
+ * 由数据库外键 `ON DELETE CASCADE` 兜底清理（Review Focus 4），应用层不手动删子表。
+ */
+export async function dissolveTeam(
+  input: DissolveTeamInput,
+  client: DbClient = db,
+): Promise<void> {
+  const run = async (tx: DbClient): Promise<void> => {
+    await assertTeamExists(tx, input.teamId);
+
+    const actorMembership = await getMembership(input.teamId, input.actorId, tx);
+    assertCan(actorMembership?.role ?? null, "team:dissolve");
+
+    await tx.delete(teams).where(eq(teams.id, input.teamId));
   };
 
   return client === db ? db.transaction(run) : run(client);

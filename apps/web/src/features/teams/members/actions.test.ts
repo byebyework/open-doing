@@ -5,8 +5,20 @@ import { TeamPermissionError, getMembership } from "@/features/teams/permissions
 import { getTeamBySlug } from "@/features/teams/service";
 import { revalidatePath } from "next/cache";
 
-import { leaveTeamAction, removeMemberAction } from "./actions";
-import { MemberError, leaveTeam, removeMember } from "./service";
+import {
+  dissolveTeamAction,
+  leaveTeamAction,
+  removeMemberAction,
+  transferTeamAction,
+} from "./actions";
+import {
+  GovernanceError,
+  MemberError,
+  dissolveTeam,
+  leaveTeam,
+  removeMember,
+  transferTeam,
+} from "./service";
 
 /**
  * actions 层只负责 session -> slug 解析 -> service 的衔接与错误映射
@@ -31,7 +43,13 @@ vi.mock("@/features/teams/service", async (importOriginal) => {
 
 vi.mock("./service", async (importOriginal) => {
   const actual = await importOriginal<typeof import("./service")>();
-  return { ...actual, removeMember: vi.fn(), leaveTeam: vi.fn() };
+  return {
+    ...actual,
+    removeMember: vi.fn(),
+    leaveTeam: vi.fn(),
+    transferTeam: vi.fn(),
+    dissolveTeam: vi.fn(),
+  };
 });
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
@@ -40,6 +58,8 @@ const mockGetTeamBySlug = vi.mocked(getTeamBySlug);
 const mockRevalidatePath = vi.mocked(revalidatePath);
 const mockRemoveMember = vi.mocked(removeMember);
 const mockLeaveTeam = vi.mocked(leaveTeam);
+const mockTransferTeam = vi.mocked(transferTeam);
+const mockDissolveTeam = vi.mocked(dissolveTeam);
 
 const currentUser = {
   id: "user-id",
@@ -172,5 +192,109 @@ describe("成员移除 / 主动退出 actions", () => {
     expect(
       await removeMemberAction({ teamSlug: team.slug, targetUserId: "gone-id" }),
     ).toEqual({ ok: false, errors: { form: "成员不存在或已退出" } });
+  });
+
+  it("transfer / dissolve 未登录返回「请先登录」", async () => {
+    mockGetCurrentUser.mockResolvedValue(null);
+
+    expect(
+      await transferTeamAction({ teamSlug: team.slug, targetUserId: "admin-id" }),
+    ).toEqual({ ok: false, errors: { form: "请先登录" } });
+    expect(await dissolveTeamAction({ teamSlug: team.slug })).toEqual({
+      ok: false,
+      errors: { form: "请先登录" },
+    });
+    expect(mockGetTeamBySlug).not.toHaveBeenCalled();
+  });
+
+  it("transfer / dissolve 团队不存在或非成员 → 「团队不存在或无权访问」", async () => {
+    mockGetCurrentUser.mockResolvedValue(currentUser);
+    mockGetTeamBySlug.mockResolvedValue(null);
+
+    expect(
+      await transferTeamAction({ teamSlug: "missing", targetUserId: "admin-id" }),
+    ).toEqual({ ok: false, errors: { form: "团队不存在或无权访问" } });
+    expect(await dissolveTeamAction({ teamSlug: "missing" })).toEqual({
+      ok: false,
+      errors: { form: "团队不存在或无权访问" },
+    });
+
+    mockGetTeamBySlug.mockResolvedValue(team);
+    mockGetMembership.mockResolvedValue(null);
+
+    expect(await dissolveTeamAction({ teamSlug: team.slug })).toEqual({
+      ok: false,
+      errors: { form: "团队不存在或无权访问" },
+    });
+    expect(mockDissolveTeam).not.toHaveBeenCalled();
+  });
+
+  it("transferTeamAction：以会话用户为 actorId 调 service，成功后刷新布局", async () => {
+    mockGetCurrentUser.mockResolvedValue(currentUser);
+    mockGetTeamBySlug.mockResolvedValue(team);
+    mockGetMembership.mockResolvedValue({ ...membership, role: "owner" });
+    mockTransferTeam.mockResolvedValue(undefined);
+
+    const result = await transferTeamAction({
+      teamSlug: team.slug,
+      targetUserId: "admin-id",
+    });
+
+    expect(result).toEqual({ ok: true, data: null });
+    expect(mockTransferTeam).toHaveBeenCalledWith({
+      teamId: team.id,
+      targetUserId: "admin-id",
+      actorId: currentUser.id,
+    });
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("dissolveTeamAction：以会话用户为 actorId 调 service，只返回 ok（redirect 由 UI 处理）", async () => {
+    mockGetCurrentUser.mockResolvedValue(currentUser);
+    mockGetTeamBySlug.mockResolvedValue(team);
+    mockGetMembership.mockResolvedValue({ ...membership, role: "owner" });
+    mockDissolveTeam.mockResolvedValue(undefined);
+
+    const result = await dissolveTeamAction({ teamSlug: team.slug });
+
+    expect(result).toEqual({ ok: true, data: null });
+    expect(mockDissolveTeam).toHaveBeenCalledWith({ teamId: team.id, actorId: currentUser.id });
+    expect(mockRevalidatePath).toHaveBeenCalledWith("/", "layout");
+  });
+
+  it("transfer / dissolve 权限错误映射为 form 错误", async () => {
+    mockGetCurrentUser.mockResolvedValue(currentUser);
+    mockGetTeamBySlug.mockResolvedValue(team);
+    mockGetMembership.mockResolvedValue(membership);
+    mockTransferTeam.mockRejectedValue(new TeamPermissionError("team:transfer"));
+    mockDissolveTeam.mockRejectedValue(new TeamPermissionError("team:dissolve"));
+
+    expect(
+      await transferTeamAction({ teamSlug: team.slug, targetUserId: "admin-id" }),
+    ).toEqual({ ok: false, errors: { form: "没有权限执行该操作" } });
+    expect(await dissolveTeamAction({ teamSlug: team.slug })).toEqual({
+      ok: false,
+      errors: { form: "没有权限执行该操作" },
+    });
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
+  });
+
+  it("转让 / 解散领域错误映射为 form 错误", async () => {
+    mockGetCurrentUser.mockResolvedValue(currentUser);
+    mockGetTeamBySlug.mockResolvedValue(team);
+    mockGetMembership.mockResolvedValue({ ...membership, role: "owner" });
+    mockTransferTeam.mockRejectedValue(
+      new GovernanceError("TARGET_NOT_MEMBER", "目标用户不是团队成员"),
+    );
+    mockDissolveTeam.mockRejectedValue(new GovernanceError("TEAM_NOT_FOUND", "团队不存在"));
+
+    expect(
+      await transferTeamAction({ teamSlug: team.slug, targetUserId: "outsider-id" }),
+    ).toEqual({ ok: false, errors: { form: "目标用户不是团队成员" } });
+    expect(await dissolveTeamAction({ teamSlug: team.slug })).toEqual({
+      ok: false,
+      errors: { form: "团队不存在" },
+    });
+    expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 });
