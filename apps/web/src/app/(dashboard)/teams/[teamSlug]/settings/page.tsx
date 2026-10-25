@@ -85,9 +85,11 @@ export default async function TeamSettingsPage(
               已发出 · 待处理（{pendingSent.length}）
             </div>
             {pendingSent.map(({ invite, invitee }) => (
+              // 窄屏（375px）允许换行：标签 / 头像 / 用户名 / UID / 时间 / 撤销
+              // 一行放不下时折行，而不是把页面撑出横向滚动。
               <div
                 key={invite.id}
-                className="flex items-center gap-3 border-t border-[#eceef0] py-2.5 first:border-t-0"
+                className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#eceef0] py-2.5 first:border-t-0"
               >
                 <Tag style={{ color: "#6d4fd4", background: "rgba(155, 135, 245, 0.14)", border: "none", borderRadius: 999 }}>
                   待处理

@@ -23,3 +23,26 @@ body {
   font-family: "Canva Sans", "YS Text", system-ui, -apple-system, "PingFang SC",
     "Microsoft YaHei", sans-serif;
 }
+
+/*
+ * 降低动态效果（prefers-reduced-motion: reduce）。
+ *
+ * 统一把过渡与关键帧动画压缩到不可感知的时长，覆盖：
+ * - Tailwind 的 `transition-*` 工具类（行 hover、看板列高亮、折叠箭头等）；
+ * - antd 组件自带的过渡 / 动画（Modal 缩放、message 淡入、波纹等）；
+ * - dnd-kit：拖拽卡片的内联 `transform` 与 Sortable 的放置过渡
+ *   （内联 `transition` 由本规则的 `!important` 覆盖，卡片不会「飞回」）。
+ *
+ * 只调整时长、延迟与滚动行为，不引入任何颜色值（颜色仍全部来自设计令牌）。
+ */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}

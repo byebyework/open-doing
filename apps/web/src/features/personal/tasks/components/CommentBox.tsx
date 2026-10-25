@@ -144,6 +144,7 @@ export function CommentBox({
           value={draft}
           rows={3}
           maxLength={2000}
+          aria-label="评论内容"
           showCount
           placeholder="写下你的评论…"
           disabled={submitting}

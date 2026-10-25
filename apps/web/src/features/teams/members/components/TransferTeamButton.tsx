@@ -85,6 +85,7 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
             </p>
             <Select
               className="w-full"
+              aria-label="选择新的所有者"
               placeholder="选择新的所有者"
               options={candidates.map((candidate) => ({
                 value: candidate.userId,

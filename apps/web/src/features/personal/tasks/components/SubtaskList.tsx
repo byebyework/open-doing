@@ -127,6 +127,7 @@ export function SubtaskList({
           <Input
             value={draft}
             placeholder="＋ 添加子任务"
+            aria-label="新子任务的标题"
             maxLength={200}
             disabled={adding}
             onChange={(event) => setDraft(event.target.value)}

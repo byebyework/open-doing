@@ -38,48 +38,52 @@ export function MemberList({
   const actionTeamSlug = canManage ? teamSlug : undefined;
 
   return (
-    <table className="w-full border-collapse text-[13px]">
-      <thead>
-        <tr className="text-left text-[#9aa0a6]">
-          <th className="pb-2 font-medium">成员</th>
-          <th className="pb-2 font-medium">角色</th>
-          <th className="pb-2 font-medium">加入时间</th>
-          {actionTeamSlug ? <th className="pb-2 text-right font-medium">操作</th> : null}
-        </tr>
-      </thead>
-      <tbody>
-        {members.map(({ membership, user }) => {
-          const role = ROLE_LABELS[membership.role];
-          return (
-            <tr key={membership.id} className="border-t border-[#eceef0]">
-              <td className="py-2.5">
-                <span className="flex items-center gap-2.5">
-                  <UserAvatar username={user.username} />
-                  <span className="font-medium text-[#0e1318]">{user.username}</span>
-                  <span className="font-mono text-[12px] text-[#9aa0a6]">{user.uid}</span>
-                </span>
-              </td>
-              <td className="py-2.5">
-                <Tag style={{ color: role.color, background: role.background, border: "none", borderRadius: 999 }}>
-                  {role.label}
-                </Tag>
-              </td>
-              <td className="py-2.5 text-[#5f6368]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
-              {actionTeamSlug ? (
-                <td className="py-2.5 text-right">
-                  {membership.role === "owner" || membership.userId === currentUserId ? null : (
-                    <RemoveMemberButton
-                      teamSlug={actionTeamSlug}
-                      targetUserId={user.id}
-                      targetUsername={user.username}
-                    />
-                  )}
+    // 窄屏（375px）沿用仓库既有的「卡内横滚」模式：成员 / UID / 加入时间
+    // 三列在卡片内横向滚动，页面本身不横向溢出。
+    <div className="min-w-0 overflow-x-auto">
+      <table className="w-full border-collapse text-[13px]">
+        <thead>
+          <tr className="text-left text-[#9aa0a6]">
+            <th className="pb-2 font-medium">成员</th>
+            <th className="pb-2 font-medium">角色</th>
+            <th className="pb-2 font-medium">加入时间</th>
+            {actionTeamSlug ? <th className="pb-2 text-right font-medium">操作</th> : null}
+          </tr>
+        </thead>
+        <tbody>
+          {members.map(({ membership, user }) => {
+            const role = ROLE_LABELS[membership.role];
+            return (
+              <tr key={membership.id} className="border-t border-[#eceef0]">
+                <td className="py-2.5">
+                  <span className="flex items-center gap-2.5">
+                    <UserAvatar username={user.username} />
+                    <span className="font-medium text-[#0e1318]">{user.username}</span>
+                    <span className="font-mono text-[12px] text-[#9aa0a6]">{user.uid}</span>
+                  </span>
                 </td>
-              ) : null}
-            </tr>
-          );
-        })}
-      </tbody>
-    </table>
+                <td className="py-2.5">
+                  <Tag style={{ color: role.color, background: role.background, border: "none", borderRadius: 999 }}>
+                    {role.label}
+                  </Tag>
+                </td>
+                <td className="py-2.5 text-[#5f6368]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
+                {actionTeamSlug ? (
+                  <td className="py-2.5 text-right">
+                    {membership.role === "owner" || membership.userId === currentUserId ? null : (
+                      <RemoveMemberButton
+                        teamSlug={actionTeamSlug}
+                        targetUserId={user.id}
+                        targetUsername={user.username}
+                      />
+                    )}
+                  </td>
+                ) : null}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
   );
 }
