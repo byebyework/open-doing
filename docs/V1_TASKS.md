@@ -297,7 +297,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 - 验收：
   - [x] 新建项目后侧栏即时出现。
   - [x] 当前路由高亮。
-  - [x] 个人空间上下文下不渲染团队导航。（与 T-1 当前实现冲突：`TeamsNav` 按原型在个人/团队上下文都渲染「我的团队」；需 INT-1 裁决改 P-5 口径还是改 `TeamsNav`；INT-1 裁决：不采纳本口径、保留原型——`(dashboard)/layout.tsx:24` 恒渲染 `teamsNav`，`TeamsNav.tsx:55-61` 在个人/团队上下文均渲染「我的团队」；概览路由已由 D-3 接线）
+  - [x] 个人空间上下文下不渲染团队导航。（与 T-1 当前实现冲突：`TeamsNav` 按原型在个人/团队上下文都渲染「我的团队」；需 INT-1 裁决改 P-5 口径还是改 `TeamsNav`。**复核 2026-10-25：字面条件未满足**——`(dashboard)/layout.tsx:24` 恒渲染 `teamsNav`，`TeamsNav.tsx:55-61` 在个人/团队上下文均渲染「我的团队」；本勾选记录的是 M1 出口以现状接受的偏差，非字面条件成立：① 集成负责人以 `m1-frozen`（`75a2f88`）落账 M1 出口；② 原型 `docs/prototypes/my-tasks.html:58-78` 的「我的任务」个人页本身渲染 `team-nav` 团队导航块，是保留行为的实际依据；③ 该原型 HTML 与 `docs/prototypes/README.md:28`「个人空间……隐藏团队导航」相矛盾，后者正是本验收口径的来源，二者未再另裁，按原型 HTML 与冻结实现保留。概览路由已由 D-3 接线）
 
 ### 轨道 T：团队 / UID 邀请 / 角色
 
