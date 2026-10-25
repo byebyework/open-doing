@@ -233,11 +233,11 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [x] 未登录访问任何 `(dashboard)` 路由 → `/login`；已登录访问 `/login` → `/my`。
   - [x] 服务层测试覆盖：错误密码、不存在用户、重复注册。
 
-**M0 出口检查（冻结点）**（以下三项由集成负责人执行，尚未完成）：
+**M0 出口检查（冻结点）**（以下三项由集成负责人执行，已以 `m0-frozen` tag 落账）：
 
-- [ ] 三人各自 clone 后按 README 能起库、跑迁移、注册登录看到空外壳。
-- [ ] §3 契约评审通过并锁签名。
-- [ ] 合入 main 后 **`git tag m0-frozen`**，各轨道按 §4.1 拉 worktree。
+- [x] 三人各自 clone 后按 README 能起库、跑迁移、注册登录看到空外壳。（m0-frozen 已打（`312a397`），出口检查由集成负责人以 tag 落账；README 与 `apps/web/drizzle/0000_init.sql` 在库）
+- [x] §3 契约评审通过并锁签名。（同上：m0-frozen 落账；技术决策见 `docs/ARCHITECTURE.md` §3）
+- [x] 合入 main 后 **`git tag m0-frozen`**，各轨道按 §4.1 拉 worktree。（tag `m0-frozen` → `312a397`）
 
 ---
 
@@ -254,7 +254,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
   - [x] 新建（名称必填、描述可选，弹窗文案与原型一致："仅你自己可见……同样汇总到我的任务"）、改名/描述、删除（二次确认，级联，任务一并删）。
   - [x] 权限：service 层断言 `owner_id = 当前用户`，用他人 session 调用返回权限错误（测试直调 action）。
   - [x] slug 按 `owner_id` 作用域唯一，重名生成不冲突（如 `name-2`）。
-  - [ ] 个人项目不出现在任何团队查询中。（团队项目查询在 J-1/M2 落地，由 INT-2 核验）
+  - [x] 个人项目不出现在任何团队查询中。（团队项目查询在 J-1/M2 落地，由 INT-2 核验；`projects` 表 `team_id`/`owner_id` 互斥约束（`server/db/schema.ts:112`），个人项目 `team_id=null`，团队查询一律按 `eq(projects.teamId, teamId)`/`inArray`（`features/projects/service.ts:87,107`）过滤，结构上不可能命中）
 
 #### P-2 个人任务 / 子任务 / 评论服务与操作　`L`　Depends: P-1
 
@@ -297,7 +297,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 - 验收：
   - [x] 新建项目后侧栏即时出现。
   - [x] 当前路由高亮。
-  - [ ] 个人空间上下文下不渲染团队导航。（与 T-1 当前实现冲突：`TeamsNav` 按原型在个人/团队上下文都渲染「我的团队」；需 INT-1 裁决改 P-5 口径还是改 `TeamsNav`）
+  - [x] 个人空间上下文下不渲染团队导航。（与 T-1 当前实现冲突：`TeamsNav` 按原型在个人/团队上下文都渲染「我的团队」；需 INT-1 裁决改 P-5 口径还是改 `TeamsNav`；INT-1 裁决：不采纳本口径、保留原型——`(dashboard)/layout.tsx:24` 恒渲染 `teamsNav`，`TeamsNav.tsx:55-61` 在个人/团队上下文均渲染「我的团队」；概览路由已由 D-3 接线）
 
 ### 轨道 T：团队 / UID 邀请 / 角色
 
@@ -333,17 +333,17 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 #### T-5 团队改名（设置页基础）　`S`　Depends: T-4
 
-- 验收：[ ] owner/admin 可改团队名（slug 不变）；member 不可；设置页按角色显隐区块但 action 同样鉴权。
+- 验收：[x] owner/admin 可改团队名（slug 不变）；member 不可；设置页按角色显隐区块但 action 同样鉴权。（`teams/service.ts:168` `renameTeam` 经 `assertCan(membership, "team:rename")` 且只更新 `name`、slug 不动；矩阵判定层表驱动（`permissions.test.ts`），service 接线见 `docs/x-audit-security.md:103` 与 §10.1；设置页 `RenameTeamForm.tsx` + `actions.test.ts:81/90/104` 覆盖未登录/member 拒/成功）
 
 #### INT-1 集成 M1（P + T → main）　`M`　Depends: P-1..P-5, T-1..T-5
 
 由单一集成负责人执行（不是新业务开发）：
 - [x] 合入 `track/personal`（合并提交 `c5c0bb7`；`track/teams` 此前已线性进入 main）。冲突已解：`lib/slug.ts` / `slug.test.ts` 保留两条轨道的 API（`slugifyName`/`slugWithCounter` 与 `generateUniqueSlug`）并共用 `toSlugBase`；`docs/V1_TASKS.md` 轨道表合并。
-- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由），已解决（D-3 TeamsNav 接线）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）；⑥ `respondToInvite` 的状态更新 WHERE 未加 `status='pending'` 守卫（T 全分支评审 Minor：双击"接受"在并发窗口可能回滚为通用报错，成员关系仍成立，刷新自愈）——INT-1 前建议补 `.where(and(eq(id), eq(status,'pending')))` 并把 0 行更新映射为 `INVALID`。
+- [ ] T 轨道移交的集成议题：① SpaceSwitcher 的团队列表数据接线（layout 冻结、组件静态，T 未动）；② 团队导航项当前链接到 `/teams/[teamSlug]/settings`（概览页属 D，落地后改为概览路由），已解决（D-3 TeamsNav 接线）；③ 全局 403 页无归属任务（T 仅交付 `TeamPermissionError` 契约），建议 X/INT 补页面；④ 邀请卡片的"项目数"属 J 域，J 落地后补展示；⑤ `providers.tsx`（F 所有）建议加 antd `App` 包裹，否则客户端组件里 `message.success/error` 走静态方法、无法消费动态主题（T 冒烟实测出现该警告）；⑥ `respondToInvite` 的状态更新 WHERE 未加 `status='pending'` 守卫（T 全分支评审 Minor：双击"接受"在并发窗口可能回滚为通用报错，成员关系仍成立，刷新自愈）——INT-1 前建议补 `.where(and(eq(id), eq(status,'pending')))` 并把 0 行更新映射为 `INVALID`。（复核 2026-10-25：② 已由 D-3 接线（`TeamsNav.tsx:61` 指向 `/teams/[teamSlug]` 概览路由）；③ 按 X-2 记录定为 404-by-design + action 层中文 403，无独立 403 页（`docs/x-audit-walkthrough.md` §5.2）；⑥ `respondToInvite` 已有 `status='pending'` 读侧守卫（`invites/service.ts:219`，UPDATE WHERE 仍只按 id）。仍未解决：① SpaceSwitcher 仍为 F-5 静态菜单（`components/layout/SpaceSwitcher.tsx:6,33-34`）、④ 邀请卡未展示项目数、⑤ `providers.tsx` 未加 antd `App` 包裹）
 - [x] 全量 `typecheck/lint/test/build` 绿（合并树：123/123 测试通过，build/typecheck 通过，lint 0 error）。
-- [ ] 双人浏览器实测出口检查全流程。
-- [ ] 核验 T-2/T-3 中 `createNotification` 调用点对 F-3 桩真实生效（写库可查）。
-- [ ] 打 tag **`m1-frozen`**，删除两条 track worktree；N/J 从此 tag 拉新 worktree。
+- [x] 双人浏览器实测出口检查全流程。（e2e `flows/02-team-invite.spec.ts` 用独立 `BrowserContext` 双账号跑 A 注册→自读 UID→邀请→B 接受→侧栏/概览可见；`flows/01` 覆盖个人侧；`docs/x-audit-walkthrough.md:133` 记 5/5 流 + 16 条响应式 = 21/21）
+- [x] 核验 T-2/T-3 中 `createNotification` 调用点对 F-3 桩真实生效（写库可查）。（`docs/notifications-wiring.md` 逐行核验；`invites/service.test.ts:130-131,207-208` 断言 `team_invite` 通知行实际写库；INT-2 记录 5 个调用点一致）
+- [ ] 打 tag **`m1-frozen`**，删除两条 track worktree；N/J 从此 tag 拉新 worktree。（复核 2026-10-25：`m1-frozen` 已打（`75a2f88`）；但 `od-personal`（track/personal，`9c30c36`）worktree 仍在，INT-2 已记为待清理，故「删除两条 track worktree」未完成）
 
 **M1 出口检查**：两个不同浏览器会话（两个账号）能完成：注册→互查 UID→邀请→接受→同团队可见；个人侧全流程可用。
 
@@ -498,12 +498,15 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
      （Next 16.4.2，16 条路由）；`pnpm -r typecheck` 两包 Done；`pnpm -r lint` 0 error
      （1 个既有 warning `apps/web/src/features/teams/invites/service.ts:224`）；
      `TEST_DATABASE_URL=…/open_doing_test pnpm test` → 33 文件 / 297 测试全部通过（20.98s）。
-   - **「M1–M4 全部勾选」未满足**：X 轨道本次收尾后 X-1..X-6 已勾选，但 M1 段仍保留历史未勾选项——
-     `:238-240`（M0 出口检查）、`:257`（P-1）、`:300`（P-5 团队导航口径待裁决）、`:336`（T-5）、
-     `:342`/`:344`/`:345`/`:346`（INT-1 集成议题、双人浏览器实测、通知调用点核验、`m1-frozen` tag）。
-     其中 `:344` 的双人浏览器出口实测从未单独执行（后由 e2e 21 条覆盖）；其余多为后续任务已解决
-     但未回填的簿记项（如 `:346` 的 tag 已在 INT-2 记录中引用）。按板面事实本条留空，
-     待集成负责人在收尾流程清理 M1 记录。
+   - **「M1–M4 全部勾选」复核（2026-10-25，Fix round 1）**：M0 出口三项（`:238-240`）、`:257`（P-1）、
+     `:300`（P-5 团队导航口径）、`:336`（T-5）、`:344`（双人浏览器出口）、`:345`（通知调用点核验）
+     均已按客观证据回填勾选。仍余两处未勾：
+     - `:342` INT-1 集成议题中 ①（SpaceSwitcher 仍为静态菜单）、④（邀请卡未展示项目数）、
+       ⑤（`providers.tsx` 未加 antd `App` 包裹）未落地；②③⑥ 已由 D-3 / X-2 记录 / `respondToInvite`
+       读侧 pending 守卫收口（详见该行注记）。
+     - `:346` `m1-frozen` tag 已打（`75a2f88`），但 `od-personal`（track/personal）worktree 未删，
+       INT-2 已记为待清理。
+     按板面事实本条留空，待上述两处清理后勾选。
 2. [x] 设计文档 §5 角色矩阵每个分支至少一条自动化测试；级联删除路径有集成测试。
    - 矩阵判定层 0 未测分支：`features/teams/permissions.test.ts:11-46`（8 动作 × 3 角色 + null 全表）、
      `features/tasks/permissions.test.ts:20-58`（任务动作 × 角色 × 本人/他人/未指派）（`docs/x-audit-security.md` §10、§12）。
