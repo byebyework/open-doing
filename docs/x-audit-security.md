@@ -33,8 +33,11 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 | `GET /api/notifications` | `getSessionUserId()`，未登录 401 | `app/api/notifications/route.ts:37-41` |
 | `POST /api/cron/due-scan` | `CRON_SECRET` 完全匹配，否则 401 | `app/api/cron/due-scan/route.ts:17-20`；`auth.ts:14-25` |
 
-全仓 `app/` 与 `features/` 的非测试代码中没有绕过 service 直连 `server/db` 的 import
-（grep `server/db` 仅命中 service / actions / `server/db/*`）。
+全仓 `app/` 页面与 Server Action 的非测试代码中没有绕过 service 直连 `server/db` 的 import
+（grep `server/db` 命中 `features/**/service.ts`、`app/api/**` 路由、权限模块
+`features/teams/permissions.ts:4-5`、查询模块 `features/notifications/queries.ts:4-5` 与
+`features/notifications/due-scan.ts:4-5`，以及 `server/db/*` 自身；`app/**` 页面组件无直接
+DB import）。
 
 ## 3. auth 域
 
@@ -97,7 +100,7 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 | `createTeam` `features/teams/service.ts:100` | 任意登录用户成为 owner | 有测试 `features/teams/service.test.ts:47`（自动 owner）、`:65`（名校验）、`:82`/`:92`（slug 冲突） |
 | `getTeamBySlug` `features/teams/service.ts:142` | 只读；调用方负责成员校验 | 有测试 `features/teams/service.test.ts:114` |
 | `listTeamsForUser` `features/teams/service.ts:151` | 按 userId 隔离 | 有测试 `features/teams/service.test.ts:102` |
-| `renameTeam` `features/teams/service.ts:168` | owner/admin 可；member/非成员拒 | 有测试 `features/teams/service.test.ts:132`（owner 成功、member/非成员拒）、`:151`（名校验）；admin 成功仅由 `permissions.test.ts:24-46` 判定层覆盖，service 接线未单独断言（见 §11 评估） |
+| `renameTeam` `features/teams/service.ts:168` | owner/admin 可；member/非成员拒 | 有测试 `features/teams/service.test.ts:132`（owner 成功、member/非成员拒）、`:151`（名校验）；admin 成功仅由 `permissions.test.ts:24-46` 判定层覆盖，service 接线未单独断言（见 §10.1 评估） |
 | `listMembers` `features/teams/service.ts:193` | 只读；函数内无鉴权 | 有测试 `features/teams/service.test.ts:160`（数据/排序）；调用方已在成员校验之后：`teams/[teamSlug]/page.tsx:64-66`、`settings/page.tsx:36-38`、`projects/[projectSlug]/page.tsx:46-55`、`.../tasks/[taskId]/page.tsx:40-55` |
 
 ### 5.3 `features/teams/members/service.ts`
@@ -114,7 +117,7 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 | 函数（file:line） | 矩阵分支 | 结论 |
 |---|---|---|
 | `createInvite` `features/teams/invites/service.ts:66` | owner/admin 可；member/非成员拒 | 有测试 `features/teams/invites/service.test.ts:64`（owner 成功、admin 通过权限后被 pending 去重拦、member 拒）、`:80`（UID 无效统一文案）、`:92`（自己 / 已是成员）、`:104`（重复 pending + 唯一索引）、`:123`（邀请与通知同事务） |
-| `rescindInvite` `features/teams/invites/service.ts:151` | owner/admin 可；member 拒 | 有测试 `features/teams/invites/service.test.ts:139`（成功撤销 + 通知）、`:155`（非 pending / member 拒） |
+| `rescindInvite` `features/teams/invites/service.ts:151` | owner/admin 可；member 拒 | 有测试 `features/teams/invites/service.test.ts:139`（owner 成功撤销 + 通知）、`:155`（非 pending / member 拒）；admin 成功仅判定层覆盖，service 接线未单独断言（见 §10.1 评估） |
 | `respondToInvite` `features/teams/invites/service.ts:204` | 仅被邀请人本人；必须 pending | 有测试 `features/teams/invites/service.test.ts:189`（接受）、`:214`（邀请通知置已读）、`:233`（拒绝）、`:245`（已撤销 / 已响应 / 非本人）、`:270`（团队解散后无效） |
 | `listPendingSentInvites` `features/teams/invites/service.ts:276` | 只读；函数内无鉴权 | 有测试 `features/teams/invites/service.test.ts:169`；唯一调用方 `settings/page.tsx:40,47` 已用 `can(..., "team:invite")` 守卫 |
 | `listReceivedInvites` `features/teams/invites/service.ts:302` | 按 userId 隔离 | 有测试 `features/teams/invites/service.test.ts:282`；调用方 `invites/page.tsx:28-29`、`TeamsNav.tsx:24-27` 均以会话 userId 入参 |
@@ -203,7 +206,7 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 |---|---|---|
 | `createTeamTask` `features/tasks/service.ts:220` | 任何成员可建；指派对象须为成员 | 有测试 `features/tasks/service.test.ts:115`（member 建、默认为自己）、`:144`（指派他人 + 通知）、`:178`（非成员拒）、`:196`（自己不通知）、`:213`（非成员拒） |
 | `updateTeamTask` `features/tasks/service.ts:295` | 内容：owner/admin 任意、member 仅本人；改派同矩阵 | 有测试 `features/tasks/service.test.ts:227`（member 本人）、`:244`（member 他人拒）、`:258`（owner 他人 + 通知）、`:285`（原值不产生副作用）、`:319`（owner 本人不通知）、`:331`（owner 改派）、`:360`（member 改派本人）、`:381`（member 改派他人拒）、`:398`（改派非成员拒）；admin 分支仅判定层覆盖 |
-| `deleteTeamTask` `features/tasks/service.ts:424` | owner/admin 任意；member 仅本人 | 无测试-低风险（service 仅 `:585-598` 断言跨团队拒绝；成功 / 拒绝矩阵由 `features/tasks/permissions.test.ts:30-52` 判定层覆盖，接线为单点 `assertCanDeleteTask`，见 §11 评估） |
+| `deleteTeamTask` `features/tasks/service.ts:424` | owner/admin 任意；member 仅本人 | 必修-需评估（`features/tasks/service.test.ts:585-598` 仅断言跨团队拒绝，成功 / 拒绝矩阵由 `features/tasks/permissions.test.ts:30-52` 判定层覆盖；接线为单点 `assertCanDeleteTask`，逐行核对无误，见 §10.1 评估） |
 | `addTeamSubtask` `features/tasks/service.ts:448` | 需 `task:edit`（member 仅本人） | 有测试 `features/tasks/service.test.ts:503`（member 他人任务拒）、`:517`/`:526`（本人任务成功） |
 | `removeTeamSubtask` `features/tasks/service.ts:476` | 需 `task:edit`；子任务须属于该任务 | 有测试 `features/tasks/service.test.ts:517`/`:543`（删除成功、主任务状态不变） |
 | `toggleTeamSubtask` `features/tasks/service.ts:513` | 需 `task:edit`；子任务须属于该任务 | 有测试 `features/tasks/service.test.ts:517`/`:532`（勾选不改主任务 `updatedAt`） |
@@ -315,7 +318,7 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 |---|---|---|---|
 | 修改团队设置（改名） owner/admin | `teams/service.ts:168` | 有测试 | owner 成功 / member / 非成员有测试；admin 成功未集成断言 |
 | 邀请成员 owner/admin | `invites/service.ts:66` | 有测试 | 有测试（owner + admin 均通过权限，member 拒） |
-| 撤销邀请 owner/admin | `invites/service.ts:151` | 有测试 | 有测试（成功 + member 拒） |
+| 撤销邀请 owner/admin | `invites/service.ts:151` | 有测试 | owner 成功 + member 拒有测试；admin 成功未集成断言 |
 | 移除成员 owner/admin | `members/service.ts:125` | 有测试 | admin 成功 / member 拒 / owner 目标拒有测试；owner 成功未集成断言 |
 | 创建/编辑/删除团队项目 owner/admin | `projects/service.ts:138/184/232` | 有测试 | 创建：owner/admin 均测；编辑/删除：owner 成功 + member 拒，admin 成功未集成断言 |
 | 解散团队 owner | `members/service.ts:255` | 有测试 | 有测试（owner 成功、admin/member 拒） |
@@ -331,18 +334,19 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 
 ### 10.1 矩阵接线缺口评估（必修-需评估，结论：无需代码修复）
 
-以下 7 处「owner/admin 写路径」缺 service 集成断言。它们全部经过同一个已表驱动测试的
+以下 8 处「owner/admin 写路径」缺 service 集成断言。它们全部经过同一个已表驱动测试的
 判定原语（`assertCan` / `assertCanEditTask` / `assertCanAssignTask` / `assertCanDeleteTask`），
 service 侧只是把 `getMembership` 的结果与任务当前责任人传入；本次逐行核对未发现参数错位、
 角色写反或漏调用。**结论：不是实证缺陷，无需改代码**；建议后续补集成测试（选修）。
 
 1. `renameTeam` admin 成功分支（`teams/service.ts:174-175`）。
-2. `removeMember` owner 成功分支（`members/service.ts:131-132`）。
-3. `leaveTeam` admin 成功分支（`members/service.ts:168-174`）。
-4. `updateTeamTask` admin 编辑他人任务分支（`tasks/service.ts:352-358`）。
-5. `deleteTeamTask` 全矩阵（owner/admin 任意、member 本人；`tasks/service.ts:431-435`）。
-6. `updateTeamProject` admin 成功分支（`projects/service.ts:194`）。
-7. `deleteTeamProject` admin 成功分支（`projects/service.ts:236`）。
+2. `rescindInvite` admin 成功分支（`invites/service.ts:153-155`，`assertCan(..., "team:invite")` 的唯一接线点；测试仅以 owner / member 作 actor）。
+3. `removeMember` owner 成功分支（`members/service.ts:131-132`）。
+4. `leaveTeam` admin 成功分支（`members/service.ts:168-174`）。
+5. `updateTeamTask` admin 编辑他人任务分支（`tasks/service.ts:352-358`）。
+6. `deleteTeamTask` 全矩阵（owner/admin 任意、member 本人；`tasks/service.ts:431-435`）。
+7. `updateTeamProject` admin 成功分支（`projects/service.ts:194`）。
+8. `deleteTeamProject` admin 成功分支（`projects/service.ts:236`）。
 
 ## 11. 基础设施核查
 
@@ -391,7 +395,7 @@ service 侧只是把 `getMembership` 的结果与任务当前责任人传入；�
 
 | 检查 | 证据 | 判定 |
 |---|---|---|
-| UID 随机源 | `lib/uid.ts:1`（`node:crypto`）、`:7-9`（31 字符集、6 位、剔除易混淆字符）、`:16-30`（拒绝采样，无模偏差）；空间 31^6 ≈ 8.9×10^8 | 通过 |
+| UID 随机源 | `lib/uid.ts:1`（`node:crypto`）、`:7-9`（31 字符集、6 位、剔除易混淆字符）、`:16-30`（拒绝采样，无模偏差）；空间 31^6 ≈ 8.9×10^8；测试 `lib/uid.test.ts:5`（格式）、`:14`（字符集 / 长度） | 通过 |
 | 注册不泄露 UID 冲突 | `features/auth/service.ts:138-159`：UID 唯一冲突静默重试（最多 5 次）；耗尽只返回通用「系统繁忙」`:161-165`；用户名冲突才给 `USERNAME_TAKEN` | 通过 |
 | 登录统一文案 | `features/auth/service.ts:73-75`、`:178-191`；`features/auth/constants.ts:17`；测试 `features/auth/service.test.ts:118-139` | 通过 |
 | 邀请：格式错误 / 不存在统一文案 | `features/teams/invites/service.ts:70-73`（空）、`:78-81`（不存在）均 `UID 无效`；测试 `features/teams/invites/service.test.ts:80-90`（空 / 非前缀 / 不存在三种同文案） | 通过 |
@@ -457,17 +461,16 @@ params: ["2020-01-01::date)::int; DROP TABLE users; --"]
 
 - **必修-已修复：0**。逐函数、基础设施六项均未发现可实证的鉴权绕过、注入或 XSS；
   因此没有代码修复 commit。
-- **必修-需评估：7**（§10.1，均为 service 集成测试缺口，判定原语已测，逐行核对无参数
+- **必修-需评估：8**（§10.1，均为 service 集成测试缺口，判定原语已测，逐行核对无参数
   错位；评估结论为无需改代码，补测列为选修）。
 - **矩阵判定层无测试分支：0**（`permissions.test.ts` 表驱动覆盖全部团队动作 × 角色；
   `tasks/permissions.test.ts` 覆盖任务动作 × 角色 × 本人/他人/未指派）。
-- **逐函数「无测试-低风险」：21**：
+- **逐函数「无测试-低风险」：20**：
   - auth service `logout` 1；
   - session `getSessionSecret` / `createSession` / `getSessionUserId` / `clearSession` /
     `getCurrentUser` 5（cookie API、无法在 node 单测中直接执行；`requireUser` 由 e2e 采样覆盖）；
   - auth actions 3；
   - personal projects actions 3；
-  - personal tasks actions 8；
-  - `deleteTeamTask` 矩阵接线 1。
+  - personal tasks actions 8。
 - 其余 70 余个服务函数均有直接或间接自动化断言（见 §3-§9）。
 - 验证命令与结果见实施报告 `.superpowers/sdd/2026-10-24-track-x-wrapup/task-5-report.md`。
