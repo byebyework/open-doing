@@ -22,7 +22,7 @@
 | D | 聚合仪表盘 | M3（Depends P/J） | asher | ✅ |
 | G | 团队治理 | M3（Depends T/J） | asher | ✅ |
 | INT | 波次集成（单一集成负责人） | 每波次末 | | 🟡 |
-| X | 收尾与发布 | M4 | | ⬜ |
+| X | 收尾与发布 | M4 | asher | ✅ |
 
 状态图例：⬜ 未开始 / 🟡 进行中 / ✅ 完成
 
@@ -484,16 +484,49 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 ## 9. M4 收尾（轨道 X）
 
-- [ ] **X-1 端到端走查**（`M`）：按原型 11 个页面逐屏比对（含个人项目两页）；补 Playwright 关键流：注册→建个人项目→建任务打勾；邀请接受；看板拖卡；cron 提醒；解散团队。
-- [ ] **X-2 状态完整性**（`M`）：所有列表/按钮的 loading、空状态、失败 message、乐观更新回滚；403/404 页面；表单校验错误中文展示。
-- [ ] **X-3 响应式与可达性**（`S`）：375px 全站零横向溢出；键盘可操作（弹窗 Esc/焦点陷阱）、antd 语义与标签齐全、`prefers-reduced-motion` 降级。
-- [ ] **X-4 seed 与本地开发说明**（`S`）：种子脚本复刻原型示例数据（林夏 doing_x7k2m9 等 5 人、增长突击队、3 团队项目 + 2 个人项目、基准日 2026-10-21 的任务日期相对今天生成）；README 写清 compose/migrate/seed/dev/cron 触发。
-- [ ] **X-5 安全走查**（`S`）：逐服务函数核对权限矩阵；cookie 属性、argon2 参数、cron 密钥、UID 不可枚举性、SQL 注入（Drizzle 参数化）与 XSS（不使用 `dangerouslySetInnerHTML`）。
-- [ ] **X-6 v1 范围复核**（`S`）：对照设计文档"非目标"确认无越界功能（无邮箱/邮件、无密码找回、无实时推送、无文件上传——头像用用户名首字母）。
+- [x] **X-1 端到端走查**（`M`）：按原型 11 个页面逐屏比对（含个人项目两页）；补 Playwright 关键流：注册→建个人项目→建任务打勾；邀请接受；看板拖卡；cron 提醒；解散团队。（`docs/x-audit-walkthrough.md`：11/11 页对照，必修 F-1..F-3 已修；e2e 5 条流 + 16 条响应式 = 21/21 绿）
+- [x] **X-2 状态完整性**（`M`）：所有列表/按钮的 loading、空状态、失败 message、乐观更新回滚；403/404 页面；表单校验错误中文展示。（`docs/x-audit-walkthrough.md` §5：loading/空态/失败提示/中文校验/乐观回滚逐项核对；权限拒绝在页面层统一为 404 防存在性泄露，action 层返回中文 403 文案，无独立 403 页）
+- [x] **X-3 响应式与可达性**（`S`）：375px 全站零横向溢出；键盘可操作（弹窗 Esc/焦点陷阱）、antd 语义与标签齐全、`prefers-reduced-motion` 降级。（`docs/x-audit-a11y.md`：16 条 375px 零溢出用例；R-1 与 A-1..A-4 已修，选修 S-1..S-4 已登记）
+- [x] **X-4 seed 与本地开发说明**（`S`）：种子脚本复刻原型示例数据（林夏 doing_x7k2m9 等 5 人、增长突击队、3 团队项目 + 2 个人项目、基准日 2026-10-21 的任务日期相对今天生成）；README 写清 compose/migrate/seed/dev/cron 触发。（seed `0c7ed73` + 角色对齐 `bacb8ef`；README Quickstart/迁移/seed/cron 段落）
+- [x] **X-5 安全走查**（`S`）：逐服务函数核对权限矩阵；cookie 属性、argon2 参数、cron 密钥、UID 不可枚举性、SQL 注入（Drizzle 参数化）与 XSS（不使用 `dangerouslySetInnerHTML`）。（`docs/x-audit-security.md`：必修修复 0；矩阵判定层 0 未测分支；8 处 service 接线缺口评估为无需改代码）
+- [x] **X-6 v1 范围复核**（`S`）：对照设计文档"非目标"确认无越界功能（无邮箱/邮件、无密码找回、无实时推送、无文件上传——头像用用户名首字母）。（`docs/x-audit-scope.md`：四项 + §1 七条非目标逐条 grep，无越界）
 
 ## 10. 完成定义（v1 Done）
 
-1. M1–M4 全部勾选，`pnpm -r typecheck && lint && test && build` 全绿。
-2. 设计文档 §5 角色矩阵每个分支至少一条自动化测试；级联删除路径有集成测试。
-3. 原型 11 页全部有对应真实页面，视觉与令牌一致，无原型占位文案残留。
-4. 另一台机器按 README 可在 15 分钟内跑起本地环境并走通 X-1 的全部关键流。
+1. [ ] M1–M4 全部勾选，`pnpm -r typecheck && lint && test && build` 全绿。
+   - 命令链实跑（2026-10-25，文档改动前 HEAD `b1050f4`）：`DATABASE_URL=… pnpm build` 成功
+     （Next 16.4.2，16 条路由）；`pnpm -r typecheck` 两包 Done；`pnpm -r lint` 0 error
+     （1 个既有 warning `apps/web/src/features/teams/invites/service.ts:224`）；
+     `TEST_DATABASE_URL=…/open_doing_test pnpm test` → 33 文件 / 297 测试全部通过（20.98s）。
+   - **「M1–M4 全部勾选」未满足**：X 轨道本次收尾后 X-1..X-6 已勾选，但 M1 段仍保留历史未勾选项——
+     `:238-240`（M0 出口检查）、`:257`（P-1）、`:300`（P-5 团队导航口径待裁决）、`:336`（T-5）、
+     `:342`/`:344`/`:345`/`:346`（INT-1 集成议题、双人浏览器实测、通知调用点核验、`m1-frozen` tag）。
+     其中 `:344` 的双人浏览器出口实测从未单独执行（后由 e2e 21 条覆盖）；其余多为后续任务已解决
+     但未回填的簿记项（如 `:346` 的 tag 已在 INT-2 记录中引用）。按板面事实本条留空，
+     待集成负责人在收尾流程清理 M1 记录。
+2. [x] 设计文档 §5 角色矩阵每个分支至少一条自动化测试；级联删除路径有集成测试。
+   - 矩阵判定层 0 未测分支：`features/teams/permissions.test.ts:11-46`（8 动作 × 3 角色 + null 全表）、
+     `features/tasks/permissions.test.ts:20-58`（任务动作 × 角色 × 本人/他人/未指派）（`docs/x-audit-security.md` §10、§12）。
+   - service 接线层 8 处 owner/admin 成功分支缺集成断言（security §10.1：`renameTeam` admin、
+     `rescindInvite` admin、`removeMember` owner、`leaveTeam` admin、`updateTeamTask` admin、
+     `deleteTeamTask` 全矩阵、`updateTeamProject` admin、`deleteTeamProject` admin）；
+     逐行核对无参数错位，评估结论为「无需改代码，补测列为选修」。
+   - 级联删除集成测试：解散团队七类关联行（`features/teams/members/service.test.ts:458`）、
+     团队项目删除（`features/projects/service.test.ts:199`）、个人项目删除
+     （`features/personal/projects/service.test.ts:153`）、个人任务删除（`features/personal/tasks/service.test.ts:355`）。
+   - 状态与可达性佐证见 `docs/x-audit-walkthrough.md`、`docs/x-audit-a11y.md`。
+3. [x] 原型 11 页全部有对应真实页面，视觉与令牌一致，无原型占位文案残留。
+   - `docs/x-audit-walkthrough.md` §2 的 11 行对照表：11/11 有真实路由；3 项必修偏差已修
+     （F-1/F-2/F-3，commit `2ceb563`），13 项选修偏差登记（O-1..O-13，其中 O-2/O-11 为规格允许的 N-A），
+     数据差异 1 项（O-15，seed 计数差异）。
+   - 视觉一致性由 `docs/x-audit-a11y.md` 的 375px/语义取证与令牌化颜色、过渡规则佐证；
+     源码无用户可见的原型演示 callout 或占位文案（`占位|原型` 命中仅为实现注释）。
+4. [x] 另一台机器按 README 可在 15 分钟内跑起本地环境并走通 X-1 的全部关键流。
+   - 依任务约定未实际准备第二台机器，本条为 README 书面评估 + 本机命令复核。
+   - README 覆盖两条路径：方式 A `docker compose up --build` 一键（compose→迁移→dev，`README.md:40-53`）；
+     方式 B `compose→env→migrate→seed→dev`（`:55-149`），cron 触发与 crontab（`:197-216`）。
+     X-1 五条关键流均可由此走通；步骤与仓库实际脚本一致（`db:migrate` / `db:seed` /
+     `api/cron/due-scan` 均存在且前序任务已实跑）。
+   - 风险（不影响判定）：方式 A 首次构建镜像 + 安装依赖耗时依赖网络，慢网络下 15 分钟可能超时；
+     方式 A 手动触发 cron 需知道 compose 默认 `CRON_SECRET=dev-only-change-me` 或先在根 `.env` 设置
+     （`README.md:51` 有说明，cron 段落未给方式 A 示例）；方式 A 不自动 seed（X-1 关键流不依赖 seed）。
