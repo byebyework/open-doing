@@ -64,16 +64,19 @@ test.describe("flow 3: 看板拖拽", () => {
     ).toBeVisible();
 
     // 刷新后仍在「进行中」列：Server Action 已持久化。
-    await page.reload();
-    await expect(
-      page
-        .locator('section[aria-label="进行中"]')
-        .getByText(taskTitle, { exact: true }),
-    ).toBeVisible();
-    await expect(
-      page.locator('section[aria-label="未开始"]').getByText(taskTitle, {
-        exact: true,
-      }),
-    ).toHaveCount(0);
+    // 用 toPass 重试整段刷新，避免在 Server Action 落库前读取到旧的乐观状态。
+    await expect(async () => {
+      await page.reload();
+      await expect(
+        page
+          .locator('section[aria-label="进行中"]')
+          .getByText(taskTitle, { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.locator('section[aria-label="未开始"]').getByText(taskTitle, {
+          exact: true,
+        }),
+      ).toHaveCount(0);
+    }).toPass();
   });
 });

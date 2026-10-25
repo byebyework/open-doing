@@ -5,7 +5,7 @@ X-3 逐项结论。每条给出 `file:line` 证据与判定（一致 / 已修复
 
 ## 1. 方法与证据
 
-- 代码：worktree `/Users/wangtao/orca/workspaces/open-doing/m33`，分支 `asher/m33`。
+- 代码：本仓库 worktree，分支 `asher/m33`。
 - 浏览器：Playwright 1.60.0（Chromium，随仓库锁定，未升级）；视口 375×667（响应式）与 1280×720（桌面语义）。
 - 数据：e2e 库 `open_doing_e2e`；账号全部通过注册 UI 一次性创建，不依赖 seed 数据；
   `scripts/e2e-with-db-guard.sh` 在运行前后核对 `open_doing` / `open_doing_test` 行数未变化。

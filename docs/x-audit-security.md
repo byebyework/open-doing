@@ -6,7 +6,7 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 
 ## 1. 方法与证据
 
-- 代码：worktree `/Users/wangtao/orca/workspaces/open-doing/m33`，分支 `asher/m33`，基线 `b59147e`。
+- 代码：本仓库 worktree，分支 `asher/m33`，基线 `b59147e`。
 - 范围：`apps/web/src/features/**/service.ts`、`apps/web/src/features/**/actions.ts`、
   `apps/web/src/app/api/**`，以及它们直接依赖的会话 / 权限 / 通知查询模块。
 - 矩阵：设计文档 §5（`docs/2026-10-21-open-doing-v1-design.md:83-108`）与 §6 生命周期
@@ -34,10 +34,10 @@ cron 密钥、UID 不可枚举、SQL 注入面、XSS 做基础设施核查。每
 | `POST /api/cron/due-scan` | `CRON_SECRET` 完全匹配，否则 401 | `app/api/cron/due-scan/route.ts:17-20`；`auth.ts:14-25` |
 
 全仓 `app/` 页面与 Server Action 的非测试代码中没有绕过 service 直连 `server/db` 的 import
-（grep `server/db` 命中 `features/**/service.ts`、`app/api/**` 路由、权限模块
+（grep `server/db` 命中 `features/**/service.ts`、权限模块
 `features/teams/permissions.ts:4-5`、查询模块 `features/notifications/queries.ts:4-5` 与
-`features/notifications/due-scan.ts:4-5`，以及 `server/db/*` 自身；`app/**` 页面组件无直接
-DB import）。
+`features/notifications/due-scan.ts:4-5`，以及 `server/db/*` 自身；`app/api/**` 路由与
+`app/**` 页面组件均无直接 DB import）。
 
 ## 3. auth 域
 
@@ -56,7 +56,7 @@ DB import）。
 | `getSessionSecret` `features/auth/session.ts:34` | 无测试-低风险（生产缺失即抛错的 `:38-40` 分支未单测；开发回退密钥仅非生产） |
 | `signSessionToken` `features/auth/session.ts:46` | 有测试 `features/auth/session.test.ts:17`、`:23`（HS256 + 30 天 exp） |
 | `verifySessionToken` `features/auth/session.ts:62` | 有测试 `features/auth/session.test.ts:17`、`:31`（异密钥伪造失败）、`:37`（篡改失败）；`algorithms: ["HS256"]` 固定，防算法混淆 |
-| `createSession` `features/auth/session.ts:76` | 无测试-低风险（`cookies().set` 未 mock；写入属性常量已单测，见 §10.1） |
+| `createSession` `features/auth/session.ts:76` | 无测试-低风险（`cookies().set` 未 mock；写入属性常量已单测，见 §11.1） |
 | `getSessionUserId` `features/auth/session.ts:83` | 无测试-低风险（由 `app/api/notifications/route.test.ts:49` mock 调用，未测实现） |
 | `clearSession` `features/auth/session.ts:96` | 无测试-低风险（同上，`maxAge: 0` 逻辑简单） |
 | `getCurrentUser` `features/auth/session.ts:105` | 无测试-低风险（所有 actions 测试 mock 此函数；实现为「验签 → 按 id 查库」） |
@@ -340,7 +340,7 @@ service 侧只是把 `getMembership` 的结果与任务当前责任人传入；�
 角色写反或漏调用。**结论：不是实证缺陷，无需改代码**；建议后续补集成测试（选修）。
 
 1. `renameTeam` admin 成功分支（`teams/service.ts:174-175`）。
-2. `rescindInvite` admin 成功分支（`invites/service.ts:153-155`，`assertCan(..., "team:invite")` 的唯一接线点；测试仅以 owner / member 作 actor）。
+2. `rescindInvite` admin 成功分支（`invites/service.ts:156`，`assertCan(..., "team:invite")` 的两处接线点之一；`createInvite` 在 `:76` 调用同一判定，测试均仅以 owner / member 作 actor）。
 3. `removeMember` owner 成功分支（`members/service.ts:131-132`）。
 4. `leaveTeam` admin 成功分支（`members/service.ts:168-174`）。
 5. `updateTeamTask` admin 编辑他人任务分支（`tasks/service.ts:352-358`）。
@@ -395,7 +395,7 @@ service 侧只是把 `getMembership` 的结果与任务当前责任人传入；�
 
 | 检查 | 证据 | 判定 |
 |---|---|---|
-| UID 随机源 | `lib/uid.ts:1`（`node:crypto`）、`:7-9`（31 字符集、6 位、剔除易混淆字符）、`:16-30`（拒绝采样，无模偏差）；空间 31^6 ≈ 8.9×10^8；测试 `lib/uid.test.ts:5`（格式）、`:14`（字符集 / 长度） | 通过 |
+| UID 随机源 | `lib/uid.ts:1`（`node:crypto`）、`:7-9`（31 字符集、6 位、剔除易混淆字符）、`:16-30`（拒绝采样，无模偏差）；空间 31^6 ≈ 8.9×10^8；测试 `lib/uid.test.ts:5`/`:8`（格式 / 字符集与长度）、`:14`（500 次调用互不相同） | 通过 |
 | 注册不泄露 UID 冲突 | `features/auth/service.ts:138-159`：UID 唯一冲突静默重试（最多 5 次）；耗尽只返回通用「系统繁忙」`:161-165`；用户名冲突才给 `USERNAME_TAKEN` | 通过 |
 | 登录统一文案 | `features/auth/service.ts:73-75`、`:178-191`；`features/auth/constants.ts:17`；测试 `features/auth/service.test.ts:118-139` | 通过 |
 | 邀请：格式错误 / 不存在统一文案 | `features/teams/invites/service.ts:70-73`（空）、`:78-81`（不存在）均 `UID 无效`；测试 `features/teams/invites/service.test.ts:80-90`（空 / 非前缀 / 不存在三种同文案） | 通过 |

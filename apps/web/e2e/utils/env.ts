@@ -9,8 +9,20 @@
  * - 绝不能指向开发库 `open_doing` 或 Vitest 测试库 `open_doing_test`；
  * - SESSION_SECRET / CRON_SECRET 仅为测试值，不用于任何真实环境。
  */
-export const E2E_DATABASE_URL =
-  "postgres://open-doing:open-doing@localhost:5432/open_doing_e2e";
+/**
+ * 连接参数与 `scripts/e2e-with-db-guard.sh` 保持一致：默认本机 5432，可用
+ * `POSTGRES_HOST` / `POSTGRES_PORT` / `POSTGRES_USER` / `POSTGRES_PASSWORD`
+ * 覆盖（例如以 `POSTGRES_PORT=5433` 启动的 docker compose 数据库）。
+ * 库名固定为 `open_doing_e2e`，并由 `assertE2EDatabaseUrl` 再次校验。
+ */
+const E2E_DB_USER = encodeURIComponent(process.env.POSTGRES_USER ?? "open-doing");
+const E2E_DB_PASSWORD = encodeURIComponent(
+  process.env.POSTGRES_PASSWORD ?? "open-doing",
+);
+const E2E_DB_HOST = process.env.POSTGRES_HOST ?? "localhost";
+const E2E_DB_PORT = process.env.POSTGRES_PORT ?? "5432";
+
+export const E2E_DATABASE_URL = `postgres://${E2E_DB_USER}:${E2E_DB_PASSWORD}@${E2E_DB_HOST}:${E2E_DB_PORT}/open_doing_e2e`;
 
 export const E2E_SESSION_SECRET = "e2e-session-secret-not-for-production";
 export const E2E_CRON_SECRET = "e2e-cron-secret-not-for-production";

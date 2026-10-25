@@ -12,6 +12,9 @@ node_modules/
 
 # testing
 /coverage
+# playwright e2e artifacts (config lives in apps/web, no custom outputDir)
+/apps/web/test-results/
+/apps/web/playwright-report/
 
 # next.js
 .next/

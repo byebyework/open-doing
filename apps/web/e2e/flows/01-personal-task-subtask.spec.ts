@@ -41,12 +41,15 @@ test.describe("flow 1: 个人项目与子任务", () => {
     await expect(checkbox).toBeChecked();
 
     // 刷新后仍为已完成：验证子任务勾选已持久化。
-    await page.reload();
-    await expect(
-      page.getByRole("checkbox", { name: subtaskTitle }),
-    ).toBeChecked();
-    await expect(
-      page.getByRole("heading", { name: "子任务 · 1/1" }),
-    ).toBeVisible();
+    // 用 toPass 重试整段刷新，避免在 Server Action 落库前读取到旧的乐观状态。
+    await expect(async () => {
+      await page.reload();
+      await expect(
+        page.getByRole("checkbox", { name: subtaskTitle }),
+      ).toBeChecked();
+      await expect(
+        page.getByRole("heading", { name: "子任务 · 1/1" }),
+      ).toBeVisible();
+    }).toPass();
   });
 });

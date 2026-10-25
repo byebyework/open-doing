@@ -5,7 +5,7 @@
 
 ## 1. 走查环境与方法
 
-- 代码：worktree `/Users/wangtao/orca/workspaces/open-doing/m33`，分支 `asher/m33`。
+- 代码：本仓库 worktree，分支 `asher/m33`。
 - 数据库：docker compose 的 PostgreSQL 开发库 `open_doing`（29 个任务、5 个项目、种子用户 7 个）。
   为不改动共享环境，走查未使用 `open_doing_test` / `open_doing_e2e`，也未重启 docker compose。
 - 浏览器：Playwright MCP，手动逐屏访问 + 无障碍快照（`.playwright-mcp/page-*.yml`）+ 截图；
@@ -75,7 +75,7 @@
 | O-14 | 路由级 loading / error | 全站无 `loading.tsx` / `error.tsx`；导航期间无骨架屏，未捕获的 RSC 异常走 Next 默认错误页 | X-2 状态盘点 | 表单/按钮级 `loading` 与 server action 失败提示齐全；RSC 渲染很快，v1 未要求骨架屏。建议后续补路由级 `loading.tsx` 与中文 `error.tsx` |
 | O-15 | 数据差异（N-A） | 个人项目 9 vs 原型 8 个任务；官网改版 12 vs 18；无 seed 邀请（待处理/已发出均为 0）；无 seed 通知（铃铛为空） | seed 数据，本任务禁止改 seed | 计数与空态本身工作正常；空态文案均验证通过 |
 
-统计：必修 **3** 项（已修复）；选修 **13** 项（O-1…O-13，其中 O-2/O-11 为规格允许的 N-A）；数据差异 1 项（O-15，N-A）。
+统计：必修 **3** 项（已修复）；选修 **14** 项（O-1…O-14，其中 O-2/O-11 为规格允许的 N-A）；数据差异 1 项（O-15，N-A）。
 
 ## 5. X-2 状态完整性盘点
 
