@@ -42,7 +42,7 @@ export default async function InvitesPage() {
 
       <div className="mb-6 rounded-lg border border-[#e1e3e6] bg-[rgba(125,42,232,0.06)] p-3.5 text-[13px] text-[#5f6368]">
         <strong className="text-[#0e1318]">邀请基于你的 UID 发送，不会公开用户名</strong>
-        ；你可以在侧栏底部随时查看自己的 UID（<span className="font-mono">{user.uid}</span>）。
+        ；你的 UID 是 <span className="font-mono">{user.uid}</span>。
       </div>
 
       {received.length === 0 ? (

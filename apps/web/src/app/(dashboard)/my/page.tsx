@@ -8,6 +8,7 @@ import {
 } from "@/features/dashboard/my-tasks/service";
 import { MyTaskTable } from "@/features/dashboard/my-tasks/components/MyTaskTable";
 import { NewTaskButton } from "@/features/dashboard/my-tasks/components/NewTaskModal";
+import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
 // `todayInShanghai` 与 `features/notifications/due-scan.ts` 的 `shanghaiToday`
 // 采用同一口径（Intl en-CA + Asia/Shanghai）；这里复用 lib 中已有实现，
 // 不再复制一份。
@@ -69,7 +70,10 @@ export default async function MyTasksPage() {
             个人任务，以及各团队项目中分配给你的任务。
           </p>
         </div>
-        <NewTaskButton projects={projects} />
+        <div className="flex flex-none items-center gap-2">
+          <NewPersonalProjectButton />
+          <NewTaskButton projects={projects} />
+        </div>
       </header>
 
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">

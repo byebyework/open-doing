@@ -64,6 +64,8 @@ export interface TaskDetailClientProps {
   task: TaskDetailModel;
   /** 「← 返回项目」地址：所属项目页，或 `/my`。 */
   backHref: string;
+  /** 返回链接文案；无项目任务传「← 返回我的任务」。 */
+  backLabel?: string;
   /** 当前登录用户 ID（个人任务恒为责任人）。 */
   currentUserId: string;
 }
@@ -78,6 +80,7 @@ export interface TaskDetailClientProps {
 export function TaskDetailClient({
   task,
   backHref,
+  backLabel,
   currentUserId,
 }: TaskDetailClientProps) {
   const router = useRouter();
@@ -131,6 +134,7 @@ export function TaskDetailClient({
       permissions={{ canEdit: true, canDelete: true, canAssign: false }}
       onAction={onAction}
       backHref={backHref}
+      backLabel={backLabel}
       currentUserId={currentUserId}
     />
   );

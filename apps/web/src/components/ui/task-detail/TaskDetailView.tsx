@@ -206,6 +206,7 @@ export function TaskDetailView({
   permissions,
   onAction,
   backHref = "/my",
+  backLabel = "← 返回项目",
   currentUserId,
   assigneeOptions,
   onAssign,
@@ -362,7 +363,7 @@ export function TaskDetailView({
         href={backHref}
         className="mb-4 inline-block text-[13px] text-[#5f6368] no-underline hover:text-[#7d2ae8] hover:underline"
       >
-        ← 返回项目
+        {backLabel}
       </Link>
 
       <div className="grid min-w-0 grid-cols-1 items-start gap-6 min-[1101px]:grid-cols-[minmax(0,1fr)_300px]">

@@ -40,6 +40,7 @@ export default async function PersonalTaskDetailPage({
     <TaskDetailClient
       task={{ ...task, creatorName: user.username }}
       backHref={backHref}
+      backLabel={task.projectId ? "← 返回项目" : "← 返回我的任务"}
       currentUserId={user.id}
     />
   );

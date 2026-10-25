@@ -81,6 +81,11 @@ export interface TaskDetailViewProps {
    */
   backHref?: string;
   /**
+   * 返回链接文案：默认「← 返回项目」；个人任务不属于项目时传
+   * 「← 返回我的任务」，避免指向 `/my` 却仍写「项目」造成误导。
+   */
+  backLabel?: string;
+  /**
    * 当前登录用户 ID：用于判断评论是否显示「删除」入口。
    *
    * 冻结契约本身未包含当前用户；作为**可选**成员追加，不影响 J-5 原样
