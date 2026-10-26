@@ -37,53 +37,36 @@ packages/
 
 ## 本地开发（Quickstart）
 
-### 方式 A：一键启动（全部在 Docker 中运行）
+本地开发形态：**Docker 只运行 PostgreSQL，Next.js 在宿主机直接运行**。编译走原生文件系统，避开 macOS 容器内 Turbopack 编译过慢的问题。以下步骤均在宿主机执行。
 
-```bash
-docker compose up --build
-```
-
-首次启动会构建镜像、安装依赖、执行数据库迁移，然后启动 Next.js 开发服务器；打开 http://localhost:3000 即可使用。
-
-- 修改源码会自动热更新；修改 `package.json` / `pnpm-lock.yaml` 后需 `docker compose up --build` 重建镜像。
-- 基础镜像默认 `node:20-alpine`（满足项目 `>=20.11` 要求；网络允许时可设 `NODE_VERSION=22` 或 `24` 升级）；依赖源默认 `https://registry.npmmirror.com`（适配国内网络），海外环境可设 `NPM_REGISTRY=https://registry.npmjs.org`。
-- 数据保存在 `postgres_data` 卷中；`docker compose down` 停止，`docker compose down -v` 连同数据一起清空。
-- 可在仓库根 `.env`（不入库）中覆盖 `WEB_PORT`（默认 3000）、`POSTGRES_PORT`（默认 5432）、`SESSION_SECRET`、`CRON_SECRET`。容器内 `DATABASE_URL` 固定指向 `postgres` 服务，**不需要** `apps/web/.env.local`。
-- 与下面的「方式 B」不能同时运行（都会占用 3000 端口，PostgreSQL 端口也相同）。
-- 若 macOS/Windows 下热更新不生效，先确认 Docker Desktop 的文件共享正常；compose 已为应用容器设置 `WATCHPACK_POLLING=true`。
-
-### 方式 B：宿主机运行应用，Docker 只提供 PostgreSQL
-
-以下步骤均在宿主机执行。
-
-#### 0. 前置条件
+### 0. 前置条件
 
 - Node.js >= 20.11（含 Next.js 16 与 vitest 配置所需）
 - pnpm 10（`corepack enable` 后由根 `packageManager` 字段自动选择版本）
 - Docker（含 Compose v2）
 
-#### 1. 安装依赖
+### 1. 安装依赖
 
 ```bash
 pnpm install
 ```
 
-#### 2. 启动 PostgreSQL
+### 2. 启动 PostgreSQL
 
 在仓库根目录执行：
 
 ```bash
-docker compose up -d postgres
+docker compose up -d --wait
 ```
 
-这里只启动 `postgres` 服务；直接 `docker compose up -d` 会连同 web 应用一起启动（见「方式 A」），与宿主机 `pnpm dev` 争用 3000 端口。
+`docker-compose.yml` 现在只定义 `postgres` 一个服务（web 不进容器）；`--wait` 会等健康检查通过再返回。
 
 `docker-compose.yml`（仓库根）的 `postgres` 服务使用 `postgres:17-alpine`，容器内创建开发库 `open_doing`，并由 `docker/initdb` 下的初始化脚本创建测试库 `open_doing_test`（`01-create-test-db.sh`）与 Playwright e2e 库 `open_doing_e2e`（`02-create-e2e-db.sh`，供 e2e 用例使用）。
 
-- 本机 5432 端口被占用时，用环境变量换端口：`POSTGRES_PORT=5433 docker compose up -d postgres`。`POSTGRES_PORT` 只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
+- 数据库默认映射宿主机 **5433**（避开常被 ssh 隧道 / VSCode Remote 转发占用的 5432，与 `apps/web/.env.local` 的默认值一致）。需要换端口时设 `POSTGRES_PORT`：它只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
 - `docker/initdb` 中的脚本**只在数据卷为空时执行一次**。若数据卷是早期创建的、`open_doing_test` / `open_doing_e2e` 不存在：`docker compose down -v` 后重新启动（会清空数据），或手动执行 `CREATE DATABASE open_doing_test;` / `CREATE DATABASE open_doing_e2e;`。
 
-#### 3. 配置环境变量
+### 3. 配置环境变量
 
 Next.js 从 `apps/web` 目录解析环境变量（不是仓库根），因此把示例文件复制到 `apps/web/.env.local`：
 
@@ -104,24 +87,24 @@ cp .env.example apps/web/.env.local
 
 `.env.local` 已被 `.gitignore` 忽略，不入库；需要新增变量时同步更新根目录的 `.env.example`。
 
-#### 4. 运行数据库迁移
+### 4. 运行数据库迁移
 
 迁移只针对 `DATABASE_URL`（开发库）。drizzle-kit 读取的是 **shell 环境变量**（它不会自动加载 `apps/web/.env.local`），先把变量导入当前 shell，再执行迁移：
 
 ```bash
 set -a; source apps/web/.env.local; set +a
-pnpm --filter @open-doing/web db:migrate
+pnpm db:migrate
 ```
 
-修改 `apps/web/src/server/db/schema.ts` 后，用 `pnpm --filter @open-doing/web db:generate` 生成新迁移，再执行 `db:migrate`。迁移可在空库上重放。
+修改 `apps/web/src/server/db/schema.ts` 后，用 `pnpm db:generate` 生成新迁移，再执行 `pnpm db:migrate`。迁移可在空库上重放。
 
-#### 5. 写入示例数据（可选）
+### 5. 写入示例数据（可选）
 
 想直接看到与 `docs/prototypes` 一致的演示数据（团队、项目、任务、子任务、评论），在完成迁移后执行：
 
 ```bash
 set -a; source apps/web/.env.local; set +a
-pnpm --filter @open-doing/web db:seed
+pnpm db:seed
 ```
 
 `db:seed` 会先重放迁移（空库也能直接执行），再写入以下数据：
@@ -140,13 +123,15 @@ pnpm --filter @open-doing/web db:seed
 - **幂等（守卫式跳过）**：脚本检测到 `林夏` / `doing_x7k2m9` 已存在时，打印「已初始化」并直接退出，不写入、不覆盖任何数据；全部写入在单个事务中完成，失败自动回滚。需要重建示例数据时，先清空开发库（例如 `docker compose down -v`，**会同时清空测试库与 e2e 库，慎用**）后重跑。
 - seed 只读取 `DATABASE_URL`（开发库），不会触碰 `open_doing_test` / `open_doing_e2e`。
 
-#### 6. 启动应用
+### 6. 启动应用
 
 ```bash
 pnpm dev
 ```
 
 打开 http://localhost:3000：未登录会跳到 `/login`。注册（只需用户名 + 密码，无需邮箱）成功后自动登录并进入 `/my`（应用外壳 + 「我的任务」占位页）。
+
+> **排障：浏览器一直转圈 / 无法访问** —— 首先确认本机 3000 端口没有被其他进程占用，最常见的是 ssh 隧道 / VSCode Remote 转发抢占了 3000（流量被转发到远端而非本地应用，表现为一直转圈）。检查：`lsof -nP -iTCP:3000 -sTCP:LISTEN`；若监听进程是 `ssh`，断开隧道 / 关闭对应转发后重试。
 
 ## 常用命令
 
@@ -156,6 +141,9 @@ pnpm dev
 pnpm dev          # 启动 web 应用（等价于 pnpm --filter @open-doing/web dev）
 pnpm build        # 构建 web 应用
 pnpm start        # 以生产构建启动
+pnpm db:generate  # 生成 Drizzle 迁移（转发到 apps/web）
+pnpm db:migrate   # 执行数据库迁移（转发到 apps/web）
+pnpm db:seed      # 写入示例数据（转发到 apps/web）
 pnpm lint         # 对所有包执行 lint（目前为 apps/web）
 pnpm typecheck    # 对所有包执行类型检查
 pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
@@ -164,7 +152,7 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 测试说明：
 
 - 运行测试前先加载环境变量（vitest 不读取 `apps/web/.env.local`，否则数据库用例会静默跳过）：`set -a; source apps/web/.env.local; set +a`（bash/zsh），再执行 `pnpm test`。
-- 数据库用例只读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空**测试库**，因此需要先 `docker compose up -d postgres`；未设置该变量时用例会跳过并打印提示。开发服务器始终连接 `DATABASE_URL`，运行测试不会清空开发数据。
+- 数据库用例只读取 `TEST_DATABASE_URL`，会先重放 `apps/web/drizzle` 迁移并清空**测试库**，因此需要先 `docker compose up -d --wait`；未设置该变量时用例会跳过并打印提示。开发服务器始终连接 `DATABASE_URL`，运行测试不会清空开发数据。
 - 多个测试文件共用同一个测试库，Vitest 配置为串行执行测试文件，避免互相清库。
 - 类型检查顺序：Next 16 的路由类型由构建生成。干净 checkout 上请按 **`pnpm build`（或 `pnpm --filter @open-doing/web exec next typegen`）→ `pnpm typecheck`** 的顺序执行（本地与 CI 同序）；已有 `.next` 构建产物时可直接 `pnpm typecheck`。
 
@@ -176,7 +164,7 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 前置条件：
 
-- PostgreSQL 已启动（`docker compose up -d postgres`）；e2e 库 `open_doing_e2e` 由 `docker/initdb/02-create-e2e-db.sh` 在数据卷初始化时创建。
+- PostgreSQL 已启动（`docker compose up -d --wait`）；e2e 库 `open_doing_e2e` 由 `docker/initdb/02-create-e2e-db.sh` 在数据卷初始化时创建。
 - 首次运行需安装与 `@playwright/test` 版本匹配的 Chromium：`pnpm --filter @open-doing/web exec playwright install chromium`。
 
 运行（在仓库根目录）：
@@ -189,7 +177,7 @@ pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts
 
 运行机制：
 
-- Playwright 在 **3100** 端口启动独立的 `next dev`（不与 docker compose 的 web/3000 冲突），并在 `webServer.env` 中显式注入 `DATABASE_URL=…/open_doing_e2e`、测试专用 `SESSION_SECRET` / `CRON_SECRET`，因此**不需要** `apps/web/.env.local`。
+- Playwright 在 **3100** 端口启动独立的 `next dev`（与宿主机 `pnpm dev` 的 3000 端口错开），并在 `webServer.env` 中显式注入 `DATABASE_URL=…/open_doing_e2e`、测试专用 `SESSION_SECRET` / `CRON_SECRET`，因此**不需要** `apps/web/.env.local`。
 - 全局准备（`apps/web/e2e/global-setup.ts`）先断言库名必须是 `open_doing_e2e`，再重放 `apps/web/drizzle` 迁移并 TRUNCATE 全部业务表；测试因此可重复运行。
 - `test:e2e` 由 `apps/web/scripts/e2e-with-db-guard.sh` 包裹：运行前后分别打印 `open_doing` 与 `open_doing_test` 的逐表行数，任一发生变化即判失败，证明 e2e 只写 `open_doing_e2e`。
 - 用例串行执行；每个用例通过注册页自建唯一账号。

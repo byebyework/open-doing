@@ -21,7 +21,7 @@ COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 POSTGRES_USER="${POSTGRES_USER:-open-doing}"
 POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-open-doing}"
 POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-POSTGRES_PORT="${POSTGRES_PORT:-5432}"
+POSTGRES_PORT="${POSTGRES_PORT:-5433}"
 
 USE_DOCKER=0
 if ! command -v psql >/dev/null 2>&1; then
@@ -29,7 +29,7 @@ if ! command -v psql >/dev/null 2>&1; then
     USE_DOCKER=1
   else
     echo "[e2e] 找不到 psql，且 docker compose 的 postgres 服务未运行；" >&2
-    echo "[e2e] 请先执行 docker compose up -d postgres，或安装 psql。" >&2
+    echo "[e2e] 请先执行 docker compose up -d --wait，或安装 psql。" >&2
     exit 1
   fi
 fi

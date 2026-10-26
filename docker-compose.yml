@@ -1,29 +1,8 @@
 name: open-doing
 
-# 应用镜像定义（web 与 migrate 共用），源码在运行时通过 bind mount 挂入。
-x-app-image: &app-image
-  build:
-    context: .
-    dockerfile: docker/Dockerfile.dev
-    args:
-      # 国内网络使用镜像源；海外环境可设 NPM_REGISTRY=https://registry.npmjs.org。
-      NPM_REGISTRY: ${NPM_REGISTRY:-https://registry.npmmirror.com}
-      # 默认 Node 20（可稳定拉取）；需要时设 NODE_VERSION=22 / 24 覆盖。
-      NODE_VERSION: ${NODE_VERSION:-20}
-  image: open-doing-web:dev
-
-# 应用容器的公共挂载：宿主源码 + 命名卷遮住 node_modules，避免 macOS 宿主产物
-# （符号链接、平台相关的原生模块）污染容器内依赖。
-x-app-volumes: &app-volumes
-  - .:/app
-  - node_modules:/app/node_modules
-  - web_node_modules:/app/apps/web/node_modules
-  - types_node_modules:/app/packages/types/node_modules
-  # 构建缓存放命名卷，避免宿主 .next（可能由不同平台生成）混入容器。
-  - next_cache:/app/apps/web/.next
-  # pnpm store 持久化，重启容器时不必重新下载依赖。
-  - pnpm_store:/pnpm/store
-
+# 本地开发只需要 PostgreSQL；Next.js 在宿主机用 pnpm dev 直接运行
+# （编译走原生 APFS，避开 macOS 容器内 Turbopack 编译过慢的问题）。
+# 完整流程：docker compose up -d --wait → pnpm db:migrate → pnpm dev
 services:
   postgres:
     image: postgres:17-alpine
@@ -33,8 +12,9 @@ services:
       POSTGRES_PASSWORD: open-doing
       POSTGRES_DB: open_doing
     ports:
-      # 默认 5432；若本机端口被占用，可用 POSTGRES_PORT=5433 docker compose up -d 覆盖。
-      - "${POSTGRES_PORT:-5432}:5432"
+      # 默认 5433，与 apps/web/.env.local 的 DATABASE_URL 一致；5432 常被
+      # ssh 隧道 / VSCode Remote 转发占用，故不用 5432。可用 POSTGRES_PORT 覆盖。
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
@@ -44,70 +24,5 @@ services:
       timeout: 5s
       retries: 10
 
-  # 一次性迁移：库健康后跑 drizzle-kit migrate，成功后退出，web 再启动。
-  migrate:
-    <<: *app-image
-    restart: "no"
-    depends_on:
-      postgres:
-        condition: service_healthy
-    environment:
-      DATABASE_URL: postgres://open-doing:open-doing@postgres:5432/open_doing
-      npm_config_store_dir: /pnpm/store
-    command: ["pnpm", "--filter", "@open-doing/web", "db:migrate"]
-    volumes: *app-volumes
-
-  web:
-    <<: *app-image
-    restart: unless-stopped
-    depends_on:
-      postgres:
-        condition: service_healthy
-      migrate:
-        condition: service_completed_successfully
-    environment:
-      # 容器内数据库地址必须走服务名 postgres，而不是宿主机的 localhost。
-      DATABASE_URL: postgres://open-doing:open-doing@postgres:5432/open_doing
-      # 正式使用时请在仓库根 .env 中换成强随机值。
-      SESSION_SECRET: ${SESSION_SECRET:-dev-only-change-me}
-      CRON_SECRET: ${CRON_SECRET:-dev-only-change-me}
-      NODE_ENV: development
-      NEXT_TELEMETRY_DISABLED: "1"
-      npm_config_store_dir: /pnpm/store
-      # Docker Desktop（macOS/Windows）下若热更新不生效，可尝试打开轮询。
-      WATCHPACK_POLLING: "true"
-    ports:
-      # 默认 3000；与宿主机本地开发冲突时可用 WEB_PORT=3001 覆盖。
-      - "${WEB_PORT:-3000}:3000"
-    volumes: *app-volumes
-    # 开发服务器必须监听 0.0.0.0 才能被宿主机访问。
-    command:
-      - pnpm
-      - --filter
-      - "@open-doing/web"
-      - exec
-      - next
-      - dev
-      - --hostname
-      - 0.0.0.0
-      - --port
-      - "3000"
-    healthcheck:
-      test:
-        - CMD
-        - node
-        - -e
-        - "fetch('http://127.0.0.1:3000/login').then(r => process.exit(r.ok ? 0 : 1)).catch(() => process.exit(1))"
-      interval: 30s
-      timeout: 5s
-      retries: 10
-      # 首次启动要装依赖 + 编译页面，留足时间。
-      start_period: 120s
-
 volumes:
   postgres_data:
-  node_modules:
-  web_node_modules:
-  types_node_modules:
-  next_cache:
-  pnpm_store:

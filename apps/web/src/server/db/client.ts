@@ -22,7 +22,7 @@ function resolveConnectionString(): string {
     throw new Error("缺少 DATABASE_URL 环境变量");
   }
 
-  return "postgres://open-doing:open-doing@localhost:5432/open_doing";
+  return "postgres://open-doing:open-doing@localhost:5433/open_doing";
 }
 
 function createDb(connectionString: string): Database {

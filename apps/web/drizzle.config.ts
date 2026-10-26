@@ -14,6 +14,6 @@ export default defineConfig({
   dbCredentials: {
     url:
       process.env.DATABASE_URL ||
-      "postgres://open-doing:open-doing@localhost:5432/open_doing",
+      "postgres://open-doing:open-doing@localhost:5433/open_doing",
   },
 });

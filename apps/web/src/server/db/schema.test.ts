@@ -19,7 +19,7 @@ const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
 if (!hasTestDatabase) {
   console.warn(
-    "[schema.test] 未设置 TEST_DATABASE_URL，数据库用例已跳过。先运行 `docker compose up -d`，再设置 TEST_DATABASE_URL=postgres://open-doing:open-doing@localhost:5432/open_doing_test 执行 `pnpm test`。",
+    "[schema.test] 未设置 TEST_DATABASE_URL，数据库用例已跳过。先运行 `docker compose up -d`，再设置 TEST_DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open_doing_test 执行 `pnpm test`。",
   );
 }
 

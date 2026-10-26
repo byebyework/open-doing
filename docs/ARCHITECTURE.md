@@ -237,7 +237,7 @@ sessions（v1 不建：使用 jose 无状态签名 cookie，见 §3）
 `apps/web` 需要的环境变量（`.env.local`，不入库）：
 
 ```
-DATABASE_URL=postgres://open-doing:open-doing@localhost:5432/open-doing
+DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open-doing
 SESSION_SECRET=...
 CRON_SECRET=...
 ```
