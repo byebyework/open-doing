@@ -15,6 +15,9 @@ import { DissolveTeamButton } from "@/features/teams/members/components/Dissolve
 import { LeaveTeamButton } from "@/features/teams/members/components/LeaveTeamButton";
 import { TransferTeamButton } from "@/features/teams/members/components/TransferTeamButton";
 import { listPendingSentInvites } from "@/features/teams/invites/service";
+import { JoinCodeSettings } from "@/features/teams/joins/components/JoinCodeSettings";
+import { JoinRequestList } from "@/features/teams/joins/components/JoinRequestList";
+import { getTeamJoinSettings, listTeamJoinRequests } from "@/features/teams/joins/service";
 
 export const metadata: Metadata = {
   title: "团队设置 · Open Doing",
@@ -45,6 +48,9 @@ export default async function TeamSettingsPage(
 
   const members = await listMembers(team.id);
   const pendingSent = canManage ? await listPendingSentInvites(team.id) : [];
+  // 凭码加入设置与审批队列仅 owner/admin 可见（member 视角不渲染入口）。
+  const joinSettings = canManage ? await getTeamJoinSettings(team.id) : null;
+  const joinRequests = canManage ? await listTeamJoinRequests(team.id) : [];
   // 受让人下拉排除当前 owner（转让给自己由 service 拒绝）。
   const transferCandidates = members
     .filter(({ membership: memberMembership }) => memberMembership.role !== "owner")
@@ -104,6 +110,31 @@ export default async function TeamSettingsPage(
               </div>
             ))}
           </div>
+        </section>
+      ) : null}
+
+      {canManage && joinSettings ? (
+        <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">凭码加入</h2>
+          <p className="mb-4 text-[13px] text-[#5f6368]">
+            成员凭此码申请加入，由管理员审批；关闭后无法凭码加入。
+          </p>
+
+          <JoinCodeSettings
+            teamId={team.id}
+            joinCode={joinSettings.joinCode}
+            joinCodeEnabled={joinSettings.joinCodeEnabled}
+          />
+        </section>
+      ) : null}
+
+      {canManage ? (
+        <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+          <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">
+            加入申请（{joinRequests.length}）
+          </h2>
+
+          <JoinRequestList teamId={team.id} requests={joinRequests} />
         </section>
       ) : null}
 
