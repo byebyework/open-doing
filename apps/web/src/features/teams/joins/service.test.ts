@@ -83,6 +83,24 @@ async function countNotifications(
   return rows.length;
 }
 
+/** 读取某团队针对某申请人的「凭码申请」通知（审批人扇出的一组）。 */
+async function joinRequestedNotifications(
+  db: DbClient,
+  teamId: string,
+  applicantId: string,
+) {
+  return db
+    .select()
+    .from(notifications)
+    .where(
+      and(
+        eq(notifications.type, "team_join_requested"),
+        eq(notifications.teamId, teamId),
+        eq(notifications.actorId, applicantId),
+      ),
+    );
+}
+
 describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
   let db: DbClient;
 
@@ -107,11 +125,20 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
     }
   });
 
-  it("入群码归一化：去空白 + 转大写后合法", async () => {
+  it("入群码归一化：前后空白 + 转大写后合法", async () => {
     const { outsider, team } = await seedTeam(db);
     await db.update(teams).set({ joinCode: "K7M29XQ4" }).where(eq(teams.id, team.id));
 
     const request = await createJoinRequest({ code: " k7m29xq4 ", actorId: outsider.id }, db);
+
+    expect(request).toMatchObject({ teamId: team.id, userId: outsider.id, status: "pending" });
+  });
+
+  it("入群码归一化：粘贴码中间含空白也合法", async () => {
+    const { outsider, team } = await seedTeam(db);
+    await db.update(teams).set({ joinCode: "K7M29XQ4" }).where(eq(teams.id, team.id));
+
+    const request = await createJoinRequest({ code: "k7m2 9xq4", actorId: outsider.id }, db);
 
     expect(request).toMatchObject({ teamId: team.id, userId: outsider.id, status: "pending" });
   });
@@ -351,6 +378,72 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
 
     expect(cancelled).toMatchObject({ id: request.id, status: "cancelled" });
     expect(await countNotifications(db)).toBe(before);
+  });
+
+  it("批准后清除审批人针对该申请人的未读申请通知", async () => {
+    const { owner, admin, outsider, team } = await seedTeam(db);
+    const code = await joinCodeOf(db, team.id);
+    const request = await createJoinRequest({ code, actorId: outsider.id }, db);
+
+    await respondToJoinRequest(
+      { requestId: request.id, actorId: owner.id, approve: true },
+      db,
+    );
+
+    const rows = await joinRequestedNotifications(db, team.id, outsider.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.userId).sort()).toEqual([owner.id, admin.id].sort());
+    expect(rows.every((row) => row.read)).toBe(true);
+  });
+
+  it("拒绝后清除审批人针对该申请人的未读申请通知", async () => {
+    const { owner, admin, outsider, team } = await seedTeam(db);
+    const code = await joinCodeOf(db, team.id);
+    const request = await createJoinRequest({ code, actorId: outsider.id }, db);
+
+    await respondToJoinRequest(
+      { requestId: request.id, actorId: owner.id, approve: false },
+      db,
+    );
+
+    const rows = await joinRequestedNotifications(db, team.id, outsider.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.userId).sort()).toEqual([owner.id, admin.id].sort());
+    expect(rows.every((row) => row.read)).toBe(true);
+  });
+
+  it("撤回后清除审批人针对该申请人的未读申请通知", async () => {
+    const { owner, admin, outsider, team } = await seedTeam(db);
+    const code = await joinCodeOf(db, team.id);
+    const request = await createJoinRequest({ code, actorId: outsider.id }, db);
+
+    await cancelJoinRequest({ requestId: request.id, actorId: outsider.id }, db);
+
+    const rows = await joinRequestedNotifications(db, team.id, outsider.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.map((row) => row.userId).sort()).toEqual([owner.id, admin.id].sort());
+    expect(rows.every((row) => row.read)).toBe(true);
+  });
+
+  it("只清除被处理申请人的通知，其他申请人的待处理通知保持未读", async () => {
+    const { owner, outsider, team } = await seedTeam(db);
+    const second = await createUser(db, "second");
+    const code = await joinCodeOf(db, team.id);
+    const first = await createJoinRequest({ code, actorId: outsider.id }, db);
+    await createJoinRequest({ code, actorId: second.id }, db);
+
+    await respondToJoinRequest(
+      { requestId: first.id, actorId: owner.id, approve: false },
+      db,
+    );
+
+    const resolved = await joinRequestedNotifications(db, team.id, outsider.id);
+    expect(resolved.length).toBeGreaterThan(0);
+    expect(resolved.every((row) => row.read)).toBe(true);
+
+    const pending = await joinRequestedNotifications(db, team.id, second.id);
+    expect(pending).toHaveLength(2);
+    expect(pending.every((row) => row.read)).toBe(false);
   });
 
   it("取消他人申请或非 pending 抛 INVALID", async () => {

@@ -14,7 +14,7 @@ interface JoinValues {
 /**
  * 凭码加入表单（客户端交互层）：输入 8 位团队加入码发起审批申请。
  *
- * 码的格式、存在性与重复申请校验在 server action（service 侧统一 trim + 大写）；
+ * 码的格式、存在性与重复申请校验在 server action（service 侧剔除空白 + 大写）；
  * 错误按字段落回输入框 / 表单顶部，成功后重置输入并引导到邀请页查看进度。
  */
 export function JoinByCodeForm() {
@@ -70,7 +70,6 @@ export function JoinByCodeForm() {
           <Input
             size="large"
             placeholder="如 K7M29XQ4"
-            maxLength={8}
             spellCheck={false}
             autoComplete="off"
             autoFocus

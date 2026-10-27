@@ -235,6 +235,30 @@ export async function markTeamInviteNotificationsRead(
     );
 }
 
+/**
+ * 将审批人在指定团队下、针对某个申请人的未读「凭码申请」通知置为已读。
+ *
+ * 通知行没有 requestId，但 `actor_id = 申请人` + `team_id` 足以唯一锁定一次
+ * 申请的通知扇出（同一申请人同团队至多一条 pending 申请）；因此审批/拒绝/撤回
+ * 任一申请后，只清理该申请人的审批通知，不会误清其他待处理申请人。
+ */
+export async function markTeamJoinNotificationsRead(
+  input: { teamId: string; applicantId: string },
+  client: DbClient = db,
+): Promise<void> {
+  await client
+    .update(notifications)
+    .set({ read: true })
+    .where(
+      and(
+        eq(notifications.type, "team_join_requested"),
+        eq(notifications.teamId, input.teamId),
+        eq(notifications.actorId, input.applicantId),
+        eq(notifications.read, false),
+      ),
+    );
+}
+
 /** 去重并剔除空值，供批量 `inArray` 查询使用。 */
 function uniqueIds(ids: (string | null)[]): string[] {
   return Array.from(new Set(ids.filter((id): id is string => Boolean(id))));

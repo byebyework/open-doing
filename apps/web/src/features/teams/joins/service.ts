@@ -1,6 +1,7 @@
 import { and, asc, eq, inArray } from "drizzle-orm";
 import type { TeamJoinRequest } from "@open-doing/types";
 
+import { markTeamJoinNotificationsRead } from "@/features/notifications/queries";
 import { createNotification } from "@/features/notifications/service";
 import { generateJoinCode } from "@/lib/join-code";
 import { isUuid } from "@/lib/task-fields";
@@ -172,8 +173,11 @@ export async function createJoinRequest(
   input: CreateJoinRequestInput,
   client: DbClient = db,
 ): Promise<TeamJoinRequest> {
+  // 粘贴的码可能带前后或中间空白（如 " k7m2 9xq4 "），先剔除全部空白再大写。
   const code =
-    typeof input?.code === "string" ? input.code.trim().toUpperCase() : "";
+    typeof input?.code === "string"
+      ? input.code.replace(/\s+/g, "").toUpperCase()
+      : "";
 
   // 格式不合法与码不存在共用同一文案，避免泄露团队信息。
   if (!JOIN_CODE_PATTERN.test(code)) {
@@ -328,6 +332,12 @@ export async function respondToJoinRequest(
       }
     }
 
+    // 审批完成：同一事务内清理审批人针对该申请人的「凭码申请」通知（批准/拒绝同一路径）。
+    await markTeamJoinNotificationsRead(
+      { teamId: row.teamId, applicantId: row.userId },
+      tx,
+    );
+
     await createNotification(
       {
         userId: row.userId,
@@ -387,7 +397,12 @@ export async function cancelJoinRequest(
       throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
     }
 
-    // 撤回不通知审批人（设计：静默取消）。
+    // 撤回不通知审批人（设计：静默取消），但同一事务内清掉此前投递的审批通知。
+    await markTeamJoinNotificationsRead(
+      { teamId: row.teamId, applicantId: row.userId },
+      tx,
+    );
+
     return toJoinRequest(updated);
   };
 
