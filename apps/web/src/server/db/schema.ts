@@ -10,6 +10,11 @@
  * 5. 通知幂等索引 `(user_id, task_id, type) WHERE task_id IS NOT NULL`
  *    是 N-3 幂等投递的数据库依据。
  * 6. v1 不建 sessions 表（jose 无状态签名 cookie）。
+ * 7. 团队入群码 `teams.join_code` 由应用层生成（8 位、31 字符集），全局唯一；
+ *    唯一性落为独立的表级唯一索引，便于迁移时「先回填、再加约束」。
+ *    `join_code_enabled` 控制该团队是否接受凭码加入申请。
+ * 8. `team_join_requests` 镜像 team_invites 的部分唯一索引：同一用户对同一团队
+ *    同时只允许一条 pending 申请；终态（approved/declined/cancelled）不占用。
  */
 import { sql } from "drizzle-orm";
 import {
@@ -24,7 +29,12 @@ import {
   uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
-import type { NotificationType, SpaceType, TaskStatus } from "@open-doing/types";
+import type {
+  NotificationType,
+  SpaceType,
+  TaskStatus,
+  TeamJoinStatus,
+} from "@open-doing/types";
 
 /** 用户：用户名 + 密码登录，不收集邮箱；uid 仅用于邀请。 */
 export const users = pgTable("users", {
@@ -35,16 +45,27 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-/** 团队：slug 全局唯一。 */
-export const teams = pgTable("teams", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  name: text("name").notNull(),
-  slug: text("slug").notNull().unique(),
-  ownerId: uuid("owner_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/** 团队：slug 全局唯一；join_code 由应用层生成（见文件头决策 7）。 */
+export const teams = pgTable(
+  "teams",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    // 存量团队由迁移先回填、再 SET NOT NULL；新团队由 createTeam / seed 写入。
+    // 迁移顺序（可空列 → 回填 → 加约束）由手写 SQL 保证，类型声明与最终库一致为非空。
+    joinCode: text("join_code").notNull(),
+    joinCodeEnabled: boolean("join_code_enabled").notNull().default(true),
+    ownerId: uuid("owner_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // 独立唯一索引（非列级 .unique()），迁移中回填必须排在其创建之前。
+    uniqueIndex("teams_join_code_unique").on(t.joinCode),
+  ],
+);
 
 /** 团队成员关系：同一用户在同一团队只允许一条。 */
 export const teamMemberships = pgTable(
@@ -92,6 +113,33 @@ export const teamInvites = pgTable(
     uniqueIndex("team_invites_pending_team_invitee_unique")
       .on(t.teamId, t.inviteeId)
       .where(sql`${t.status} = 'pending'`),
+  ],
+);
+
+/** 凭码加入申请：pending 状态对同一 (team, user) 只允许一条（部分唯一索引）。 */
+export const teamJoinRequests = pgTable(
+  "team_join_requests",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    teamId: uuid("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: text("status").$type<TeamJoinStatus>().notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
+    respondedById: uuid("responded_by_id").references(() => users.id, {
+      onDelete: "cascade",
+    }),
+  },
+  (t) => [
+    uniqueIndex("team_join_requests_pending_team_user_unique")
+      .on(t.teamId, t.userId)
+      .where(sql`${t.status} = 'pending'`),
+    // 「我的申请」查询：按用户列出其加入申请。
+    index("team_join_requests_user_id_idx").on(t.userId),
   ],
 );
 

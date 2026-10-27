@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
 import {
@@ -49,7 +50,12 @@ async function seed(db: DbClient) {
 
   const [team] = await db
     .insert(teams)
-    .values({ name: "增长突击队", slug: "growth-squad", ownerId: owner.id })
+    .values({
+      name: "增长突击队",
+      slug: "growth-squad",
+      ownerId: owner.id,
+      joinCode: generateJoinCode(),
+    })
     .returning();
   await db.insert(teamMemberships).values([
     {
@@ -212,7 +218,12 @@ async function seed(db: DbClient) {
   // 外部团队：同名成员也在其中负责逾期任务，用于验证按 teamId 隔离。
   const [otherTeam] = await db
     .insert(teams)
-    .values({ name: "外部团队", slug: "outside-team", ownerId: outsider.id })
+    .values({
+      name: "外部团队",
+      slug: "outside-team",
+      ownerId: outsider.id,
+      joinCode: generateJoinCode(),
+    })
     .returning();
   await db.insert(teamMemberships).values({
     teamId: otherTeam!.id,
@@ -441,7 +452,12 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
     const owner = await createUser(db, "empty-owner");
     const [team] = await db
       .insert(teams)
-      .values({ name: "空团队", slug: "empty-team", ownerId: owner.id })
+      .values({
+        name: "空团队",
+        slug: "empty-team",
+        ownerId: owner.id,
+        joinCode: generateJoinCode(),
+      })
       .returning();
     await db
       .insert(teamMemberships)

@@ -1,6 +1,7 @@
 import { asc, eq, like } from "drizzle-orm";
 import type { Team, TeamMembership } from "@open-doing/types";
 
+import { generateJoinCode } from "@/lib/join-code";
 import { slugWithCounter, slugifyName } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
@@ -95,7 +96,7 @@ async function nextFreeSlug(base: string, client: DbClient): Promise<string> {
  * 创建团队：创建者自动成为 owner，团队与成员关系同事务写入。
  *
  * slug 由名称推导（纯中文回退 `team`），重名追加计数后缀；
- * 并发竞态由唯一约束重试兜底。
+ * 同时生成全局唯一的 8 位入群码；并发竞态由唯一约束重试兜底。
  */
 export async function createTeam(
   input: CreateTeamInput,
@@ -109,7 +110,7 @@ export async function createTeam(
     const slug = await nextFreeSlug(base, tx);
     const [teamRow] = await tx
       .insert(teams)
-      .values({ name, slug, ownerId: actorId })
+      .values({ name, slug, ownerId: actorId, joinCode: generateJoinCode() })
       .returning();
 
     await tx.insert(teamMemberships).values({

@@ -1,6 +1,7 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
 import { notifications, projects, tasks, teams, users } from "@/server/db/schema";
@@ -40,7 +41,12 @@ async function seed(db: DbClient) {
 
   const [team] = await db
     .insert(teams)
-    .values({ name: "增长突击队", slug: "growth-squad", ownerId: owner.id })
+    .values({
+      name: "增长突击队",
+      slug: "growth-squad",
+      ownerId: owner.id,
+      joinCode: generateJoinCode(),
+    })
     .returning();
   const [teamProject] = await db
     .insert(projects)
@@ -244,7 +250,12 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
     const { owner, member, team, personalTask } = await seed(db);
     const [otherTeam] = await db
       .insert(teams)
-      .values({ name: "效率工程部", slug: "efficiency-lab", ownerId: owner.id })
+      .values({
+        name: "效率工程部",
+        slug: "efficiency-lab",
+        ownerId: owner.id,
+        joinCode: generateJoinCode(),
+      })
       .returning();
 
     await createNotification({ userId: member.id, type: "team_invite", teamId: team.id, actorId: owner.id }, db);

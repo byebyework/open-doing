@@ -29,6 +29,7 @@ import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { fileURLToPath } from "node:url";
 import postgres from "postgres";
 
+import { generateJoinCode } from "../../lib/join-code";
 import { todayInShanghai } from "../../lib/today";
 import * as schema from "./schema";
 import {
@@ -544,6 +545,7 @@ async function seed(): Promise<void> {
         .values({
           name: "增长突击队",
           slug: "growth-squad",
+          joinCode: generateJoinCode(),
           ownerId: requireId(userIdByName, "周牧"),
           createdAt: timestampFromOffset(today, -21, 10),
         })

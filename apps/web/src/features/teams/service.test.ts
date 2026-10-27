@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { teamMemberships, users } from "@/server/db/schema";
+import { teamMemberships, teams, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { TeamPermissionError, getMembership } from "./permissions";
@@ -60,6 +60,16 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
       .where(eq(teamMemberships.teamId, team.id));
     expect(memberships).toHaveLength(1);
     expect(memberships[0]).toMatchObject({ userId: owner.id, role: "owner" });
+  });
+
+  it("新建团队的 joinCode 非空、8 位", async () => {
+    const owner = await createUser(db, "alice");
+
+    const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
+
+    // Team 领域模型暂不暴露 joinCode，直接查库校验。
+    const [row] = await db.select().from(teams).where(eq(teams.id, team.id));
+    expect(row!.joinCode).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
   });
 
   it("名称校验：trim 后需为 2–30 字符", async () => {

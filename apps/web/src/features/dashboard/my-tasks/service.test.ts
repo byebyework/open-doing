@@ -1,5 +1,6 @@
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
 import {
@@ -48,7 +49,12 @@ async function createTeam(
 ) {
   const [team] = await db
     .insert(teams)
-    .values({ name: input.name, slug: input.slug, ownerId: input.ownerId })
+    .values({
+      name: input.name,
+      slug: input.slug,
+      ownerId: input.ownerId,
+      joinCode: generateJoinCode(),
+    })
     .returning();
   const [project] = await db
     .insert(projects)

@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
+import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "./client";
 import {
@@ -9,6 +10,7 @@ import {
   subtasks,
   tasks,
   teamInvites,
+  teamJoinRequests,
   teamMemberships,
   teams,
   users,
@@ -53,8 +55,13 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     teamSeq += 1;
     const [row] = await db
       .insert(teams)
-      .values({ name: `测试团队 ${teamSeq}`, slug: `test-team-${teamSeq}`, ownerId })
-      .returning({ id: teams.id });
+      .values({
+        name: `测试团队 ${teamSeq}`,
+        slug: `test-team-${teamSeq}`,
+        ownerId,
+        joinCode: generateJoinCode(),
+      })
+      .returning({ id: teams.id, joinCode: teams.joinCode });
     return row;
   }
 
@@ -231,5 +238,73 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     expect(await db.select().from(teamMemberships)).toHaveLength(0);
     expect(await db.select().from(teamInvites)).toHaveLength(0);
     expect(await db.select().from(projects)).toHaveLength(0);
+  });
+
+  it("⑦ 团队 join_code 非空且 8 位，join_code_enabled 默认开启", async () => {
+    userSeq += 1;
+    const owner = await createUser(`join_code_owner_${userSeq}`);
+    const team = await createTeam(owner.id);
+
+    const [row] = await db.select().from(teams).where(eq(teams.id, team.id));
+    expect(row!.joinCode).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+    expect(row!.joinCodeEnabled).toBe(true);
+  });
+
+  it("⑧ 同库两条团队 join_code 不冲突，重复 join_code 被唯一索引拒绝", async () => {
+    userSeq += 1;
+    const owner = await createUser(`join_code_unique_${userSeq}`);
+    const first = await createTeam(owner.id);
+    const second = await createTeam(owner.id);
+
+    expect(first.joinCode).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+    expect(second.joinCode).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+    expect(first.joinCode).not.toBe(second.joinCode);
+
+    await expect(
+      db.insert(teams).values({
+        name: "重复入群码团队",
+        slug: "duplicate-join-code",
+        ownerId: owner.id,
+        joinCode: first.joinCode,
+      }),
+    ).rejects.toThrow();
+  });
+
+  it("⑨ pending 加入申请的部分唯一索引拒绝同 (team, user) 二次 pending", async () => {
+    userSeq += 1;
+    const owner = await createUser(`join_request_owner_${userSeq}`);
+    const applicant = await createUser(`join_request_user_${userSeq}`);
+    const team = await createTeam(owner.id);
+
+    const [request] = await db
+      .insert(teamJoinRequests)
+      .values({ teamId: team.id, userId: applicant.id })
+      .returning({ id: teamJoinRequests.id });
+
+    await expect(
+      db.insert(teamJoinRequests).values({ teamId: team.id, userId: applicant.id }),
+    ).rejects.toThrow();
+
+    // 终态不占用部分唯一索引，申请人可再次发起 pending 申请。
+    await db
+      .update(teamJoinRequests)
+      .set({ status: "declined", respondedAt: new Date(), respondedById: owner.id })
+      .where(eq(teamJoinRequests.id, request.id));
+    await expect(
+      db.insert(teamJoinRequests).values({ teamId: team.id, userId: applicant.id }),
+    ).resolves.toBeDefined();
+  });
+
+  it("⑩ 删除团队级联清空 team_join_requests", async () => {
+    userSeq += 1;
+    const owner = await createUser(`join_request_cascade_owner_${userSeq}`);
+    const applicant = await createUser(`join_request_cascade_user_${userSeq}`);
+    const team = await createTeam(owner.id);
+
+    await db.insert(teamJoinRequests).values({ teamId: team.id, userId: applicant.id });
+
+    await db.delete(teams).where(eq(teams.id, team.id));
+
+    expect(await db.select().from(teamJoinRequests)).toHaveLength(0);
   });
 });
