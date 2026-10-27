@@ -73,6 +73,13 @@ function typeColors(
     case "team_invite":
       // 未读行背景也是 colorPrimaryBg，图标改用同色系的深一档令牌保持可见。
       return { color: token.colorPrimary, background: token.colorPrimaryBgHover };
+    case "team_join_requested":
+      // 待审批的待办感：与邀请同色系；未读行背景也是 colorPrimaryBg，图标改用深一档令牌保持可见。
+      return { color: token.colorPrimary, background: token.colorPrimaryBgHover };
+    case "team_join_approved":
+      return { color: token.colorSuccess, background: token.colorSuccessBg };
+    case "team_join_declined":
+      return { color: token.colorTextSecondary, background: token.colorFillSecondary };
     case "task_assigned":
       return { color: token.colorInfo, background: token.colorInfoBg };
     case "task_due_soon":
@@ -106,7 +113,7 @@ function BellIcon() {
   );
 }
 
-/** 六种通知类型各自的线性图标（原型 `notif-pop` 同款）。 */
+/** 各通知类型的线性图标（原型 `notif-pop` 同款；join 系列沿用同一线条风格）。 */
 function NotificationTypeIcon({ type }: { type: NotificationType }) {
   const common = {
     width: 14,
@@ -127,6 +134,32 @@ function NotificationTypeIcon({ type }: { type: NotificationType }) {
           <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
           <circle cx="9" cy="7" r="4" />
           <path d="M19 8v6M22 11h-6" />
+        </svg>
+      );
+    case "team_join_requested":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M17 11h5" />
+          <path d="M19 8l3 3-3 3" />
+        </svg>
+      );
+    case "team_join_approved":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M16 11.5l2 2 4-4" />
+        </svg>
+      );
+    case "team_join_declined":
+      return (
+        <svg {...common}>
+          <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+          <circle cx="9" cy="7" r="4" />
+          <path d="M17 9l5 5" />
+          <path d="M22 9l-5 5" />
         </svg>
       );
     case "task_assigned":

@@ -46,6 +46,12 @@ export function formatNotificationBody(item: NotificationListItem): Notification
   switch (item.type) {
     case "team_invite":
       return withActor(item.actorName, `邀请你加入团队「${teamName}」`);
+    case "team_join_requested":
+      return withActor(item.actorName, `申请加入团队「${teamName}」`);
+    case "team_join_approved":
+      return withActor(item.actorName, `通过了你加入「${teamName}」的申请`);
+    case "team_join_declined":
+      return withActor(item.actorName, `拒绝了你加入「${teamName}」的申请`);
     case "task_assigned":
       return withActor(item.actorName, `把「${taskTitle}」指派给你`);
     case "task_due_soon":

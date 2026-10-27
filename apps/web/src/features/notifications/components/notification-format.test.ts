@@ -84,6 +84,57 @@ describe("formatNotificationBody", () => {
     });
   });
 
+  it("team_join_requested：触发者粗体 + 申请加入团队", () => {
+    expect(
+      formatNotificationBody(
+        makeItem({
+          type: "team_join_requested",
+          actorName: "周牧",
+          teamName: "增长突击队",
+        }),
+      ),
+    ).toEqual({
+      parts: [
+        { text: "周牧", bold: true },
+        { text: " 申请加入团队「增长突击队」", bold: false },
+      ],
+    });
+  });
+
+  it("team_join_approved：触发者粗体 + 通过加入申请", () => {
+    expect(
+      formatNotificationBody(
+        makeItem({
+          type: "team_join_approved",
+          actorName: "周牧",
+          teamName: "增长突击队",
+        }),
+      ),
+    ).toEqual({
+      parts: [
+        { text: "周牧", bold: true },
+        { text: " 通过了你加入「增长突击队」的申请", bold: false },
+      ],
+    });
+  });
+
+  it("team_join_declined：触发者粗体 + 拒绝加入申请", () => {
+    expect(
+      formatNotificationBody(
+        makeItem({
+          type: "team_join_declined",
+          actorName: "周牧",
+          teamName: "增长突击队",
+        }),
+      ),
+    ).toEqual({
+      parts: [
+        { text: "周牧", bold: true },
+        { text: " 拒绝了你加入「增长突击队」的申请", bold: false },
+      ],
+    });
+  });
+
   it("actorName=null 时去掉触发者主体（cron 通知）", () => {
     expect(
       formatNotificationBody(makeItem({ type: "team_invite", actorName: null })),
@@ -109,6 +160,42 @@ describe("formatNotificationBody", () => {
       ),
     ).toEqual({
       parts: [{ text: "更新了你负责的「上线落地页」", bold: false }],
+    });
+
+    expect(
+      formatNotificationBody(
+        makeItem({
+          type: "team_join_requested",
+          actorName: null,
+          teamName: "增长突击队",
+        }),
+      ),
+    ).toEqual({
+      parts: [{ text: "申请加入团队「增长突击队」", bold: false }],
+    });
+
+    expect(
+      formatNotificationBody(
+        makeItem({
+          type: "team_join_approved",
+          actorName: null,
+          teamName: "增长突击队",
+        }),
+      ),
+    ).toEqual({
+      parts: [{ text: "通过了你加入「增长突击队」的申请", bold: false }],
+    });
+
+    expect(
+      formatNotificationBody(
+        makeItem({
+          type: "team_join_declined",
+          actorName: null,
+          teamName: "增长突击队",
+        }),
+      ),
+    ).toEqual({
+      parts: [{ text: "拒绝了你加入「增长突击队」的申请", bold: false }],
     });
   });
 

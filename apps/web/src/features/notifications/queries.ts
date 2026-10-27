@@ -25,7 +25,8 @@ const DEFAULT_LIMIT = 20;
 /**
  * 根据通知类型与关联对象推导前端跳转地址（纯函数，无 IO）。
  *
- * - `team_invite` → 邀请页；
+ * - `team_invite` / `team_join_approved` / `team_join_declined` → 邀请页；
+ * - `team_join_requested` → 团队设置页（审批入口），缺 teamSlug 时为 null；
  * - 团队任务 → `/teams/{teamSlug}/projects/{projectSlug}/tasks/{taskId}`；
  * - 个人任务 → `/my/tasks/{taskId}`；
  * - 关联参数缺失时返回 null（避免拼出无效链接）。
@@ -37,8 +38,16 @@ export function buildNotificationHref(item: {
   teamSlug?: string | null;
   projectSlug?: string | null;
 }): string | null {
-  if (item.type === "team_invite") {
+  if (
+    item.type === "team_invite" ||
+    item.type === "team_join_approved" ||
+    item.type === "team_join_declined"
+  ) {
     return "/invites";
+  }
+
+  if (item.type === "team_join_requested") {
+    return item.teamSlug ? `/teams/${item.teamSlug}/settings` : null;
   }
 
   if (!item.taskId) {

@@ -17,6 +17,9 @@ export type SpaceType = "personal" | "team";
 /** 通知类型 */
 export type NotificationType =
   | "team_invite"
+  | "team_join_requested"
+  | "team_join_approved"
+  | "team_join_declined"
   | "task_assigned"
   | "task_due_soon"
   | "task_overdue"
@@ -60,6 +63,26 @@ export interface TeamInvite {
   status: "pending" | "accepted" | "declined" | "rescinded";
   createdAt: string;
   respondedAt?: string;
+}
+
+/**
+ * 凭码加入申请状态机：
+ * pending（待审批）→ approved / declined（owner/admin 审批）或 cancelled（申请人撤回）。
+ * 终态不可再流转；同一用户对同一团队同时只允许一条 pending。
+ */
+export type TeamJoinStatus = "pending" | "approved" | "declined" | "cancelled";
+
+/** 团队加入申请：用户凭团队加入码发起，由 owner/admin 审批 */
+export interface TeamJoinRequest {
+  id: string;
+  teamId: string;
+  userId: string;
+  status: TeamJoinStatus;
+  createdAt: string;
+  /** 审批响应时间；未处理时为空 */
+  respondedAt?: string;
+  /** 审批人（owner/admin）；未处理时为空 */
+  respondedById?: string;
 }
 
 /** 项目：团队项目归团队，个人项目归用户，二者必居其一 */

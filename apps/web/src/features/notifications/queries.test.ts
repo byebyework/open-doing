@@ -331,6 +331,36 @@ describe("buildNotificationHref", () => {
       item: { type: "task_overdue", taskId: "task-5" },
       expected: null,
     },
+    {
+      name: "team_join_requested：有 teamSlug → 团队设置页",
+      item: { type: "team_join_requested", teamSlug: "growth" },
+      expected: "/teams/growth/settings",
+    },
+    {
+      name: "team_join_requested：缺 teamSlug → null",
+      item: { type: "team_join_requested" },
+      expected: null,
+    },
+    {
+      name: "team_join_approved：指向 /invites（无 teamSlug）",
+      item: { type: "team_join_approved" },
+      expected: "/invites",
+    },
+    {
+      name: "team_join_approved：带 teamSlug 也指向 /invites",
+      item: { type: "team_join_approved", teamSlug: "growth" },
+      expected: "/invites",
+    },
+    {
+      name: "team_join_declined：指向 /invites（无 teamSlug）",
+      item: { type: "team_join_declined" },
+      expected: "/invites",
+    },
+    {
+      name: "team_join_declined：带 teamSlug 也指向 /invites",
+      item: { type: "team_join_declined", teamSlug: "growth" },
+      expected: "/invites",
+    },
   ];
 
   for (const { name, item, expected } of cases) {
