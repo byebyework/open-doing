@@ -214,7 +214,7 @@ function compareDueDate(a: string | null, b: string | null): number {
 /**
  * 聚合团队概览（D-2/D-3）。
  *
- * **权限前置条件**：调用方（`teams/[teamSlug]/page.tsx`）必须先用
+ * **权限前置条件**：调用方（`space/[teamSlug]/dashboard/page.tsx`）必须先用
  * `getTeamBySlug` + `getMembership` 校验团队存在且当前用户是成员，
  * 非成员一律 404。本函数只按 `teamId` 聚合，不做成员校验，也绝不
  * 接受前端传入的角色位——因此不能直接暴露为公开 API。

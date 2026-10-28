@@ -214,7 +214,7 @@ git worktree add ../od-teams    -b track/teams    m0-frozen
 
 ### F-5 应用外壳、导航桩与共享基础组件　`M`　Depends: F-4
 
-- Files: `src/app/(dashboard)/layout.tsx`、`src/components/layout/{AppShell,Sidebar,Topbar,SpaceSwitcher,SpaceNav,SpaceNavData}.tsx`、占位的 `(dashboard)/page.tsx`（redirect `/my`）、`(dashboard)/my/page.tsx`（最简占位页，D-1 整体替换）、`(auth)/layout.tsx`
+- Files: `src/app/(dashboard)/layout.tsx`、`src/components/layout/{AppShell,Sidebar,Topbar,SpaceSwitcher,SpaceNav,SpaceNavData}.ts`、占位的 `(dashboard)/page.tsx`（redirect `/my`）、`(dashboard)/my/page.tsx`（最简占位页，D-1 整体替换）、`(auth)/layout.tsx`
 - **导航接线（v1.1 M2 契约变更，2026-10-28）**：原 M0 双导航桩（`PersonalNav` / `TeamsNav`）已删除并由统一空间导航取代。`(dashboard)/layout.tsx` **只 import 固定路径** `SpaceNav`（`src/components/layout/SpaceNav.tsx`）与 `getSpaceNavData()`（`src/components/layout/SpaceNavData.ts`），经 `AppShell` 的 `nav` 槽渲染；导航数据一次取齐，供桌面侧栏与移动 Drawer（`mobileNav` 槽）共用。`AppShellProps` 现为 `{ nav: ReactNode; mobileNav: ReactNode; user: User | null; children: ReactNode }`（原 `personalNav` / `teamsNav` 双槽合并为 `nav`，新增 `mobileNav`）；`Sidebar` 只接收单槽 `nav`，`Topbar` 接受可选 `mobileNav`。layout 的上述导入关系仍为冻结契约，任何轨道不得再改。
 - **共享基础组件（M0 预置，防各轨道重复造）**放 `src/components/ui/`：`UserAvatar`（用户名首字母 + 点缀色）、`StatusTag`（未开始/进行中/已完成）、`ProgressBar`、`ConfirmModal`、`EmptyState`、`DueText`（逾期/临期/普通日期着色）。props 在本任务定稿并写组件内 JSDoc。
 - 参考 `prototypes/my-tasks.html` 与 `team-overview.html` 的外壳；空间切换器渲染原型同款静态菜单（数据接线随 P/T 完成）。

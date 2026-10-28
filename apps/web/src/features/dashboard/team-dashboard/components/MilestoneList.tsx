@@ -18,8 +18,8 @@ const KIND_META = {
   },
   upcoming: {
     icon: "📅",
-    color: "#9aa0a6",
-    background: "#f4f5f7",
+    color: "#5f6368",
+    background: "#e8eaed",
   },
 } as const;
 
@@ -96,7 +96,7 @@ export function MilestoneList({ teamSlug, tasks, today }: MilestoneListProps) {
                     <div className="truncate text-[13.5px] font-semibold leading-[1.35] text-[#0e1318]">
                       {task.title}
                     </div>
-                    <div className="mt-[3px] flex min-w-0 flex-wrap items-center gap-x-1 text-[12px] text-[#9aa0a6]">
+                    <div className="mt-[3px] flex min-w-0 flex-wrap items-center gap-x-1 text-[12px] text-[#5f6368]">
                       <span className="max-w-full truncate">
                         {task.projectName}
                       </span>
@@ -124,7 +124,7 @@ export function MilestoneList({ teamSlug, tasks, today }: MilestoneListProps) {
         </ul>
       )}
 
-      <div className="-mx-4 mt-1 border-t border-[#eceef0] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
+      <div className="-mx-4 mt-1 border-t border-[#e1e3e6] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
         <Link
           href={moduleHref(teamSlug, "kanban")}
           className="text-[12.5px] font-medium text-[#7d2ae8] hover:underline"
