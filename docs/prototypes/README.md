@@ -24,6 +24,8 @@
 | 11 | `team-settings.html` | `/space/[slug]/settings` | 团队信息、UID 邀请、成员角色、危险操作二次确认 |
 | 12 | `space-dashboard-personal.html` | `/space/personal/dashboard`（v1.1） | 统计卡 + 「今天」任务列表（个人 + 指派给我的团队任务，逾期置顶、行内勾选）；**v1.1 新 IA 侧栏**：空间切换器 + Dashboard/Kanban/Calendar/Analysis/设置五模块 |
 | 13 | `space-dashboard-team.html` | `/space/[slug]/dashboard`（v1.1） | 项目健康度 + 重要节点（未完成任务按截止升序前 10，含逾期）+ 成员负载；未指派引导移交 Kanban |
+| 14 | `space-kanban-personal.html` | `/space/personal/kanban`（v1.1） | 空间级看板：全部个人任务跨项目聚合三列；卡片标项目归属 + 截止 + 子任务进度；按项目筛选 |
+| 15 | `space-kanban-team.html` | `/space/[slug]/kanban`（v1.1） | 空间级看板：团队全部任务聚合；卡片标项目归属 + 负责人（未指派显式标注）；项目筛选 + 未指派筛选；done 列只显示近 7 天完成 |
 
 示例数据：当前用户林夏（`doing_x7k2m9`，管理员），团队「增长突击队」（团队项目 3 个），个人项目「学习成长 / 生活琐事」，基准日期 2026-10-21。
 

@@ -1,0 +1,311 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>个人空间 Kanban · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* 空间级看板专用微调(生产以 antd + Tailwind 还原) */
+    .sk-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .sk-card-meta .spacer { flex: 1; }
+    .sk-card-meta .subtask-count { font-size: 11.5px; color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+    .sk-tag-project { font-size: 11px; font-weight: 600; border-radius: var(--radius-pill); padding: 2px 8px; }
+    .sk-tag-personal { background: var(--accent-mint-bg); color: #1f9d78; }
+    .sk-tag-team { background: var(--accent-lavender-bg); color: #6d4fd4; }
+    .kcol-head .count.is-error { color: var(--color-error); background: var(--color-overdue-bg); }
+    .kcol-head .count.is-brand { color: var(--color-primary); background: var(--accent-lavender-bg); }
+    .kcol-foot-more { border-top: 1px dashed var(--color-border); margin-top: var(--space-2); padding: 9px var(--space-2) 2px; font-size: 12px; color: var(--color-text-faint); }
+    .sk-empty { border: 1px dashed var(--color-border); border-radius: var(--radius-card); padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--color-text-faint); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏(v1.1 新 IA:空间切换器 + 当前空间五模块) ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <div class="popover-wrap switcher-wrap">
+        <button class="team-switcher" type="button" data-popover-trigger="space-menu">
+          <span class="dot"></span>
+          <span class="name">个人空间</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="popover switcher-menu" id="space-menu">
+          <div class="menu-label">个人</div>
+          <a class="menu-item active" href="space-dashboard-personal.html">
+            <span class="m-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="m-name">个人空间</span>
+            <span class="check">✓</span>
+          </a>
+          <div class="menu-label">我的团队</div>
+          <a class="menu-item" href="space-dashboard-team.html">
+            <span class="m-dot" style="background:var(--accent-lavender);"></span>
+            <span class="m-name">增长突击队</span>
+          </a>
+          <div class="menu-divider"></div>
+          <button class="menu-item ghost" type="button">＋ 创建团队</button>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-group-label">个人空间</div>
+        <a class="nav-item" href="space-dashboard-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item active" href="space-kanban-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="8" rx="1"/></svg>
+          Kanban
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          Analysis
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.15.35.23.72.23 1.09"/></svg>
+          设置
+        </a>
+
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          待处理邀请
+          <span class="count-badge">2</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">个人空间 <span class="sep">/</span> <strong>Kanban</strong></div>
+        <div class="topbar-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          搜索任务… <kbd>⌘K</kbd>
+        </div>
+        <div class="popover-wrap">
+          <button class="icon-btn" data-popover-trigger="notif-pop" aria-label="通知">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="notif-dot">5</span>
+          </button>
+          <div class="popover" id="notif-pop">
+            <div class="popover-head">通知 <button class="btn btn-text btn-sm">全部已读</button></div>
+            <div style="max-height:340px;overflow:auto;">
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--accent-lavender-bg);color:#6d4fd4;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </span>
+                <div class="notif-body"><b>何川</b> 邀请你加入团队「效率工程部」<div class="notif-time">2 分钟前</div></div>
+              </div>
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--color-error-bg);color:var(--color-error);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">今天 09:00</div></div>
+              </div>
+            </div>
+            <div class="popover-foot"><a href="#" class="text-sm">查看全部通知</a></div>
+          </div>
+        </div>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">Kanban</h1>
+            <div class="sub">个人项目的任务全景：全部个人任务跨项目聚合，拖拽卡片即可切换状态。</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-primary btn-sm" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新建任务
+            </button>
+          </div>
+        </div>
+
+        <!-- 筛选：项目单选，状态进 URL（?project=学习成长） -->
+        <div class="filterbar anim-in">
+          <select class="filter-select" aria-label="按项目筛选">
+            <option>全部项目</option>
+            <option selected>学习成长</option>
+            <option>生活琐事</option>
+          </select>
+          <span class="text-caption">当前筛选：学习成长 · 8 个任务</span>
+          <div class="spacer"></div>
+          <span class="text-caption">基准日期 2026-10-21（周三）</span>
+        </div>
+
+        <!-- 三列看板：逾期置顶（按截止升序）→ 其余按截止升序 → 无截止垫底 -->
+        <div class="kanban stagger">
+
+          <!-- 待办 -->
+          <section class="kcol" data-column="todo">
+            <div class="kcol-head">
+              <span class="title">待办</span>
+              <span class="count">4</span>
+              <span class="spacer" style="flex:1;"></span>
+              <span class="text-caption">按截止日期排序</span>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">学习成长</span>
+                <span class="spacer"></span>
+                <span class="subtask-count">子任务 0/3</span>
+              </div>
+              <div class="kc-title">完成《设计心理学》第 4 章笔记</div>
+              <div class="kc-foot">
+                <span class="due">10-24</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">学习成长</span>
+                <span class="spacer"></span>
+                <span class="subtask-count">子任务 1/2</span>
+              </div>
+              <div class="kc-title">每周复盘模板 v2</div>
+              <div class="kc-foot">
+                <span class="due">10-26</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">生活琐事</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title">整理年底旅行照片</div>
+              <div class="kc-foot">
+                <span class="due">11-02</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">生活琐事</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title">预约牙医复诊</div>
+              <div class="kc-foot">
+                <span class="due text-faint">—</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 进行中 -->
+          <section class="kcol" data-column="in_progress">
+            <div class="kcol-head">
+              <span class="title">进行中</span>
+              <span class="count">3</span>
+              <span class="count is-error">逾期 1</span>
+              <span class="spacer" style="flex:1;"></span>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">学习成长</span>
+                <span class="spacer"></span>
+                <span class="subtask-count">子任务 5/21</span>
+              </div>
+              <div class="kc-title">21 天晨间日记打卡</div>
+              <div class="kc-foot">
+                <span class="due overdue">10-19 · 已逾期 2 天</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">学习成长</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title">Q4 个人 OKR 草拟</div>
+              <div class="kc-foot">
+                <span class="due soon">10-22 · 明天到期</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">生活琐事</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title">房租水电季度缴费</div>
+              <div class="kc-foot">
+                <span class="due text-faint">—</span>
+              </div>
+            </div>
+          </section>
+
+          <!-- 已完成：默认只显示最近 7 天完成的 -->
+          <section class="kcol" data-column="done">
+            <div class="kcol-head">
+              <span class="title">已完成</span>
+              <span class="count">9</span>
+              <span class="count is-brand">本周 3</span>
+              <span class="spacer" style="flex:1;"></span>
+            </div>
+
+            <div class="kanban-card" draggable="true" style="opacity:.75;">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">生活琐事</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title" style="color:var(--color-text-secondary);">周报与发票整理</div>
+              <div class="kc-foot">
+                <span class="due text-faint">10-20 完成</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true" style="opacity:.75;">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">学习成长</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title" style="color:var(--color-text-secondary);">《卡片笔记法》读后感</div>
+              <div class="kc-foot">
+                <span class="due text-faint">10-19 完成</span>
+              </div>
+            </div>
+
+            <div class="kanban-card" draggable="true" style="opacity:.75;">
+              <div class="sk-card-meta">
+                <span class="sk-tag-project sk-tag-personal">生活琐事</span>
+                <span class="spacer"></span>
+              </div>
+              <div class="kc-title" style="color:var(--color-text-secondary);">换季衣物收纳</div>
+              <div class="kc-foot">
+                <span class="due text-faint">10-18 完成</span>
+              </div>
+            </div>
+
+            <div class="kcol-foot-more">更早 6 项已完成 · 已在各项目归档</div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+</body>
+</html>
