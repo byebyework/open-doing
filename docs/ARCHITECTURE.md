@@ -97,37 +97,64 @@ features/
 
 ## 5. 路由结构
 
+v1.1 起统一为空间树：`/space/{spaceRef}/{module}`，`spaceRef` 取 `personal` 或团队 slug，`module` ∈ `dashboard / kanban / calendar / analysis / settings`。
+
 ```
 app/
 ├── (auth)/
 │   ├── login/page.tsx
 │   └── register/page.tsx
-├── (dashboard)/                 # 登录后布局：侧边栏 + 顶栏（含通知角标）
-│   ├── page.tsx                 # 登录后默认页，重定向到 /my
-│   ├── my/
-│   │   ├── page.tsx             # 我的任务：个人任务（含个人项目内）+ 我负责的团队任务
-│   │   ├── tasks/[taskId]/      # 个人任务详情（含个人项目内任务）
-│   │   └── projects/[projectSlug]/
-│   │       └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
-│   ├── invites/page.tsx         # 待处理邀请（接受/拒绝）
-│   └── teams/
-│       ├── new/page.tsx
-│       └── [teamSlug]/
-│           ├── page.tsx              # 团队概览仪表盘
-│           ├── settings/page.tsx     # 团队设置、成员管理、邀请管理（按权限显隐）
-│           └── projects/
-│               ├── new/page.tsx
-│               └── [projectSlug]/
-│                   ├── page.tsx       # 项目页（列表/看板双视图）
-│                   └── tasks/[taskId]/ # 团队任务详情
+├── (dashboard)/                     # 登录后布局：侧边栏 + 顶栏（含通知角标）
+│   ├── page.tsx                     # `/` → /space/personal/dashboard
+│   ├── invites/page.tsx             # 待处理邀请（接受/拒绝），非空间页
+│   ├── teams/
+│   │   ├── new/page.tsx             # 创建团队，非空间静态页
+│   │   └── join/page.tsx            # 凭码加入，非空间静态页
+│   └── space/
+│       ├── personal/
+│       │   ├── dashboard/page.tsx   # 个人 Dashboard：统计卡 +「今天」列表（≤20）
+│       │   ├── projects/[projectSlug]/
+│       │   │   └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
+│       │   └── tasks/[taskId]/      # 个人任务详情（含个人项目内任务）
+│       ├── [teamSlug]/
+│       │   ├── dashboard/page.tsx   # 团队 Dashboard：健康度 + 重要节点 + 成员负载
+│       │   ├── settings/page.tsx    # 团队设置（静态段优先于 [module] 占位页）
+│       │   ├── projects/
+│       │   │   ├── new/page.tsx
+│       │   │   └── [projectSlug]/
+│       │   │       ├── page.tsx      # 团队项目页（列表/看板双视图）
+│       │   │       └── tasks/[taskId]/ # 团队任务详情
+│       │   └── [module]/page.tsx    # 模块占位页（kanban/calendar/analysis/settings）
+│       └── personal/[module] 由同一占位页承接（`spaceRef = personal`）
 └── api/
     └── cron/
-        └── due-scan/route.ts    # 临期/逾期扫描，受密钥保护
+        └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
 ```
 
+- 动态段名约束：Next 要求同一位置的动态段名唯一，团队空间已占用 `[teamSlug]`，因此占位页沿用该段名，URL 语义仍是 `spaceRef`（`personal` 或团队 slug）。
 - 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
 - 个人任务与团队任务复用同一任务详情组件，差异通过 `spaceType` 与权限上下文处理。
 - 所有 `(dashboard)` 路由在服务端统一做登录校验（重定向到 `/login`）；权限不足返回 403 页面，而不是仅靠隐藏按钮。
+
+### 5.1 旧 URL 重定向（`apps/web/next.config.ts`，全部 307 temporary）
+
+| 旧路径 | 新路径 | 说明 |
+|---|---|---|
+| `/my` | `/space/personal/dashboard` | 原「我的任务」页 |
+| `/my/:path*` | `/space/personal/:path*` | 个人项目页 / 任务详情等深链 |
+| `/teams/:slug` | `/space/:slug/dashboard` | 原团队概览页 |
+| `/teams/:slug/:path*` | `/space/:slug/:path*` | 团队设置 / 项目页 / 任务详情等深链 |
+
+- 团队 slug 参数使用完整段模式 `((?!(?:new|join)(?:/|$))[^/]+)` 排除静态页：Next 16.4.2 的 path-to-regexp 不接受 `(?!new|join)` 直接作参数模式。
+- `/teams/new`、`/teams/join`、`/invites` 不是空间路由，保持自己的静态页面，不参与重定向。
+
+### 5.2 F-5 契约变更（2026-10-28）
+
+v1.1 统一导航替换原 PersonalNav / TeamsNav 双槽：
+
+- `AppShell` props 变为 `{ nav, mobileNav, user, children }`；
+- 新增 `SpaceNav`、`SpaceNavData`（`getSpaceNavData()` 一次取齐）、`SpaceNavMenu`（Dashboard / Kanban / Calendar / Analysis / 设置 + 账号分组）、`MobileNav`（<861px 汉堡按钮 `aria-label="打开导航"` + antd Drawer）；
+- 桌面侧栏与移动 Drawer 共用同一棵导航树，`(dashboard)/layout.tsx` 的导入关系相应调整。
 
 ## 6. 数据模型
 
@@ -249,15 +276,19 @@ CRON_SECRET=...
 
 | 部分 | 现状 |
 |---|---|
-| Monorepo、Next.js 脚手架、Tailwind 4、ESLint | ✅ 已完成（Tailwind preflight 待按 4.1 关闭） |
-| antd v6 接入（registry、ConfigProvider zh_CN、亮色主题） | ❌ 未接入 |
-| 路由目录骨架、features 目录占位 | ✅ 空占位（.gitkeep） |
-| `@open-doing/types` 初步领域类型、`getTaskProgress` | ✅ 初版，需按设计文档修订（uid/username、邀请、通知、聚合函数） |
-| PostgreSQL / Drizzle / 迁移 | ❌ 未接入 |
-| 认证与会话 | ❌ 未实现 |
-| 团队/项目/任务/通知业务代码 | ❌ 未实现 |
-| 页面 UI | ❌ 仍是脚手架首页 |
-| cron 扫描 | ❌ 未实现 |
+| Monorepo、Next.js 16、Tailwind 4（preflight 已关闭）、ESLint | ✅ 已完成 |
+| antd v6 接入（registry、ConfigProvider zh_CN、亮色主题） | ✅ 已完成 |
+| `@open-doing/types` 共享类型与纯函数 | ✅ uid/username、邀请、通知、`getTaskProgress`、`isOverdue` 等已落地 |
+| PostgreSQL / Drizzle / 迁移 / 种子 | ✅ 已完成（迁移可在空库重放） |
+| 认证与会话（注册 / 登录 / `requireUser()` 守卫） | ✅ 已完成 |
+| 团队/项目/任务/通知业务代码、团队设置、邀请与凭码加入 | ✅ 已完成 |
+| 路由：统一空间树 `/space/{spaceRef}/{module}` + 旧 URL 307 重定向 | ✅ v1.1 M2（`next.config.ts`，见 §5.1） |
+| 导航：SpaceSwitcher + 五模块 SpaceNavMenu + 移动端 Drawer（<861px） | ✅ v1.1 M2（F-5 契约变更，见 §5.2） |
+| 个人 Dashboard `/space/personal/dashboard` | ✅ v1.1 M2：四张统计卡 +「今天」列表（≤20，逾期置顶，行内勾选） |
+| 团队 Dashboard `/space/[teamSlug]/dashboard` | ✅ v1.1 M2：四张统计卡 + 项目健康度 + 重要节点（前 10）+ 成员负载 |
+| 个人/团队项目页（列表 + 看板双视图）与任务详情 | ✅ 已迁入 `/space/{spaceRef}/projects/...`、`/space/personal/tasks/{id}` |
+| 空间级 Kanban / Calendar / Analysis / 个人设置 | 🟡 占位页 `/space/{spaceRef}/{module}`，待 M3–M6 |
+| cron 到期扫描（`CRON_SECRET` 鉴权、幂等） | ✅ 已完成 |
 
 ## 13. 建议的实施顺序（概要）
 

@@ -16,7 +16,7 @@ export function uniqueLabel(prefix: string): string {
 }
 
 /**
- * 通过注册页创建账号，并等待进入「我的任务」。
+ * 通过注册页创建账号，并等待进入个人空间 Dashboard。
  *
  * 所有用例都走真实 UI + Server Action + 数据库，不预置种子数据。
  */
@@ -31,9 +31,11 @@ export async function registerUser(
   await page.getByLabel("确认密码").fill(password);
   await page.getByRole("button", { name: /注\s*册/ }).click();
 
-  await expect(page).toHaveURL(/\/my$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+    timeout: 30_000,
+  });
   await expect(
-    page.getByRole("heading", { name: "我的任务", level: 1 }),
+    page.getByRole("heading", { name: "Dashboard", level: 1 }),
   ).toBeVisible();
 }
 
@@ -48,19 +50,37 @@ export async function loginUser(
   await page.getByLabel("密码", { exact: true }).fill(password);
   await page.getByRole("button", { name: /登\s*录/ }).click();
 
-  await expect(page).toHaveURL(/\/my$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+    timeout: 30_000,
+  });
 }
 
 /**
- * 在个人空间创建项目（侧栏「＋」入口 → 弹窗）。
+ * 由项目名称推导个人项目 slug（与服务端 `generateUniqueSlug` 同口径）。
  *
- * 成功后侧栏出现同名项目链接。
+ * 个人 Dashboard 不再在侧栏列出项目，创建后没有可点击的项目入口；
+ * e2e 的标签均为 ASCII 且带随机后缀（建库后不会触发 `-2` 冲突后缀），
+ * 因此可以直接按同一规则算出项目页地址。
+ */
+export function personalProjectSlug(projectName: string): string {
+  return (
+    projectName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "project"
+  );
+}
+
+/**
+ * 在个人空间创建项目（Dashboard 页头「＋ 新建个人项目」→ 弹窗）。
+ *
+ * 必须从 `/space/personal/dashboard` 调用——新 IA 只在页头提供该入口。
  */
 export async function createPersonalProject(
   page: Page,
   projectName: string,
 ): Promise<void> {
-  await page.getByRole("button", { name: "新建项目" }).click();
+  await page.getByRole("button", { name: "＋ 新建个人项目" }).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
@@ -70,21 +90,19 @@ export async function createPersonalProject(
   await dialog.getByLabel("项目名称").fill(projectName);
   await dialog.getByRole("button", { name: "创建项目" }).click();
 
+  // 新 IA 不再把项目挂到侧栏，只能以成功 toast 确认创建完成。
+  await expect(page.getByText("项目已创建")).toBeVisible();
   await expect(dialog).toBeHidden();
-  await expect(
-    page.getByRole("link", { name: projectName, exact: true }),
-  ).toBeVisible();
 }
 
-/** 打开侧栏中的个人项目页。 */
+/** 打开个人项目页（按名称推导 slug，验证页面真实渲染）。 */
 export async function openPersonalProject(
   page: Page,
   projectName: string,
 ): Promise<void> {
-  await page
-    .getByRole("link", { name: projectName, exact: true })
-    .first()
-    .click();
+  await page.goto(
+    `/space/personal/projects/${personalProjectSlug(projectName)}`,
+  );
   await expect(
     page.getByRole("heading", { name: projectName, level: 1 }),
   ).toBeVisible();
@@ -128,7 +146,7 @@ export async function openPersonalTask(
   title: string,
 ): Promise<void> {
   await page.getByRole("link", { name: title, exact: true }).click();
-  await expect(page).toHaveURL(/\/my\/tasks\/[0-9a-f-]+$/);
+  await expect(page).toHaveURL(/\/space\/personal\/tasks\/[0-9a-f-]+$/);
   await expect(
     page.getByRole("heading", { name: title, level: 1 }),
   ).toBeVisible();

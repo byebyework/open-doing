@@ -16,7 +16,7 @@ test.describe("flow 5: 解散团队", () => {
     await page.goto("/teams/new");
     await page.getByLabel("团队名称").fill(teamName);
     await page.getByRole("button", { name: "创建团队" }).click();
-    await expect(page).toHaveURL(/\/teams\/[^/]+\/settings$/, {
+    await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
 
@@ -32,17 +32,19 @@ test.describe("flow 5: 解散团队", () => {
     await dialog.getByLabel("请输入团队名称以确认").fill(teamName);
     await dialog.getByRole("button", { name: "确认解散" }).click();
 
-    await expect(page).toHaveURL(/\/my$/, { timeout: 30_000 });
+    await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+      timeout: 30_000,
+    });
 
     // 团队页已不存在：HTTP 404 + 404 文案。
-    const response = await page.goto(`/teams/${teamSlug}`);
+    const response = await page.goto(`/space/${teamSlug}/dashboard`);
     expect(response?.status()).toBe(404);
     await expect(
       page.getByText("抱歉，你访问的页面不存在。"),
     ).toBeVisible();
 
     // 侧栏不再出现该团队入口。
-    await page.goto("/my");
+    await page.goto("/space/personal/dashboard");
     await expect(
       page.locator("aside").getByRole("link", { name: teamName }),
     ).toHaveCount(0);

@@ -18,17 +18,18 @@ import {
  * <= window.innerWidth`，即页面本身不横向溢出。
  *
  * 豁免清单（均为仓库既有的「卡内横滚」模式：`min-w-0 overflow-x-auto`
- * 包裹 `min-w-[680px]` / `min-w-[760px]` / `min-w-[860px]` 的表格，
- * 表格在卡片内横向滚动，页面本身不横向溢出；见
+ * 包裹 `min-w-[680px]` / `min-w-[860px]` 的表格，表格在卡片内横向滚动，
+ * 页面本身不横向溢出；见
  * `features/personal/tasks/components/ProjectTaskTable.tsx`、
- * `features/dashboard/my-tasks/components/MyTaskTable.tsx`、
  * `features/tasks/components/TeamProjectTaskTable.tsx`）：
  *
- * - `/my`：两张 `MyTaskTable`（个人任务 / 我负责的团队任务）；
- * - `/my/projects/[slug]`（列表视图）：一张 `ProjectTaskTable`；
- * - `/teams/[slug]/projects/[projectSlug]`（列表视图）：一张
+ * - `/space/personal/projects/[slug]`（列表视图）：一张 `ProjectTaskTable`；
+ * - `/space/[teamSlug]/projects/[projectSlug]`（列表视图）：一张
  *   `TeamProjectTaskTable`；
- * - `/teams/[slug]/settings`：一张 `MemberList` 成员表（同模式包裹）。
+ * - `/space/[teamSlug]/settings`：一张 `MemberList` 成员表（同模式包裹）。
+ *
+ * v1.1 的 `/space/personal/dashboard` 改为统计卡 +「今天」任务列表，
+ * 不再有表格，因此不再需要豁免。
  *
  * 除断言页面不溢出外，豁免路由还断言容器确实存在且可横向滚动——
  * 避免容器被误删后「恰好没有内容溢出」而让豁免悄悄过期。
@@ -44,15 +45,7 @@ interface InCardScrollExemption {
   reason: string;
 }
 
-/** `/my`：两张卡内横滚表格（个人任务 + 我负责的团队任务）。 */
-const MY_TASK_TABLES: InCardScrollExemption = {
-  container: "div.overflow-x-auto",
-  count: 2,
-  reason:
-    "MyTaskTable 在卡片内横向滚动（min-w-[760px] 表格 + overflow-x-auto），页面不横向溢出",
-};
-
-/** `/my/projects/[slug]`：一张卡内横滚表格。 */
+/** `/space/personal/projects/[slug]`：一张卡内横滚表格。 */
 const PERSONAL_PROJECT_TABLE: InCardScrollExemption = {
   container: "div.overflow-x-auto",
   count: 1,
@@ -60,7 +53,7 @@ const PERSONAL_PROJECT_TABLE: InCardScrollExemption = {
     "ProjectTaskTable 在卡片内横向滚动（min-w-[680px] 表格 + overflow-x-auto），页面不横向溢出",
 };
 
-/** `/teams/[slug]/projects/[projectSlug]`：一张卡内横滚表格。 */
+/** `/space/[teamSlug]/projects/[projectSlug]`：一张卡内横滚表格。 */
 const TEAM_PROJECT_TABLE: InCardScrollExemption = {
   container: "div.overflow-x-auto",
   count: 1,
@@ -68,7 +61,7 @@ const TEAM_PROJECT_TABLE: InCardScrollExemption = {
     "TeamProjectTaskTable 在卡片内横向滚动（min-w-[860px] 表格 + overflow-x-auto），页面不横向溢出",
 };
 
-/** `/teams/[slug]/settings`：成员表（同一卡内横滚模式）。 */
+/** `/space/[teamSlug]/settings`：成员表（同一卡内横滚模式）。 */
 const TEAM_SETTINGS_MEMBERS: InCardScrollExemption = {
   container: "div.overflow-x-auto",
   count: 1,
@@ -213,7 +206,9 @@ async function loginSharedAccount(page: Page): Promise<void> {
   await page.getByLabel("用户名").fill(ACCOUNT_A.username);
   await page.getByLabel("密码", { exact: true }).fill(ACCOUNT_A.password);
   await page.getByRole("button", { name: /登\s*录/ }).click();
-  await expect(page).toHaveURL(/\/my$/, { timeout: 30_000 });
+  await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+    timeout: 30_000,
+  });
 }
 
 /** 从当前地址取路径片段（避免把 origin 带进跳转）。 */
@@ -266,8 +261,8 @@ test.describe("375px 无横向溢出", () => {
     test.beforeAll(async ({ browser }) => {
       test.setTimeout(240_000);
 
-      // 数据准备走桌面视口：375px 下侧栏隐藏，而仓库既有 helper（新建项目等）
-      // 依赖侧栏入口；响应式断言本身仍由外层 `test.use` 固定为 375px。
+      // 数据准备走桌面视口：团队设置页等桌面信息密度更高；响应式断言本身
+      // 仍由外层 `test.use` 固定为 375px。
       const desktopViewport = { width: 1280, height: 720 };
 
       const contextA = await browser.newContext({
@@ -282,22 +277,27 @@ test.describe("375px 无横向溢出", () => {
         await createPersonalProject(pageA, data.personalProjectName);
         await openPersonalProject(pageA, data.personalProjectName);
         data.personalProjectPath = pathOf(pageA);
+        expect(data.personalProjectPath).toMatch(
+          /\/space\/personal\/projects\/[^/]+$/,
+        );
 
         await createPersonalTask(pageA, { title: data.personalTaskTitle });
         await openPersonalTask(pageA, data.personalTaskTitle);
         data.personalTaskPath = pathOf(pageA);
-        expect(data.personalTaskPath).toMatch(/\/my\/tasks\/[0-9a-f-]+$/);
+        expect(data.personalTaskPath).toMatch(
+          /\/space\/personal\/tasks\/[0-9a-f-]+$/,
+        );
 
         // A：团队 → 团队项目 → 团队任务。
         await pageA.goto("/teams/new");
         await pageA.getByLabel("团队名称").fill(data.teamName);
         await pageA.getByRole("button", { name: "创建团队" }).click();
-        await expect(pageA).toHaveURL(/\/teams\/[^/]+\/settings$/, {
+        await expect(pageA).toHaveURL(/\/space\/[^/]+\/settings$/, {
           timeout: 30_000,
         });
         const teamSlug = decodeURIComponent(pathOf(pageA).split("/")[2] ?? "");
         expect(teamSlug).not.toBe("");
-        data.teamPath = `/teams/${encodeURIComponent(teamSlug)}`;
+        data.teamPath = `/space/${encodeURIComponent(teamSlug)}`;
 
         await pageA.goto(`${data.teamPath}/projects/new`);
         await pageA.getByLabel("项目名称").fill(data.teamProjectName);
@@ -329,7 +329,7 @@ test.describe("375px 无横向溢出", () => {
           .getByRole("link", { name: data.teamTaskTitle, exact: true })
           .click();
         await expect(pageA).toHaveURL(
-          /\/teams\/[^/]+\/projects\/[^/]+\/tasks\/[0-9a-f-]+$/,
+          /\/space\/[^/]+\/projects\/[^/]+\/tasks\/[0-9a-f-]+$/,
         );
         data.teamTaskPath = pathOf(pageA);
       } finally {
@@ -373,7 +373,7 @@ test.describe("375px 无横向溢出", () => {
         await pageB.goto("/teams/new");
         await pageB.getByLabel("团队名称").fill(uniqueLabel("E2E inviter team"));
         await pageB.getByRole("button", { name: "创建团队" }).click();
-        await expect(pageB).toHaveURL(/\/teams\/[^/]+\/settings$/, {
+        await expect(pageB).toHaveURL(/\/space\/[^/]+\/settings$/, {
           timeout: 30_000,
         });
 
@@ -416,21 +416,20 @@ test.describe("375px 无横向溢出", () => {
       exemptions?: InCardScrollExemption[];
     }[] = [
       {
-        name: "/my",
-        path: () => "/my",
-        exemptions: [MY_TASK_TABLES],
+        name: "/space/personal/dashboard",
+        path: () => "/space/personal/dashboard",
       },
       {
-        name: "/my/projects/[projectSlug]（列表）",
+        name: "/space/personal/projects/[projectSlug]（列表）",
         path: () => data.personalProjectPath,
         exemptions: [PERSONAL_PROJECT_TABLE],
       },
       {
-        name: "/my/projects/[projectSlug]?view=board（看板）",
+        name: "/space/personal/projects/[projectSlug]?view=board（看板）",
         path: () => `${data.personalProjectPath}?view=board`,
       },
       {
-        name: "/my/tasks/[taskId]",
+        name: "/space/personal/tasks/[taskId]",
         path: () => data.personalTaskPath,
       },
       {
@@ -442,29 +441,29 @@ test.describe("375px 无横向溢出", () => {
         path: () => "/teams/new",
       },
       {
-        name: "/teams/[teamSlug]（团队概览）",
-        path: () => data.teamPath,
+        name: "/space/[teamSlug]/dashboard（团队 Dashboard）",
+        path: () => `${data.teamPath}/dashboard`,
       },
       {
-        name: "/teams/[teamSlug]/settings",
+        name: "/space/[teamSlug]/settings",
         path: () => `${data.teamPath}/settings`,
         exemptions: [TEAM_SETTINGS_MEMBERS],
       },
       {
-        name: "/teams/[teamSlug]/projects/new",
+        name: "/space/[teamSlug]/projects/new",
         path: () => `${data.teamPath}/projects/new`,
       },
       {
-        name: "/teams/[teamSlug]/projects/[projectSlug]（列表）",
+        name: "/space/[teamSlug]/projects/[projectSlug]（列表）",
         path: () => data.teamProjectPath,
         exemptions: [TEAM_PROJECT_TABLE],
       },
       {
-        name: "/teams/[teamSlug]/projects/[projectSlug]?view=board（看板）",
+        name: "/space/[teamSlug]/projects/[projectSlug]?view=board（看板）",
         path: () => `${data.teamProjectPath}?view=board`,
       },
       {
-        name: "/teams/[teamSlug]/projects/[projectSlug]/tasks/[taskId]",
+        name: "/space/[teamSlug]/projects/[projectSlug]/tasks/[taskId]",
         path: () => data.teamTaskPath,
       },
     ];
@@ -472,18 +471,17 @@ test.describe("375px 无横向溢出", () => {
     // 每个已登录路由的关键内容：等内容出现再测量，避免测到 RSC 流式渲染
     // 的中间态（骨架还没有内容，宽度自然不溢出，等于白测）。
     const readyByRoute: Record<string, (page: Page) => Promise<void>> = {
-      "/my": async (page) => {
+      "/space/personal/dashboard": async (page) => {
         await expect(
-          page.getByRole("heading", { name: "我的任务", level: 1 }),
+          page.getByRole("heading", { name: "Dashboard", level: 1 }),
         ).toBeVisible();
+        // 统计卡与「今天」列表都是 v1.1 新 Dashboard 的骨架。
+        await expect(page.getByText("本周已完成", { exact: true })).toBeVisible();
         await expect(
-          page.getByRole("link", { name: data.personalTaskTitle, exact: true }),
-        ).toBeVisible();
-        await expect(
-          page.getByRole("link", { name: data.teamTaskTitle, exact: true }),
+          page.getByRole("heading", { name: /^今天 · / }),
         ).toBeVisible();
       },
-      "/my/projects/[projectSlug]（列表）": async (page) => {
+      "/space/personal/projects/[projectSlug]（列表）": async (page) => {
         await expect(
           page.getByRole("heading", {
             name: data.personalProjectName,
@@ -494,7 +492,9 @@ test.describe("375px 无横向溢出", () => {
           page.getByRole("link", { name: data.personalTaskTitle, exact: true }),
         ).toBeVisible();
       },
-      "/my/projects/[projectSlug]?view=board（看板）": async (page) => {
+      "/space/personal/projects/[projectSlug]?view=board（看板）": async (
+        page,
+      ) => {
         await expect(
           page.locator('section[aria-label="未开始"]'),
         ).toBeVisible();
@@ -502,7 +502,7 @@ test.describe("375px 无横向溢出", () => {
           page.getByText(data.personalTaskTitle, { exact: true }),
         ).toBeVisible();
       },
-      "/my/tasks/[taskId]": async (page) => {
+      "/space/personal/tasks/[taskId]": async (page) => {
         await expect(
           page.getByRole("heading", {
             name: data.personalTaskTitle,
@@ -525,15 +525,21 @@ test.describe("375px 无横向溢出", () => {
           page.getByRole("heading", { name: "创建团队", level: 1 }),
         ).toBeVisible();
       },
-      "/teams/[teamSlug]（团队概览）": async (page) => {
+      "/space/[teamSlug]/dashboard（团队 Dashboard）": async (page) => {
         await expect(
-          page.getByRole("heading", { name: "团队概览", level: 1 }),
+          page.getByRole("heading", { name: "Dashboard", level: 1 }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: "项目健康度", level: 2 }),
+        ).toBeVisible();
+        await expect(
+          page.getByRole("heading", { name: "重要节点", level: 2 }),
         ).toBeVisible();
         await expect(
           page.getByRole("heading", { name: "成员负载", level: 2 }),
         ).toBeVisible();
       },
-      "/teams/[teamSlug]/settings": async (page) => {
+      "/space/[teamSlug]/settings": async (page) => {
         await expect(
           page.getByRole("heading", { name: "团队设置", level: 1 }),
         ).toBeVisible();
@@ -541,12 +547,12 @@ test.describe("375px 无横向溢出", () => {
         await expect(page.getByText(`成员（1）`)).toBeVisible();
         await expect(page.getByText("已发出 · 待处理（1）")).toBeVisible();
       },
-      "/teams/[teamSlug]/projects/new": async (page) => {
+      "/space/[teamSlug]/projects/new": async (page) => {
         await expect(
           page.getByRole("heading", { name: "新建项目", level: 1 }),
         ).toBeVisible();
       },
-      "/teams/[teamSlug]/projects/[projectSlug]（列表）": async (page) => {
+      "/space/[teamSlug]/projects/[projectSlug]（列表）": async (page) => {
         await expect(
           page.getByRole("heading", {
             name: data.teamProjectName,
@@ -557,7 +563,7 @@ test.describe("375px 无横向溢出", () => {
           page.getByRole("link", { name: data.teamTaskTitle, exact: true }),
         ).toBeVisible();
       },
-      "/teams/[teamSlug]/projects/[projectSlug]?view=board（看板）": async (
+      "/space/[teamSlug]/projects/[projectSlug]?view=board（看板）": async (
         page,
       ) => {
         await expect(
@@ -567,7 +573,7 @@ test.describe("375px 无横向溢出", () => {
           page.getByText(data.teamTaskTitle, { exact: true }),
         ).toBeVisible();
       },
-      "/teams/[teamSlug]/projects/[projectSlug]/tasks/[taskId]": async (
+      "/space/[teamSlug]/projects/[projectSlug]/tasks/[taskId]": async (
         page,
       ) => {
         await expect(

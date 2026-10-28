@@ -16,10 +16,23 @@ test.describe("flow 2: 团队邀请", () => {
 
     // A：注册并创建团队，落在团队设置页。
     await registerUser(page, ownerName);
-    await page.goto("/teams/new");
+
+    // 旧 URL 重定向：/my → /space/personal/dashboard（307）。
+    await page.goto("/my");
+    await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+      timeout: 30_000,
+    });
+
+    // /teams/new 不是团队 slug，仍由自己的静态页承接（不应被重定向）。
+    const newTeamResponse = await page.goto("/teams/new");
+    expect(newTeamResponse?.status()).toBe(200);
+    await expect(
+      page.getByRole("heading", { name: "创建团队", level: 1 }),
+    ).toBeVisible();
+
     await page.getByLabel("团队名称").fill(teamName);
     await page.getByRole("button", { name: "创建团队" }).click();
-    await expect(page).toHaveURL(/\/teams\/[^/]+\/settings$/, {
+    await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
 
@@ -27,6 +40,19 @@ test.describe("flow 2: 团队邀请", () => {
       new URL(page.url()).pathname.split("/")[2] ?? "",
     );
     expect(teamSlug).not.toBe("");
+
+    // 旧团队 URL 重定向：/teams/{slug} → /space/{slug}/dashboard。
+    await page.goto(`/teams/${teamSlug}`);
+    await expect(page).toHaveURL(
+      new RegExp(`/space/${teamSlug}/dashboard$`),
+      { timeout: 30_000 },
+    );
+    await expect(
+      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+    ).toBeVisible();
+
+    // 回到设置页继续发起邀请。
+    await page.goto(`/space/${teamSlug}/settings`);
 
     // B：独立上下文注册，并读取自己的 UID。
     const guestContext = await browser.newContext();
@@ -56,13 +82,20 @@ test.describe("flow 2: 团队邀请", () => {
       await guestPage.getByRole("button", { name: /^接\s*受$/ }).click();
       await expect(guestPage.getByText("没有待处理的邀请。")).toBeVisible();
 
-      // B：侧栏出现团队，且可进入团队概览页。
+      // B：侧栏空间切换器出现团队，选中后进入团队 Dashboard。
+      const switcher = guestPage
+        .locator("aside")
+        .getByRole("button", { name: /个人空间/ });
+      await switcher.click();
+      const teamItem = guestPage.getByRole("menuitem", { name: teamName });
+      await expect(teamItem).toBeVisible();
+      await teamItem.click();
+      await expect(guestPage).toHaveURL(
+        new RegExp(`/space/${teamSlug}/dashboard$`),
+        { timeout: 30_000 },
+      );
       await expect(
-        guestPage.locator("aside").getByRole("link", { name: teamName }),
-      ).toBeVisible();
-      await guestPage.goto(`/teams/${teamSlug}`);
-      await expect(
-        guestPage.getByRole("heading", { name: "团队概览", level: 1 }),
+        guestPage.getByRole("heading", { name: "Dashboard", level: 1 }),
       ).toBeVisible();
     } finally {
       await guestContext.close();

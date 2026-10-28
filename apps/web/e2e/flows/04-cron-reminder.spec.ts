@@ -57,7 +57,7 @@ test.describe("flow 4: cron 到期提醒", () => {
     });
 
     // 铃铛角标与通知文案（task_due_soon 的展示文案）。
-    await page.goto("/my");
+    await page.goto("/space/personal/dashboard");
     const bell = page.getByRole("button", { name: /^通知/ });
     await expect(bell).toHaveAccessibleName(/1 条未读/);
     await bell.click();

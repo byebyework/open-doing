@@ -13,21 +13,21 @@
 | — | `index.html` | — | 原型导航页 |
 | 01 | `login.html` | `/login` | 品牌侧栏 + 用户名密码登录 |
 | 02 | `register.html` | `/register` | 注册；说明 `doing_xxxx` UID 自动生成 |
-| 03 | `my-tasks.html` | `/my` | 个人任务（含个人项目归属）+ 我负责的团队任务；**空间切换器**（个人空间 / 我的团队 / 创建团队）；侧栏个人项目分组、新建项目/任务弹窗、通知 popover |
-| 04 | `personal-project.html` | `/my/projects/[slug]` | 个人项目列表视图（仅本人可见，无责任人列）+ 筛选排序 + 新建任务弹窗 |
-| 05 | `personal-project-board.html` | 同上 | 个人项目看板视图，可实际拖放卡片（演示态，刷新还原） |
-| 06 | `team-overview.html` | `/teams/[slug]` | 项目健康度、风险区、成员负载（主管只读） |
-| 07 | `project-list.html` | `…/projects/[slug]` | 团队项目列表视图 + 筛选排序 + 新建任务弹窗 |
-| 08 | `project-board.html` | 同上 | 团队项目看板视图，可实际拖放卡片（演示态，刷新还原） |
-| 09 | `task-detail.html` | `…/tasks/[id]` | 子任务勾选实时联动进度、评论流、权限提示 |
+| 03 | `my-tasks.html` | `/space/personal/dashboard`（v1.1） | 个人任务（含个人项目归属）+ 我负责的团队任务；**空间切换器**（个人空间 / 我的团队 / 创建团队）；侧栏个人项目分组、新建项目/任务弹窗、通知 popover（v1.1 后侧栏改为五模块，个人 Dashboard 形态以 12 为准） |
+| 04 | `personal-project.html` | `/space/personal/projects/[slug]` | 个人项目列表视图（仅本人可见，无责任人列）+ 筛选排序 + 新建任务弹窗 |
+| 05 | `personal-project-board.html` | `/space/personal/projects/[slug]`（看板） | 个人项目看板视图，可实际拖放卡片（演示态，刷新还原） |
+| 06 | `team-overview.html` | `/space/[slug]/dashboard`（v1.1） | 项目健康度、风险区、成员负载（主管只读；v1.1 形态以 13 为准） |
+| 07 | `project-list.html` | `/space/[slug]/projects/[slug]` | 团队项目列表视图 + 筛选排序 + 新建任务弹窗 |
+| 08 | `project-board.html` | `/space/[slug]/projects/[slug]`（看板） | 团队项目看板视图，可实际拖放卡片（演示态，刷新还原） |
+| 09 | `task-detail.html` | `/space/personal/tasks/[id]`（个人）/ `/space/[slug]/projects/[projectSlug]/tasks/[id]`（团队） | 子任务勾选实时联动进度、评论流、权限提示 |
 | 10 | `invites.html` | `/invites` | UID 邀请的接受/拒绝与历史 |
-| 11 | `team-settings.html` | `…/settings` | 团队信息、UID 邀请、成员角色、危险操作二次确认 |
+| 11 | `team-settings.html` | `/space/[slug]/settings` | 团队信息、UID 邀请、成员角色、危险操作二次确认 |
 | 12 | `space-dashboard-personal.html` | `/space/personal/dashboard`（v1.1） | 统计卡 + 「今天」任务列表（个人 + 指派给我的团队任务，逾期置顶、行内勾选）；**v1.1 新 IA 侧栏**：空间切换器 + Dashboard/Kanban/Calendar/Analysis/设置五模块 |
 | 13 | `space-dashboard-team.html` | `/space/[slug]/dashboard`（v1.1） | 项目健康度 + 重要节点（未完成任务按截止升序前 10，含逾期）+ 成员负载；未指派引导移交 Kanban |
 
 示例数据：当前用户林夏（`doing_x7k2m9`，管理员），团队「增长突击队」（团队项目 3 个），个人项目「学习成长 / 生活琐事」，基准日期 2026-10-21。
 
-**空间切换**：侧栏顶部切换器包含「个人空间」（对应"我的任务"页，侧栏显示个人项目分组、隐藏团队导航）、「我的团队」列表（打勾为当前空间，选中后显示团队概览/项目/设置）和「创建团队」入口。切换本质是路由级的空间上下文切换。个人空间内可创建个人项目（仅本人可见，与团队项目相互独立，项目内任务同样汇总到「我的任务」）。
+**空间切换（v1.1）**：侧栏顶部切换器包含「个人空间」、「我的团队」列表和「创建团队 / 凭码加入」入口。切换即路由级的空间上下文切换：选中空间后侧栏展示该空间的 Dashboard / Kanban / Calendar / Analysis / 设置五模块（`/space/{spaceRef}/{module}`）。个人项目仅本人可见，与团队项目相互独立，其任务同样汇总到个人 Dashboard 的「今天」列表。
 
 ## 文件结构
 
