@@ -62,7 +62,7 @@ async function runAction<T>(
 export interface TaskDetailClientProps {
   /** 服务端组装的详情模型（已补充 `creatorName`）。 */
   task: TaskDetailModel;
-  /** 「← 返回项目」地址：所属项目页，或 `/my`。 */
+  /** 「← 返回项目」地址：所属项目页，或个人空间首页。 */
   backHref: string;
   /** 返回链接文案；无项目任务传「← 返回我的任务」。 */
   backLabel?: string;

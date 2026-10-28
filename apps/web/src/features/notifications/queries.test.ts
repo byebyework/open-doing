@@ -172,7 +172,7 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
     expect(new Date(item!.createdAt).toISOString()).toBe(item!.createdAt);
   });
 
-  it("listNotifications：团队任务 href 含团队/项目 slug 与任务 id，个人任务为 /my/tasks/{id}", async () => {
+  it("listNotifications：团队任务 href 含团队/项目 slug 与任务 id，个人任务为个人任务详情页", async () => {
     const { owner, member, team, teamProject, teamTask, personalTask } = await seed(db);
 
     await createNotification(
@@ -196,13 +196,13 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
       actorName: "owner",
       teamName: "增长突击队",
       taskTitle: "上线落地页",
-      href: `/teams/growth-squad/projects/website-revamp/tasks/${teamTask.id}`,
+      href: `/space/growth-squad/projects/website-revamp/tasks/${teamTask.id}`,
     });
     expect(byType.get("task_overdue")).toMatchObject({
       actorName: null,
       teamName: null,
       taskTitle: "写周报",
-      href: `/my/tasks/${personalTask.id}`,
+      href: `/space/personal/tasks/${personalTask.id}`,
     });
   });
 
@@ -299,7 +299,7 @@ describe("buildNotificationHref", () => {
         teamSlug: "growth-squad",
         projectSlug: "website-revamp",
       },
-      expected: "/teams/growth-squad/projects/website-revamp/tasks/task-1",
+      expected: "/space/growth-squad/projects/website-revamp/tasks/task-1",
     },
     {
       name: "团队任务缺 projectSlug → null",
@@ -312,9 +312,9 @@ describe("buildNotificationHref", () => {
       expected: null,
     },
     {
-      name: "个人任务：指向 /my/tasks/{id}",
+      name: "个人任务：指向个人任务详情页",
       item: { type: "task_commented", taskId: "task-2", spaceType: "personal" },
-      expected: "/my/tasks/task-2",
+      expected: "/space/personal/tasks/task-2",
     },
     {
       name: "个人任务缺 taskId → null",
@@ -330,12 +330,12 @@ describe("buildNotificationHref", () => {
         teamSlug: "growth-squad",
         projectSlug: "website-revamp",
       },
-      expected: "/teams/growth-squad/projects/website-revamp/tasks/task-3",
+      expected: "/space/growth-squad/projects/website-revamp/tasks/task-3",
     },
     {
       name: "task_assigned 个人任务",
       item: { type: "task_assigned", taskId: "task-4", spaceType: "personal" },
-      expected: "/my/tasks/task-4",
+      expected: "/space/personal/tasks/task-4",
     },
     {
       name: "任务类通知缺 spaceType → null",
@@ -345,7 +345,7 @@ describe("buildNotificationHref", () => {
     {
       name: "team_join_requested：有 teamSlug → 团队设置页",
       item: { type: "team_join_requested", teamSlug: "growth" },
-      expected: "/teams/growth/settings",
+      expected: "/space/growth/settings",
     },
     {
       name: "team_join_requested：缺 teamSlug → null",

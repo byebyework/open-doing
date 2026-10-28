@@ -25,6 +25,7 @@ import { StatusTag } from "@/components/ui/StatusTag";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { CommentBox } from "@/features/personal/tasks/components/CommentBox";
 import { SubtaskList } from "@/features/personal/tasks/components/SubtaskList";
+import { spaceDashboardHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 import { assigneeCalloutText, shouldShowAssigneeCallout } from "./callout";
@@ -205,7 +206,7 @@ export function TaskDetailView({
   space,
   permissions,
   onAction,
-  backHref = "/my",
+  backHref = spaceDashboardHref("personal"),
   backLabel = "← 返回项目",
   currentUserId,
   assigneeOptions,

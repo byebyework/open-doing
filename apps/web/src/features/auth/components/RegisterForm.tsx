@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { spaceDashboardHref } from "@/lib/routes";
+
 import { registerAction } from "../actions";
 import {
   PASSWORD_MIN_LENGTH,
@@ -25,7 +27,7 @@ const PASSWORD_LENGTH_MESSAGE = `密码至少 ${PASSWORD_MIN_LENGTH} 位`;
  * 注册表单（客户端交互层）。
  *
  * 确认密码只在前端校验；服务端 action 只接收用户名 + 密码。
- * 注册成功后 action 写入会话 cookie，页面直接进入 /my。
+ * 注册成功后 action 写入会话 cookie，页面直接进入个人空间首页。
  */
 export function RegisterForm() {
   const router = useRouter();
@@ -60,7 +62,7 @@ export function RegisterForm() {
         return;
       }
 
-      router.push("/my");
+      router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
       setFormError("网络异常，请稍后重试");

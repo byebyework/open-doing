@@ -367,7 +367,7 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
       kind: "overdue",
       assigneeName: null,
       projectName: "风险项目",
-      href: `/teams/growth-squad/projects/risk-project/tasks/${idByTitle.get("未指派逾期")}`,
+      href: `/space/growth-squad/projects/risk-project/tasks/${idByTitle.get("未指派逾期")}`,
     });
 
     expect(riskTasks.some((item) => item.title === "已完成逾期")).toBe(false);
@@ -417,7 +417,7 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
       id: idByTitle.get("已完成逾期"),
       status: "done",
       projectName: "风险项目",
-      href: `/teams/growth-squad/projects/risk-project/tasks/${idByTitle.get("已完成逾期")}`,
+      href: `/space/growth-squad/projects/risk-project/tasks/${idByTitle.get("已完成逾期")}`,
     });
 
     // 非本人任务不串：admin / owner 各自只看到自己的任务。
@@ -443,7 +443,7 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
         title: "未指派逾期",
         dueDate: "2026-10-22",
         projectName: "风险项目",
-        href: `/teams/growth-squad/projects/risk-project/tasks/${idByTitle.get("未指派逾期")}`,
+        href: `/space/growth-squad/projects/risk-project/tasks/${idByTitle.get("未指派逾期")}`,
       },
     ]);
   });

@@ -34,7 +34,7 @@ const item: NotificationListItem = {
   actorName: "owner",
   teamName: "增长突击队",
   taskTitle: "上线落地页",
-  href: "/teams/growth-squad/projects/website-revamp/tasks/00000000-0000-0000-0000-000000000003",
+  href: "/space/growth-squad/projects/website-revamp/tasks/00000000-0000-0000-0000-000000000003",
 };
 
 function get(path = "/api/notifications") {

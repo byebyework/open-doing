@@ -4,6 +4,11 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
+import {
+  personalProjectHref,
+  spaceDashboardHref,
+} from "@/lib/routes";
+
 import { PersonalProjectFormModal } from "../projects/components/PersonalProjectFormModal";
 
 /** 侧栏项目项所需的最小字段（服务端只传展示与跳转所需数据）。 */
@@ -74,9 +79,9 @@ function FolderIcon() {
  * 个人空间导航菜单（P-5）。
  *
  * 服务端数据由 `PersonalNav` 取好后经 props 传入；本组件只负责：
- * - 「我的任务」入口 → `/my`；
+ * - 「我的任务」入口 → 个人空间首页；
  * - 「个人项目」分组标题行尾的「＋」新建入口 → `PersonalProjectFormModal`；
- * - 每个项目一条子项 → `/my/projects/[slug]`；
+ * - 每个项目一条子项 → 个人项目页；
  * - 用 `usePathname` 精确匹配当前路由做高亮。
  */
 export function PersonalNavMenu({ projects }: PersonalNavMenuProps) {
@@ -87,7 +92,7 @@ export function PersonalNavMenu({ projects }: PersonalNavMenuProps) {
   return (
     <>
       <Link
-        href="/my"
+        href={spaceDashboardHref("personal")}
         aria-current={pathname === "/my" ? "page" : undefined}
         className={`${NAV_ITEM_BASE} ${
           pathname === "/my" ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE
@@ -114,7 +119,7 @@ export function PersonalNavMenu({ projects }: PersonalNavMenuProps) {
       </div>
 
       {projects.map((project) => {
-        const href = `/my/projects/${project.slug}`;
+        const href = personalProjectHref(project.slug);
         const active = pathname === href;
 
         return (

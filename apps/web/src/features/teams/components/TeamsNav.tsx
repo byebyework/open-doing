@@ -3,6 +3,13 @@ import type { Project } from "@open-doing/types";
 import { NavSection } from "@/components/layout/NavSection";
 import { getCurrentUser } from "@/features/auth/session";
 import { listTeamProjectsForTeams } from "@/features/projects/service";
+import {
+  createTeamHref,
+  invitesHref,
+  spaceDashboardHref,
+  teamProjectHref,
+  teamProjectNewHref,
+} from "@/lib/routes";
 
 import { listReceivedInvites } from "../invites/service";
 import { can, getMembership } from "../permissions";
@@ -58,14 +65,14 @@ export async function TeamsNav() {
 
           return (
             <div key={team.id} className="flex flex-col">
-              <TeamsNavItem href={`/teams/${team.slug}`}>
+              <TeamsNavItem href={spaceDashboardHref(team.slug)}>
                 {team.name}
               </TeamsNavItem>
 
               {teamProjects.map((project) => (
                 <TeamsNavItem
                   key={project.id}
-                  href={`/teams/${team.slug}/projects/${project.slug}`}
+                  href={teamProjectHref(team.slug, project.slug)}
                   depth="child"
                 >
                   {project.name}
@@ -73,19 +80,22 @@ export async function TeamsNav() {
               ))}
 
               {manageableTeamIds.has(team.id) ? (
-                <TeamsNavItem href={`/teams/${team.slug}/projects/new`} depth="child">
+                <TeamsNavItem
+                  href={teamProjectNewHref(team.slug)}
+                  depth="child"
+                >
                   ＋ 新建项目
                 </TeamsNavItem>
               ) : null}
             </div>
           );
         })}
-        <TeamsNavItem href="/teams/new">＋ 创建团队</TeamsNavItem>
+        <TeamsNavItem href={createTeamHref()}>＋ 创建团队</TeamsNavItem>
       </NavSection>
 
       <NavSection title="账号">
         <TeamsNavItem
-          href="/invites"
+          href={invitesHref()}
           trailing={
             pendingCount > 0 ? (
               <span className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[#ff5757] px-1 text-[11px] font-bold text-white">

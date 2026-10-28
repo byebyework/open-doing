@@ -4,6 +4,8 @@ import { Alert, Button, Form, Input } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { teamSettingsHref } from "@/lib/routes";
+
 import { createTeamAction } from "../actions";
 
 interface CreateTeamValues {
@@ -37,7 +39,7 @@ export function CreateTeamForm() {
         return;
       }
 
-      router.push(`/teams/${result.data.slug}/settings`);
+      router.push(teamSettingsHref(result.data.slug));
       router.refresh();
     } catch {
       setFormError("网络异常，请稍后重试");

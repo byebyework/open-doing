@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 
 import { getCurrentUser } from "@/features/auth/session";
 import { listTeamsForUser } from "@/features/teams/service";
+import { spaceDashboardHref } from "@/lib/routes";
 
 import { SpaceSwitcher } from "./SpaceSwitcher";
 
@@ -31,7 +32,7 @@ export async function Sidebar({ personalNav, teamsNav }: SidebarProps) {
     <aside className="sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col gap-2 border-r border-[#e1e3e6] bg-white px-3 py-4 min-[861px]:flex">
       {/* 品牌区 */}
       <Link
-        href="/my"
+        href={spaceDashboardHref("personal")}
         className="mb-2 flex items-center gap-2.5 px-3 py-2 text-[#0e1318] no-underline hover:text-[#0e1318]"
       >
         <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[16px] font-extrabold text-white shadow-[0_2px_8px_rgba(125,42,232,0.2)]">

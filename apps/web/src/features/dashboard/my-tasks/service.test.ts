@@ -338,7 +338,9 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
       "项目任务B",
     ]);
     expect(items.every((item) => item.spaceType === "personal")).toBe(true);
-    expect(items.every((item) => item.href === `/my/tasks/${item.id}`)).toBe(true);
+    expect(
+      items.every((item) => item.href === `/space/personal/tasks/${item.id}`),
+    ).toBe(true);
   });
 
   it("listMyPersonalTasks：个人无项目任务 projectName 为 null，项目任务带项目信息，子任务计数正确", async () => {
@@ -365,7 +367,7 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
       teamSlug: null,
       subtaskCount: 5,
       completedSubtaskCount: 3,
-      href: `/my/tasks/${idByTitle.get("项目任务B")}`,
+      href: `/space/personal/tasks/${idByTitle.get("项目任务B")}`,
     });
   });
 
@@ -389,14 +391,14 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
       projectSlug: "growth-squad-project",
       teamName: "增长突击队",
       teamSlug: team.slug,
-      href: `/teams/growth-squad/projects/growth-squad-project/tasks/${idByTitle.get("团队任务一")}`,
+      href: `/space/growth-squad/projects/growth-squad-project/tasks/${idByTitle.get("团队任务一")}`,
     });
 
     const foreignTask = items.find((item) => item.title === "外部团队任务")!;
     expect(foreignTask).toMatchObject({
       teamName: "外部团队",
       teamSlug: "outside-team",
-      href: `/teams/outside-team/projects/outside-team-project/tasks/${idByTitle.get("外部团队任务")}`,
+      href: `/space/outside-team/projects/outside-team-project/tasks/${idByTitle.get("外部团队任务")}`,
       subtaskCount: 0,
       completedSubtaskCount: 0,
     });

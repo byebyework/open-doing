@@ -5,6 +5,8 @@ import { Alert, Button, Form, Input, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { teamProjectHref } from "@/lib/routes";
+
 import {
   createTeamProjectAction,
   updateTeamProjectAction,
@@ -153,7 +155,7 @@ export function TeamProjectCreatePanel({
       teamId={teamId}
       onSuccess={(project) => {
         message.success("项目已创建");
-        router.push(`/teams/${teamSlug}/projects/${project.slug}`);
+        router.push(teamProjectHref(teamSlug, project.slug));
         router.refresh();
       }}
     />

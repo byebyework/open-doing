@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { spaceDashboardHref } from "@/lib/routes";
 
 import { dissolveTeamAction } from "../actions";
 
@@ -43,7 +44,7 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
 
       message.success("团队已解散");
       setOpen(false);
-      router.push("/my");
+      router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
       message.error("网络异常，请稍后重试");

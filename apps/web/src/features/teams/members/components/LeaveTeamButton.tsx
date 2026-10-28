@@ -5,13 +5,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { spaceDashboardHref } from "@/lib/routes";
 
 import { leaveTeamAction } from "../actions";
 
 /**
  * 「退出团队」按钮（member/admin 可见，owner 由页面隐藏）。
  *
- * 退出后任务保留、assignee 置空；成功后跳转 /my（原团队页已无权访问）。
+ * 退出后任务保留、assignee 置空；成功后跳转个人空间首页（原团队页已无权访问）。
  */
 export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
   const router = useRouter();
@@ -31,7 +32,7 @@ export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
 
       message.success("已退出团队");
       setOpen(false);
-      router.push("/my");
+      router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
       message.error("网络异常，请稍后重试");

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { requireUser } from "@/features/auth/session";
 import { CreateTeamForm } from "@/features/teams/components/CreateTeamForm";
+import { joinTeamHref } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "创建团队 · Open Doing",
@@ -21,7 +22,7 @@ export default async function CreateTeamPage() {
 
       <p className="mt-8 text-center text-[13px] text-[#5f6368]">
         已有加入码？{" "}
-        <Link href="/teams/join" className="font-semibold text-[#7d2ae8]">
+        <Link href={joinTeamHref()} className="font-semibold text-[#7d2ae8]">
           凭码加入
         </Link>
       </p>

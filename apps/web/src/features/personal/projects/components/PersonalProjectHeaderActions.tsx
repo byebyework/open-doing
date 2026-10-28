@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { spaceDashboardHref } from "@/lib/routes";
 
 import { deletePersonalProjectAction } from "../actions";
 import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
@@ -44,7 +45,7 @@ export function PersonalProjectHeaderActions({
 
       message.success("项目已删除");
       setDeleteOpen(false);
-      router.push("/my");
+      router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
       message.error("网络异常，请稍后重试");

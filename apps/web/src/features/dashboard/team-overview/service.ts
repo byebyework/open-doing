@@ -8,6 +8,7 @@ import {
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import { listMembers } from "@/features/teams/service";
+import { teamTaskHref } from "@/lib/routes";
 import { db, type DbClient } from "@/server/db/client";
 import { projects, subtasks, tasks, users } from "@/server/db/schema";
 
@@ -159,7 +160,7 @@ function buildTaskHref(input: {
   projectSlug: string;
   taskId: string;
 }): string {
-  return `/teams/${input.teamSlug}/projects/${input.projectSlug}/tasks/${input.taskId}`;
+  return teamTaskHref(input.teamSlug, input.projectSlug, input.taskId);
 }
 
 /** 风险区排序权重：逾期在前、临期在后。 */

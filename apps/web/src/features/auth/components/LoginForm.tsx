@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { spaceDashboardHref } from "@/lib/routes";
+
 import { loginAction } from "../actions";
 
 interface LoginValues {
@@ -16,7 +18,7 @@ interface LoginValues {
  * 登录表单（客户端交互层）。
  *
  * 校验为交互体验兜底，真正的认证与恒定错误文案在 server action。
- * 成功后写入 httpOnly 会话 cookie，再导航到 /my。
+ * 成功后写入 httpOnly 会话 cookie，再导航到个人空间首页。
  */
 export function LoginForm() {
   const router = useRouter();
@@ -51,7 +53,7 @@ export function LoginForm() {
         return;
       }
 
-      router.push("/my");
+      router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
       setFormError("网络异常，请稍后重试");

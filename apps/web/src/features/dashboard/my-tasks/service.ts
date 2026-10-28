@@ -12,6 +12,7 @@ import {
   type SQL,
 } from "drizzle-orm";
 
+import { personalTaskHref, teamTaskHref } from "@/lib/routes";
 import { db, type DbClient } from "@/server/db/client";
 import {
   projects,
@@ -73,7 +74,7 @@ export interface MyTaskListItem {
   spaceType: SpaceType;
   subtaskCount: number;
   completedSubtaskCount: number;
-  /** 个人：/my/tasks/{id}；团队：/teams/{teamSlug}/projects/{projectSlug}/tasks/{id} */
+  /** 个人任务详情页 / 团队任务详情页，见 lib/routes。 */
   href: string;
 }
 
@@ -85,10 +86,14 @@ function buildTaskHref(input: {
   projectSlug: string | null;
 }): string {
   if (input.spaceType === "personal") {
-    return `/my/tasks/${input.id}`;
+    return personalTaskHref(input.id);
   }
 
-  return `/teams/${input.teamSlug}/projects/${input.projectSlug}/tasks/${input.id}`;
+  return teamTaskHref(
+    input.teamSlug ?? "",
+    input.projectSlug ?? "",
+    input.id,
+  );
 }
 
 /**

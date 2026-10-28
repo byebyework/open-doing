@@ -1,6 +1,12 @@
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { NotificationType } from "@open-doing/types";
 
+import {
+  invitesHref,
+  personalTaskHref,
+  teamSettingsHref,
+  teamTaskHref,
+} from "@/lib/routes";
 import { db, type DbClient } from "@/server/db/client";
 import { notifications, projects, tasks, teams, users } from "@/server/db/schema";
 
@@ -27,8 +33,8 @@ const DEFAULT_LIMIT = 20;
  *
  * - `team_invite` / `team_join_approved` / `team_join_declined` → 邀请页；
  * - `team_join_requested` → 团队设置页（审批入口），缺 teamSlug 时为 null；
- * - 团队任务 → `/teams/{teamSlug}/projects/{projectSlug}/tasks/{taskId}`；
- * - 个人任务 → `/my/tasks/{taskId}`；
+ * - 团队任务 → 团队任务详情页；
+ * - 个人任务 → 个人任务详情页；
  * - 关联参数缺失时返回 null（避免拼出无效链接）。
  */
 export function buildNotificationHref(item: {
@@ -43,11 +49,11 @@ export function buildNotificationHref(item: {
     item.type === "team_join_approved" ||
     item.type === "team_join_declined"
   ) {
-    return "/invites";
+    return invitesHref();
   }
 
   if (item.type === "team_join_requested") {
-    return item.teamSlug ? `/teams/${item.teamSlug}/settings` : null;
+    return item.teamSlug ? teamSettingsHref(item.teamSlug) : null;
   }
 
   if (!item.taskId) {
@@ -58,11 +64,11 @@ export function buildNotificationHref(item: {
     if (!item.teamSlug || !item.projectSlug) {
       return null;
     }
-    return `/teams/${item.teamSlug}/projects/${item.projectSlug}/tasks/${item.taskId}`;
+    return teamTaskHref(item.teamSlug, item.projectSlug, item.taskId);
   }
 
   if (item.spaceType === "personal") {
-    return `/my/tasks/${item.taskId}`;
+    return personalTaskHref(item.taskId);
   }
 
   return null;

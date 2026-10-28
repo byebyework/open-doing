@@ -10,6 +10,7 @@ import { listReceivedInvites } from "@/features/teams/invites/service";
 import { InviteRespondButtons } from "@/features/teams/invites/components/InviteRespondButtons";
 import { CancelJoinRequestButton } from "@/features/teams/joins/components/CancelJoinRequestButton";
 import { listMyJoinRequests } from "@/features/teams/joins/service";
+import { joinTeamHref } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "待处理邀请 · Open Doing",
@@ -148,7 +149,7 @@ export default async function InvitesPage() {
       {myJoinRequests.length === 0 ? (
         <p className="text-[13px] text-[#9aa0a6]">
           还没有加入申请，可在{" "}
-          <Link href="/teams/join" className="font-semibold text-[#7d2ae8]">
+          <Link href={joinTeamHref()} className="font-semibold text-[#7d2ae8]">
             凭码加入团队
           </Link>{" "}
           页提交。
@@ -166,7 +167,7 @@ export default async function InvitesPage() {
                     {team.name.slice(0, 1)}
                   </span>
                   <div className="min-w-0 flex-1">
-                    {/* 申请人此时还不是成员，`/teams/{slug}` 会 404，故只展示团队名。 */}
+                    {/* 申请人此时还不是成员，团队空间会 404，故只展示团队名。 */}
                     <div className="truncate text-[14px] font-bold text-[#0e1318]">
                       {team.name}
                     </div>

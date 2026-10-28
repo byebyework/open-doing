@@ -11,6 +11,7 @@ import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
+import { personalTaskHref } from "@/lib/routes";
 
 import { NewTaskModal } from "./NewTaskModal";
 import {
@@ -194,7 +195,7 @@ export function ProjectTaskTable({
                       <td className="border-b border-[#e1e3e6] px-3 py-3 align-middle">
                         <div className="flex min-w-0 items-center gap-1">
                           <Link
-                            href={`/my/tasks/${task.id}`}
+                            href={personalTaskHref(task.id)}
                             className={`min-w-0 break-words font-medium ${
                               done
                                 ? "text-[#9aa0a6] line-through"

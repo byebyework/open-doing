@@ -4,6 +4,12 @@ import { Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 
+import {
+  createTeamHref,
+  joinTeamHref,
+  spaceDashboardHref,
+} from "@/lib/routes";
+
 /** 切换器展示所需的最小团队数据（由 Sidebar 服务端取数后传入）。 */
 export interface SpaceSwitcherTeam {
   slug: string;
@@ -97,13 +103,13 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   /** 菜单点击：固定入口跳静态路由；`team:` 前缀项解码为团队 slug。 */
   function handleMenuClick({ key }: { key: string }) {
     if (key === "personal") {
-      router.push("/my");
+      router.push(spaceDashboardHref("personal"));
     } else if (key === "create-team") {
-      router.push("/teams/new");
+      router.push(createTeamHref());
     } else if (key === "join-team") {
-      router.push("/teams/join");
+      router.push(joinTeamHref());
     } else if (key.startsWith("team:")) {
-      router.push(`/teams/${key.slice("team:".length)}`);
+      router.push(spaceDashboardHref(key.slice("team:".length)));
     }
   }
 

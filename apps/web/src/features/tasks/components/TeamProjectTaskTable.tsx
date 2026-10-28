@@ -13,6 +13,7 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import type { TeamRole } from "@/features/teams/permissions";
+import { teamTaskHref } from "@/lib/routes";
 
 import type { TeamTaskRow } from "../service";
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
@@ -256,7 +257,11 @@ export function TeamProjectTaskTable({
                   const assigneeName = task.assigneeId
                     ? (assigneeNames.get(task.assigneeId) ?? null)
                     : null;
-                  const detailHref = `/teams/${teamSlug}/projects/${projectSlug}/tasks/${task.id}`;
+                  const detailHref = teamTaskHref(
+                    teamSlug,
+                    projectSlug,
+                    task.id,
+                  );
 
                   return (
                     <tr

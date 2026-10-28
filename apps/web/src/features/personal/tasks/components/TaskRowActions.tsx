@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PersonalProjectHeaderActions } from "@/features/personal/projects/components/PersonalProjectHeaderActions";
+import { personalTaskHref } from "@/lib/routes";
 
 import {
   deletePersonalTaskAction,
@@ -96,7 +97,7 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
 
   function handleMenuClick({ key }: { key: string }) {
     if (key === "edit") {
-      router.push(`/my/tasks/${task.id}`);
+      router.push(personalTaskHref(task.id));
       return;
     }
     if (key === "delete") {

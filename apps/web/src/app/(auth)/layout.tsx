@@ -2,17 +2,18 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 
 import { getCurrentUser } from "@/features/auth/session";
+import { spaceDashboardHref } from "@/lib/routes";
 
 /**
  * 认证路由布局：左侧品牌渐变侧板 + 右侧居中表单区。
  *
  * 对照 docs/prototypes/login.html：桌面端双栏，≤860px 隐藏侧板，
  * 登录/注册页面（F-6）作为 children 渲染在右侧。
- * 已登录用户访问 /login、/register 时统一跳到 /my。
+ * 已登录用户访问 /login、/register 时统一跳到个人空间首页。
  */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
   const user = await getCurrentUser();
-  if (user) redirect("/my");
+  if (user) redirect(spaceDashboardHref("personal"));
 
   return (
     <div className="grid min-h-screen grid-cols-1 bg-white min-[861px]:grid-cols-[1.05fr_1fr]">

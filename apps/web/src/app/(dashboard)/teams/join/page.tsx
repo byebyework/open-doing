@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { requireUser } from "@/features/auth/session";
 import { JoinByCodeForm } from "@/features/teams/joins/components/JoinByCodeForm";
+import { createTeamHref } from "@/lib/routes";
 
 export const metadata: Metadata = {
   title: "凭码加入团队 · Open Doing",
@@ -11,8 +12,8 @@ export const metadata: Metadata = {
 /**
  * 凭码加入页：输入团队加入码发起申请，由 owner/admin 审批。
  *
- * `/teams/join` 是静态段，优先于 `/teams/[teamSlug]` 动态段，不会与团队 slug
- * 冲突；真正取团队按码查询在 server action 内完成。
+ * 本页是静态页；团队空间路由已迁至 /space/[teamSlug]，
+ * 不再与团队 slug 冲突。真正取团队按码查询在 server action 内完成。
  */
 export default async function JoinTeamPage() {
   await requireUser();
@@ -28,7 +29,7 @@ export default async function JoinTeamPage() {
 
       <p className="mt-8 text-[13px] text-[#5f6368]">
         不知道加入码？向团队管理员索取，或{" "}
-        <Link href="/teams/new" className="font-semibold text-[#7d2ae8]">
+        <Link href={createTeamHref()} className="font-semibold text-[#7d2ae8]">
           创建自己的团队
         </Link>
       </p>
