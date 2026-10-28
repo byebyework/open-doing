@@ -5,6 +5,8 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { invitesHref } from "@/lib/routes";
+
 import { createJoinRequestAction } from "../actions";
 
 interface JoinValues {
@@ -83,7 +85,7 @@ export function JoinByCodeForm() {
 
       <p className="mt-5 text-[13px] text-[#5f6368]">
         提交后可在{" "}
-        <Link href="/invites" className="font-semibold text-[#7d2ae8]">
+        <Link href={invitesHref()} className="font-semibold text-[#7d2ae8]">
           待处理邀请
         </Link>{" "}
         页查看审批状态。
