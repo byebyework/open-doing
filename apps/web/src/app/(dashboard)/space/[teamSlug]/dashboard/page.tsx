@@ -56,7 +56,7 @@ function StatCard({
  * 成员负载的行内下钻是唯一交互，下沉到 client 组件。
  */
 export default async function TeamOverviewPage(
-  props: PageProps<"/space/[teamSlug]">,
+  props: PageProps<"/space/[teamSlug]/dashboard">,
 ) {
   const { teamSlug } = await props.params;
   const user = await requireUser();
