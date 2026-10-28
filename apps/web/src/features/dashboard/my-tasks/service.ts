@@ -29,6 +29,8 @@ export interface MyTaskStats {
   /** 进行中按空间拆分：团队任务数。 */
   inProgressTeam: number;
   dueSoon: number;
+  /** 今天到期的未完成任务数（「今日 / 明日到期」卡 delta 用）。 */
+  dueToday: number;
   overdue: number;
   doneThisWeek: number;
 }
@@ -54,6 +56,8 @@ export async function getMyTaskStats(
       inProgressTeam: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'team'))::int`,
       // 临期：未完成且截止日期为今天或明天。
       dueSoon: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} in (${today}::date, ${tomorrow}::date)))::int`,
+      // 今天到期的未完成任务（dueSoon 的子集；卡 delta 需要不封顶的精确值）。
+      dueToday: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} = ${today}::date))::int`,
       // 逾期：未完成且截止日期早于今天（当天不算逾期）。
       overdue: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today}::date))::int`,
       // 本周完成：以 updatedAt 归入本周（周一为起点）。`weekStart` 是上海本地
@@ -69,6 +73,7 @@ export async function getMyTaskStats(
       inProgressPersonal: 0,
       inProgressTeam: 0,
       dueSoon: 0,
+      dueToday: 0,
       overdue: 0,
       doneThisWeek: 0,
     }

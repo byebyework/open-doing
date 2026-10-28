@@ -46,10 +46,9 @@ export default async function PersonalDashboardPage() {
     listCrossSpaceProjects(user.id),
   ]);
 
-  // 原型「今日 / 明日到期」是同一张卡：今天数取今天列表，明天数由
-  // dueSoon（今天 + 明天）减去今天数得到。
-  const todayCount = board.tasks.filter((task) => task.dueDate === today).length;
-  const tomorrowCount = Math.max(stats.dueSoon - todayCount, 0);
+  // 「今日 / 明日到期」delta 使用不封顶的统计值：今天列表被 limit 截断，
+  // 不能用来计数。dueSoon 是今天 + 明天，dueToday 是其中的今天部分。
+  const tomorrowCount = Math.max(stats.dueSoon - stats.dueToday, 0);
 
   // 已逾期 delta 取今天列表里最久的一项（服务端已按截止日期升序）。
   const maxOverdueDays = board.tasks.reduce((max, task) => {
@@ -87,8 +86,8 @@ export default async function PersonalDashboardPage() {
         />
         <StatCard
           label="今日 / 明日到期"
-          value={todayCount + tomorrowCount}
-          hint={`今天 ${todayCount} 项 · 明天 ${tomorrowCount} 项`}
+          value={stats.dueSoon}
+          hint={`今天 ${stats.dueToday} 项 · 明天 ${tomorrowCount} 项`}
           color="#a66b00"
         />
         <StatCard
@@ -105,7 +104,13 @@ export default async function PersonalDashboardPage() {
         />
       </div>
 
-      <TodayTaskList tasks={board.tasks} today={today} total={board.total} />
+      <TodayTaskList
+        tasks={board.tasks}
+        today={today}
+        total={board.total}
+        overdueCount={stats.overdue}
+        todayCount={stats.dueToday}
+      />
 
       <div
         className="mt-4 flex gap-2 rounded-lg px-3 py-2.5 text-[12.5px]"

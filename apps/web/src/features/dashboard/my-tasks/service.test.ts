@@ -330,6 +330,8 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
       inProgressPersonal: 1,
       inProgressTeam: 1,
       dueSoon: 2,
+      // 今天 / 明天各一条未完成任务；已完成且今天到期的不计入。
+      dueToday: 1,
       overdue: 1,
       doneThisWeek: 2,
     });
@@ -345,6 +347,7 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
       inProgressPersonal: 0,
       inProgressTeam: 0,
       dueSoon: 0,
+      dueToday: 0,
       overdue: 0,
       doneThisWeek: 0,
     });

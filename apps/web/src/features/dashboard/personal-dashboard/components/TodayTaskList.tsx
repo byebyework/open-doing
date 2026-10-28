@@ -19,6 +19,10 @@ export interface TodayTaskListProps {
   today: string;
   /** 同条件全量任务数；大于 `tasks.length` 时展示页脚。 */
   total: number;
+  /** 全量逾期数（不封顶，来自 getMyTaskStats）。 */
+  overdueCount: number;
+  /** 全量今天到期数（不封顶，来自 getMyTaskStats）。 */
+  todayCount: number;
 }
 
 const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
@@ -112,7 +116,13 @@ function DueLabel({
  * 已完成任务自然从列表中消失。服务端刷新后以最新 props 为准
  * （渲染期同步 props → state，避免 effect 多跑一轮）。
  */
-export function TodayTaskList({ tasks, today, total }: TodayTaskListProps) {
+export function TodayTaskList({
+  tasks,
+  today,
+  total,
+  overdueCount,
+  todayCount,
+}: TodayTaskListProps) {
   const router = useRouter();
   const [syncedTasks, setSyncedTasks] = useState(tasks);
   const [doneIds, setDoneIds] = useState<ReadonlySet<string>>(
@@ -169,14 +179,6 @@ export function TodayTaskList({ tasks, today, total }: TodayTaskListProps) {
       message.error("更新失败，请重试");
     }
   }
-
-  const activeTasks = tasks.filter((task) => !doneIds.has(task.id));
-  const overdueCount = activeTasks.filter(
-    (task) => task.dueDate !== null && task.dueDate < today,
-  ).length;
-  const todayCount = activeTasks.filter(
-    (task) => task.dueDate === today,
-  ).length;
 
   return (
     <section className="mt-5 min-w-0 rounded-xl border border-[#e1e3e6] bg-white shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
