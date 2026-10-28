@@ -21,9 +21,13 @@ import {
   teams,
 } from "@/server/db/schema";
 
-/** Dashboard 顶部统计（四项底层指标；页面据此拆分出五张卡）。 */
+/** Dashboard 顶部统计（四项指标；进行中额外按空间拆分供卡片 delta 展示）。 */
 export interface MyTaskStats {
   inProgress: number;
+  /** 进行中按空间拆分：个人任务数（Dashboard「进行中」卡 delta）。 */
+  inProgressPersonal: number;
+  /** 进行中按空间拆分：团队任务数。 */
+  inProgressTeam: number;
   dueSoon: number;
   overdue: number;
   doneThisWeek: number;
@@ -45,6 +49,9 @@ export async function getMyTaskStats(
   const [row] = await client
     .select({
       inProgress: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress'))::int`,
+      // 进行中按空间拆分（个人 / 团队），供 Dashboard 卡片 delta 展示。
+      inProgressPersonal: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'personal'))::int`,
+      inProgressTeam: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'team'))::int`,
       // 临期：未完成且截止日期为今天或明天。
       dueSoon: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} in (${today}::date, ${tomorrow}::date)))::int`,
       // 逾期：未完成且截止日期早于今天（当天不算逾期）。
@@ -56,7 +63,16 @@ export async function getMyTaskStats(
     .from(tasks)
     .where(eq(tasks.assigneeId, userId));
 
-  return row ?? { inProgress: 0, dueSoon: 0, overdue: 0, doneThisWeek: 0 };
+  return (
+    row ?? {
+      inProgress: 0,
+      inProgressPersonal: 0,
+      inProgressTeam: 0,
+      dueSoon: 0,
+      overdue: 0,
+      doneThisWeek: 0,
+    }
+  );
 }
 
 /** Dashboard 任务列表项（个人 / 团队空间统一结构）。 */

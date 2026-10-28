@@ -127,8 +127,17 @@ async function seedStats(db: DbClient) {
       createdById: member.id,
       updatedAt: new Date("2026-10-18T15:30:00Z"),
     },
-    // 团队任务：本人已指派（无截止日期，不改变四项计数）。
+    // 团队任务：本人已指派（无截止日期，不改变三项日期计数）。
     { spaceType: "team", projectId: teamProject.id, title: "我的团队任务", assigneeId: member.id, createdById: other.id },
+    // 团队进行中：用于断言按空间拆分的进行中数量。
+    {
+      spaceType: "team",
+      projectId: teamProject.id,
+      title: "团队进行中",
+      status: "in_progress",
+      assigneeId: member.id,
+      createdById: other.id,
+    },
     // 排除：未指派团队任务。
     { spaceType: "team", projectId: teamProject.id, title: "未指派团队任务", assigneeId: null, createdById: other.id },
     // 排除：他人任务。
@@ -316,7 +325,14 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
 
     // doneThisWeek = 2：「本周完成」+ 上海周一 03:00 完成；
     // 上海周日 23:30 完成的任务不得跨周计入。
-    expect(stats).toEqual({ inProgress: 1, dueSoon: 2, overdue: 1, doneThisWeek: 2 });
+    expect(stats).toEqual({
+      inProgress: 2,
+      inProgressPersonal: 1,
+      inProgressTeam: 1,
+      dueSoon: 2,
+      overdue: 1,
+      doneThisWeek: 2,
+    });
   });
 
   it("getMyTaskStats 无任务时四项均为 0", async () => {
@@ -324,7 +340,14 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
 
     const stats = await getMyTaskStats({ userId: nobody.id, today: TODAY, weekStart: WEEK_START }, db);
 
-    expect(stats).toEqual({ inProgress: 0, dueSoon: 0, overdue: 0, doneThisWeek: 0 });
+    expect(stats).toEqual({
+      inProgress: 0,
+      inProgressPersonal: 0,
+      inProgressTeam: 0,
+      dueSoon: 0,
+      overdue: 0,
+      doneThisWeek: 0,
+    });
   });
 
   it("getTodayBoard：只含未完成且截止 ≤ 今天的任务（个人 + 团队），明天 / 已完成 / 他人 / 无日期排除", async () => {

@@ -17,10 +17,20 @@ export const metadata: Metadata = {
   title: "Dashboard · Open Doing",
 };
 
+/** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
+function daysBetween(later: string, earlier: string): number {
+  const toUtc = (date: string) => {
+    const [year, month, day] = date.split("-").map(Number);
+    return Date.UTC(year!, month! - 1, day!);
+  };
+
+  return Math.round((toUtc(later) - toUtc(earlier)) / 86_400_000);
+}
+
 /**
  * 个人空间 Dashboard。
  *
- * RSC 取数：五项统计 + 「今天」列表（未完成且截止 ≤ 今天，逾期置顶）+
+ * RSC 取数：四项统计 + 「今天」列表（未完成且截止 ≤ 今天，逾期置顶）+
  * 新建任务可选项目；勾选完成的交互下沉到 client 组件。
  * 「今天」口径统一为 Asia/Shanghai，由 `todayInShanghai()` 计算后作为
  * prop 传给 client，保证服务端/客户端渲染一致。
@@ -36,10 +46,20 @@ export default async function PersonalDashboardPage() {
     listCrossSpaceProjects(user.id),
   ]);
 
-  // dueSoon = 今天 + 明天；board.total = 今天 + 逾期。
-  // 用这两条精确计数拆出「今日」「明日到期」，避免再扫一次任务表。
-  const todayCount = Math.max(board.total - stats.overdue, 0);
+  // 原型「今日 / 明日到期」是同一张卡：今天数取今天列表，明天数由
+  // dueSoon（今天 + 明天）减去今天数得到。
+  const todayCount = board.tasks.filter((task) => task.dueDate === today).length;
   const tomorrowCount = Math.max(stats.dueSoon - todayCount, 0);
+
+  // 已逾期 delta 取今天列表里最久的一项（服务端已按截止日期升序）。
+  const maxOverdueDays = board.tasks.reduce((max, task) => {
+    if (task.dueDate === null || task.dueDate >= today) return max;
+    return Math.max(max, daysBetween(today, task.dueDate));
+  }, 0);
+  const overdueHint =
+    stats.overdue > 0
+      ? `最久逾期 ${maxOverdueDays} 天，建议今天兜底`
+      : "暂无逾期";
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
@@ -59,28 +79,22 @@ export default async function PersonalDashboardPage() {
         </div>
       </header>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-5 min-[861px]:gap-4">
+      <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
           label="进行中"
           value={stats.inProgress}
-          hint="跨全部空间"
+          hint={`个人 ${stats.inProgressPersonal} 项 · 团队 ${stats.inProgressTeam} 项`}
         />
         <StatCard
-          label="今日"
-          value={todayCount}
-          hint="今天到期"
-          color="#a66b00"
-        />
-        <StatCard
-          label="明日到期"
-          value={tomorrowCount}
-          hint="明天到期"
+          label="今日 / 明日到期"
+          value={todayCount + tomorrowCount}
+          hint={`今天 ${todayCount} 项 · 明天 ${tomorrowCount} 项`}
           color="#a66b00"
         />
         <StatCard
           label="已逾期"
           value={stats.overdue}
-          hint="建议今天兜底"
+          hint={overdueHint}
           color="#ff5757"
         />
         <StatCard
