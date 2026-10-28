@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>个人空间 Dashboard · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏（v1.1 新 IA：空间切换器 + 当前空间五模块） ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <div class="popover-wrap switcher-wrap">
+        <button class="team-switcher" type="button" data-popover-trigger="space-menu">
+          <span class="dot"></span>
+          <span class="name">个人空间</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="popover switcher-menu" id="space-menu">
+          <div class="menu-label">个人</div>
+          <a class="menu-item active" href="space-dashboard-personal.html">
+            <span class="m-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="m-name">个人空间</span>
+            <span class="check">✓</span>
+          </a>
+          <div class="menu-label">我的团队</div>
+          <a class="menu-item" href="space-dashboard-team.html">
+            <span class="m-dot" style="background:var(--accent-lavender);"></span>
+            <span class="m-name">增长突击队</span>
+          </a>
+          <div class="menu-divider"></div>
+          <button class="menu-item ghost" type="button">＋ 创建团队</button>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-group-label">个人空间</div>
+        <a class="nav-item active" href="space-dashboard-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="8" rx="1"/></svg>
+          Kanban
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          Analysis
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.15.35.23.72.23 1.09"/></svg>
+          设置
+        </a>
+
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          待处理邀请
+          <span class="count-badge">2</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">个人空间 <span class="sep">/</span> <strong>Dashboard</strong></div>
+        <div class="topbar-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          搜索任务… <kbd>⌘K</kbd>
+        </div>
+        <div class="popover-wrap">
+          <button class="icon-btn" data-popover-trigger="notif-pop" aria-label="通知">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="notif-dot">5</span>
+          </button>
+          <div class="popover" id="notif-pop">
+            <div class="popover-head">通知 <button class="btn btn-text btn-sm">全部已读</button></div>
+            <div style="max-height:340px;overflow:auto;">
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--color-error-bg);color:var(--color-error);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">今天 09:00</div></div>
+              </div>
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--color-info-bg);color:var(--color-info);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                </span>
+                <div class="notif-body"><b>周牧</b> 把「Hero 区文案终审」指派给你<div class="notif-time">1 小时前</div></div>
+              </div>
+              <div class="notif-item">
+                <span class="notif-icon" style="background:var(--accent-mint-bg);color:var(--accent-mint);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <div class="notif-body"><b>苏晓</b> 评论了「完成首页新版视觉稿」<div class="notif-time">昨天 17:42</div></div>
+              </div>
+            </div>
+            <div class="popover-foot"><a href="#" class="text-sm">查看全部通知</a></div>
+          </div>
+        </div>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">Dashboard</h1>
+            <div class="sub">今天要做的、快到期的，以及逾期需要兜底的，都在这里；任务全景看 Kanban。</div>
+          </div>
+          <div class="page-actions">
+            <button class="btn btn-default btn-sm" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新建项目
+            </button>
+            <button class="btn btn-primary btn-sm" type="button">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新建任务
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-grid stagger">
+          <div class="card stat">
+            <div class="label">进行中</div>
+            <div class="value">7</div>
+            <div class="delta">个人 3 项 · 团队 4 项</div>
+          </div>
+          <div class="card stat">
+            <div class="label">今日 / 明日到期</div>
+            <div class="value" style="color:#a66b00;">3</div>
+            <div class="delta">今天 2 项 · 明天 1 项</div>
+          </div>
+          <div class="card stat">
+            <div class="label">已逾期</div>
+            <div class="value" style="color:var(--color-error);">2</div>
+            <div class="delta">最久逾期 2 天，建议今天兜底</div>
+          </div>
+          <div class="card stat">
+            <div class="label">本周已完成</div>
+            <div class="value" style="color:var(--color-success);">6</div>
+            <div class="delta">自本周一（10-19）以来</div>
+          </div>
+        </div>
+
+        <!-- 今天任务列表：未完成且截止 ≤ 今天（个人 + 指派给我的团队任务），逾期置顶 -->
+        <section class="card anim-in" style="margin-top:var(--space-5);">
+          <div class="card-header">
+            <h2 class="h3">今天 · 10 月 21 日 周三</h2>
+            <span class="tag tag-overdue no-dot" style="margin-left:auto;">2 逾期</span>
+            <span class="tag tag-due-soon no-dot">3 今天</span>
+          </div>
+
+          <div class="task-list" style="margin-top:var(--space-2);">
+            <!-- 逾期 · 按截止日期升序 -->
+            <div class="task-row">
+              <label class="checkbox" aria-label="标记完成：推送权限引导弹窗交互">
+                <input type="checkbox" />
+                <span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              </label>
+              <div class="task-main">
+                <div class="task-title">推送权限引导弹窗交互</div>
+                <div class="task-meta">
+                  <span class="tag tag-lavender no-dot">团队 · 移动端 2.0</span>
+                  <span>林夏（我）</span>
+                </div>
+              </div>
+              <div class="task-side">
+                <span class="due overdue">截止 10-19 · 已逾期 2 天</span>
+              </div>
+            </div>
+
+            <div class="task-row">
+              <label class="checkbox" aria-label="标记完成：完成 Product Hunt 竞品分析">
+                <input type="checkbox" />
+                <span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              </label>
+              <div class="task-main">
+                <div class="task-title">完成 Product Hunt 竞品分析</div>
+                <div class="task-meta">
+                  <span class="tag tag-lavender no-dot" style="background:var(--accent-mint-bg);color:var(--accent-mint);">个人 · 学习成长</span>
+                  <span>林夏（我）</span>
+                </div>
+              </div>
+              <div class="task-side">
+                <span class="due overdue">截止 10-20 · 已逾期 1 天</span>
+              </div>
+            </div>
+
+            <!-- 今天到期 -->
+            <div class="task-row">
+              <label class="checkbox" aria-label="标记完成：预约牙医复诊">
+                <input type="checkbox" />
+                <span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              </label>
+              <div class="task-main">
+                <div class="task-title">预约牙医复诊</div>
+                <div class="task-meta">
+                  <span class="tag tag-lavender no-dot" style="background:var(--accent-mint-bg);color:var(--accent-mint);">个人 · 生活琐事</span>
+                  <span>林夏（我）</span>
+                </div>
+              </div>
+              <div class="task-side">
+                <span class="due soon">今天到期</span>
+              </div>
+            </div>
+
+            <div class="task-row">
+              <label class="checkbox" aria-label="标记完成：完成英语晨读打卡 Day 12">
+                <input type="checkbox" />
+                <span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              </label>
+              <div class="task-main">
+                <div class="task-title">完成英语晨读打卡 Day 12</div>
+                <div class="task-meta">
+                  <span class="tag tag-lavender no-dot" style="background:var(--accent-mint-bg);color:var(--accent-mint);">个人 · 学习成长</span>
+                  <span>林夏（我）</span>
+                </div>
+              </div>
+              <div class="task-side">
+                <span class="due soon">今天到期</span>
+              </div>
+            </div>
+
+            <div class="task-row">
+              <label class="checkbox" aria-label="标记完成：整理十月渠道数据周报">
+                <input type="checkbox" />
+                <span class="box"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg></span>
+              </label>
+              <div class="task-main">
+                <div class="task-title">整理十月渠道数据周报</div>
+                <div class="task-meta">
+                  <span class="tag tag-lavender no-dot">团队 · Q4 用户增长活动</span>
+                  <span>林夏（我）</span>
+                </div>
+              </div>
+              <div class="task-side">
+                <span class="due soon">今天到期</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="border-top:1px solid var(--color-border);padding:12px var(--space-4);">
+            <a href="#" class="text-sm">还有 5 项未完成任务（含未来截止）· 前往 Kanban 查看全部 →</a>
+          </div>
+        </section>
+
+        <div class="callout info" style="margin-top:var(--space-4);">
+          <span style="flex:none;">ℹ</span>
+          <span>列表只保留「今天该看的」：截止早于今天的逾期任务置顶；已勾选完成的任务即从列表消失。想按状态或项目翻看全部任务，去 Kanban。</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+</body>
+</html>

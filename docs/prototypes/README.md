@@ -22,6 +22,8 @@
 | 09 | `task-detail.html` | `…/tasks/[id]` | 子任务勾选实时联动进度、评论流、权限提示 |
 | 10 | `invites.html` | `/invites` | UID 邀请的接受/拒绝与历史 |
 | 11 | `team-settings.html` | `…/settings` | 团队信息、UID 邀请、成员角色、危险操作二次确认 |
+| 12 | `space-dashboard-personal.html` | `/space/personal/dashboard`（v1.1） | 统计卡 + 「今天」任务列表（个人 + 指派给我的团队任务，逾期置顶、行内勾选）；**v1.1 新 IA 侧栏**：空间切换器 + Dashboard/Kanban/Calendar/Analysis/设置五模块 |
+| 13 | `space-dashboard-team.html` | `/space/[slug]/dashboard`（v1.1） | 项目健康度 + 重要节点（未完成任务按截止升序前 10，含逾期）+ 成员负载；未指派引导移交 Kanban |
 
 示例数据：当前用户林夏（`doing_x7k2m9`，管理员），团队「增长突击队」（团队项目 3 个），个人项目「学习成长 / 生活琐事」，基准日期 2026-10-21。
 
