@@ -3,7 +3,7 @@
 import type { User } from "@open-doing/types";
 import { Dropdown, Input, type MenuProps } from "antd";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { logoutAction } from "@/features/auth/actions";
@@ -13,6 +13,8 @@ import { NotificationBell } from "@/features/notifications/components/Notificati
 export interface TopbarProps {
   /** 当前登录用户；F-6 接入会话前为 null（此时展示中性占位头像）。 */
   user: User | null;
+  /** 移动端导航入口（Task 6 接入 `<MobileNav />`），渲染在品牌标记之前。 */
+  mobileNav?: ReactNode;
 }
 
 /**
@@ -21,7 +23,7 @@ export interface TopbarProps {
  * `<NotificationBell />` 当前渲染 null，N-2 在原路径替换实现；
  * 搜索框在空间/全局搜索接线前保持禁用，≤860px 隐藏（与原型一致）。
  */
-export function Topbar({ user }: TopbarProps) {
+export function Topbar({ user, mobileNav }: TopbarProps) {
   const router = useRouter();
   const [loggingOut, setLoggingOut] = useState(false);
 
@@ -46,6 +48,9 @@ export function Topbar({ user }: TopbarProps) {
 
   return (
     <header className="sticky top-0 z-20 flex h-[60px] items-center gap-3 border-b border-[#e1e3e6] bg-[rgba(255,255,255,0.85)] px-4 backdrop-blur min-[861px]:gap-4 min-[861px]:px-6">
+      {/* 移动端导航入口（<861px 显示，由 MobileNav 负责） */}
+      {mobileNav}
+
       {/* 移动端无侧栏时保留品牌标识 */}
       <span
         className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[14px] font-extrabold text-white min-[861px]:hidden"

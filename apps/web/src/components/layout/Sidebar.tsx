@@ -9,22 +9,20 @@ import { SpaceSwitcher } from "./SpaceSwitcher";
 
 /** Sidebar 入参。 */
 export interface SidebarProps {
-  /** 个人空间导航段（由 PersonalNav 桩渲染）。 */
-  personalNav: ReactNode;
-  /** 团队空间导航段（由 TeamsNav 桩渲染）。 */
-  teamsNav: ReactNode;
+  /** 当前空间导航段（由 `<SpaceNav />` 渲染）。 */
+  nav: ReactNode;
 }
 
 /**
- * 应用左侧栏：Logo + 空间切换器 + 两段导航。
+ * 应用左侧栏：Logo + 空间切换器 + 当前空间导航。
  *
  * 本组件为 server component：读取当前用户及其团队，把可序列化的团队
  * `{ slug, name }` 交给 `SpaceSwitcher` 渲染真实切换菜单。
- * 两段导航的内容与分组标题均由各自的桩组件（PersonalNav / TeamsNav）负责，
- * 本组件只提供顺序与滚动容器，保证后续轨道无需改动布局。
- * ≤860px 整体隐藏（v1 桌面优先）。
+ * 导航内容（当前空间五模块 + 账号分组）由 `SpaceNav` 负责，
+ * 本组件只提供顺序与滚动容器。
+ * ≤860px 整体隐藏（移动端入口由 `MobileNav` 提供）。
  */
-export async function Sidebar({ personalNav, teamsNav }: SidebarProps) {
+export async function Sidebar({ nav }: SidebarProps) {
   const user = await getCurrentUser();
   const teams = user ? await listTeamsForUser(user.id) : [];
 
@@ -46,10 +44,9 @@ export async function Sidebar({ personalNav, teamsNav }: SidebarProps) {
       {/* 空间切换器：团队列表由服务端取数，交互在 client 组件内 */}
       <SpaceSwitcher teams={teams.map(({ slug, name }) => ({ slug, name }))} />
 
-      {/* 导航区：两段顺序固定，内容由桩文件接管 */}
+      {/* 当前空间导航 */}
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
-        {personalNav}
-        {teamsNav}
+        {nav}
       </nav>
     </aside>
   );
