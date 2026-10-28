@@ -46,10 +46,12 @@ export function MobileNav({ data }: MobileNavProps) {
   const [syncedPathname, setSyncedPathname] = useState(pathname);
 
   // 首次渲染不触发关闭（syncedPathname 初始值即当前路径）；
-  // 仅当 Drawer 处于打开态且路径已变化时，渲染期立即关闭。
-  if (open && pathname !== syncedPathname) {
+  // 路径变化时无条件记录，Drawer 打开中也同步关闭。若只在 `open` 时同步，
+  // Drawer 关闭期间发生的导航会留下过期 syncedPathname，导致下一次点击汉堡
+  // 在渲染期被立即关回（首次点击静默失效）。
+  if (pathname !== syncedPathname) {
     setSyncedPathname(pathname);
-    setOpen(false);
+    if (open) setOpen(false);
   }
 
   return (
