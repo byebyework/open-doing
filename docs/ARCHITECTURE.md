@@ -115,7 +115,7 @@ app/
 │       │   ├── dashboard/page.tsx   # 个人 Dashboard：统计卡 +「今天」列表（≤20）
 │       │   ├── projects/[projectSlug]/
 │       │   │   └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
-│       │   └── tasks/[taskId]/      # 个人任务详情（含个人项目内任务）
+│       │   └── tasks/[taskId]/page.tsx # 个人任务详情（含个人项目内任务）
 │       ├── [teamSlug]/
 │       │   ├── dashboard/page.tsx   # 团队 Dashboard：健康度 + 重要节点 + 成员负载
 │       │   ├── settings/page.tsx    # 团队设置（静态段优先于 [module] 占位页）
@@ -125,13 +125,14 @@ app/
 │       │   │       ├── page.tsx      # 团队项目页（列表/看板双视图）
 │       │   │       └── tasks/[taskId]/ # 团队任务详情
 │       │   └── [module]/page.tsx    # 模块占位页（kanban/calendar/analysis/settings）
-│       └── personal/[module] 由同一占位页承接（`spaceRef = personal`）
 └── api/
     └── cron/
         └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
 ```
 
+- 个人空间的 `kanban / calendar / analysis / settings` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）。
 - 动态段名约束：Next 要求同一位置的动态段名唯一，团队空间已占用 `[teamSlug]`，因此占位页沿用该段名，URL 语义仍是 `spaceRef`（`personal` 或团队 slug）。
+- `personal` 为保留 spaceRef：团队 slug 生成需避开 `personal`（当前无 guard，排期 X1）。
 - 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
 - 个人任务与团队任务复用同一任务详情组件，差异通过 `spaceType` 与权限上下文处理。
 - 所有 `(dashboard)` 路由在服务端统一做登录校验（重定向到 `/login`）；权限不足返回 403 页面，而不是仅靠隐藏按钮。

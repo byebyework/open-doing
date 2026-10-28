@@ -43,11 +43,13 @@ test.describe("flow 5: 解散团队", () => {
       page.getByText("抱歉，你访问的页面不存在。"),
     ).toBeVisible();
 
-    // 侧栏不再出现该团队入口。
+    // 侧栏不再出现该团队入口。v1.1 团队名只在空间切换器下拉里渲染，
+    // 侧栏触发按钮始终显示「个人空间」，必须展开菜单验证才不是空断言。
     await page.goto("/space/personal/dashboard");
-    await expect(
-      page.locator("aside").getByRole("link", { name: teamName }),
-    ).toHaveCount(0);
-    await expect(page.locator("aside").getByText(teamName)).toHaveCount(0);
+    await page
+      .locator("aside")
+      .getByRole("button", { name: /个人空间/ })
+      .click();
+    await expect(page.getByRole("menuitem", { name: teamName })).toHaveCount(0);
   });
 });
