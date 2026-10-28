@@ -14,6 +14,7 @@ import {
 import { getTeamOverview } from "@/features/dashboard/team-overview/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
+import { teamProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 export const metadata: Metadata = {
@@ -55,7 +56,7 @@ function StatCard({
  * 成员负载的行内下钻是唯一交互，下沉到 client 组件。
  */
 export default async function TeamOverviewPage(
-  props: PageProps<"/teams/[teamSlug]">,
+  props: PageProps<"/space/[teamSlug]">,
 ) {
   const { teamSlug } = await props.params;
   const user = await requireUser();
@@ -142,7 +143,7 @@ export default async function TeamOverviewPage(
                 return (
                   <li key={project.projectId} className="min-w-0">
                     <Link
-                      href={`/teams/${team.slug}/projects/${project.projectSlug}`}
+                      href={teamProjectHref(team.slug, project.projectSlug)}
                       className="-m-1 block min-w-0 rounded-lg p-1 hover:bg-[#f4f5f7]"
                     >
                       <div className="flex min-w-0 items-center gap-2">

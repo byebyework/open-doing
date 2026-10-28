@@ -6,5 +6,5 @@ import { redirect } from "next/navigation";
  * 路由组 `(dashboard)` 不产生 URL 段，因此本文件对应 `/`。
  */
 export default function DashboardHomePage() {
-  redirect("/my");
+  redirect("/space/personal/dashboard");
 }

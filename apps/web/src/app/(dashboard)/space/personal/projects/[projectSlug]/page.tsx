@@ -9,6 +9,7 @@ import { PersonalProjectPageActions } from "@/features/personal/tasks/components
 import { PersonalKanban } from "@/features/personal/tasks/components/PersonalKanban";
 import { ProjectTaskTable } from "@/features/personal/tasks/components/ProjectTaskTable";
 import { listPersonalProjectTasks } from "@/features/personal/tasks/service";
+import { personalProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 /** 视图切换参数：缺省（或其他值）一律按列表处理。 */
@@ -49,7 +50,7 @@ export default async function PersonalProjectPage({
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
   const today = todayInShanghai();
-  const projectPath = `/my/projects/${project.slug}`;
+  const projectPath = personalProjectHref(project.slug);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">

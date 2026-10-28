@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/features/auth/session";
+import { personalProjectHref, spaceDashboardHref } from "@/lib/routes";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { TaskDetailClient } from "@/features/personal/tasks/components/TaskDetailClient";
 import { getPersonalTaskDetail } from "@/features/personal/tasks/service";
@@ -27,12 +28,12 @@ export default async function PersonalTaskDetailPage({
   if (!task) notFound();
 
   // 返回地址：任务所属个人项目页；不属于项目时回到「我的任务」。
-  let backHref = "/my";
+  let backHref = spaceDashboardHref("personal");
   if (task.projectId) {
     const projects = await listPersonalProjects(user.id);
     const project = projects.find((item) => item.id === task.projectId);
     if (project) {
-      backHref = `/my/projects/${project.slug}`;
+      backHref = personalProjectHref(project.slug);
     }
   }
 

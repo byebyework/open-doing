@@ -30,7 +30,7 @@ export const metadata: Metadata = {
  * 改名/成员管理/危险操作等区块按角色显隐（G-4），写操作一律在 action 端再校验。
  */
 export default async function TeamSettingsPage(
-  props: PageProps<"/teams/[teamSlug]/settings">,
+  props: PageProps<"/space/[teamSlug]/settings">,
 ) {
   const { teamSlug } = await props.params;
   const user = await requireUser();

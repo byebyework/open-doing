@@ -11,6 +11,7 @@ import {
 import { getTeamTaskDetail } from "@/features/tasks/service";
 import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
+import { teamProjectHref } from "@/lib/routes";
 
 interface TeamTaskDetailPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
@@ -68,7 +69,7 @@ export default async function TeamTaskDetailPage({
     <TeamTaskDetailClient
       task={task}
       teamId={team.id}
-      backHref={`/teams/${team.slug}/projects/${project.slug}`}
+      backHref={teamProjectHref(team.slug, project.slug)}
       currentUserId={user.id}
       permissions={{
         canEdit: canEditTask(permissionInput),

@@ -14,6 +14,7 @@ import { TeamKanban } from "@/features/tasks/components/TeamKanban";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
+import { teamProjectHref, teamSettingsHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 interface TeamProjectPageProps {
@@ -64,7 +65,7 @@ export default async function TeamProjectPage({
     tasks.map((task) => task.assigneeId).filter((id): id is string => id !== null),
   ).size;
   const today = todayInShanghai();
-  const projectPath = `/teams/${team.slug}/projects/${project.slug}`;
+  const projectPath = teamProjectHref(team.slug, project.slug);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
@@ -104,7 +105,7 @@ export default async function TeamProjectPage({
           members={members}
           actorId={user.id}
           canManage={can(membership.role, "team:manage_projects")}
-          redirectTo={`/teams/${team.slug}/settings`}
+          redirectTo={teamSettingsHref(team.slug)}
         />
       </header>
 
