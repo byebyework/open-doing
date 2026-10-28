@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/AppShell";
+import { MobileNav } from "@/components/layout/MobileNav";
 import { SpaceNav } from "@/components/layout/SpaceNav";
 import { getSpaceNavData } from "@/components/layout/SpaceNavData";
 import { requireUser } from "@/features/auth/session";
@@ -25,7 +26,7 @@ export default async function DashboardLayout({
   return (
     <AppShell
       nav={<SpaceNav data={navData} />}
-      mobileNav={null}
+      mobileNav={<MobileNav data={navData} />}
       user={user}
     >
       {children}
