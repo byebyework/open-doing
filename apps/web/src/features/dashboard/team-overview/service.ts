@@ -1,4 +1,5 @@
 import {
+  addDays,
   aggregateProjectProgress,
   getTaskProgress,
   isDueSoon,
@@ -37,6 +38,25 @@ export interface RiskTaskItem {
   href: string;
 }
 
+/**
+ * 重要节点：未完成任务按截止日期升序的前 10 条（含逾期）。
+ *
+ * `kind` 三态：逾期（早于今天）/ 临期（今天或明天）/ 未来（更晚）。
+ */
+export interface MilestoneTaskItem {
+  id: string;
+  title: string;
+  dueDate: string;
+  kind: "overdue" | "dueSoon" | "upcoming";
+  /** 责任人用户名；未指派时为 null。 */
+  assigneeName: string | null;
+  projectName: string;
+  href: string;
+}
+
+/** 重要节点展示条数上限。 */
+const MILESTONE_TASK_LIMIT = 10;
+
 /** 成员负载：计数只统计未完成，任务列表用于行内下钻。 */
 export interface MemberLoad {
   userId: string;
@@ -67,6 +87,7 @@ export interface UnassignedTaskItem {
 export interface TeamOverview {
   projects: ProjectHealth[];
   riskTasks: RiskTaskItem[];
+  milestoneTasks: MilestoneTaskItem[];
   members: MemberLoad[];
   unassigned: UnassignedTaskItem[];
   teamStats: {
@@ -168,6 +189,20 @@ function riskKindRank(kind: RiskTaskItem["kind"]): number {
   return kind === "overdue" ? 0 : 1;
 }
 
+/**
+ * 重要节点的三态判定：逾期为 dueDate < today；今天或明天为临期；
+ * 其余（含更远的未来）为 upcoming。`YYYY-MM-DD` 字典序即日期序。
+ */
+function milestoneKind(
+  dueDate: string,
+  today: string,
+  tomorrow: string,
+): MilestoneTaskItem["kind"] {
+  if (dueDate < today) return "overdue";
+  if (dueDate === today || dueDate === tomorrow) return "dueSoon";
+  return "upcoming";
+}
+
 /** `YYYY-MM-DD` 升序，无日期排最后。 */
 function compareDueDate(a: string | null, b: string | null): number {
   if (a === b) return 0;
@@ -184,7 +219,7 @@ function compareDueDate(a: string | null, b: string | null): number {
  * 非成员一律 404。本函数只按 `teamId` 聚合，不做成员校验，也绝不
  * 接受前端传入的角色位——因此不能直接暴露为公开 API。
  *
- * 项目健康度、风险区、成员负载、未指派区都从**同一次团队任务查询**
+ * 项目健康度、风险区、重要节点、成员负载、未指派区都从**同一次团队任务查询**
  * 在 JS 侧分组得到：团队规模有界（单团队任务量远小于全库），换取
  * 一次查询 + 口径统一；若未来单团队任务量级增长，可再拆成独立聚合 SQL。
  */
@@ -193,6 +228,7 @@ export async function getTeamOverview(
   client: DbClient = db,
 ): Promise<TeamOverview> {
   const { teamId, teamSlug, today } = input;
+  const tomorrow = addDays(today, 1);
 
   const [projectRows, taskRows, memberViews] = await Promise.all([
     client
@@ -229,6 +265,7 @@ export async function getTeamOverview(
   const memberLoadById = new Map(memberLoads.map((load) => [load.userId, load]));
 
   const riskTasks: RiskTaskItem[] = [];
+  const milestoneTasks: MilestoneTaskItem[] = [];
   const unassigned: UnassignedTaskItem[] = [];
   const allProgresses: number[] = [];
 
@@ -273,6 +310,19 @@ export async function getTeamOverview(
       });
     }
 
+    // 重要节点：未完成且有截止日期的任务（含逾期、临期与更远的未来）。
+    if (task.dueDate && task.status !== "done") {
+      milestoneTasks.push({
+        id: task.id,
+        title: task.title,
+        dueDate: task.dueDate,
+        kind: milestoneKind(task.dueDate, today, tomorrow),
+        assigneeName: task.assigneeName,
+        projectName: task.projectName,
+        href,
+      });
+    }
+
     if (task.assigneeId) {
       const load = memberLoadById.get(task.assigneeId);
       if (load) {
@@ -308,6 +358,12 @@ export async function getTeamOverview(
       a.title.localeCompare(b.title),
   );
 
+  // 重要节点：按截止日期升序、同日按标题稳定排序，只保留最早 10 条。
+  milestoneTasks.sort(
+    (a, b) => a.dueDate.localeCompare(b.dueDate) || a.title.localeCompare(b.title),
+  );
+  milestoneTasks.splice(MILESTONE_TASK_LIMIT);
+
   // 未指派区：截止日期升序、无日期最后；同日按标题稳定排序。
   unassigned.sort(
     (a, b) => compareDueDate(a.dueDate, b.dueDate) || a.title.localeCompare(b.title),
@@ -333,6 +389,7 @@ export async function getTeamOverview(
   return {
     projects: projectsHealth,
     riskTasks,
+    milestoneTasks,
     members: memberLoads,
     unassigned,
     teamStats: {

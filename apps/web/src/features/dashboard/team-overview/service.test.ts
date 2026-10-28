@@ -1,3 +1,4 @@
+import { addDays } from "@open-doing/types";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { generateJoinCode } from "@/lib/join-code";
@@ -448,6 +449,143 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
     ]);
   });
 
+  it("重要节点：未完成任务按截止日期升序，逾期 / 今天 / 明天 / 未来三态判定", async () => {
+    const { team, riskProject, member, owner, idByTitle } = await seed(db);
+    await db.insert(tasks).values({
+      spaceType: "team",
+      projectId: riskProject.id,
+      title: "未来任务",
+      status: "todo",
+      dueDate: "2026-10-30",
+      assigneeId: member.id,
+      createdById: owner.id,
+    });
+
+    const { milestoneTasks } = await getTeamOverview(
+      { teamId: team.id, teamSlug: team.slug, today: TODAY },
+      db,
+    );
+
+    // 逾期（10-18 / 10-20 / 10-22）→ 今天（10-24）→ 明天（10-25）→ 未来（10-30）。
+    expect(milestoneTasks.map((item) => item.title)).toEqual([
+      "管理员更早逾期",
+      "成员逾期",
+      "未指派逾期",
+      "所有者今天到期",
+      "成员临期明天",
+      "未来任务",
+    ]);
+    expect(milestoneTasks.map((item) => item.kind)).toEqual([
+      "overdue",
+      "overdue",
+      "overdue",
+      "dueSoon",
+      "dueSoon",
+      "upcoming",
+    ]);
+    expect(milestoneTasks.map((item) => item.dueDate)).toEqual([
+      "2026-10-18",
+      "2026-10-20",
+      "2026-10-22",
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-30",
+    ]);
+
+    // 未指派任务保留 null 责任人，行内链接指向任务详情。
+    expect(milestoneTasks[2]).toEqual({
+      id: idByTitle.get("未指派逾期"),
+      title: "未指派逾期",
+      dueDate: "2026-10-22",
+      kind: "overdue",
+      assigneeName: null,
+      projectName: "风险项目",
+      href: `/space/growth-squad/projects/risk-project/tasks/${idByTitle.get("未指派逾期")}`,
+    });
+  });
+
+  it("重要节点：已完成、无截止日期与外部团队任务均不入列", async () => {
+    const { team } = await seed(db);
+
+    const { milestoneTasks } = await getTeamOverview(
+      { teamId: team.id, teamSlug: team.slug, today: TODAY },
+      db,
+    );
+
+    const titles = milestoneTasks.map((item) => item.title);
+    expect(titles).not.toContain("已完成逾期");
+    expect(titles).not.toContain("成员进行中");
+    expect(titles).not.toContain("子任务两成");
+    expect(titles).not.toContain("子任务六成");
+    expect(titles).not.toContain("外部团队逾期");
+  });
+
+  it("重要节点：符合条件的任务超过 10 条时只取截止日期最早的 10 条", async () => {
+    const { team, riskProject, member, owner } = await seed(db);
+    // 10-26 起连续 12 天，加上种子里的 5 条合格任务，共 17 条待排序。
+    await db.insert(tasks).values(
+      Array.from({ length: 12 }, (_, index) => ({
+        spaceType: "team" as const,
+        projectId: riskProject.id,
+        title: `补充任务 ${index + 1}`,
+        status: "todo" as const,
+        dueDate: addDays("2026-10-26", index),
+        assigneeId: member.id,
+        createdById: owner.id,
+        createdAt: new Date(BASE_TIME + 30_000 + index),
+      })),
+    );
+
+    const { milestoneTasks } = await getTeamOverview(
+      { teamId: team.id, teamSlug: team.slug, today: TODAY },
+      db,
+    );
+
+    expect(milestoneTasks).toHaveLength(10);
+    expect(milestoneTasks.map((item) => item.dueDate)).toEqual([
+      "2026-10-18",
+      "2026-10-20",
+      "2026-10-22",
+      "2026-10-24",
+      "2026-10-25",
+      "2026-10-26",
+      "2026-10-27",
+      "2026-10-28",
+      "2026-10-29",
+      "2026-10-30",
+    ]);
+    expect(milestoneTasks.at(-1)!.title).toBe("补充任务 5");
+  });
+
+  it("重要节点新增字段不影响风险区：未来任务只进重要节点", async () => {
+    const { team, riskProject, member, owner } = await seed(db);
+    await db.insert(tasks).values({
+      spaceType: "team",
+      projectId: riskProject.id,
+      title: "未来任务",
+      status: "todo",
+      dueDate: "2026-10-30",
+      assigneeId: member.id,
+      createdById: owner.id,
+    });
+
+    const { riskTasks, milestoneTasks, teamStats } = await getTeamOverview(
+      { teamId: team.id, teamSlug: team.slug, today: TODAY },
+      db,
+    );
+
+    // 风险区仍只包含逾期 / 临期，统计卡口径不变。
+    expect(riskTasks.map((item) => item.title)).toEqual([
+      "管理员更早逾期",
+      "成员逾期",
+      "未指派逾期",
+      "所有者今天到期",
+      "成员临期明天",
+    ]);
+    expect(teamStats).toMatchObject({ dueSoonCount: 2, overdueCount: 3 });
+    expect(milestoneTasks.map((item) => item.title)).toContain("未来任务");
+  });
+
   it("空团队：无项目、无任务时统计全为 0，成员负载为空", async () => {
     const owner = await createUser(db, "empty-owner");
     const [team] = await db
@@ -470,6 +608,7 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
 
     expect(overview.projects).toEqual([]);
     expect(overview.riskTasks).toEqual([]);
+    expect(overview.milestoneTasks).toEqual([]);
     expect(overview.unassigned).toEqual([]);
     expect(overview.teamStats).toEqual({
       projectCount: 0,
