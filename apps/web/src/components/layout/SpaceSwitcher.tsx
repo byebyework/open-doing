@@ -25,21 +25,22 @@ export interface SpaceSwitcherProps {
 /**
  * 计算当前路由所属的空间 key。
  *
- * `/my` 及其任务/项目子路径命中个人空间（`"personal"`）；
- * `/teams/{slug}` 及其项目/任务子路径命中对应团队；
- * 其余路由（如 `/invites`）不选中任何空间。
+ * `/space/personal` 及其子路径命中个人空间（`"personal"`）；
+ * `/space/{slug}` 及其子路径命中对应团队（slug ∈ teamSlugs 时）；
+ * 其余路由（如 `/invites`、`/teams/new`）不选中任何空间。
  * 作为纯函数导出，便于在 node 环境单独测试。
  */
 export function selectedSpaceKey(
   pathname: string,
   teamSlugs: string[],
 ): string | null {
-  // 与团队一致用 `/` 边界判断，覆盖 /my/tasks/[taskId] 等子路由。
-  if (pathname === "/my" || pathname.startsWith("/my/")) return "personal";
+  // 与团队一致用 `/` 边界判断，覆盖 /space/personal/tasks/[taskId] 等子路由。
+  if (pathname === "/space/personal" || pathname.startsWith("/space/personal/"))
+    return "personal";
 
   for (const slug of teamSlugs) {
-    const base = `/teams/${slug}`;
-    // 用 `/` 边界判断前缀，避免 `/teams/growthx` 误命中 `growth`。
+    const base = `/space/${slug}`;
+    // 用 `/` 边界判断前缀，避免 `/space/growthx` 误命中 `growth`。
     if (pathname === base || pathname.startsWith(`${base}/`)) return slug;
   }
 
