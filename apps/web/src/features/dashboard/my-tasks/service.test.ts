@@ -13,12 +13,13 @@ import {
 } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
+import { addDays } from "@open-doing/types";
+
 import {
   getMyTaskStats,
+  getTodayBoard,
   getWeekStart,
   listCrossSpaceProjects,
-  listMyPersonalTasks,
-  listMyTeamTasks,
 } from "./service";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
@@ -326,82 +327,145 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
     expect(stats).toEqual({ inProgress: 0, dueSoon: 0, overdue: 0, doneThisWeek: 0 });
   });
 
-  it("listMyPersonalTasks：仅本人个人任务，有日期升序在前、无日期最后，同日按创建时间降序", async () => {
-    const { member } = await seedLists(db);
+  it("getTodayBoard：只含未完成且截止 ≤ 今天的任务（个人 + 团队），明天 / 已完成 / 他人 / 无日期排除", async () => {
+    const member = await createUser(db, "member");
+    const other = await createUser(db, "other");
+    const { team, project } = await createTeam(db, {
+      ownerId: other.id,
+      name: "增长突击队",
+      slug: "growth-squad",
+      memberIds: [member.id],
+    });
 
-    const items = await listMyPersonalTasks(member.id, db);
-
-    expect(items.map((item) => item.title)).toEqual([
-      "零散任务D",
-      "项目任务C",
-      "零散任务A",
-      "项目任务B",
+    await db.insert(tasks).values([
+      {
+        spaceType: "personal",
+        title: "个人今天",
+        dueDate: TODAY,
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "team",
+        projectId: project.id,
+        title: "团队今天",
+        dueDate: TODAY,
+        assigneeId: member.id,
+        createdById: other.id,
+      },
+      {
+        spaceType: "personal",
+        title: "个人昨天",
+        dueDate: addDays(TODAY, -1),
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "personal",
+        title: "明天到期",
+        dueDate: addDays(TODAY, 1),
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "personal",
+        title: "已完成今天",
+        status: "done",
+        dueDate: TODAY,
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "personal",
+        title: "他人今天",
+        dueDate: TODAY,
+        assigneeId: other.id,
+        createdById: other.id,
+      },
+      {
+        spaceType: "personal",
+        title: "无截止日期",
+        assigneeId: member.id,
+        createdById: member.id,
+      },
     ]);
-    expect(items.every((item) => item.spaceType === "personal")).toBe(true);
-    expect(
-      items.every((item) => item.href === `/space/personal/tasks/${item.id}`),
-    ).toBe(true);
-  });
 
-  it("listMyPersonalTasks：个人无项目任务 projectName 为 null，项目任务带项目信息，子任务计数正确", async () => {
-    const { member, personalProject, idByTitle } = await seedLists(db);
+    const board = await getTodayBoard({ userId: member.id, today: TODAY }, db);
 
-    const items = await listMyPersonalTasks(member.id, db);
-    const byTitle = new Map(items.map((item) => [item.title, item]));
+    expect(board.tasks.map((task) => task.title).sort()).toEqual([
+      "个人今天",
+      "个人昨天",
+      "团队今天",
+    ].sort());
+    expect(board.total).toBe(3);
 
-    expect(byTitle.get("零散任务D")).toMatchObject({
-      projectId: null,
+    // teamId：个人任务为 null，团队任务带所属团队（勾选完成走 updateTeamTaskAction）。
+    expect(board.tasks.find((task) => task.title === "个人今天")).toMatchObject({
+      teamId: null,
       projectName: null,
-      projectSlug: null,
-      teamName: null,
-      teamSlug: null,
-      subtaskCount: 0,
-      completedSubtaskCount: 0,
+      spaceType: "personal",
     });
-    expect(byTitle.get("项目任务B")).toMatchObject({
-      id: idByTitle.get("项目任务B"),
-      projectId: personalProject.id,
-      projectName: "读书笔记",
-      projectSlug: "reading-notes",
-      teamName: null,
-      teamSlug: null,
-      subtaskCount: 5,
-      completedSubtaskCount: 3,
-      href: `/space/personal/tasks/${idByTitle.get("项目任务B")}`,
+    expect(board.tasks.find((task) => task.title === "团队今天")).toMatchObject({
+      teamId: team.id,
+      projectName: "增长突击队项目",
+      spaceType: "team",
     });
   });
 
-  it("listMyTeamTasks：跨全部团队按 assignee 查询，href 拼团队 / 项目 slug", async () => {
-    const { member, team, teamProject, idByTitle } = await seedLists(db);
+  it("getTodayBoard：按截止日期升序，逾期在前，今天最后", async () => {
+    const member = await createUser(db, "member");
 
-    const items = await listMyTeamTasks(member.id, db);
-
-    expect(items.map((item) => item.title)).toEqual([
-      "外部团队任务",
-      "团队任务一",
-      "团队任务二",
+    await db.insert(tasks).values([
+      { spaceType: "personal", title: "今天", dueDate: TODAY, assigneeId: member.id, createdById: member.id },
+      { spaceType: "personal", title: "较早逾期", dueDate: "2026-10-01", assigneeId: member.id, createdById: member.id },
+      { spaceType: "personal", title: "较晚逾期", dueDate: "2026-10-03", assigneeId: member.id, createdById: member.id },
     ]);
-    expect(items.every((item) => item.spaceType === "team")).toBe(true);
 
-    const teamTask = items.find((item) => item.title === "团队任务一")!;
-    expect(teamTask).toMatchObject({
-      id: idByTitle.get("团队任务一"),
-      projectId: teamProject.id,
-      projectName: "增长突击队项目",
-      projectSlug: "growth-squad-project",
-      teamName: "增长突击队",
-      teamSlug: team.slug,
-      href: `/space/growth-squad/projects/growth-squad-project/tasks/${idByTitle.get("团队任务一")}`,
-    });
+    const board = await getTodayBoard({ userId: member.id, today: TODAY }, db);
 
-    const foreignTask = items.find((item) => item.title === "外部团队任务")!;
-    expect(foreignTask).toMatchObject({
-      teamName: "外部团队",
-      teamSlug: "outside-team",
-      href: `/space/outside-team/projects/outside-team-project/tasks/${idByTitle.get("外部团队任务")}`,
-      subtaskCount: 0,
-      completedSubtaskCount: 0,
-    });
+    expect(board.tasks.map((task) => task.dueDate)).toEqual([
+      "2026-10-01",
+      "2026-10-03",
+      TODAY,
+    ]);
+  });
+
+  it("getTodayBoard：limit 默认封顶 20，total 为同条件全量", async () => {
+    const member = await createUser(db, "member");
+
+    await db.insert(tasks).values(
+      Array.from({ length: 25 }, (_, index) => ({
+        spaceType: "personal" as const,
+        title: `今日任务${index + 1}`,
+        dueDate: TODAY,
+        assigneeId: member.id,
+        createdById: member.id,
+      })),
+    );
+
+    const board = await getTodayBoard({ userId: member.id, today: TODAY }, db);
+
+    expect(board.tasks).toHaveLength(20);
+    expect(board.total).toBe(25);
+  });
+
+  it("getTodayBoard：支持自定义 limit", async () => {
+    const member = await createUser(db, "member");
+
+    await db.insert(tasks).values(
+      Array.from({ length: 5 }, (_, index) => ({
+        spaceType: "personal" as const,
+        title: `今日任务${index + 1}`,
+        dueDate: TODAY,
+        assigneeId: member.id,
+        createdById: member.id,
+      })),
+    );
+
+    const board = await getTodayBoard({ userId: member.id, today: TODAY, limit: 2 }, db);
+
+    expect(board.tasks).toHaveLength(2);
+    expect(board.total).toBe(5);
   });
 
   it("listCrossSpaceProjects：个人项目在前，团队项目带团队名，他人 / 非成员团队项目不出现", async () => {

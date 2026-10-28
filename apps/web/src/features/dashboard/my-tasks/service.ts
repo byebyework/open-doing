@@ -4,12 +4,11 @@ import {
   asc,
   desc,
   eq,
-  inArray,
   isNotNull,
-  isNull,
+  lte,
+  ne,
   or,
   sql,
-  type SQL,
 } from "drizzle-orm";
 
 import { personalTaskHref, teamTaskHref } from "@/lib/routes";
@@ -22,7 +21,7 @@ import {
   teams,
 } from "@/server/db/schema";
 
-/** 「我的任务」页顶部四项统计。 */
+/** Dashboard 顶部统计（四项底层指标；页面据此拆分出五张卡）。 */
 export interface MyTaskStats {
   inProgress: number;
   dueSoon: number;
@@ -60,7 +59,7 @@ export async function getMyTaskStats(
   return row ?? { inProgress: 0, dueSoon: 0, overdue: 0, doneThisWeek: 0 };
 }
 
-/** 「我的任务」列表项（个人 / 团队空间统一结构）。 */
+/** Dashboard 任务列表项（个人 / 团队空间统一结构）。 */
 export interface MyTaskListItem {
   id: string;
   title: string;
@@ -69,6 +68,7 @@ export interface MyTaskListItem {
   projectId: string | null;
   projectName: string | null;
   projectSlug: string | null;
+  teamId: string | null;
   teamName: string | null;
   teamSlug: string | null;
   spaceType: SpaceType;
@@ -96,16 +96,34 @@ function buildTaskHref(input: {
   );
 }
 
+/** 个人 Dashboard「今天」列表：展示项 + 同条件全量计数（供页脚「还有 N 项」）。 */
+export interface TodayBoard {
+  /** 未完成且 `dueDate <= today`，按截止日期升序，封顶 `limit`。 */
+  tasks: MyTaskListItem[];
+  /** 同条件全量任务数（不受 limit 影响）。 */
+  total: number;
+}
+
 /**
- * 列表查询公共实现：任务左联项目 / 团队，并用子查询聚合子任务计数。
+ * 个人 Dashboard 的「今天该看的」列表。
  *
- * 子任务计数在 SQL 侧一次 group by 完成（left join 派生表），
- * 不在应用层逐任务查询，避免 N+1。
+ * 条件是 `assigneeId = userId and status <> 'done' and dueDate <= today`：
+ * 个人 + 指派给我的团队任务天然都被 assignee 覆盖，不区分空间。
+ * 列表按截止日期升序（逾期在前，今天最后）；本查询已排除空截止日期，
+ * 无需 `nulls last`。count 与列表复用同一 where，各一条 SQL 并行执行。
  */
-async function queryTaskList(
-  condition: SQL | undefined,
-  client: DbClient,
-): Promise<MyTaskListItem[]> {
+export async function getTodayBoard(
+  input: { userId: string; today: string; limit?: number },
+  client: DbClient = db,
+): Promise<TodayBoard> {
+  const { userId, today, limit = 20 } = input;
+
+  const condition = and(
+    eq(tasks.assigneeId, userId),
+    ne(tasks.status, "done"),
+    lte(tasks.dueDate, today),
+  );
+
   const subtaskStats = client
     .select({
       taskId: subtasks.taskId,
@@ -118,87 +136,63 @@ async function queryTaskList(
     .groupBy(subtasks.taskId)
     .as("subtask_stats");
 
-  const rows = await client
-    .select({
-      id: tasks.id,
-      title: tasks.title,
-      status: tasks.status,
-      dueDate: tasks.dueDate,
-      projectId: tasks.projectId,
-      projectName: projects.name,
-      projectSlug: projects.slug,
-      teamName: teams.name,
-      teamSlug: teams.slug,
-      spaceType: tasks.spaceType,
-      subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)::int`,
-      completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)::int`,
-    })
-    .from(tasks)
-    .leftJoin(projects, eq(tasks.projectId, projects.id))
-    .leftJoin(teams, eq(projects.teamId, teams.id))
-    .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
-    .where(condition)
-    // 有截止日期在前升序，无日期最后；同日按创建时间降序。
-    .orderBy(sql`${tasks.dueDate} asc nulls last`, desc(tasks.createdAt));
+  const [rows, countRows] = await Promise.all([
+    client
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        status: tasks.status,
+        dueDate: tasks.dueDate,
+        projectId: tasks.projectId,
+        projectName: projects.name,
+        projectSlug: projects.slug,
+        teamId: teams.id,
+        teamName: teams.name,
+        teamSlug: teams.slug,
+        spaceType: tasks.spaceType,
+        subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)::int`,
+        completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)::int`,
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
+      .leftJoin(teams, eq(projects.teamId, teams.id))
+      .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
+      .where(condition)
+      .orderBy(asc(tasks.dueDate), desc(tasks.createdAt))
+      .limit(limit),
+    client
+      .select({ total: sql<number>`count(*)::int` })
+      .from(tasks)
+      .where(condition),
+  ]);
 
-  return rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    status: row.status,
-    dueDate: row.dueDate ?? null,
-    projectId: row.projectId ?? null,
-    projectName: row.projectName ?? null,
-    projectSlug: row.projectSlug ?? null,
-    teamName: row.teamName ?? null,
-    teamSlug: row.teamSlug ?? null,
-    spaceType: row.spaceType,
-    subtaskCount: row.subtaskCount,
-    completedSubtaskCount: row.completedSubtaskCount,
-    href: buildTaskHref({
+  return {
+    tasks: rows.map((row) => ({
       id: row.id,
+      title: row.title,
+      status: row.status,
+      dueDate: row.dueDate ?? null,
+      projectId: row.projectId ?? null,
+      projectName: row.projectName ?? null,
+      projectSlug: row.projectSlug ?? null,
+      teamId: row.teamId ?? null,
+      teamName: row.teamName ?? null,
+      teamSlug: row.teamSlug ?? null,
       spaceType: row.spaceType,
-      teamSlug: row.teamSlug,
-      projectSlug: row.projectSlug,
-    }),
-  }));
+      subtaskCount: row.subtaskCount,
+      completedSubtaskCount: row.completedSubtaskCount,
+      href: buildTaskHref({
+        id: row.id,
+        spaceType: row.spaceType,
+        teamSlug: row.teamSlug,
+        projectSlug: row.projectSlug,
+      }),
+    })),
+    total: countRows[0]?.total ?? 0,
+  };
 }
 
-/**
- * 本人的个人任务：零散任务（无项目）或本人个人项目中的任务。
- *
- * 项目名称缺失时由 UI 决定是否展示「不属于项目」口径。
- */
-export async function listMyPersonalTasks(
-  userId: string,
-  client: DbClient = db,
-): Promise<MyTaskListItem[]> {
-  const personalProjectIds = client
-    .select({ id: projects.id })
-    .from(projects)
-    .where(eq(projects.ownerId, userId));
-
-  return queryTaskList(
-    and(
-      eq(tasks.assigneeId, userId),
-      eq(tasks.spaceType, "personal"),
-      or(isNull(tasks.projectId), inArray(tasks.projectId, personalProjectIds)),
-    ),
-    client,
-  );
-}
-
-/** 本人被指派的任务：跨全部团队空间。 */
-export async function listMyTeamTasks(
-  userId: string,
-  client: DbClient = db,
-): Promise<MyTaskListItem[]> {
-  return queryTaskList(
-    and(eq(tasks.assigneeId, userId), eq(tasks.spaceType, "team")),
-    client,
-  );
-}
-
-/** 跨空间项目选项：用于「我的任务」页的任务创建表单。 */
+/** 跨空间项目选项：用于 Dashboard 的任务创建表单。 */
 export interface CrossSpaceProjectOption {
   projectId: string;
   projectName: string;

@@ -1,73 +1,56 @@
+import type { Metadata } from "next";
+
+import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
 import {
   getMyTaskStats,
+  getTodayBoard,
   getWeekStart,
   listCrossSpaceProjects,
-  listMyPersonalTasks,
-  listMyTeamTasks,
 } from "@/features/dashboard/my-tasks/service";
-import { MyTaskTable } from "@/features/dashboard/my-tasks/components/MyTaskTable";
 import { NewTaskButton } from "@/features/dashboard/my-tasks/components/NewTaskModal";
+import { TodayTaskList } from "@/features/dashboard/personal-dashboard/components/TodayTaskList";
 import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
-// `todayInShanghai` 与 `features/notifications/due-scan.ts` 的 `shanghaiToday`
-// 采用同一口径（Intl en-CA + Asia/Shanghai）；这里复用 lib 中已有实现，
-// 不再复制一份。
 import { todayInShanghai } from "@/lib/today";
 
-/** 顶部统计卡入参。 */
-function StatCard({
-  label,
-  value,
-  hint,
-  color,
-}: {
-  label: string;
-  value: number;
-  hint: string;
-  color?: string;
-}) {
-  return (
-    <div className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
-      <div className="text-[12.5px] text-[#5f6368]">{label}</div>
-      <div
-        className="mt-1 text-[28px] font-bold leading-none tracking-[-0.01em] text-[#0e1318]"
-        style={color ? { color } : undefined}
-      >
-        {value}
-      </div>
-      <div className="mt-2 text-[12px] text-[#9aa0a6]">{hint}</div>
-    </div>
-  );
-}
+export const metadata: Metadata = {
+  title: "Dashboard · Open Doing",
+};
 
 /**
- * 「我的任务」页（D-1）：跨空间聚合的只读总览。
+ * 个人空间 Dashboard。
  *
- * RSC 取数：统计四项 + 个人任务列表 + 跨团队任务列表 + 新建任务可选项目；
- * 新建任务弹窗作为唯一交互件下沉到 client 组件。列表排序、逾期/临期判定
- * 的日期口径统一为 Asia/Shanghai 的今天。
+ * RSC 取数：五项统计 + 「今天」列表（未完成且截止 ≤ 今天，逾期置顶）+
+ * 新建任务可选项目；勾选完成的交互下沉到 client 组件。
+ * 「今天」口径统一为 Asia/Shanghai，由 `todayInShanghai()` 计算后作为
+ * prop 传给 client，保证服务端/客户端渲染一致。
  */
-export default async function MyTasksPage() {
+export default async function PersonalDashboardPage() {
   const user = await requireUser();
   const today = todayInShanghai();
   const weekStart = getWeekStart(today);
 
-  const [stats, personalTasks, teamTasks, projects] = await Promise.all([
+  const [stats, board, projects] = await Promise.all([
     getMyTaskStats({ userId: user.id, today, weekStart }),
-    listMyPersonalTasks(user.id),
-    listMyTeamTasks(user.id),
+    getTodayBoard({ userId: user.id, today }),
     listCrossSpaceProjects(user.id),
   ]);
+
+  // dueSoon = 今天 + 明天；board.total = 今天 + 逾期。
+  // 用这两条精确计数拆出「今日」「明日到期」，避免再扫一次任务表。
+  const todayCount = Math.max(board.total - stats.overdue, 0);
+  const tomorrowCount = Math.max(stats.dueSoon - todayCount, 0);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
       <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
         <div className="min-w-0">
           <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-            我的任务
+            Dashboard
           </h1>
           <p className="mt-1.5 text-[14px] text-[#5f6368]">
-            个人任务，以及各团队项目中分配给你的任务。
+            今天要做的、快到期的，以及逾期需要兜底的，都在这里；任务全景看
+            Kanban。
           </p>
         </div>
         <div className="flex flex-none items-center gap-2">
@@ -76,46 +59,51 @@ export default async function MyTasksPage() {
         </div>
       </header>
 
-      <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
-        <StatCard label="进行中" value={stats.inProgress} hint="跨全部空间" />
+      <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-5 min-[861px]:gap-4">
         <StatCard
-          label="今日 / 明日到期"
-          value={stats.dueSoon}
-          hint="建议优先处理"
+          label="进行中"
+          value={stats.inProgress}
+          hint="跨全部空间"
+        />
+        <StatCard
+          label="今日"
+          value={todayCount}
+          hint="今天到期"
+          color="#a66b00"
+        />
+        <StatCard
+          label="明日到期"
+          value={tomorrowCount}
+          hint="明天到期"
           color="#a66b00"
         />
         <StatCard
           label="已逾期"
           value={stats.overdue}
-          hint="请尽快处理"
+          hint="建议今天兜底"
           color="#ff5757"
         />
         <StatCard
           label="本周已完成"
           value={stats.doneThisWeek}
-          hint="自本周一以来"
+          hint={`自本周一（${weekStart.slice(5)}）以来`}
           color="#00b894"
         />
       </div>
 
-      <div className="mt-6 flex flex-col gap-5">
-        <MyTaskTable
-          title="个人任务"
-          tasks={personalTasks}
-          today={today}
-          emptyTitle="暂无个人任务"
-          emptyDescription="创建第一个任务，或把它归入个人项目。"
-        />
+      <TodayTaskList tasks={board.tasks} today={today} total={board.total} />
 
-        <MyTaskTable
-          title="我负责的团队任务"
-          tasks={teamTasks}
-          today={today}
-          showTeamName
-          hint="跨团队按责任人聚合 · 按截止日期排序"
-          emptyTitle="暂无团队任务"
-          emptyDescription="当你被指派团队任务后，会在这里跨团队汇总展示。"
-        />
+      <div
+        className="mt-4 flex gap-2 rounded-lg px-3 py-2.5 text-[12.5px]"
+        style={{ background: "rgba(13,153,255,0.1)", color: "#0b6fb8" }}
+      >
+        <span aria-hidden="true" className="flex-none">
+          ℹ
+        </span>
+        <span>
+          列表只保留「今天该看的」：截止早于今天的逾期任务置顶；已勾选完成的任务即从列表消失。想按状态或项目翻看全部任务，去
+          Kanban。
+        </span>
       </div>
     </div>
   );
