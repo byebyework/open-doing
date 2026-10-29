@@ -54,6 +54,8 @@ export interface SpaceKanbanProps {
   actorId?: string;
   /** taskId → 详情页 href（RSC 用 routes builder 生成，可能缺少部分卡片）。 */
   taskHrefs: Record<string, string>;
+  /** 当前 URL 筛选（project slug / 仅未指派），原样带给展开「更早」的 Server Action。 */
+  expandFilter?: { projectSlug?: string; unassignedOnly?: boolean };
 }
 
 /** 看板列顺序。 */
@@ -598,6 +600,7 @@ export function SpaceKanban({
   role,
   actorId,
   taskHrefs,
+  expandFilter,
 }: SpaceKanbanProps) {
   const router = useRouter();
   const isDesktop = useIsDesktop();
@@ -706,10 +709,20 @@ export function SpaceKanban({
 
     setLoadingOlder(true);
     try {
+      // 展开取数必须沿用当前 URL 筛选，否则「更早」列表会把过滤外的卡混进来。
       const result = await getOlderDoneTasksAction(
         variant === "team"
-          ? { spaceType: "team", teamSlug: teamSlug ?? "" }
-          : { spaceType: "personal" },
+          ? {
+              spaceType: "team",
+              teamSlug: teamSlug ?? "",
+              ...(expandFilter ?? {}),
+            }
+          : {
+              spaceType: "personal",
+              ...(expandFilter?.projectSlug
+                ? { projectSlug: expandFilter.projectSlug }
+                : {}),
+            },
       );
 
       if (!result.ok) {

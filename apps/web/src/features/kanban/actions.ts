@@ -2,6 +2,8 @@
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser, requireUser } from "@/features/auth/session";
+import { getPersonalProjectBySlug } from "@/features/personal/projects/service";
+import { listTeamProjects } from "@/features/projects/service";
 import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
 import { todayInShanghai } from "@/lib/today";
@@ -11,6 +13,16 @@ import {
   getOlderDoneTeamTasks,
   type KanbanCardItem,
 } from "./service";
+
+/** 展开取数入参；筛选字段均可选，未知 / 他人的 slug 忽略（回退全部）。 */
+type OlderDoneTasksInput =
+  | { spaceType: "personal"; projectSlug?: string }
+  | {
+      spaceType: "team";
+      teamSlug: string;
+      projectSlug?: string;
+      unassignedOnly?: boolean;
+    };
 
 type Failure = Extract<ActionResult<never>, { ok: false }>;
 
@@ -36,10 +48,13 @@ function toFailure(error: unknown): Failure {
  * - team 分支走 `getCurrentUser()`，未登录 / 团队不存在 / 非成员一律返回
  *   `{ ok:false, errors:{ form:"没有权限查看该团队" } }`——Server Action 里
  *   `notFound()` 不可用，也不泄露团队是否存在；
- * - `today` 在 action 内由 `todayInShanghai()` 计算，日期口径单一来源。
+ * - `today` 在 action 内由 `todayInShanghai()` 计算，日期口径单一来源；
+ * - `projectSlug` 在此解析为 projectId：个人项目走 `getPersonalProjectBySlug`
+ *   （非本人 / 不存在 → null）；团队项目在 `listTeamProjects()` 中按 slug 匹配。
+ *   解析失败一律忽略筛选（与页面回退语义一致），不报错。
  */
 export async function getOlderDoneTasksAction(
-  input: { spaceType: "personal" } | { spaceType: "team"; teamSlug: string },
+  input: OlderDoneTasksInput,
 ): Promise<ActionResult<KanbanCardItem[]>> {
   // Server Action 入参在传输层可被篡改（null / 缺字段），先做窄化守卫，
   // 避免下方解引用抛出未捕获 TypeError；文案与授权失败区分开。
@@ -53,9 +68,18 @@ export async function getOlderDoneTasksAction(
     const user = await requireUser();
 
     try {
+      const project =
+        typeof input.projectSlug === "string" && input.projectSlug
+          ? await getPersonalProjectBySlug(user.id, input.projectSlug)
+          : null;
+
       return {
         ok: true,
-        data: await getOlderDonePersonalTasks(user.id, todayInShanghai()),
+        data: await getOlderDonePersonalTasks(
+          user.id,
+          todayInShanghai(),
+          project ? { projectId: project.id } : undefined,
+        ),
       };
     } catch (error) {
       return toFailure(error);
@@ -72,9 +96,19 @@ export async function getOlderDoneTasksAction(
     const membership = await getMembership(team.id, user.id);
     if (!membership) return NO_TEAM_ACCESS;
 
+    const project =
+      typeof input.projectSlug === "string" && input.projectSlug
+        ? (await listTeamProjects(team.id)).find(
+            (item) => item.slug === input.projectSlug,
+          )
+        : undefined;
+
     return {
       ok: true,
-      data: await getOlderDoneTeamTasks(team.id, todayInShanghai()),
+      data: await getOlderDoneTeamTasks(team.id, todayInShanghai(), {
+        projectId: project?.id,
+        unassignedOnly: input.unassignedOnly === true,
+      }),
     };
   } catch (error) {
     return toFailure(error);

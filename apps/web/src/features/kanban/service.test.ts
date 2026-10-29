@@ -419,6 +419,38 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
     expect(older[0]!.projectName).toBe("学习成长");
     expect(older[0]!.status).toBe("done");
   });
+
+  it("projectId 过滤：三列与 doneOlderCount / doneTotal 同步收窄到该项目", async () => {
+    const { member, study } = await seedBoard(db);
+
+    const board = await getPersonalSpaceBoard(member.id, TODAY, db, {
+      projectId: study.id,
+    });
+
+    expect(board.todo.map((card) => card.title)).toEqual([
+      "逾期较早",
+      "今天到期",
+      "无截止",
+    ]);
+    expect(board.inProgress).toHaveLength(0);
+    expect(board.doneRecent.map((card) => card.title)).toEqual([
+      "窗口下边界完成",
+    ]);
+    // 学习成长项目窗口外仅 1 条；doneTotal 必须同为过滤后的 2 条，
+    // 不能沿用全量 4 条。
+    expect(board.doneOlderCount).toBe(1);
+    expect(board.doneTotal).toBe(2);
+  });
+
+  it("getOlderDonePersonalTasks 支持 projectId 过滤（只返回该项目的窗口外 done 卡）", async () => {
+    const { member, study } = await seedBoard(db);
+
+    const older = await getOlderDonePersonalTasks(member.id, TODAY, db, {
+      projectId: study.id,
+    });
+
+    expect(older.map((card) => card.title)).toEqual(["窗口上边界完成"]);
+  });
 });
 
 async function createTeam(
@@ -883,6 +915,59 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
       projectName: "留存项目",
     });
   });
+
+  it("projectId 过滤：三列与 doneOlderCount / doneTotal 同步收窄到该项目", async () => {
+    const { teamA, growth } = await seedTeamBoard(db);
+
+    const board = await getTeamSpaceBoard(teamA.id, TODAY, db, {
+      projectId: growth.id,
+    });
+
+    expect(board.todo.map((card) => card.title)).toEqual([
+      "逾期较早",
+      "逾期较晚",
+      "今天到期",
+      "无截止",
+    ]);
+    expect(board.inProgress.map((card) => card.title)).toEqual(["进行中任务"]);
+    expect(board.doneRecent.map((card) => card.title)).toEqual([
+      "窗口下边界完成",
+    ]);
+    expect(board.doneOlderCount).toBe(1);
+    expect(board.doneTotal).toBe(2);
+  });
+
+  it("unassignedOnly 过滤：列与计数只保留未指派任务", async () => {
+    const { teamA } = await seedTeamBoard(db);
+
+    const board = await getTeamSpaceBoard(teamA.id, TODAY, db, {
+      unassignedOnly: true,
+    });
+
+    // 成员退出后置空的卡也算未指派。
+    expect(board.todo.map((card) => card.title)).toEqual([
+      "成员退出任务",
+      "未指派任务",
+    ]);
+    expect(board.inProgress).toHaveLength(0);
+    expect(board.doneRecent).toHaveLength(0);
+    expect(board.doneOlderCount).toBe(1);
+    expect(board.doneTotal).toBe(1);
+  });
+
+  it("getOlderDoneTeamTasks 支持 projectId / unassignedOnly 过滤", async () => {
+    const { teamA, growth } = await seedTeamBoard(db);
+
+    const byProject = await getOlderDoneTeamTasks(teamA.id, TODAY, db, {
+      projectId: growth.id,
+    });
+    const unassigned = await getOlderDoneTeamTasks(teamA.id, TODAY, db, {
+      unassignedOnly: true,
+    });
+
+    expect(byProject.map((card) => card.title)).toEqual(["窗口上边界完成"]);
+    expect(unassigned.map((card) => card.title)).toEqual(["很久以前完成"]);
+  });
 });
 
 const mockGetCurrentUser = vi.mocked(getCurrentUser);
@@ -1088,6 +1173,109 @@ describe.skipIf(!hasTestDatabase)("展开取数 action（getOlderDoneTasksAction
       completedAt: new Date("2019-05-01T00:00:00+08:00").toISOString(),
     });
     expect(result.data.map((card) => card.title)).not.toContain("个人近期完成");
+  });
+
+  it("personal 分支：projectSlug 过滤只返回该项目的窗口外 done 卡", async () => {
+    const { alice } = await seedActionFixture(db);
+    const second = await createPersonalProject(db, {
+      ownerId: alice.id,
+      name: "第二个个人项目",
+      slug: "second-personal",
+    });
+    await db.insert(tasks).values({
+      spaceType: "personal",
+      projectId: second.id,
+      title: "第二个项目较早完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+      updatedAt: new Date("2018-01-01T00:00:00+08:00"),
+    });
+    mockRequireUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "personal",
+      projectSlug: second.slug,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.data.map((card) => card.title)).toEqual([
+      "第二个项目较早完成",
+    ]);
+    expect(result.data[0]).toMatchObject({
+      projectId: second.id,
+      projectName: "第二个个人项目",
+    });
+  });
+
+  it("personal 分支：未知 projectSlug 忽略过滤，回退为全部窗口外 done 卡", async () => {
+    const { alice } = await seedActionFixture(db);
+    mockRequireUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "personal",
+      projectSlug: "does-not-exist",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.data.map((card) => card.title)).toEqual([
+      "个人较晚完成",
+      "个人较早完成",
+    ]);
+  });
+
+  it("team 分支：unassignedOnly 只返回未指派的窗口外 done 卡", async () => {
+    const { alice, team, teamProject } = await seedActionFixture(db);
+    await db.insert(tasks).values({
+      spaceType: "team",
+      projectId: teamProject.id,
+      title: "团队未指派较早完成",
+      status: "done",
+      assigneeId: null,
+      createdById: alice.id,
+      updatedAt: new Date("2018-06-01T00:00:00+08:00"),
+    });
+    mockGetCurrentUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: team.slug,
+      unassignedOnly: true,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.data.map((card) => card.title)).toEqual([
+      "团队未指派较早完成",
+    ]);
+    expect(result.data[0]).toMatchObject({
+      assigneeId: null,
+      assigneeName: null,
+    });
+  });
+
+  it("team 分支：未知 projectSlug 忽略过滤，回退为团队全部窗口外 done 卡", async () => {
+    const { alice, team } = await seedActionFixture(db);
+    mockGetCurrentUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: team.slug,
+      projectSlug: "does-not-exist",
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.data.map((card) => card.title)).toEqual([
+      "团队较晚完成",
+      "团队较早完成",
+    ]);
   });
 
   it("personal 分支：requireUser 的重定向异常继续冒泡，不被错误映射吞掉", async () => {

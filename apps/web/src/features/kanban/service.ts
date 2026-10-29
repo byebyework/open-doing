@@ -1,11 +1,32 @@
 import type { SpaceType as SharedSpaceType, TaskStatus } from "@open-doing/types";
-import { and, desc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
+import {
+  and,
+  desc,
+  eq,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 import { db, type DbClient } from "@/server/db/client";
 import { projects, subtasks, tasks, users } from "@/server/db/schema";
 
 /** 空间类型（沿用共享领域类型，本模块对外导出以便看板组件消费）。 */
 export type SpaceType = SharedSpaceType;
+
+/** 个人空间看板筛选（页面 / action 已把 URL slug 解析成 projectId）。 */
+export interface PersonalSpaceBoardFilter {
+  projectId?: string;
+}
+
+/** 团队空间看板筛选：项目 + 仅未指派（未指定字段即不过滤）。 */
+export interface TeamSpaceBoardFilter {
+  projectId?: string;
+  unassignedOnly?: boolean;
+}
 
 /** 空间看板卡片（三列共用；done 卡额外带 `completedAt`）。 */
 export interface KanbanCardItem {
@@ -80,16 +101,21 @@ interface TeamKanbanCardRow extends KanbanCardRow {
  *
  * 零散个人任务（`project_id` 为空）同样纳入看板；其项目字段映射为空字符串
  * （冻结类型要求 projectId / projectName 为非空 string）。
+ *
+ * 第三个位置兼容两种入参：历史调用传 `DbClient`（测试注入），页面传筛选条件；
+ * 也可同时传 `client` + `filter`。筛选同时作用于三列与 done 计数查询。
  */
 export async function getPersonalSpaceBoard(
   userId: string,
   today: string,
-  client: DbClient = db,
+  clientOrFilter: DbClient | PersonalSpaceBoardFilter = db,
+  filter?: PersonalSpaceBoardFilter,
 ): Promise<SpaceBoard> {
-  const scope = and(
-    eq(tasks.spaceType, "personal"),
-    eq(tasks.assigneeId, userId),
+  const { client, filter: resolvedFilter } = resolveClientAndFilter(
+    clientOrFilter,
+    filter,
   );
+  const scope = personalScope(userId, resolvedFilter);
   const recentStart = doneWindowStart(today);
 
   const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
@@ -135,16 +161,19 @@ export async function getPersonalSpaceBoard(
  * 个人空间中完成时间早于近 7 天窗口的全部任务（供「查看更早」展开）。
  *
  * 条件是 `updatedAt < today - 6`，排序与 done 列一致（updatedAt 降序）。
+ * 入参形态与 `getPersonalSpaceBoard` 一致（client / filter 兼容）。
  */
 export async function getOlderDonePersonalTasks(
   userId: string,
   today: string,
-  client: DbClient = db,
+  clientOrFilter: DbClient | PersonalSpaceBoardFilter = db,
+  filter?: PersonalSpaceBoardFilter,
 ): Promise<KanbanCardItem[]> {
-  const scope = and(
-    eq(tasks.spaceType, "personal"),
-    eq(tasks.assigneeId, userId),
+  const { client, filter: resolvedFilter } = resolveClientAndFilter(
+    clientOrFilter,
+    filter,
   );
+  const scope = personalScope(userId, resolvedFilter);
 
   const rows = await selectCards(
     client,
@@ -167,13 +196,20 @@ export async function getOlderDonePersonalTasks(
  * - `assigneeName` 经 `LEFT JOIN users` 取得，未指派（含成员被移除后置空）为 null。
  *
  * 调用方（页面 / action）负责先做团队成员资格校验；本函数不做权限判断。
+ * 第三个位置兼容 `DbClient` 与筛选条件（同 `getPersonalSpaceBoard`）；
+ * 筛选同时作用于三列与 done 计数查询。
  */
 export async function getTeamSpaceBoard(
   teamId: string,
   today: string,
-  client: DbClient = db,
+  clientOrFilter: DbClient | TeamSpaceBoardFilter = db,
+  filter?: TeamSpaceBoardFilter,
 ): Promise<TeamSpaceBoard> {
-  const scope = teamScope(teamId);
+  const { client, filter: resolvedFilter } = resolveClientAndFilter(
+    clientOrFilter,
+    filter,
+  );
+  const scope = teamScope(teamId, resolvedFilter);
   const recentStart = doneWindowStart(today);
 
   const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
@@ -225,13 +261,19 @@ export async function getTeamSpaceBoard(
  *
  * 条件是 `updatedAt < today - 6`，排序与 done 列一致（updatedAt 降序）；
  * 同样包含未指派任务。调用方负责团队成员资格校验。
+ * 入参形态与 `getTeamSpaceBoard` 一致（client / filter 兼容）。
  */
 export async function getOlderDoneTeamTasks(
   teamId: string,
   today: string,
-  client: DbClient = db,
+  clientOrFilter: DbClient | TeamSpaceBoardFilter = db,
+  filter?: TeamSpaceBoardFilter,
 ): Promise<TeamKanbanCardItem[]> {
-  const scope = teamScope(teamId);
+  const { client, filter: resolvedFilter } = resolveClientAndFilter(
+    clientOrFilter,
+    filter,
+  );
+  const scope = teamScope(teamId, resolvedFilter);
 
   const rows = await selectTeamCards(
     client,
@@ -246,15 +288,75 @@ export async function getOlderDoneTeamTasks(
   return rows.map(toTeamCard);
 }
 
+/** 个人任务范围：本人的个人任务 + 可选项目筛选。 */
+function personalScope(
+  userId: string,
+  filter?: PersonalSpaceBoardFilter,
+): SQL<unknown> {
+  const conditions: (SQL | undefined)[] = [
+    eq(tasks.spaceType, "personal"),
+    eq(tasks.assigneeId, userId),
+  ];
+
+  if (filter?.projectId) {
+    conditions.push(eq(tasks.projectId, filter.projectId));
+  }
+
+  return andDefined(...conditions);
+}
+
 /**
  * 团队任务范围：`space_type = 'team'` 且任务所属项目属于该团队。
  *
  * 以项目归属而非指派人过滤，未指派任务天然纳入。注意：schema 并不约束
  * 「团队任务必属某个团队项目」（`tasks.project_id` 可空、无 CHECK），该保证
  * 来自创建路径——创建的任务必有项目；若无项目归属，任务会从看板静默消失。
+ *
+ * 筛选条件与范围条件走同一组谓词，列查询与计数查询不会分叉。
  */
-function teamScope(teamId: string): SQL<unknown> {
-  return andDefined(eq(tasks.spaceType, "team"), inArray(projects.teamId, [teamId]));
+function teamScope(
+  teamId: string,
+  filter?: TeamSpaceBoardFilter,
+): SQL<unknown> {
+  const conditions: (SQL | undefined)[] = [
+    eq(tasks.spaceType, "team"),
+    inArray(projects.teamId, [teamId]),
+  ];
+
+  if (filter?.projectId) {
+    conditions.push(eq(tasks.projectId, filter.projectId));
+  }
+  if (filter?.unassignedOnly) {
+    conditions.push(isNull(tasks.assigneeId));
+  }
+
+  return andDefined(...conditions);
+}
+
+/**
+ * 解析第三 / 第四入参：历史调用 `(userId, today, client)`、新调用
+ * `(userId, today, filter)` 与 `(userId, today, client, filter)` 均可用。
+ *
+ * 仅用于保持既有调用点（测试显式注入 DbClient）无需改动；DbClient 的判别
+ * 依据是 drizzle client 必有 `select` 方法，筛选条件对象不含该字段。
+ */
+function resolveClientAndFilter<TFilter>(
+  clientOrFilter: DbClient | TFilter,
+  filter?: TFilter,
+): { client: DbClient; filter: TFilter | undefined } {
+  if (isDbClient(clientOrFilter)) {
+    return { client: clientOrFilter, filter };
+  }
+
+  return { client: db, filter: clientOrFilter };
+}
+
+function isDbClient(value: unknown): value is DbClient {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    typeof (value as { select?: unknown }).select === "function"
+  );
 }
 
 /**

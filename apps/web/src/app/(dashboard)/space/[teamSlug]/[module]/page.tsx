@@ -8,9 +8,11 @@ import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
 import { spaceDashboardHref } from "@/lib/routes";
 
-/** 占位模块 → 展示名（团队 settings 命中真实静态设置页，不进本页）。 */
+/**
+ * 占位模块 → 展示名（Kanban 已有真实页面并以静态段优先命中；
+ * 团队 settings 同样命中真实静态设置页，均不进本页）。
+ */
 const MODULE_LABELS = {
-  kanban: "Kanban",
   calendar: "Calendar",
   analysis: "Analysis",
   settings: "设置",
@@ -18,7 +20,7 @@ const MODULE_LABELS = {
 
 type PlaceholderModule = keyof typeof MODULE_LABELS;
 
-/** 运行期校验 `[module]` 段：只接受四个在建模块，其余 404。 */
+/** 运行期校验 `[module]` 段：只接受在建模块，其余 404。 */
 function isPlaceholderModule(value: string): value is PlaceholderModule {
   return Object.hasOwn(MODULE_LABELS, value);
 }
@@ -30,7 +32,7 @@ export const metadata: Metadata = {
 /**
  * 空间模块占位页（v1.1 M2）。
  *
- * 路由 `/space/{spaceRef}/{module}` 承接尚未实现的四个模块：
+ * 路由 `/space/{spaceRef}/{module}` 承接尚未实现的模块：
  * - 个人空间直接渲染；
  * - 团队空间按团队页同款 404 语义校验（不存在 / 非成员一律 404，不泄露存在性）；
  * - 团队 settings 由静态路由 `/space/[teamSlug]/settings` 优先命中真实设置页。
