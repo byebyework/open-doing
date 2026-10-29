@@ -113,24 +113,26 @@ app/
 │   └── space/
 │       ├── personal/
 │       │   ├── dashboard/page.tsx   # 个人 Dashboard：统计卡 +「今天」列表（≤20）
+│       │   ├── kanban/page.tsx      # 个人空间 Kanban：跨项目聚合 + ?project 筛选
 │       │   ├── projects/[projectSlug]/
 │       │   │   └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
 │       │   └── tasks/[taskId]/page.tsx # 个人任务详情（含个人项目内任务）
 │       ├── [teamSlug]/
 │       │   ├── dashboard/page.tsx   # 团队 Dashboard：健康度 + 重要节点 + 成员负载
+│       │   ├── kanban/page.tsx      # 团队空间 Kanban：跨项目聚合 + ?project / ?assignee 筛选
 │       │   ├── settings/page.tsx    # 团队设置（静态段优先于 [module] 占位页）
 │       │   ├── projects/
 │       │   │   ├── new/page.tsx
 │       │   │   └── [projectSlug]/
 │       │   │       ├── page.tsx      # 团队项目页（列表/看板双视图）
 │       │   │       └── tasks/[taskId]/ # 团队任务详情
-│       │   └── [module]/page.tsx    # 模块占位页（kanban/calendar/analysis/settings）
+│       │   └── [module]/page.tsx    # 模块占位页（calendar/analysis；个人 settings）
 └── api/
     └── cron/
         └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
 ```
 
-- 个人空间的 `kanban / calendar / analysis / settings` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）。
+- 个人空间的 `calendar / analysis / settings` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）；`kanban` 两个空间均已有真实页面（见 §5.3）。
 - 动态段名约束：Next 要求同一位置的动态段名唯一，团队空间已占用 `[teamSlug]`，因此占位页沿用该段名，URL 语义仍是 `spaceRef`（`personal` 或团队 slug）。
 - `personal` 为保留 spaceRef：团队 slug 生成需避开 `personal`（当前无 guard，排期 X1）。
 - 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
@@ -156,6 +158,30 @@ v1.1 统一导航替换原 PersonalNav / TeamsNav 双槽：
 - `AppShell` props 变为 `{ nav, mobileNav, user, children }`；
 - 新增 `SpaceNav`、`SpaceNavData`（`getSpaceNavData()` 一次取齐）、`SpaceNavMenu`（Dashboard / Kanban / Calendar / Analysis / 设置 + 账号分组）、`MobileNav`（<861px 汉堡按钮 `aria-label="打开导航"` + antd Drawer）；
 - 桌面侧栏与移动 Drawer 共用同一棵导航树，`(dashboard)/layout.tsx` 的导入关系相应调整。
+
+### 5.3 空间级 Kanban（v1.1 M3）
+
+两个空间一套组件（`features/kanban/`，`SpaceKanban` 以 `variant` 区分个人 / 团队）：
+
+| 路由 | 数据范围 |
+|---|---|
+| `/space/personal/kanban` | 本人的全部个人任务（含零散任务），跨项目聚合 |
+| `/space/{teamSlug}/kanban` | 该团队全部项目下的任务（含未指派），非成员 404 |
+
+URL query 契约（筛选状态进 URL，RSC 服务端过滤三列与 done 计数）：
+
+| 参数 | 空间 | 语义 |
+|---|---|---|
+| `project={projectSlug}` | 个人 / 团队 | 只看该项目；未知或他人项目 slug **静默忽略**（回退全部，不 500） |
+| `assignee=unassigned` | 仅团队 | 只看未指派任务；与 `project` 可叠加 |
+| 无参数 | 两个空间 | 全部任务 |
+
+- 列固定为 `todo / in_progress / done`；done 列默认只收敛近 7 天（`updatedAt >= today-6`），尾部「查看更早 N 项已完成」原地展开全部，收起可逆。**展开状态不进 URL**（临时展示态）；任何成功触发 `router.refresh()` 的操作（拖拽 / 移动端状态按钮）会把展开视图重置回近 7 天。
+- 拖拽只改状态、不改项目归属；权限沿用 `canEditTask`（团队 member 不可拖他人 / 未指派卡）；<861px 拖拽关闭，改由卡内状态按钮流转。
+- 展开取数走 Server Action `getOlderDoneTasksAction`（`features/kanban/actions.ts`），个人分支 `requireUser()`、团队分支 `getCurrentUser()` + 成员资格校验；筛选参数（`projectSlug` / `unassignedOnly`）在 action 内重新解析为 id，无效 slug 同样忽略。
+- 空态文案（已定）：「这个空间还没有任务,去 Dashboard 或项目页创建第一项任务。」；当前三列始终渲染，列内空态显示「暂无任务」，空间级空态未单独接线。筛选条计数：个人「N 个任务」（三列卡片 + 窗口外 done），团队「N 个未完成任务」（todo + in_progress）。
+- 团队看板页头「＋ 新建项目」仅 owner / admin 渲染，与 `/space/{teamSlug}/projects/new` 的权限门槛一致。
+- 已知限制：展开后的「更早」done 卡没有详情链接（RSC 只为近 7 天卡片生成 `taskHrefs`；原型同样不链接）。
 
 ## 6. 数据模型
 
@@ -288,7 +314,8 @@ CRON_SECRET=...
 | 个人 Dashboard `/space/personal/dashboard` | ✅ v1.1 M2：四张统计卡 +「今天」列表（≤20，逾期置顶，行内勾选） |
 | 团队 Dashboard `/space/[teamSlug]/dashboard` | ✅ v1.1 M2：四张统计卡 + 项目健康度 + 重要节点（前 10）+ 成员负载 |
 | 个人/团队项目页（列表 + 看板双视图）与任务详情 | ✅ 已迁入 `/space/{spaceRef}/projects/...`、`/space/personal/tasks/{id}` |
-| 空间级 Kanban / Calendar / Analysis / 个人设置 | 🟡 占位页 `/space/{spaceRef}/{module}`，待 M3–M6 |
+| 空间级 Kanban `/space/{spaceRef}/kanban` | ✅ v1.1 M3：三列跨项目聚合、`?project=` / `?assignee=` 筛选（见 §5.3）、拖拽改状态、done 7 天收敛 + 原地展开 |
+| 空间级 Calendar / Analysis / 个人设置 | 🟡 占位页 `/space/{spaceRef}/{module}`，待 M4–M6 |
 | cron 到期扫描（`CRON_SECRET` 鉴权、幂等） | ✅ 已完成 |
 
 ## 13. 建议的实施顺序（概要）
