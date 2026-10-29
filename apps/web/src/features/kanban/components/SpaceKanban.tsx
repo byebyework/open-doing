@@ -38,7 +38,11 @@ import { useIsDesktop } from "./useIsDesktop";
 /** 空间看板入参（个人 / 团队共用，团队专有字段可选）。 */
 export interface SpaceKanbanProps {
   variant: "personal" | "team";
-  /** 已按 URL 筛选过滤后的看板数据。 */
+  /** 已按 URL 筛选过滤后的看板数据。
+   *
+   * `doneTotal`/`doneOlderCount` 必须是 URL 筛选后的值（post-filter）；页面/RSC
+   * 负责按筛选重算，组件不自行过滤。
+   */
   board: SpaceBoard | TeamSpaceBoard;
   projects: { id: string; name: string; slug: string }[];
   /** 今天（Asia/Shanghai，`YYYY-MM-DD`）。 */
@@ -350,7 +354,7 @@ function SpaceKanbanCard({
 
         <div
           className={`mt-2.5 flex items-center gap-2 ${
-            variant === "team" ? "" : "justify-end"
+            variant === "team" ? "" : "justify-between"
           }`}
         >
           {variant === "team" ? (
@@ -517,7 +521,7 @@ function SpaceKanbanColumn({
                 : `查看更早 ${doneOlderCount} 项已完成 →`}
             </span>
             <span className="mt-0.5 block text-[11px] text-[#9aa0a6]">
-              点击原地展开全部已完成任务，可再次收起
+              {expanded ? "点击收起恢复近 7 天视图" : "点击原地展开全部已完成任务，可再次收起"}
             </span>
           </button>
         ) : null}
@@ -600,6 +604,8 @@ export function SpaceKanban({
 
   const [local, setLocal] = useState<LocalBoard>(() => toLocalBoard(board));
   const [syncedBoard, setSyncedBoard] = useState(board);
+  // 展开状态不进 URL；任何触发 router.refresh() 的成功操作（如拖拽）会经
+  // 渲染期同步重置展开视图，属预期行为。
   const [expanded, setExpanded] = useState(false);
   const [loadingOlder, setLoadingOlder] = useState(false);
 
@@ -647,8 +653,9 @@ export function SpaceKanban({
     // 防御性再判一次：member 拖他人 / 未指派卡静默返回。
     if (!canEditCard(card)) return;
 
-    // 快照整个本地看板：失败时原样恢复列位置与 completedAt。
-    const previousBoard = local;
+    // 失败回滚用功能式更新把卡移回原列（originalStatus 在乐观移动前捕获）：
+    // 乐观移动与回滚之间落地的其他状态变更不会被旧快照覆盖。
+    const originalStatus = card.status;
     applyStatus(cardId, nextStatus);
 
     try {
@@ -666,19 +673,19 @@ export function SpaceKanban({
         });
         if (!result.ok) errors = result.errors;
       } else {
-        setLocal(previousBoard);
+        setLocal((current) => moveCard(current, cardId, originalStatus));
         return;
       }
 
       if (errors) {
-        setLocal(previousBoard);
+        setLocal((current) => moveCard(current, cardId, originalStatus));
         message.error(firstError(errors));
         return;
       }
 
       router.refresh();
     } catch {
-      setLocal(previousBoard);
+      setLocal((current) => moveCard(current, cardId, originalStatus));
       message.error("网络异常，请稍后重试");
     }
   }
@@ -758,7 +765,9 @@ export function SpaceKanban({
     done: {
       cards: doneCards,
       // done 列头显示全部已完成数（原型口径：近 7 天 + 更早），不是可见卡片数。
-      count: local.doneTotal,
+      // 用 recent.length + doneOlderCount 而非 board.doneTotal：乐观移动会重排
+      // recent / older 而不动 doneTotal，派生值可随乐观更新自愈，免等 refresh。
+      count: local.doneRecent.length + local.doneOlderCount,
       overdueCount: 0,
     },
   };
