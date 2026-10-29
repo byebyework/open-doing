@@ -416,9 +416,10 @@ async function createTeamProject(
  * - todo：逾期两条 / 成员退出（assignee 置空）/ 今天 / 未来 / 无截止 / 未指派
  * - in_progress：一条
  * - done：窗口内两条（含下边界 today-6）、窗口外两条（含 today-7，其一未指派）
- * - 排除项：团队 B 任务、个人空间任务
+ * - 排除项：团队 B 任务、个人空间任务（其一挂在团队 A 项目上，仅靠
+ *   `space_type = 'team'` 谓词排除）
  *
- * 团队任务在 schema 上必须归属某个团队项目（FK），因此不存在零散团队任务。
+ * 团队任务经创建路径保证必有项目（schema 本身不约束），因此不存在零散团队任务。
  */
 async function seedTeamBoard(db: DbClient) {
   const alice = await createUser(db, "alice");
@@ -590,6 +591,19 @@ async function seedTeamBoard(db: DbClient) {
         spaceType: "personal",
         projectId: personalProject.id,
         title: "个人任务",
+        status: "todo",
+        dueDate: "2026-10-01",
+        assigneeId: alice.id,
+        createdById: alice.id,
+      },
+      {
+        // 个人空间任务挂在团队 A 的项目上（schema 允许，`tasks.project_id`
+        // 可空且无 CHECK 约束 space_type 与项目归属一致）。团队看板按
+        // `projects.team_id` 过滤本不会排除它——它缺席只能由
+        // `space_type = 'team'` 谓词解释，从而证明该谓词真实生效。
+        spaceType: "personal",
+        projectId: growth.id,
+        title: "团队项目上的个人任务",
         status: "todo",
         dueDate: "2026-10-01",
         assigneeId: alice.id,
@@ -780,7 +794,7 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
     });
   });
 
-  it("只聚合本团队项目任务：团队 B 任务与个人任务不出现，团队 B 看板也不混入团队 A", async () => {
+  it("只聚合本团队项目任务：团队 B 任务与个人空间任务不出现，团队 B 看板也不混入团队 A", async () => {
     const { teamA, teamB } = await seedTeamBoard(db);
 
     const boardA = await getTeamSpaceBoard(teamA.id, TODAY, db);
@@ -792,6 +806,10 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
 
     expect(titlesA).not.toContain("团队B任务");
     expect(titlesA).not.toContain("个人任务");
+    // 「个人任务」因归属个人项目已被 projects.team_id 过滤掉；而「团队项目
+    // 上的个人任务」满足 projects.team_id = teamA，只有 space_type 谓词
+    // 能把它排除——其缺席证明 space_type 过滤真实生效。
+    expect(titlesA).not.toContain("团队项目上的个人任务");
     // 团队 A 的全部任务（含未指派）都在。
     expect(boardA.todo).toHaveLength(7);
 

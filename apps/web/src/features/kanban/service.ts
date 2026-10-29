@@ -179,21 +179,21 @@ export async function getTeamSpaceBoard(
   const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
     selectTeamCards(
       client,
-      and(scope, eq(tasks.status, "todo"))!,
+      andDefined(scope, eq(tasks.status, "todo")),
       activeOrder,
     ),
     selectTeamCards(
       client,
-      and(scope, eq(tasks.status, "in_progress"))!,
+      andDefined(scope, eq(tasks.status, "in_progress")),
       activeOrder,
     ),
     selectTeamCards(
       client,
-      and(
+      andDefined(
         scope,
         eq(tasks.status, "done"),
         gte(tasks.updatedAt, recentStart),
-      )!,
+      ),
       doneOrder,
     ),
     client
@@ -235,11 +235,11 @@ export async function getOlderDoneTeamTasks(
 
   const rows = await selectTeamCards(
     client,
-    and(
+    andDefined(
       scope,
       eq(tasks.status, "done"),
       lt(tasks.updatedAt, doneWindowStart(today)),
-    )!,
+    ),
     doneOrder,
   );
 
@@ -249,14 +249,22 @@ export async function getOlderDoneTeamTasks(
 /**
  * 团队任务范围：`space_type = 'team'` 且任务所属项目属于该团队。
  *
- * 团队任务始终归属某个团队项目（FK 保证），因此以项目归属而非指派人过滤，
- * 未指派任务天然纳入；`inArray` 与计划中的范围写法保持一致。
+ * 以项目归属而非指派人过滤，未指派任务天然纳入。注意：schema 并不约束
+ * 「团队任务必属某个团队项目」（`tasks.project_id` 可空、无 CHECK），该保证
+ * 来自创建路径——创建的任务必有项目；若无项目归属，任务会从看板静默消失。
  */
-function teamScope(teamId: string) {
-  return and(
-    eq(tasks.spaceType, "team"),
-    inArray(projects.teamId, [teamId]),
-  );
+function teamScope(teamId: string): SQL<unknown> {
+  return andDefined(eq(tasks.spaceType, "team"), inArray(projects.teamId, [teamId]));
+}
+
+/**
+ * `and()` 的收窄包装：入参均为已定义的 SQL 时结果必非空，断言收在一处。
+ *
+ * 直接用 `and()` 会把 `SQL | undefined` 泄漏给调用点，逐处加 `!` 会重新打开
+ * fail-open 风险——一旦某处漏断言，条件静默变 undefined，过滤被整体丢弃。
+ */
+function andDefined(...conditions: (SQL | undefined)[]): SQL<unknown> {
+  return and(...conditions)!;
 }
 
 /**
@@ -359,8 +367,10 @@ async function selectTeamCards(
       assigneeId: tasks.assigneeId,
       assigneeName: users.username,
     })
+    // inner join 而非 left join：团队范围条件含 `projects.team_id`，团队任务
+    // 必有项目（创建路径保证），join 类型只表达这一意图，与计数查询一致。
     .from(tasks)
-    .leftJoin(projects, eq(tasks.projectId, projects.id))
+    .innerJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
     .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
     .where(condition)
