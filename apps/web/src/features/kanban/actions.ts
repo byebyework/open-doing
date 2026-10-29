@@ -41,6 +41,12 @@ function toFailure(error: unknown): Failure {
 export async function getOlderDoneTasksAction(
   input: { spaceType: "personal" } | { spaceType: "team"; teamSlug: string },
 ): Promise<ActionResult<KanbanCardItem[]>> {
+  // Server Action 入参在传输层可被篡改（null / 缺字段），先做窄化守卫，
+  // 避免下方解引用抛出未捕获 TypeError；文案与授权失败区分开。
+  if (!input || (input.spaceType !== "personal" && input.spaceType !== "team")) {
+    return { ok: false, errors: { form: "操作失败，请稍后重试" } };
+  }
+
   if (input.spaceType === "personal") {
     // requireUser() 在 try 之外：未登录时 redirect() 抛出的 NEXT_REDIRECT
     // 必须继续冒泡，不能被错误映射吞掉。

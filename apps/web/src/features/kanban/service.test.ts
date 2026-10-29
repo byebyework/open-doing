@@ -31,25 +31,28 @@ import {
  * client），这里把该模块的 `db` 劫持为当前用例的测试库实例：Proxy 在每次
  * 属性访问时读取 `testDbRef.current`，从而让 action → service 的默认参数
  * 落到 `TEST_DATABASE_URL` 指向的库。
+ *
+ * 该模式的前提是 service 通过默认参数**惰性**消费 `db`：若某个 service 在
+ * 模块作用域捕获 `db`，这些用例会在 import 阶段因 `db` 未初始化而抛出
+ * 「测试数据库未初始化」。
  */
 const testDbRef = vi.hoisted(() => ({
   current: null as DbClient | null,
 }));
 
-vi.mock("@/server/db/client", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@/server/db/client")>();
-  return new Proxy(actual, {
-    get(target, property, receiver) {
-      if (property === "db") {
+vi.mock("@/server/db/client", () => ({
+  db: new Proxy(
+    {},
+    {
+      get(_target, property, receiver) {
         if (!testDbRef.current) {
           throw new Error("测试数据库未初始化：先调用 setupTestDb()");
         }
-        return testDbRef.current;
-      }
-      return Reflect.get(target, property, receiver);
+        return Reflect.get(testDbRef.current, property, receiver);
+      },
     },
-  });
-});
+  ),
+}));
 
 vi.mock("@/features/auth/session", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/auth/session")>();
