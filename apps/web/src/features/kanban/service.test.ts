@@ -283,6 +283,8 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
 
   beforeEach(async () => {
     db = await setupTestDb();
+    // 三参签名（filter 落在 client 位）走模块默认 `db`，需指向测试库。
+    testDbRef.current = db;
   });
 
   afterAll(async () => {
@@ -440,6 +442,34 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
     // 不能沿用全量 4 条。
     expect(board.doneOlderCount).toBe(1);
     expect(board.doneTotal).toBe(2);
+  });
+
+  it("三参签名（filter 落在 client 位，页面实际调用形态）：projectId 过滤与显式传 client 等价", async () => {
+    const { member, study } = await seedBoard(db);
+
+    // 页面调用 `getPersonalSpaceBoard(userId, today, filter)`，不显式传 db；
+    // 该形态必须解析为「默认 db + filter」，而不是把 filter 误当 client。
+    const board = await getPersonalSpaceBoard(member.id, TODAY, {
+      projectId: study.id,
+    });
+
+    expect(board.todo.map((card) => card.title)).toEqual([
+      "逾期较早",
+      "今天到期",
+      "无截止",
+    ]);
+    expect(board.inProgress).toHaveLength(0);
+    expect(board.doneRecent.map((card) => card.title)).toEqual([
+      "窗口下边界完成",
+    ]);
+    expect(board.doneOlderCount).toBe(1);
+    expect(board.doneTotal).toBe(2);
+    // 其它项目的卡（含零散任务）一律不出现。
+    const titles = [...board.todo, ...board.inProgress].map((c) => c.title);
+    expect(titles).not.toContain("逾期较晚");
+    expect(titles).not.toContain("未来到期");
+    expect(titles).not.toContain("进行中任务");
+    expect(titles).not.toContain("零散任务");
   });
 
   it("getOlderDonePersonalTasks 支持 projectId 过滤（只返回该项目的窗口外 done 卡）", async () => {
@@ -719,6 +749,8 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
 
   beforeEach(async () => {
     db = await setupTestDb();
+    // 三参签名（filter 落在 client 位）走模块默认 `db`，需指向测试库。
+    testDbRef.current = db;
   });
 
   afterAll(async () => {
@@ -953,6 +985,32 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
     expect(board.doneRecent).toHaveLength(0);
     expect(board.doneOlderCount).toBe(1);
     expect(board.doneTotal).toBe(1);
+  });
+
+  it("三参签名（filter 落在 client 位，页面实际调用形态）：projectId + unassignedOnly 组合过滤", async () => {
+    const { teamA, retention } = await seedTeamBoard(db);
+
+    // 团队页把 `?project={slug}&assignee=unassigned` 解析成组合 filter 传给
+    // 本函数（不显式传 db）；两个谓词必须同时生效。
+    const board = await getTeamSpaceBoard(teamA.id, TODAY, {
+      projectId: retention.id,
+      unassignedOnly: true,
+    });
+
+    // 留存项目内的未指派卡：两条 todo（其一为成员退出后置空）。
+    expect(board.todo.map((card) => card.title)).toEqual([
+      "成员退出任务",
+      "未指派任务",
+    ]);
+    expect(board.inProgress).toHaveLength(0);
+    expect(board.doneRecent).toHaveLength(0);
+    expect(board.doneOlderCount).toBe(1);
+    expect(board.doneTotal).toBe(1);
+    // 其它项目（增长项目）与已指派的留存卡一律不出现。
+    const titles = [...board.todo, ...board.inProgress].map((c) => c.title);
+    expect(titles).not.toContain("逾期较早");
+    expect(titles).not.toContain("未来到期");
+    expect(titles).not.toContain("进行中任务");
   });
 
   it("getOlderDoneTeamTasks 支持 projectId / unassignedOnly 过滤", async () => {

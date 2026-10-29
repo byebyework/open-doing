@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Button } from "antd";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/features/auth/session";
@@ -90,9 +91,12 @@ export default async function TeamKanbanPage(
         }
       : undefined;
 
-  // 「N 个任务」= 当前筛选下的全部卡片（doneTotal 已按筛选计算）。
-  const total = board.todo.length + board.inProgress.length + board.doneTotal;
+  // 「N 个未完成任务」= todo + in_progress（对照原型
+  // docs/prototypes/space-kanban-team.html 的 filterbar 文案，不含 done）。
+  const incompleteTotal = board.todo.length + board.inProgress.length;
   const projectName = activeProject?.name ?? "全部项目";
+  // 新建项目入口与 /space/{teamSlug}/projects/new 的权限门槛保持一致：
+  // 成员点击会直接 404，因此只对 owner / admin 渲染。
   const canManageProjects = can(membership.role, "team:manage_projects");
 
   return (
@@ -108,7 +112,10 @@ export default async function TeamKanbanPage(
         </div>
         {canManageProjects ? (
           <div className="flex flex-none items-center gap-2">
-            <Button href={teamProjectNewHref(team.slug)}>＋ 新建项目</Button>
+            {/* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */}
+            <Link href={teamProjectNewHref(team.slug)}>
+              <Button>＋ 新建项目</Button>
+            </Link>
           </div>
         ) : null}
       </header>
@@ -119,7 +126,7 @@ export default async function TeamKanbanPage(
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         unassignedOnly={unassignedOnly}
-        caption={`当前筛选：${projectName} · ${total} 个任务`}
+        caption={`当前筛选：${projectName} · ${incompleteTotal} 个未完成任务`}
         todayCaption={`基准日期 ${today}（${weekdayLabel(today)}）`}
       />
 
