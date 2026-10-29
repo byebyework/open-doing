@@ -1,8 +1,8 @@
 import type { SpaceType as SharedSpaceType, TaskStatus } from "@open-doing/types";
-import { and, desc, eq, gte, lt, sql, type SQL } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 
 import { db, type DbClient } from "@/server/db/client";
-import { projects, subtasks, tasks } from "@/server/db/schema";
+import { projects, subtasks, tasks, users } from "@/server/db/schema";
 
 /** 空间类型（沿用共享领域类型，本模块对外导出以便看板组件消费）。 */
 export type SpaceType = SharedSpaceType;
@@ -33,6 +33,23 @@ export interface SpaceBoard {
   doneTotal: number;
 }
 
+/** 团队空间看板卡片：在个人卡片基础上补充指派人信息（未指派为 null）。 */
+export interface TeamKanbanCardItem extends KanbanCardItem {
+  assigneeId: string | null;
+  assigneeName: string | null;
+}
+
+/** 团队空间看板：todo / in_progress 全量，done 收敛到近 7 天。 */
+export interface TeamSpaceBoard {
+  todo: TeamKanbanCardItem[];
+  inProgress: TeamKanbanCardItem[];
+  /** updatedAt ∈ 近 7 天（含今天）。 */
+  doneRecent: TeamKanbanCardItem[];
+  /** 更早已完成数（供「查看更早」展开链接）。 */
+  doneOlderCount: number;
+  doneTotal: number;
+}
+
 /** done 卡对外字段（SQL 行）。 */
 interface KanbanCardRow {
   id: string;
@@ -44,6 +61,12 @@ interface KanbanCardRow {
   subtaskTotal: number;
   subtaskDone: number;
   updatedAt: Date;
+}
+
+/** 团队 done 卡对外字段（SQL 行）：卡片公共字段 + 指派人。 */
+interface TeamKanbanCardRow extends KanbanCardRow {
+  assigneeId: string | null;
+  assigneeName: string | null;
 }
 
 /**
@@ -137,6 +160,106 @@ export async function getOlderDonePersonalTasks(
 }
 
 /**
+ * 团队空间看板：聚合 `teamId` 下全部项目的团队任务（含未指派）。
+ *
+ * - 查询范围：`space_type = 'team' AND projects.team_id = teamId`；
+ * - 排序 / 7 天窗口与个人空间完全一致（`activeOrder` / `doneOrder`）；
+ * - `assigneeName` 经 `LEFT JOIN users` 取得，未指派（含成员被移除后置空）为 null。
+ *
+ * 调用方（页面 / action）负责先做团队成员资格校验；本函数不做权限判断。
+ */
+export async function getTeamSpaceBoard(
+  teamId: string,
+  today: string,
+  client: DbClient = db,
+): Promise<TeamSpaceBoard> {
+  const scope = teamScope(teamId);
+  const recentStart = doneWindowStart(today);
+
+  const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
+    selectTeamCards(
+      client,
+      and(scope, eq(tasks.status, "todo"))!,
+      activeOrder,
+    ),
+    selectTeamCards(
+      client,
+      and(scope, eq(tasks.status, "in_progress"))!,
+      activeOrder,
+    ),
+    selectTeamCards(
+      client,
+      and(
+        scope,
+        eq(tasks.status, "done"),
+        gte(tasks.updatedAt, recentStart),
+      )!,
+      doneOrder,
+    ),
+    client
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(
+        and(
+          scope,
+          eq(tasks.status, "done"),
+          lt(tasks.updatedAt, recentStart),
+        ),
+      ),
+  ]);
+
+  const doneOlderCount = olderCountRows[0]?.count ?? 0;
+
+  return {
+    todo: todoRows.map(toTeamCard),
+    inProgress: inProgressRows.map(toTeamCard),
+    doneRecent: doneRows.map(toTeamCard),
+    doneOlderCount,
+    doneTotal: doneRows.length + doneOlderCount,
+  };
+}
+
+/**
+ * 团队空间中完成时间早于近 7 天窗口的全部任务（供「查看更早」展开）。
+ *
+ * 条件是 `updatedAt < today - 6`，排序与 done 列一致（updatedAt 降序）；
+ * 同样包含未指派任务。调用方负责团队成员资格校验。
+ */
+export async function getOlderDoneTeamTasks(
+  teamId: string,
+  today: string,
+  client: DbClient = db,
+): Promise<TeamKanbanCardItem[]> {
+  const scope = teamScope(teamId);
+
+  const rows = await selectTeamCards(
+    client,
+    and(
+      scope,
+      eq(tasks.status, "done"),
+      lt(tasks.updatedAt, doneWindowStart(today)),
+    )!,
+    doneOrder,
+  );
+
+  return rows.map(toTeamCard);
+}
+
+/**
+ * 团队任务范围：`space_type = 'team'` 且任务所属项目属于该团队。
+ *
+ * 团队任务始终归属某个团队项目（FK 保证），因此以项目归属而非指派人过滤，
+ * 未指派任务天然纳入；`inArray` 与计划中的范围写法保持一致。
+ */
+function teamScope(teamId: string) {
+  return and(
+    eq(tasks.spaceType, "team"),
+    inArray(projects.teamId, [teamId]),
+  );
+}
+
+/**
  * 近 7 天窗口起点：`today - 6` 的上海日历日零点，返回 timestamptz。
  *
  * `today` 是 Asia/Shanghai 的 `YYYY-MM-DD`；显式 `AT TIME ZONE 'Asia/Shanghai'`
@@ -200,6 +323,52 @@ async function selectCards(
   return rows;
 }
 
+/**
+ * 团队卡片查询：结构与 `selectCards` 对称，额外 `LEFT JOIN users` 取指派人。
+ *
+ * 未指派任务的 `assigneeName` 为 null；子任务派生表与个人侧完全一致。
+ */
+async function selectTeamCards(
+  client: DbClient,
+  condition: SQL<unknown>,
+  orderBy: () => SQL[],
+): Promise<TeamKanbanCardRow[]> {
+  const subtaskStats = client
+    .select({
+      taskId: subtasks.taskId,
+      subtaskTotal: sql<number>`count(*)::int`.as("subtask_total"),
+      subtaskDone: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+        "subtask_done",
+      ),
+    })
+    .from(subtasks)
+    .groupBy(subtasks.taskId)
+    .as("subtask_stats");
+
+  const rows = await client
+    .select({
+      id: tasks.id,
+      title: tasks.title,
+      status: tasks.status,
+      dueDate: tasks.dueDate,
+      projectId: projects.id,
+      projectName: projects.name,
+      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
+      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
+      updatedAt: tasks.updatedAt,
+      assigneeId: tasks.assigneeId,
+      assigneeName: users.username,
+    })
+    .from(tasks)
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
+    .leftJoin(users, eq(tasks.assigneeId, users.id))
+    .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
+    .where(condition)
+    .orderBy(...orderBy());
+
+  return rows;
+}
+
 /** SQL 行 → 看板卡片；done 卡的 completedAt 取 updatedAt（ISO 字符串）。 */
 function toCard(row: KanbanCardRow): KanbanCardItem {
   return {
@@ -212,5 +381,14 @@ function toCard(row: KanbanCardRow): KanbanCardItem {
     subtaskTotal: row.subtaskTotal,
     subtaskDone: row.subtaskDone,
     completedAt: row.status === "done" ? row.updatedAt.toISOString() : null,
+  };
+}
+
+/** SQL 行 → 团队看板卡片；在个人卡片基础上补充指派人（未指派为 null）。 */
+function toTeamCard(row: TeamKanbanCardRow): TeamKanbanCardItem {
+  return {
+    ...toCard(row),
+    assigneeId: row.assigneeId ?? null,
+    assigneeName: row.assigneeName ?? null,
   };
 }
