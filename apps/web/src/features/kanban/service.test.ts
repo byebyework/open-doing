@@ -1,6 +1,8 @@
+import type { User } from "@open-doing/types";
 import { eq } from "drizzle-orm";
-import { afterAll, beforeEach, describe, expect, it } from "vitest";
+import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
+import { getCurrentUser, requireUser } from "@/features/auth/session";
 import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
@@ -8,17 +10,51 @@ import {
   projects,
   subtasks,
   tasks,
+  teamMemberships,
   teams,
   users,
 } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
+import { getOlderDoneTasksAction } from "./actions";
 import {
   getOlderDonePersonalTasks,
   getOlderDoneTeamTasks,
   getPersonalSpaceBoard,
   getTeamSpaceBoard,
 } from "./service";
+
+/**
+ * action 用例直接调用 Server Action（不起服务器）。
+ *
+ * action 内部走 `@/server/db/client` 的默认 `db`（模块作用域解析，无法传测试
+ * client），这里把该模块的 `db` 劫持为当前用例的测试库实例：Proxy 在每次
+ * 属性访问时读取 `testDbRef.current`，从而让 action → service 的默认参数
+ * 落到 `TEST_DATABASE_URL` 指向的库。
+ */
+const testDbRef = vi.hoisted(() => ({
+  current: null as DbClient | null,
+}));
+
+vi.mock("@/server/db/client", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/server/db/client")>();
+  return new Proxy(actual, {
+    get(target, property, receiver) {
+      if (property === "db") {
+        if (!testDbRef.current) {
+          throw new Error("测试数据库未初始化：先调用 setupTestDb()");
+        }
+        return testDbRef.current;
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+});
+
+vi.mock("@/features/auth/session", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@/features/auth/session")>();
+  return { ...actual, getCurrentUser: vi.fn(), requireUser: vi.fn() };
+});
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -843,5 +879,222 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
       assigneeName: null,
       projectName: "留存项目",
     });
+  });
+});
+
+const mockGetCurrentUser = vi.mocked(getCurrentUser);
+const mockRequireUser = vi.mocked(requireUser);
+
+/** 会话用户对象（测试只关心 id / username）。 */
+function asUser(row: { id: string; username: string }): User {
+  return {
+    id: row.id,
+    uid: "doing_test_user",
+    username: row.username,
+    createdAt: "2026-01-01T00:00:00.000Z",
+  };
+}
+
+/**
+ * action 用例夹具：一个团队（含 owner 成员关系）+ 一个团队项目 + 一个个人项目。
+ *
+ * done 卡分成两组：
+ * - 窗口外：2020 年的两条（永远早于 `today - 6`，不依赖真实时钟）；
+ * - 窗口内：`updatedAt` 默认 now（永远落在近 7 天窗口内），用于验证 action
+ *   透传的就是「窗口外」结果，而不是全量 done。
+ */
+async function seedActionFixture(db: DbClient) {
+  const alice = await createUser(db, "action-alice");
+  const bob = await createUser(db, "action-bob");
+
+  const team = await createTeam(db, {
+    ownerId: alice.id,
+    name: "行动小队",
+    slug: "action-squad",
+  });
+  await db
+    .insert(teamMemberships)
+    .values({ teamId: team.id, userId: alice.id, role: "owner" });
+
+  const teamProject = await createTeamProject(db, {
+    teamId: team.id,
+    name: "行动项目",
+    slug: "action-project",
+  });
+  const personalProject = await createPersonalProject(db, {
+    ownerId: alice.id,
+    name: "行动个人项目",
+    slug: "action-personal",
+  });
+
+  await db.insert(tasks).values([
+    // ---- 团队：窗口外两条 ----
+    {
+      spaceType: "team",
+      projectId: teamProject.id,
+      title: "团队较早完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+      updatedAt: new Date("2020-01-01T00:00:00+08:00"),
+    },
+    {
+      spaceType: "team",
+      projectId: teamProject.id,
+      title: "团队较晚完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+      updatedAt: new Date("2020-06-01T00:00:00+08:00"),
+    },
+    // ---- 团队：窗口内 / 未完成（都不应返回） ----
+    {
+      spaceType: "team",
+      projectId: teamProject.id,
+      title: "团队近期完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+    },
+    {
+      spaceType: "team",
+      projectId: teamProject.id,
+      title: "团队未完成任务",
+      status: "todo",
+      assigneeId: alice.id,
+      createdById: alice.id,
+    },
+    // ---- 个人：窗口外两条 + 窗口内一条 ----
+    {
+      spaceType: "personal",
+      projectId: personalProject.id,
+      title: "个人较早完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+      updatedAt: new Date("2019-01-01T00:00:00+08:00"),
+    },
+    {
+      spaceType: "personal",
+      projectId: personalProject.id,
+      title: "个人较晚完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+      updatedAt: new Date("2019-05-01T00:00:00+08:00"),
+    },
+    {
+      spaceType: "personal",
+      projectId: personalProject.id,
+      title: "个人近期完成",
+      status: "done",
+      assigneeId: alice.id,
+      createdById: alice.id,
+    },
+  ]);
+
+  return { alice, bob, team, teamProject, personalProject };
+}
+
+describe.skipIf(!hasTestDatabase)("展开取数 action（getOlderDoneTasksAction）", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    testDbRef.current = db;
+    vi.resetAllMocks();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("未登录 team 分支：返回 ok:false「没有权限查看该团队」，不泄露团队信息", async () => {
+    const { team } = await seedActionFixture(db);
+    mockGetCurrentUser.mockResolvedValue(null);
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: team.slug,
+    });
+
+    expect(result).toEqual({ ok: false, errors: { form: "没有权限查看该团队" } });
+  });
+
+  it("team 分支：团队不存在与非成员返回同一错误文案", async () => {
+    const { team, bob } = await seedActionFixture(db);
+    mockGetCurrentUser.mockResolvedValue(asUser(bob));
+
+    const missing = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: "team-does-not-exist",
+    });
+    const notMember = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: team.slug,
+    });
+
+    expect(missing).toEqual({ ok: false, errors: { form: "没有权限查看该团队" } });
+    expect(notMember).toEqual({ ok: false, errors: { form: "没有权限查看该团队" } });
+  });
+
+  it("team 分支：成员返回窗口外 done 卡，按 updatedAt 降序（与 getOlderDoneTeamTasks 一致）", async () => {
+    const { alice, team, teamProject } = await seedActionFixture(db);
+    mockGetCurrentUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: team.slug,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.data.map((card) => card.title)).toEqual([
+      "团队较晚完成",
+      "团队较早完成",
+    ]);
+    expect(result.data[0]).toMatchObject({
+      status: "done",
+      projectId: teamProject.id,
+      projectName: "行动项目",
+      completedAt: new Date("2020-06-01T00:00:00+08:00").toISOString(),
+    });
+    // 窗口内的 done 与未完成卡都不返回。
+    const titles = result.data.map((card) => card.title);
+    expect(titles).not.toContain("团队近期完成");
+    expect(titles).not.toContain("团队未完成任务");
+  });
+
+  it("personal 分支：已登录返回本人的窗口外 done 卡，按 updatedAt 降序", async () => {
+    const { alice } = await seedActionFixture(db);
+    mockRequireUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({ spaceType: "personal" });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    expect(result.data.map((card) => card.title)).toEqual([
+      "个人较晚完成",
+      "个人较早完成",
+    ]);
+    expect(result.data[0]).toMatchObject({
+      status: "done",
+      projectName: "行动个人项目",
+      completedAt: new Date("2019-05-01T00:00:00+08:00").toISOString(),
+    });
+    expect(result.data.map((card) => card.title)).not.toContain("个人近期完成");
+  });
+
+  it("personal 分支：requireUser 的重定向异常继续冒泡，不被错误映射吞掉", async () => {
+    // 模拟未登录时 redirect() 抛出的 NEXT_REDIRECT：action 必须在 try 之外
+    // 调用 requireUser，否则会被 toFailure() 映射成通用 form 错误。
+    const redirectError = new Error("NEXT_REDIRECT");
+    mockRequireUser.mockRejectedValue(redirectError);
+
+    await expect(getOlderDoneTasksAction({ spaceType: "personal" })).rejects.toBe(
+      redirectError,
+    );
   });
 });
