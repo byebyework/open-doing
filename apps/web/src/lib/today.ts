@@ -1,3 +1,5 @@
+import { addDays } from "@open-doing/types";
+
 /** 个人空间统一使用的时区。 */
 const PERSONAL_TIME_ZONE = "Asia/Shanghai";
 
@@ -11,4 +13,22 @@ export function todayInShanghai(): string {
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: PERSONAL_TIME_ZONE,
   }).format(new Date());
+}
+
+/**
+ * 计算今天所在自然周的周一日期（Asia/Shanghai 口径）。
+ *
+ * 入参 `today` 已是上海时区的 `YYYY-MM-DD` 日历日，因此直接按 UTC
+ * 毫秒做日历算术即可（与 `addDays` 一致），不引入系统时区依赖。
+ *
+ * 纯函数放在 `lib/today`（而非 service）：客户端组件需要它做「本周完成」
+ * 计数，service 模块会把数据库驱动带进浏览器包。
+ */
+export function getWeekStart(today: string): string {
+  const [year, month, day] = today.split("-").map(Number);
+  // getUTCDay: 0=周日 … 6=周六；换算为「周一=0」的偏移。
+  const weekday = new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay();
+  const offset = (weekday + 6) % 7;
+
+  return addDays(today, -offset);
 }

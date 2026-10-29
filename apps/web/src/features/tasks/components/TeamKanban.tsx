@@ -16,11 +16,12 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Select, message } from "antd";
 import { useRouter } from "next/navigation";
-import { useMemo, useState, useSyncExternalStore } from "react";
+import { useMemo, useState } from "react";
 
 import { DueText } from "@/components/ui/DueText";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { useIsDesktop } from "@/features/kanban/components/useIsDesktop";
 import type { TeamRole } from "@/features/teams/permissions";
 
 import { updateTeamTaskAction } from "../actions";
@@ -52,37 +53,6 @@ type StatusFilter = "all" | TaskStatus;
 
 /** 责任人筛选值：`all` / `unassigned` / 具体成员 ID。 */
 type AssigneeFilter = string;
-
-/** 与 Tailwind `min-[861px]` 断点保持一致：仅桌面端启用拖拽。 */
-const DESKTOP_MEDIA_QUERY = "(min-width: 861px)";
-
-function subscribeDesktop(callback: () => void) {
-  const query = window.matchMedia(DESKTOP_MEDIA_QUERY);
-  query.addEventListener("change", callback);
-
-  return () => query.removeEventListener("change", callback);
-}
-
-function getDesktopSnapshot() {
-  return window.matchMedia(DESKTOP_MEDIA_QUERY).matches;
-}
-
-/** 服务端（及水合首帧）按窄屏处理：不渲染任何拖拽行为。 */
-function getDesktopServerSnapshot() {
-  return false;
-}
-
-/**
- * 窄屏下关闭拖拽，卡片主体把触摸滚动交还浏览器；
- * 状态流转改由列内按钮完成（与个人看板同一策略）。
- */
-function useIsDesktop(): boolean {
-  return useSyncExternalStore(
-    subscribeDesktop,
-    getDesktopSnapshot,
-    getDesktopServerSnapshot,
-  );
-}
 
 /** 看板移动端（<861px）的状态切换按钮：无编辑权时整组禁用。 */
 function TeamTaskStatusButtons({
