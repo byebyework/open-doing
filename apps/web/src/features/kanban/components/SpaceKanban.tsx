@@ -579,6 +579,13 @@ function moveCard(
     next.doneRecent = [moved, ...next.doneRecent];
   }
 
+  // 卡片只会移入 todo / in_progress / doneRecent，不会移入 doneOlder（目标列
+  // 只有上面三个）。从展开的更早区拖出卡片时同步递减 doneOlderCount，否则
+  // done 列头计数与「已显示全部 N 项」在 refresh 落地前会偏大 1。
+  if (board.doneOlder.some((item) => item.id === cardId)) {
+    next.doneOlderCount = board.doneOlderCount - 1;
+  }
+
   return next;
 }
 
@@ -779,7 +786,8 @@ export function SpaceKanban({
       cards: doneCards,
       // done 列头显示全部已完成数（原型口径：近 7 天 + 更早），不是可见卡片数。
       // 用 recent.length + doneOlderCount 而非 board.doneTotal：乐观移动会重排
-      // recent / older 而不动 doneTotal，派生值可随乐观更新自愈，免等 refresh。
+      // recent / older，且移出 older 时 moveCard 会同步递减 doneOlderCount，
+      // 各桶派生计数随乐观更新自愈，免等 refresh。
       count: local.doneRecent.length + local.doneOlderCount,
       overdueCount: 0,
     },

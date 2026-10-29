@@ -1317,6 +1317,52 @@ describe.skipIf(!hasTestDatabase)("展开取数 action（getOlderDoneTasksAction
     });
   });
 
+  it("team 分支：projectSlug 与 unassignedOnly 组合过滤同时生效", async () => {
+    const { alice, bob, team, teamProject } = await seedActionFixture(db);
+    // 夹具基础行都在 teamProject 且已指派，这里补一条未指派、一条指派给 bob。
+    await db.insert(tasks).values([
+      {
+        spaceType: "team",
+        projectId: teamProject.id,
+        title: "组合过滤未指派较早完成",
+        status: "done",
+        assigneeId: null,
+        createdById: alice.id,
+        updatedAt: new Date("2018-06-01T00:00:00+08:00"),
+      },
+      {
+        spaceType: "team",
+        projectId: teamProject.id,
+        title: "组合过滤 bob 指派较早完成",
+        status: "done",
+        assigneeId: bob.id,
+        createdById: alice.id,
+        updatedAt: new Date("2018-03-01T00:00:00+08:00"),
+      },
+    ]);
+    mockGetCurrentUser.mockResolvedValue(asUser(alice));
+
+    const result = await getOlderDoneTasksAction({
+      spaceType: "team",
+      teamSlug: team.slug,
+      projectSlug: teamProject.slug,
+      unassignedOnly: true,
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+
+    // 项目内未指派的窗口外卡返回；同项目已指派卡被 unassignedOnly 排除，
+    // 个人项目窗口外卡被 projectSlug 排除。
+    expect(result.data.map((card) => card.title)).toEqual([
+      "组合过滤未指派较早完成",
+    ]);
+    expect(result.data[0]).toMatchObject({
+      projectId: teamProject.id,
+      assigneeId: null,
+    });
+  });
+
   it("team 分支：未知 projectSlug 忽略过滤，回退为团队全部窗口外 done 卡", async () => {
     const { alice, team } = await seedActionFixture(db);
     mockGetCurrentUser.mockResolvedValue(asUser(alice));
