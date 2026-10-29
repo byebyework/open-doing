@@ -70,10 +70,10 @@ export async function getPersonalSpaceBoard(
   const recentStart = doneWindowStart(today);
 
   const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
-    selectCards(client, and(scope, eq(tasks.status, "todo")), activeOrder),
+    selectCards(client, and(scope, eq(tasks.status, "todo"))!, activeOrder),
     selectCards(
       client,
-      and(scope, eq(tasks.status, "in_progress")),
+      and(scope, eq(tasks.status, "in_progress"))!,
       activeOrder,
     ),
     selectCards(
@@ -82,7 +82,7 @@ export async function getPersonalSpaceBoard(
         scope,
         eq(tasks.status, "done"),
         gte(tasks.updatedAt, recentStart),
-      ),
+      )!,
       doneOrder,
     ),
     client
@@ -129,7 +129,7 @@ export async function getOlderDonePersonalTasks(
       scope,
       eq(tasks.status, "done"),
       lt(tasks.updatedAt, doneWindowStart(today)),
-    ),
+    )!,
     doneOrder,
   );
 
@@ -164,7 +164,7 @@ function doneOrder(): SQL[] {
  */
 async function selectCards(
   client: DbClient,
-  condition: SQL<unknown> | undefined,
+  condition: SQL<unknown>,
   orderBy: () => SQL[],
 ): Promise<KanbanCardRow[]> {
   const subtaskStats = client

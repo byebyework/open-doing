@@ -54,7 +54,8 @@ async function createPersonalProject(
 /**
  * 两个个人项目 + 覆盖三列与 7 天窗口两侧的任务。
  *
- * - todo：逾期两条 / 今天 / 未来 / 无截止 / 窗口内已完成（不应出现）
+ * - todo：逾期两条 / 今天 / 未来 / 无截止 / 零散个人任务（projectId 为空）/
+ *   窗口内已完成（不应出现）
  * - in_progress：一条
  * - done：窗口内两条（含下边界 today-6）、窗口外两条（含 today-7）
  * - 排除项：他人个人任务、团队任务
@@ -136,6 +137,18 @@ async function seedBoard(db: DbClient) {
         dueDate: null,
         assigneeId: member.id,
         createdById: member.id,
+      },
+      {
+        // 零散个人任务（不属于任何项目）。显式 createdAt 使其与「无截止」
+        // （默认 now）在 nulls last 组内按 createdAt desc 稳定排序。
+        spaceType: "personal",
+        projectId: null,
+        title: "零散任务",
+        status: "todo",
+        dueDate: null,
+        assigneeId: member.id,
+        createdById: member.id,
+        createdAt: new Date("2026-10-10T10:00:00+08:00"),
       },
       // ---- in_progress ----
       {
@@ -234,7 +247,7 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
     await closeTestDb();
   });
 
-  it("todo / in_progress 按截止升序：逾期 → 今天 → 未来 → 无截止，两个逾期按截止升序", async () => {
+  it("todo / in_progress 按截止升序：逾期 → 今天 → 未来 → 无截止（含零散任务垫底），两个逾期按截止升序", async () => {
     const { member } = await seedBoard(db);
 
     const board = await getPersonalSpaceBoard(member.id, TODAY, db);
@@ -245,12 +258,14 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
       "今天到期",
       "未来到期",
       "无截止",
+      "零散任务",
     ]);
     expect(board.todo.map((card) => card.dueDate)).toEqual([
       "2026-10-01",
       "2026-10-03",
       TODAY,
       "2026-10-25",
+      null,
       null,
     ]);
     expect(board.inProgress.map((card) => card.title)).toEqual(["进行中任务"]);
@@ -267,6 +282,9 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
     ]);
     expect(board.doneRecent.map((card) => card.title)).not.toContain("窗口上边界完成");
     expect(board.doneRecent.map((card) => card.title)).not.toContain("很久以前完成");
+    // 窗口外的两条（today-7 边界 + 更早）只计入 doneOlderCount。
+    expect(board.doneOlderCount).toBe(2);
+    expect(board.doneRecent).toHaveLength(2);
   });
 
   it("doneRecent 按 updatedAt 降序，completedAt 等于 updatedAt", async () => {
@@ -322,6 +340,12 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
     expect(board.todo.find((card) => card.title === "未来到期")).toMatchObject({
       projectName: "生活琐事",
     });
+    // 零散个人任务（projectId 为空）：项目字段映射为空字符串，仍进入 todo 列。
+    expect(board.todo.find((card) => card.title === "零散任务")).toMatchObject({
+      projectId: "",
+      projectName: "",
+      status: "todo",
+    });
   });
 
   it("只聚合本人的个人任务：他人个人任务与团队任务不出现", async () => {
@@ -336,8 +360,8 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
 
     expect(titles).not.toContain("他人的个人任务");
     expect(titles).not.toContain("团队任务");
-    // 本人的个人任务全部纳入（含跨项目）。
-    expect(board.todo).toHaveLength(5);
+    // 本人的个人任务全部纳入（含跨项目与零散任务）。
+    expect(board.todo).toHaveLength(6);
   });
 
   it("getOlderDonePersonalTasks 返回窗口外全部已完成，排序同 done 列（updatedAt 降序）", async () => {
