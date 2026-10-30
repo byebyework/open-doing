@@ -2,12 +2,18 @@
 
 import { addDays } from "@open-doing/types";
 import { Calendar } from "antd";
+import zhCNCalendar from "antd/es/calendar/locale/zh_CN";
 import dayjs, { type Dayjs } from "dayjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
-import { daysBetween, getWeekStart, weekdayLabel } from "@/lib/today";
+import {
+  daysBetween,
+  getMonthGrid,
+  getWeekStart,
+  weekdayLabel,
+} from "@/lib/today";
 
 import type { CalendarTaskItem, SpaceCalendarData } from "../service";
 
@@ -26,6 +32,21 @@ export interface SpaceCalendarProps {
   /** 「N 项任务没有截止日期 →」的跳转 href；仅 variant=personal 使用 */
   noDueHref?: string;
 }
+
+/**
+ * 星期表头文案（原型「周一 … 周日」）。
+ *
+ * antd 由 dayjs locale `weekdaysMin` 生成「一/二/…」，这里通过 Calendar 的
+ * `locale` prop 覆盖 `lang.shortWeekDays`；数组沿用 dayjs 的「周日=0」顺序，
+ * rc-picker 会按周一为首日自动旋转。
+ */
+const CALENDAR_LOCALE = {
+  ...zhCNCalendar,
+  lang: {
+    ...zhCNCalendar.lang,
+    shortWeekDays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
+  },
+};
 
 /** 「本月即将到期」默认展示条数（其余折叠）。 */
 const UPCOMING_PREVIEW = 5;
@@ -162,8 +183,8 @@ function AssigneeBadge({
   );
 }
 
-/** 未指派描边 tag（chip / 侧栏共用，颜色继承所在文字色，对照 `.tag-un`）。 */
-function UnassignedTag() {
+/** 未指派 grid chip 描边 tag（颜色继承 chip 文字色，对照 `.tag-un`）。 */
+function ChipUnassignedTag() {
   return (
     <span className="shrink-0 whitespace-nowrap rounded-full border border-current px-1 text-[9.5px] leading-[1.5]">
       未指派
@@ -171,21 +192,25 @@ function UnassignedTag() {
   );
 }
 
-/** 负责人展示：团队头部以 assigneeId 取色，未指派用描边 tag。 */
-function AssigneePrefix({
-  item,
-  size,
-}: {
-  item: CalendarTaskItem;
-  size: 14 | 16;
-}) {
-  if (!item.assigneeName) return <UnassignedTag />;
+/** 侧栏未指派 tag：蓝底信息色 + 前置圆点（对照 `.tag.tag-info`）。 */
+function SidebarUnassignedTag() {
+  return (
+    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(13,153,255,0.1)] px-1.5 py-px text-[9.5px] font-medium text-[#0d99ff]">
+      <span className="h-1.5 w-1.5 rounded-full bg-current" />
+      未指派
+    </span>
+  );
+}
+
+/** 侧栏负责人前缀：有负责人用头像，未指派用蓝色信息 tag。 */
+function SidebarAssignee({ item }: { item: CalendarTaskItem }) {
+  if (!item.assigneeName) return <SidebarUnassignedTag />;
 
   return (
     <AssigneeBadge
       seed={item.assigneeId ?? item.assigneeName}
       name={item.assigneeName}
-      size={size}
+      size={16}
     />
   );
 }
@@ -209,7 +234,17 @@ function CalendarChip({
     <div
       className={`mt-1 flex w-fit max-w-full items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-[11.5px] leading-[1.4] ${CHIP_TONE_CLASS[tone]}`}
     >
-      {variant === "team" ? <AssigneePrefix item={item} size={14} /> : null}
+      {variant === "team" ? (
+        item.assigneeName ? (
+          <AssigneeBadge
+            seed={item.assigneeId ?? item.assigneeName}
+            name={item.assigneeName}
+            size={14}
+          />
+        ) : (
+          <ChipUnassignedTag />
+        )
+      ) : null}
 
       {href ? (
         <Link href={href} className={`${titleClassName} hover:underline`}>
@@ -231,6 +266,7 @@ function CalendarChip({
 function CalendarDayCell({
   variant,
   date,
+  gridStart,
   items,
   today,
   month,
@@ -238,14 +274,22 @@ function CalendarDayCell({
 }: {
   variant: "personal" | "team";
   date: Dayjs;
+  gridStart: string;
   items: CalendarTaskItem[];
   today: string;
   month: string;
   taskHrefs: Record<string, string>;
 }) {
-  const isToday = date.format("YYYY-MM-DD") === today;
+  const dateKey = date.format("YYYY-MM-DD");
+  const isToday = dateKey === today;
   const isOut = date.format("YYYY-MM") !== month;
   const isWeekend = date.day() === 0 || date.day() === 6;
+  // 周一为首日：column 0 = 周一 … 6 = 周日；row 为 42 天网格中的行号。
+  const column = (date.day() + 6) % 7;
+  const row = daysBetween(gridStart, dateKey) / 7;
+  const gridLineClassName = `${column > 0 ? "border-l" : ""} ${
+    row > 0 ? "border-t" : ""
+  }`;
   const background = isToday
     ? "bg-[#f9f4ff]"
     : isOut
@@ -258,7 +302,7 @@ function CalendarDayCell({
 
   return (
     <div
-      className={`flex min-h-[132px] flex-col border-l border-t border-[#e1e3e6] px-2 py-2 ${background}`}
+      className={`flex min-h-[132px] flex-col border-[#e1e3e6] px-2 py-2 ${gridLineClassName} ${background}`}
     >
       <div className={`flex flex-1 flex-col ${isOut ? "opacity-[0.45]" : ""}`}>
         <div className="flex items-center gap-1.5 text-[12px] tabular-nums text-[#3c4043]">
@@ -327,7 +371,7 @@ function WeekItem({
         style={{ backgroundColor: DOT_COLOR[tone] }}
       />
 
-      {variant === "team" ? <AssigneePrefix item={item} size={16} /> : null}
+      {variant === "team" ? <SidebarAssignee item={item} /> : null}
 
       {href ? (
         <Link href={href} className={`${titleClassName} hover:underline`}>
@@ -367,7 +411,7 @@ function UpcomingItem({
         style={{ backgroundColor: DOT_COLOR.later }}
       />
 
-      {variant === "team" ? <AssigneePrefix item={item} size={16} /> : null}
+      {variant === "team" ? <SidebarAssignee item={item} /> : null}
 
       {href ? (
         <Link href={href} className="min-w-0 flex-1 truncate hover:underline">
@@ -387,8 +431,9 @@ function UpcomingItem({
 /**
  * 空间级 Calendar（个人 / 团队共用，对照 `space-calendar-*.html`）。
  *
- * - antd Calendar 受控于 URL 月份；`headerRender` 负责 ‹ › / 今天 的
- *   `router.push`，`fullCellRender` 负责复刻原型单元格并按截止日期落 chip；
+ * - antd Calendar 受控于 URL 月份；标题行（‹ › / 今天）在网格卡片之外自绘并
+ *   `router.push` 翻月，`headerRender` 仅用于关闭 antd 默认头部；
+ * - `fullCellRender` 复刻原型单元格（日期数字 + chip + 周末/今天/非本月底色）；
  * - 侧栏锚定「今天」（不随所显示月份翻动）：本周清单 + 本月即将到期；
  * - 只读：chip / 条目按 `taskHrefs` 渲染成 next/link，缺 href 时为纯文本。
  */
@@ -449,9 +494,9 @@ export function SpaceCalendar({
     return dates.map((date) => ({ date, items: byDate.get(date)! }));
   }, [data.weekItems, today]);
 
-  /** 当前月显示「今天」选中态，翻到其他月时选中月初（仅视觉锚点）。 */
-  const calendarValue: Dayjs =
-    month === today.slice(0, 7) ? dayjs(today) : dayjs(`${month}-01`);
+  /** Calendar 受控值恒为月初；「今天」高亮由 fullCellRender 自行渲染。 */
+  const calendarValue: Dayjs = dayjs(`${month}-01`);
+  const gridStart = useMemo(() => getMonthGrid(month).start, [month]);
 
   const upcomingVisible = upcomingExpanded
     ? data.monthUpcoming
@@ -507,52 +552,57 @@ export function SpaceCalendar({
       <div className="flex flex-col items-stretch gap-4 min-[861px]:flex-row min-[861px]:items-start">
         {/* ===== 左：月历 ===== */}
         <div className="min-w-0 flex-1">
+          {/* 月历标题行：网格卡片之外（原型 .cal-header）。 */}
+          <div className="mb-3 flex items-center gap-2">
+            <span className="min-w-[110px] text-[16px] font-bold text-[#0e1318]">
+              {calendarValue.year()} 年 {calendarValue.month() + 1} 月
+            </span>
+            <button
+              type="button"
+              aria-label="上个月"
+              className={navButtonClassName}
+              onClick={() => {
+                pushMonth(calendarValue.subtract(1, "month"));
+              }}
+            >
+              ‹
+            </button>
+            <button
+              type="button"
+              aria-label="下个月"
+              className={navButtonClassName}
+              onClick={() => {
+                pushMonth(calendarValue.add(1, "month"));
+              }}
+            >
+              ›
+            </button>
+            <button
+              type="button"
+              aria-label="今天"
+              className={`${navButtonClassName} border-[#7d2ae8] text-[#7d2ae8] hover:border-[#7d2ae8] hover:text-[#7d2ae8]`}
+              onClick={() => {
+                router.push(basePath);
+              }}
+            >
+              今天
+            </button>
+          </div>
+
+          {/* 卡片只包住星期表头 + 网格本体。 */}
           <div className="overflow-hidden rounded-xl border border-[#e1e3e6] bg-white">
             <Calendar
               fullscreen
               value={calendarValue}
+              locale={CALENDAR_LOCALE}
+              styles={{ body: { padding: 0 } }}
               classNames={{
-                // 星期表头：灰底 + 11px muted（原型 cal-headrow）。
+                // panel 自带顶部分隔线与卡片边框重复，去掉；表头照原型灰底。
+                root: "[&_.ant-picker-panel]:border-t-0!",
                 content:
                   "[&_thead_th]:border-b [&_thead_th]:border-b-[#e1e3e6] [&_thead_th]:bg-[#f4f5f7] [&_thead_th]:text-[11px] [&_thead_th]:font-normal [&_thead_th]:text-[#9aa0a6]",
               }}
-              headerRender={({ value }) => (
-                <div className="flex items-center gap-2 px-3 pb-3 pt-3">
-                  <span className="min-w-[110px] text-[16px] font-bold text-[#0e1318]">
-                    {value.year()} 年 {value.month() + 1} 月
-                  </span>
-                  <button
-                    type="button"
-                    aria-label="上个月"
-                    className={navButtonClassName}
-                    onClick={() => {
-                      pushMonth(value.subtract(1, "month"));
-                    }}
-                  >
-                    ‹
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="下个月"
-                    className={navButtonClassName}
-                    onClick={() => {
-                      pushMonth(value.add(1, "month"));
-                    }}
-                  >
-                    ›
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="今天"
-                    className={`${navButtonClassName} border-[#7d2ae8] text-[#7d2ae8] hover:border-[#7d2ae8] hover:text-[#7d2ae8]`}
-                    onClick={() => {
-                      router.push(basePath);
-                    }}
-                  >
-                    今天
-                  </button>
-                </div>
-              )}
+              headerRender={() => null}
               fullCellRender={(date, info) => {
                 if (info.type !== "date") return info.originNode;
 
@@ -562,6 +612,7 @@ export function SpaceCalendar({
                   <CalendarDayCell
                     variant={variant}
                     date={date}
+                    gridStart={gridStart}
                     items={dayItems ?? []}
                     today={today}
                     month={month}
@@ -588,13 +639,17 @@ export function SpaceCalendar({
                 本周没有要截止的任务
               </p>
             ) : (
-              weekGroups.map((group) => {
+              weekGroups.map((group, index) => {
                 const isToday = group.date === today;
 
                 return (
                   <div
                     key={group.date}
-                    className="border-t border-dashed border-[#e1e3e6] py-[7px]"
+                    className={`py-[7px] ${
+                      index > 0
+                        ? "border-t border-dashed border-[#e1e3e6]"
+                        : ""
+                    }`}
                   >
                     <div className="mb-1 flex items-center gap-1.5 text-[11.5px] text-[#9aa0a6]">
                       {isToday ? (
