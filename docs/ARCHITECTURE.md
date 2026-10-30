@@ -129,13 +129,13 @@ app/
 │       │   │   └── [projectSlug]/
 │       │   │       ├── page.tsx      # 团队项目页（列表/看板双视图）
 │       │   │       └── tasks/[taskId]/ # 团队任务详情
-│       │   └── [module]/page.tsx    # 模块占位页（analysis；个人 settings）
+│       │   └── [module]/page.tsx    # 模块占位页（analysis；个人 settings 被 settings 静态段遮蔽，链接 404）
 └── api/
     └── cron/
         └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
 ```
 
-- 个人空间的 `analysis / settings` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）；`kanban` / `calendar` 两个空间均已有真实页面（见 §5.3 / §5.4）。
+- 个人空间的 `analysis` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）；`kanban` / `calendar` 两个空间均已有真实页面（见 §5.3 / §5.4）。个人 `settings` 不由占位页承接：静态 `settings` 段优先于 `[module]`，`personal` 被当作团队 slug → notFound，个人空间 settings 链接当前 404（M6 范围）。
 - 动态段名约束：Next 要求同一位置的动态段名唯一，团队空间已占用 `[teamSlug]`，因此占位页沿用该段名，URL 语义仍是 `spaceRef`（`personal` 或团队 slug）。
 - `personal` 为保留 spaceRef：团队 slug 生成需避开 `personal`（当前无 guard，排期 X1）。
 - 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
