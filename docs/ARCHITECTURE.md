@@ -202,7 +202,7 @@ URL query 契约（月份进 URL，RSC 按 query 服务端取数）：
 | `month={YYYY-MM}` | 月网格显示的月份；翻月由 client 组件 `router.push` 写回 |
 | 缺失 / 非法 / 数组参数 | **静默回退当前月**（`todayInShanghai().slice(0, 7)`，不 500、不报错） |
 
-- 月网格固定 42 格（周一起始的 6 周，含月份前后补齐日期），单格最多 3 条 chip，溢出显示「还有 K 项」；done 按**原截止日期**落格并划线淡显；无 `due_date` 的任务不进网格，只在页头留「N 项任务没有截止日期 →」计数入口（个人版跳 Dashboard）。
+- 月网格固定 42 格（周一起始的 6 周，含月份前后补齐日期），单格最多 3 条 chip，溢出显示「还有 K 项」；done 按**原截止日期**落格并划线淡显；无 `due_date` 的任务不进网格；「N 项任务没有截止日期 →」计数入口（跳 Dashboard）**仅个人页有**，团队页页头为「未指派任务也会按截止日期出现在日历上」的提示行（无计数入口）。
 - 侧栏两块**锚定「今天」、不随所显示月份翻动**（Ruling：翻月只换月网格）：① 本周任务 = 今天所在自然周 `[getWeekStart(today), +6]`，按日分组、今天组置顶，**含 done**（划线留在原位）；② 本月即将到期 = `(本周结束, 今天所在月月末]` 且**排除 done**（Ruling），日期升序，默认 5 条 + 「查看本月其余 K 项」原地展开 / 收起。
 - 取数三窗口独立：`features/calendar/service.ts` 的 `getPersonalSpaceCalendar` / `getTeamSpaceCalendar` 并行查询月网格窗口、本周窗口、本月临期窗口与无截止日期计数；排序统一 `due_date asc, created_at desc`。团队行 `LEFT JOIN users` 取负责人（未指派 / 成员被移除后为 null）。
 - 团队 chip 前缀为负责人头像（首字 + 按 `assigneeId` 哈希的定色盘底色）或「未指派」描边 tag；个人版 chip 不带负责人。

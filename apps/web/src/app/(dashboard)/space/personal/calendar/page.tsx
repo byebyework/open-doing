@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;
 
 /**
- * 个人空间 Calendar（v1.1 M2）。
+ * 个人空间 Calendar（v1.1 M4）。
  *
  * RSC 取数：`?month=YYYY-MM` 决定月网格窗口；缺失 / 非法 / 数组参数静默回退
  * 当前月（不 500、不报错）。翻月交互下沉到 client 组件，写回 URL。
