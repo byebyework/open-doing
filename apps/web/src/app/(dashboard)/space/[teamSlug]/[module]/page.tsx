@@ -9,13 +9,12 @@ import { getTeamBySlug } from "@/features/teams/service";
 import { spaceDashboardHref } from "@/lib/routes";
 
 /**
- * 占位模块 → 展示名（Kanban 已有真实页面并以静态段优先命中；
- * 团队 settings 同样命中真实静态设置页，均不进本页）。
+ * 占位模块 → 展示名（仅剩 Analysis）。
+ * Kanban / Calendar 已有真实页面并以静态段优先命中；团队 settings 同样
+ * 命中真实静态设置页，均不进本页。
  */
 const MODULE_LABELS = {
-  calendar: "Calendar",
   analysis: "Analysis",
-  settings: "设置",
 } as const;
 
 type PlaceholderModule = keyof typeof MODULE_LABELS;
