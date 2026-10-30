@@ -99,16 +99,17 @@ async function createTeamProject(
 }
 
 /**
- * 个人空间夹具：覆盖网格两侧、本周跨月两侧、月末 / 次月初、done、无截止、
- * 同日排序、以及他人个人任务 / 团队任务两个排除项。
+ * 个人空间夹具：覆盖网格两侧（含 grid.end 端点）、本周跨月两侧、月末 / 次月初、
+ * done、无截止、同日排序、零散任务（无项目）、以及他人个人任务 / 团队任务两个排除项。
  *
  * 预期 `items`（dueDate 升序，同日按 createdAt 降序）：
  *   09-28 周一跨月 / 10-01 月初当天 / 10-02 本周已完成(done) /
  *   10-04 周日跨月 / 10-05 月内未来 / 10-10 已完成有期(done) /
- *   10-31 月末 / 11-01 下月初 / 11-05 同日较晚创建 / 11-05 同日较早创建
+ *   10-31 月末 / 11-01 下月初 / 11-05 同日较晚创建 / 11-05 同日较早创建 /
+ *   11-06 零散任务 / 11-08 网格末尾
  * 预期 `weekItems`：[周一跨月, 月初当天, 本周已完成, 周日跨月]
  * 预期 `monthUpcoming`：[月内未来, 月末]
- * 预期 `noDueCount`：2（todo + done 各一条）
+ * 预期 `noDueCount`：2（本人 todo + done 各一条；他人的无截止任务不计入）
  */
 async function seedPersonalCalendar(db: DbClient) {
   const member = await createUser(db, "member");
@@ -231,6 +232,26 @@ async function seedPersonalCalendar(db: DbClient) {
       createdById: member.id,
       createdAt: new Date("2026-10-01T09:00:00+08:00"),
     },
+    {
+      // 零散个人任务（不属于任何项目）：projectName 映射为空字符串。
+      spaceType: "personal",
+      projectId: null,
+      title: "零散任务",
+      status: "todo",
+      dueDate: "2026-11-06",
+      assigneeId: member.id,
+      createdById: member.id,
+    },
+    {
+      // 恰为 grid.end（2026-11-08）：必须包含在 items 内（闭区间端点）。
+      spaceType: "personal",
+      projectId: life.id,
+      title: "网格末尾",
+      status: "todo",
+      dueDate: "2026-11-08",
+      assigneeId: member.id,
+      createdById: member.id,
+    },
     // ---- 网格窗口外 ----
     {
       spaceType: "personal",
@@ -280,6 +301,16 @@ async function seedPersonalCalendar(db: DbClient) {
       createdById: other.id,
     },
     {
+      // 他人的无截止任务：不计入本人的 noDueCount（pins personalScope）。
+      spaceType: "personal",
+      projectId: study.id,
+      title: "他人的无截止任务",
+      status: "todo",
+      dueDate: null,
+      assigneeId: other.id,
+      createdById: other.id,
+    },
+    {
       spaceType: "team",
       projectId: teamProject.id,
       title: "团队任务",
@@ -322,6 +353,8 @@ describe.skipIf(!hasTestDatabase)("个人空间日历聚合", () => {
       "下月初",
       "同日较晚创建",
       "同日较早创建",
+      "零散任务",
+      "网格末尾",
     ]);
     // 他人个人任务与团队任务都不属于本人个人空间。
     expect(titles).not.toContain("他人的个人任务");
@@ -334,12 +367,14 @@ describe.skipIf(!hasTestDatabase)("个人空间日历聚合", () => {
     const data = await getPersonalSpaceCalendar(member.id, MONTH, TODAY, db);
     const titles = data.items.map((item) => item.title);
 
-    // grid = 2026-09-28 ~ 2026-11-08。
+    // grid = 2026-09-28 ~ 2026-11-08（闭区间）。
     expect(titles).not.toContain("网格前"); // 2026-09-27
     expect(titles).not.toContain("网格后"); // 2026-11-09
+    // 恰为 grid.end 的任务必须包含（pins lte 端点）。
+    expect(titles).toContain("网格末尾"); // 2026-11-08
   });
 
-  it("③ done 任务按原 due_date 落格且 done: true", async () => {
+  it("③ done 任务按原 due_date 落格且 done: true；个人 assignee / 项目字段映射", async () => {
     const { member } = await seedPersonalCalendar(db);
 
     const data = await getPersonalSpaceCalendar(member.id, MONTH, TODAY, db);
@@ -356,6 +391,15 @@ describe.skipIf(!hasTestDatabase)("个人空间日历聚合", () => {
     expect(byTitle.get("月初当天")).toMatchObject({
       dueDate: TODAY,
       done: false,
+      projectName: "生活琐事",
+      // 冻结契约：个人任务 assignee 恒为本人，assigneeName 恒为 null。
+      assigneeId: member.id,
+      assigneeName: null,
+    });
+    // 零散个人任务（无项目）：projectId / projectName 映射为空值。
+    expect(byTitle.get("零散任务")).toMatchObject({
+      projectId: null,
+      projectName: "",
     });
   });
 
@@ -365,7 +409,8 @@ describe.skipIf(!hasTestDatabase)("个人空间日历聚合", () => {
     const data = await getPersonalSpaceCalendar(member.id, MONTH, TODAY, db);
     const titles = data.items.map((item) => item.title);
 
-    // Ruling 5：计数含任意状态（todo + done 各一条）。
+    // Ruling 5：计数含任意状态（本人 todo + done 各一条）。
+    // 夹具另有一条他人的无截止任务：personalScope 必须把它排除，计数仍为 2。
     expect(data.noDueCount).toBe(2);
     expect(titles).not.toContain("无截止待办");
     expect(titles).not.toContain("无截止完成");
