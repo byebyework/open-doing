@@ -47,3 +47,55 @@ export function weekdayLabel(today: string): string {
 
   return WEEKDAY_LABELS[weekday]!;
 }
+
+/** 把 UTC 毫秒时间戳格式化为 `YYYY-MM-DD` 日历日。 */
+function formatUtcDate(ms: number): string {
+  const date = new Date(ms);
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  const day = String(date.getUTCDate()).padStart(2, "0");
+
+  return `${date.getUTCFullYear()}-${month}-${day}`;
+}
+
+/** 把 `YYYY-MM` / `YYYY-MM-DD` 按 UTC 毫秒解析为时间戳（日历算术基准）。 */
+function parseUtcDate(date: string): number {
+  const [year, month, day] = date.split("-").map(Number);
+
+  return Date.UTC(year!, month! - 1, day ?? 1);
+}
+
+/**
+ * 计算月视图网格的起止日期。
+ *
+ * 入参 `month` 为已校验的 `YYYY-MM`；`start` 是当月 1 日所在周的周一
+ * （可能落在上月），`end` 恒为 `start + 41 天`——固定 42 格（6 周）网格，
+ * 不随月份实际周数变化。
+ */
+export function getMonthGrid(month: string): { start: string; end: string } {
+  const first = formatUtcDate(parseUtcDate(month));
+  const weekday = new Date(parseUtcDate(first)).getUTCDay();
+  const offset = (weekday + 6) % 7;
+  const start = addDays(first, -offset);
+
+  return { start, end: addDays(start, 41) };
+}
+
+/**
+ * `YYYY-MM` → 该月最后一天 `YYYY-MM-DD`。
+ *
+ * 用「次月 1 日减 1 天」推导，天然处理大小月与闰年。
+ */
+export function getMonthEnd(month: string): string {
+  const [year, monthIndex] = month.split("-").map(Number);
+
+  return formatUtcDate(Date.UTC(year!, monthIndex!, 1) - 86400000);
+}
+
+/**
+ * 两个 `YYYY-MM-DD` 日历日的差值（`to - from`，单位：天）。
+ *
+ * 负数表示 `to` 在 `from` 之前；跨月/跨年按 UTC 毫秒差自然正确。
+ */
+export function daysBetween(from: string, to: string): number {
+  return (parseUtcDate(to) - parseUtcDate(from)) / 86400000;
+}
