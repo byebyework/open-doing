@@ -64,11 +64,11 @@ const DOT_COLOR: Record<Tone, string> = {
   later: "#5f6368",
 };
 
-/** 用户名哈希：同一负责人恒定映射到同一头像底色。 */
-function hashName(name: string): number {
+/** 负责人 id 哈希：同一负责人跨渲染恒定映射到同一头像底色。 */
+function hashAssigneeId(assigneeId: string): number {
   let hash = 0;
 
-  for (const char of name) {
+  for (const char of assigneeId) {
     hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
   }
 
@@ -76,8 +76,8 @@ function hashName(name: string): number {
 }
 
 /** 负责人头像底色（定色盘，非 antd 头像）。 */
-function assigneeColor(name: string): string {
-  return ASSIGNEE_COLORS[hashName(name) % ASSIGNEE_COLORS.length]!;
+function assigneeColor(assigneeId: string): string {
+  return ASSIGNEE_COLORS[hashAssigneeId(assigneeId) % ASSIGNEE_COLORS.length]!;
 }
 
 /** `YYYY-MM-DD` → 原型口径的 `MM-DD`。 */
@@ -97,11 +97,16 @@ function toneOf(item: CalendarTaskItem, today: string): Tone {
   return "later";
 }
 
-/** 本周清单条目的右侧 meta（done「已完成」/ 逾期 / 今天 / 倒计时）。 */
+/**
+ * 本周清单条目的右侧 meta（逐 variant 对齐原型）：
+ * - 个人：done「已完成」/ 逾期 / 今天显示项目名 / 未来倒计时；
+ * - 团队：done「已完成」/ 逾期 / 未来倒计时（今天无 meta）。
+ */
 function weekMeta(
   item: CalendarTaskItem,
   today: string,
-): { text: string; className: string } {
+  variant: "personal" | "team",
+): { text: string; className: string } | null {
   if (item.done) {
     return { text: "已完成", className: "text-[#9aa0a6]" };
   }
@@ -113,7 +118,12 @@ function weekMeta(
   }
 
   if (diff === 0) {
-    return { text: "今天", className: "text-[#a66b00]" };
+    // 原型：个人版今天组显示项目名作为 meta；团队版无 meta。
+    if (variant === "personal" && item.projectName) {
+      return { text: item.projectName, className: "text-[#9aa0a6]" };
+    }
+
+    return null;
   }
 
   return {
@@ -122,11 +132,13 @@ function weekMeta(
   };
 }
 
-/** 团队负责人头像：首字 + 定色盘底色（chip 14px / 侧栏 16px）。 */
+/** 团队负责人头像：首字 + 按 assigneeId 哈希的定色盘底色（chip 14px / 侧栏 16px）。 */
 function AssigneeBadge({
+  seed,
   name,
   size,
 }: {
+  seed: string;
   name: string;
   size: 14 | 16;
 }) {
@@ -142,7 +154,7 @@ function AssigneeBadge({
         width: size,
         height: size,
         fontSize: size === 14 ? 9 : 9.5,
-        backgroundColor: assigneeColor(name),
+        backgroundColor: assigneeColor(seed),
       }}
     >
       {firstChar}
@@ -150,8 +162,8 @@ function AssigneeBadge({
   );
 }
 
-/** 未指派 chip 描边 tag（颜色继承 chip 文字色，对照 `.tag-un`）。 */
-function ChipUnassignedTag() {
+/** 未指派描边 tag（chip / 侧栏共用，颜色继承所在文字色，对照 `.tag-un`）。 */
+function UnassignedTag() {
   return (
     <span className="shrink-0 whitespace-nowrap rounded-full border border-current px-1 text-[9.5px] leading-[1.5]">
       未指派
@@ -159,65 +171,45 @@ function ChipUnassignedTag() {
   );
 }
 
-/** 侧栏未指派 tag（蓝底信息色 + 前置圆点，对照 `.tag.tag-info`）。 */
-function SidebarUnassignedTag() {
-  return (
-    <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(13,153,255,0.1)] px-1.5 py-px text-[9.5px] font-medium text-[#0d99ff]">
-      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      未指派
-    </span>
-  );
-}
-
-/** 个人空间项目 tag（薄荷色，与 Kanban 个人卡一致）。 */
-function MintProjectTag({
-  name,
-  className = "",
+/** 负责人展示：团队头部以 assigneeId 取色，未指派用描边 tag。 */
+function AssigneePrefix({
+  item,
+  size,
 }: {
-  name: string;
-  className?: string;
+  item: CalendarTaskItem;
+  size: 14 | 16;
 }) {
+  if (!item.assigneeName) return <UnassignedTag />;
+
   return (
-    <span
-      className={`inline-flex shrink-0 items-center rounded-full bg-[rgba(72,201,151,0.12)] px-1.5 py-px text-[10px] font-semibold text-[#1f9d78] ${className}`}
-    >
-      <span className="truncate">{name}</span>
-    </span>
+    <AssigneeBadge
+      seed={item.assigneeId ?? item.assigneeName}
+      name={item.assigneeName}
+      size={size}
+    />
   );
 }
 
-/** 月网格单条任务 chip：负责人 / 项目前缀 + 标题，done 划线淡显。 */
+/** 月网格单条任务 chip：团队负责人前缀 + 标题，done 划线淡显。 */
 function CalendarChip({
   variant,
   item,
   today,
   href,
-  dimmed,
 }: {
   variant: "personal" | "team";
   item: CalendarTaskItem;
   today: string;
   href?: string;
-  dimmed: boolean;
 }) {
   const tone = toneOf(item, today);
   const titleClassName = `min-w-0 truncate ${tone === "done" ? "line-through" : ""}`;
 
   return (
     <div
-      className={`mt-1 flex w-fit max-w-full items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-[11.5px] leading-[1.4] ${
-        CHIP_TONE_CLASS[tone]
-      } ${dimmed ? "opacity-[0.45]" : ""}`}
+      className={`mt-1 flex w-fit max-w-full items-center gap-1 rounded-[5px] px-1.5 py-0.5 text-[11.5px] leading-[1.4] ${CHIP_TONE_CLASS[tone]}`}
     >
-      {variant === "team" ? (
-        item.assigneeName ? (
-          <AssigneeBadge name={item.assigneeName} size={14} />
-        ) : (
-          <ChipUnassignedTag />
-        )
-      ) : item.projectName ? (
-        <MintProjectTag name={item.projectName} className="max-w-[72px]" />
-      ) : null}
+      {variant === "team" ? <AssigneePrefix item={item} size={14} /> : null}
 
       {href ? (
         <Link href={href} className={`${titleClassName} hover:underline`}>
@@ -230,45 +222,83 @@ function CalendarChip({
   );
 }
 
-/** 单日格内容：最多 3 条 chip + 静态「还有 K 项」。 */
-function DayCell({
+/**
+ * 月网格整格（`fullCellRender`）：复刻原型单元格。
+ *
+ * 周末 #f7f8fa / 今天 #f9f4ff + 紫色日期圆 / 非本月 #f4f5f7 并整体淡化，
+ * 手绘日期数字与 chip 内容，保留 antd 的 td 结构与点击行为。
+ */
+function CalendarDayCell({
   variant,
+  date,
   items,
   today,
+  month,
   taskHrefs,
-  dimmed,
 }: {
   variant: "personal" | "team";
+  date: Dayjs;
   items: CalendarTaskItem[];
   today: string;
+  month: string;
   taskHrefs: Record<string, string>;
-  dimmed: boolean;
 }) {
+  const isToday = date.format("YYYY-MM-DD") === today;
+  const isOut = date.format("YYYY-MM") !== month;
+  const isWeekend = date.day() === 0 || date.day() === 6;
+  const background = isToday
+    ? "bg-[#f9f4ff]"
+    : isOut
+      ? "bg-[#f4f5f7]"
+      : isWeekend
+        ? "bg-[#f7f8fa]"
+        : "bg-white";
   const visible = items.slice(0, CELL_CHIP_LIMIT);
   const overflow = items.length - visible.length;
 
   return (
-    <div className={`flex flex-col items-start ${dimmed ? "opacity-[0.45]" : ""}`}>
-      {visible.map((item) => (
-        <CalendarChip
-          key={item.id}
-          variant={variant}
-          item={item}
-          today={today}
-          href={taskHrefs[item.id]}
-          dimmed={false}
-        />
-      ))}
-      {overflow > 0 ? (
-        <span className="mt-1 pl-0.5 text-[11px] text-[#7d2ae8]">
-          还有 {overflow} 项
-        </span>
-      ) : null}
+    <div
+      className={`flex min-h-[132px] flex-col border-l border-t border-[#e1e3e6] px-2 py-2 ${background}`}
+    >
+      <div className={`flex flex-1 flex-col ${isOut ? "opacity-[0.45]" : ""}`}>
+        <div className="flex items-center gap-1.5 text-[12px] tabular-nums text-[#3c4043]">
+          <span
+            className={`inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+              isToday ? "bg-[#7d2ae8] font-bold text-white" : ""
+            }`}
+          >
+            {date.date()}
+          </span>
+          {isToday ? (
+            <span className="text-[10.5px] font-semibold text-[#7d2ae8]">
+              今天
+            </span>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col items-start">
+          {visible.map((item) => (
+            <CalendarChip
+              key={item.id}
+              variant={variant}
+              item={item}
+              today={today}
+              href={taskHrefs[item.id]}
+            />
+          ))}
+        </div>
+
+        {overflow > 0 ? (
+          <span className="mt-1 pl-0.5 text-[11px] text-[#7d2ae8]">
+            还有 {overflow} 项
+          </span>
+        ) : null}
+      </div>
     </div>
   );
 }
 
-/** 本周清单单条：状态点 + 负责人/项目 + 标题 + 右侧 meta。 */
+/** 本周清单单条：状态点 + 负责人（团队）+ 标题 + 右侧 meta。 */
 function WeekItem({
   variant,
   item,
@@ -281,7 +311,7 @@ function WeekItem({
   href?: string;
 }) {
   const tone = toneOf(item, today);
-  const meta = weekMeta(item, today);
+  const meta = weekMeta(item, today, variant);
   const titleClassName = `min-w-0 flex-1 truncate ${
     item.done ? "line-through" : ""
   }`;
@@ -297,15 +327,7 @@ function WeekItem({
         style={{ backgroundColor: DOT_COLOR[tone] }}
       />
 
-      {variant === "team" ? (
-        item.assigneeName ? (
-          <AssigneeBadge name={item.assigneeName} size={16} />
-        ) : (
-          <SidebarUnassignedTag />
-        )
-      ) : item.projectName ? (
-        <MintProjectTag name={item.projectName} className="max-w-[84px]" />
-      ) : null}
+      {variant === "team" ? <AssigneePrefix item={item} size={16} /> : null}
 
       {href ? (
         <Link href={href} className={`${titleClassName} hover:underline`}>
@@ -315,11 +337,13 @@ function WeekItem({
         <span className={titleClassName}>{item.title}</span>
       )}
 
-      <span
-        className={`ml-auto shrink-0 whitespace-nowrap text-[11px] ${meta.className}`}
-      >
-        {meta.text}
-      </span>
+      {meta ? (
+        <span
+          className={`ml-auto shrink-0 whitespace-nowrap text-[11px] ${meta.className}`}
+        >
+          {meta.text}
+        </span>
+      ) : null}
     </div>
   );
 }
@@ -343,19 +367,10 @@ function UpcomingItem({
         style={{ backgroundColor: DOT_COLOR.later }}
       />
 
-      {variant === "team" ? (
-        item.assigneeName ? (
-          <AssigneeBadge name={item.assigneeName} size={16} />
-        ) : (
-          <SidebarUnassignedTag />
-        )
-      ) : null}
+      {variant === "team" ? <AssigneePrefix item={item} size={16} /> : null}
 
       {href ? (
-        <Link
-          href={href}
-          className="min-w-0 flex-1 truncate hover:underline"
-        >
+        <Link href={href} className="min-w-0 flex-1 truncate hover:underline">
           {item.title}
         </Link>
       ) : (
@@ -373,7 +388,7 @@ function UpcomingItem({
  * 空间级 Calendar（个人 / 团队共用，对照 `space-calendar-*.html`）。
  *
  * - antd Calendar 受控于 URL 月份；`headerRender` 负责 ‹ › / 今天 的
- *   `router.push`，`cellRender` 负责按截止日期落 chip；
+ *   `router.push`，`fullCellRender` 负责复刻原型单元格并按截止日期落 chip；
  * - 侧栏锚定「今天」（不随所显示月份翻动）：本周清单 + 本月即将到期；
  * - 只读：chip / 条目按 `taskHrefs` 渲染成 next/link，缺 href 时为纯文本。
  */
@@ -492,13 +507,17 @@ export function SpaceCalendar({
       <div className="flex flex-col items-stretch gap-4 min-[861px]:flex-row min-[861px]:items-start">
         {/* ===== 左：月历 ===== */}
         <div className="min-w-0 flex-1">
-          <div className="rounded-xl border border-[#e1e3e6] bg-white p-3">
+          <div className="overflow-hidden rounded-xl border border-[#e1e3e6] bg-white">
             <Calendar
               fullscreen
               value={calendarValue}
-              styles={{ itemContent: { height: 100 } }}
+              classNames={{
+                // 星期表头：灰底 + 11px muted（原型 cal-headrow）。
+                content:
+                  "[&_thead_th]:border-b [&_thead_th]:border-b-[#e1e3e6] [&_thead_th]:bg-[#f4f5f7] [&_thead_th]:text-[11px] [&_thead_th]:font-normal [&_thead_th]:text-[#9aa0a6]",
+              }}
               headerRender={({ value }) => (
-                <div className="mb-3 flex items-center gap-2">
+                <div className="flex items-center gap-2 px-3 pb-3 pt-3">
                   <span className="min-w-[110px] text-[16px] font-bold text-[#0e1318]">
                     {value.year()} 年 {value.month() + 1} 月
                   </span>
@@ -534,21 +553,19 @@ export function SpaceCalendar({
                   </button>
                 </div>
               )}
-              cellRender={(date, info) => {
+              fullCellRender={(date, info) => {
                 if (info.type !== "date") return info.originNode;
 
-                const dateKey = date.format("YYYY-MM-DD");
-                const dayItems = itemsByDate.get(dateKey);
-
-                if (!dayItems || dayItems.length === 0) return null;
+                const dayItems = itemsByDate.get(date.format("YYYY-MM-DD"));
 
                 return (
-                  <DayCell
+                  <CalendarDayCell
                     variant={variant}
-                    items={dayItems}
+                    date={date}
+                    items={dayItems ?? []}
                     today={today}
+                    month={month}
                     taskHrefs={taskHrefs}
-                    dimmed={date.format("YYYY-MM") !== month}
                   />
                 );
               }}
