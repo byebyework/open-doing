@@ -289,7 +289,7 @@ export async function getOlderDoneTeamTasks(
 }
 
 /** 个人任务范围：本人的个人任务 + 可选项目筛选。 */
-function personalScope(
+export function personalScope(
   userId: string,
   filter?: PersonalSpaceBoardFilter,
 ): SQL<unknown> {
@@ -314,7 +314,7 @@ function personalScope(
  *
  * 筛选条件与范围条件走同一组谓词，列查询与计数查询不会分叉。
  */
-function teamScope(
+export function teamScope(
   teamId: string,
   filter?: TeamSpaceBoardFilter,
 ): SQL<unknown> {
