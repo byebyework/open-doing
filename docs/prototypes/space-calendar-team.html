@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>增长突击队 Calendar · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* 空间级日历专用微调(生产以 antd Calendar cellRender 还原)——与个人版同一套 */
+    .cal-layout { display: flex; gap: var(--space-4); align-items: flex-start; }
+    .cal-main { flex: 1; min-width: 0; }
+    .cal-side { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+    @media (max-width: 860px) { .cal-layout { flex-direction: column; } .cal-side { width: 100%; } }
+
+    .cal-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+    .cal-title { font-size: 16px; font-weight: 700; min-width: 110px; }
+    .cal-nav-btn { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: var(--radius-sm); padding: 3px 10px; cursor: pointer; font-size: 13px; color: var(--color-text-secondary); }
+    .cal-nav-btn.is-primary { color: var(--color-primary); border-color: var(--color-primary); }
+
+    /* ===== 月历网格 ===== */
+    .cal-grid { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); overflow: hidden; }
+    .cal-headrow, .cal-weekrow { display: grid; grid-template-columns: repeat(7, 1fr); }
+    .cal-headrow { background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
+    .cal-headrow .h { padding: 7px 10px; font-size: 11px; color: var(--color-text-faint); }
+    .cal-weekrow + .cal-weekrow { border-top: 1px solid var(--color-border); }
+    .cal-cell { height: 132px; padding: 8px; border-left: 1px solid var(--color-border); overflow: hidden; }
+    .cal-weekrow .cal-cell:first-child { border-left: none; }
+    .cal-cell.wend { background: #f7f8fa; }
+    .cal-cell.is-out { background: var(--color-bg); }
+    .cal-cell.is-out .cal-date, .cal-cell.is-out .cal-chip, .cal-cell.is-out .cal-more { opacity: .45; }
+    .cal-cell.is-today { background: #f9f4ff; }
+    .cal-date { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+    .cal-date .n { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
+    .cal-cell.is-today .cal-date .n { background: var(--color-primary); color: #fff; font-weight: 700; }
+    .cal-date .today-tag { font-size: 10.5px; color: var(--color-primary); font-weight: 600; }
+
+    .cal-chip { display: flex; align-items: center; gap: 5px; width: fit-content; max-width: 100%; margin-top: 4px; font-size: 11.5px; line-height: 1.4; border-radius: 5px; padding: 2px 6px; background: #f1f3f4; color: #5f6368; }
+    .cal-chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .cal-chip.is-overdue { background: var(--color-overdue-bg); color: var(--color-error); }
+    .cal-chip.is-today-chip { background: #fff3cd; color: #8a5800; }
+    .cal-chip.is-soon { background: #ffe9d6; color: #b35400; }
+    .cal-chip.is-done { background: #e3f4e8; color: #1f9d78; } .cal-chip.is-done .t { text-decoration: line-through; }
+    .cal-chip .av { width: 14px; height: 14px; border-radius: 50%; font-size: 9px; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .cal-chip .tag-un { font-size: 9.5px; border: 1px solid currentColor; border-radius: 999px; padding: 0 4px; flex-shrink: 0; }
+    .cal-more { margin-top: 4px; font-size: 11px; color: var(--color-primary); padding-left: 2px; }
+
+    .side-card { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); padding: var(--space-3); }
+    .side-card h3 { font-size: 13px; font-weight: 700; margin: 0 0 2px; }
+    .side-card .hint { font-size: 11.5px; color: var(--color-text-faint); margin-bottom: 8px; }
+    .wk-day { padding: 7px 0; border-top: 1px dashed var(--color-border); }
+    .wk-day:first-of-type { border-top: none; }
+    .wk-day .d { font-size: 11.5px; color: var(--color-text-faint); margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+    .wk-day.is-today .d b { color: var(--color-primary); }
+    .wk-day .d .pill { font-size: 10px; background: var(--accent-lavender-bg); color: var(--color-primary); border-radius: 999px; padding: 1px 7px; }
+    .side-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--color-text); padding: 3px 0; }
+    .side-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .side-item .av { width: 16px; height: 16px; border-radius: 50%; font-size: 9.5px; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .side-item.is-done { color: var(--color-text-faint); } .side-item.is-done .t { text-decoration: line-through; }
+    .side-item .meta { margin-left: auto; font-size: 11px; color: var(--color-text-faint); white-space: nowrap; }
+    .side-item .meta.is-overdue { color: var(--color-error); }
+    .side-item .meta.is-soon { color: #b35400; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏(团队空间,Calendar 激活) ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+      <button class="team-switcher" type="button">
+        <span class="dot" style="background:var(--accent-lavender);"></span>
+        <span class="name">增长突击队</span>
+        <span class="chev">▾</span>
+      </button>
+      <nav>
+        <div class="nav-group-label">增长突击队</div>
+        <a class="nav-item" href="space-dashboard-team.html">Dashboard</a>
+        <a class="nav-item" href="space-kanban-team.html">Kanban</a>
+        <a class="nav-item active" href="space-calendar-team.html">Calendar</a>
+        <a class="nav-item" href="#">Analysis</a>
+        <a class="nav-item" href="#">设置</a>
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">待处理邀请</a>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta"><div class="username">林夏</div><div class="uid">doing_x7k2m9</div></div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">增长突击队 <span class="sep">/</span> <strong>Calendar</strong></div>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">Calendar</h1>
+            <div class="sub">团队任务日历:按截止日期看本月分布,右侧是本周清单与本月临期提醒。成员可见全部任务。</div>
+          </div>
+        </div>
+
+        <div class="filterbar anim-in">
+          <span class="text-caption"><span class="tag tag-info">未指派</span> 任务也会按截止日期出现在日历上</span>
+          <div class="spacer"></div>
+          <span class="text-caption">基准日期 2026-10-21(周三)</span>
+        </div>
+
+        <div class="cal-layout anim-in">
+          <!-- ===== 左:月历(与个人版同构;差异:chip 带负责人头像,未指派带灰 tag) ===== -->
+          <div class="cal-main">
+            <div class="cal-header">
+              <span class="cal-title">2026 年 10 月</span>
+              <button class="cal-nav-btn" type="button">‹</button>
+              <button class="cal-nav-btn" type="button">›</button>
+              <button class="cal-nav-btn is-primary" type="button">今天</button>
+            </div>
+
+            <div class="cal-grid">
+              <div class="cal-headrow">
+                <div class="h">周一</div><div class="h">周二</div><div class="h">周三</div><div class="h">周四</div><div class="h">周五</div><div class="h">周六</div><div class="h">周日</div>
+              </div>
+              <!-- 第 1 行:09-28 ~ 10-04 -->
+              <div class="cal-weekrow">
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">28</span></div></div>
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">29</span></div></div>
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">30</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">1</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">2</span></div></div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">3</span></div></div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">4</span></div></div>
+              </div>
+              <!-- 第 2 行:10-05 ~ 10-11 -->
+              <div class="cal-weekrow">
+                <div class="cal-cell"><div class="cal-date"><span class="n">5</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">6</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">7</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">8</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">9</span></div></div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">10</span></div></div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">11</span></div></div>
+              </div>
+              <!-- 第 3 行:10-12 ~ 10-18 -->
+              <div class="cal-weekrow">
+                <div class="cal-cell"><div class="cal-date"><span class="n">12</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">13</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">14</span></div>
+                  <div class="cal-chip is-done"><span class="av" style="background:#7d2ae8;">林</span><span class="t">九月投放复盘</span></div>
+                </div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">15</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">16</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">17</span></div></div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">18</span></div></div>
+              </div>
+              <!-- 第 4 行:10-19 ~ 10-25(本周,高亮今天) -->
+              <div class="cal-weekrow">
+                <div class="cal-cell"><div class="cal-date"><span class="n">19</span></div>
+                  <div class="cal-chip is-overdue"><span class="av" style="background:#0088ff;">何</span><span class="t">投放落地页 A/B 测试</span></div>
+                </div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">20</span></div></div>
+                <div class="cal-cell is-today"><div class="cal-date"><span class="n">21</span><span class="today-tag">今天</span></div>
+                  <div class="cal-chip is-today-chip"><span class="av" style="background:#7d2ae8;">林</span><span class="t">十月用户访谈汇总</span></div>
+                  <div class="cal-chip is-done"><span class="av" style="background:#0088ff;">何</span><span class="t">客服话术 v2 评审</span></div>
+                  <div class="cal-chip"><span class="tag-un">未指派</span><span class="t">周报数据导出</span></div>
+                  <div class="cal-more">还有 1 项</div>
+                </div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">22</span></div>
+                  <div class="cal-chip is-soon"><span class="av" style="background:#7d2ae8;">林</span><span class="t">增长周报第 42 期</span></div>
+                </div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">23</span></div>
+                  <div class="cal-chip"><span class="tag-un">未指派</span><span class="t">渠道数据埋点补齐</span></div>
+                </div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">24</span></div></div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">25</span></div></div>
+              </div>
+              <!-- 第 5 行:10-26 ~ 11-01 -->
+              <div class="cal-weekrow">
+                <div class="cal-cell"><div class="cal-date"><span class="n">26</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">27</span></div>
+                  <div class="cal-chip"><span class="av" style="background:#e91e63;">苏</span><span class="t">11 月活动策划提纲</span></div>
+                </div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">28</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">29</span></div></div>
+                <div class="cal-cell"><div class="cal-date"><span class="n">30</span></div>
+                  <div class="cal-chip"><span class="av" style="background:#0088ff;">何</span><span class="t">竞品定价调研</span></div>
+                </div>
+                <div class="cal-cell wend"><div class="cal-date"><span class="n">31</span></div></div>
+                <div class="cal-cell wend is-out"><div class="cal-date"><span class="n">1</span></div></div>
+              </div>
+              <!-- 第 6 行:11-02 ~ 11-08 -->
+              <div class="cal-weekrow">
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">2</span></div>
+                  <div class="cal-chip"><span class="av" style="background:#e91e63;">苏</span><span class="t">Q4 复盘会准备</span></div>
+                </div>
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">3</span></div></div>
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">4</span></div></div>
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">5</span></div></div>
+                <div class="cal-cell is-out"><div class="cal-date"><span class="n">6</span></div></div>
+                <div class="cal-cell wend is-out"><div class="cal-date"><span class="n">7</span></div></div>
+                <div class="cal-cell wend is-out"><div class="cal-date"><span class="n">8</span></div></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 右:侧栏(差异:每条带负责人头像,未指派灰 tag) ===== -->
+          <aside class="cal-side">
+            <div class="side-card">
+              <h3>本周任务</h3>
+              <div class="hint">10-19 周一 ~ 10-25 周日 · 6 项</div>
+              <div class="wk-day is-today">
+                <div class="d"><b>今天 · 周三 10-21</b><span class="pill">3 项</span></div>
+                <div class="side-item"><span class="dot" style="background:#a66b00;"></span><span class="av" style="background:#7d2ae8;">林</span><span class="t">十月用户访谈汇总</span></div>
+                <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="tag tag-info" style="font-size:9.5px;">未指派</span><span class="t">周报数据导出</span></div>
+                <div class="side-item is-done"><span class="dot" style="background:#1f9d78;"></span><span class="av" style="background:#0088ff;">何</span><span class="t">客服话术 v2 评审</span><span class="meta">已完成</span></div>
+              </div>
+              <div class="wk-day">
+                <div class="d">周一 10-19</div>
+                <div class="side-item"><span class="dot" style="background:var(--color-error);"></span><span class="av" style="background:#0088ff;">何</span><span class="t">投放落地页 A/B 测试</span><span class="meta is-overdue">已逾期 2 天</span></div>
+              </div>
+              <div class="wk-day">
+                <div class="d">周四 10-22</div>
+                <div class="side-item"><span class="dot" style="background:#b35400;"></span><span class="av" style="background:#7d2ae8;">林</span><span class="t">增长周报第 42 期</span><span class="meta is-soon">还有 1 天</span></div>
+              </div>
+              <div class="wk-day">
+                <div class="d">周五 10-23</div>
+                <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="tag tag-info" style="font-size:9.5px;">未指派</span><span class="t">渠道数据埋点补齐</span></div>
+              </div>
+            </div>
+
+            <div class="side-card">
+              <h3>本月即将到期</h3>
+              <div class="hint">本周之后 · 本月以内</div>
+              <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="av" style="background:#e91e63;">苏</span><span class="t">11 月活动策划提纲</span><span class="meta">10-27 · 还有 6 天</span></div>
+              <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="av" style="background:#0088ff;">何</span><span class="t">竞品定价调研</span><span class="meta">10-30 · 还有 9 天</span></div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+</body>
+</html>
