@@ -79,6 +79,7 @@ features/
 ├── teams/      团队、成员关系、邀请、角色与权限判定
 ├── projects/   项目 CRUD
 ├── tasks/      任务、子任务、评论、看板状态流转
+├── calendar/   空间级 Calendar：按截止日期聚合月网格与本周 / 本月临期清单
 └── notifications/ 通知、已读、到期扫描
 ```
 
@@ -114,25 +115,27 @@ app/
 │       ├── personal/
 │       │   ├── dashboard/page.tsx   # 个人 Dashboard：统计卡 +「今天」列表（≤20）
 │       │   ├── kanban/page.tsx      # 个人空间 Kanban：跨项目聚合 + ?project 筛选
+│       │   ├── calendar/page.tsx    # 个人空间 Calendar：月视图 + 本周 / 本月清单（?month）
 │       │   ├── projects/[projectSlug]/
 │       │   │   └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
 │       │   └── tasks/[taskId]/page.tsx # 个人任务详情（含个人项目内任务）
 │       ├── [teamSlug]/
 │       │   ├── dashboard/page.tsx   # 团队 Dashboard：健康度 + 重要节点 + 成员负载
 │       │   ├── kanban/page.tsx      # 团队空间 Kanban：跨项目聚合 + ?project / ?assignee 筛选
+│       │   ├── calendar/page.tsx    # 团队空间 Calendar：团队全部任务（含未指派）+ ?month
 │       │   ├── settings/page.tsx    # 团队设置（静态段优先于 [module] 占位页）
 │       │   ├── projects/
 │       │   │   ├── new/page.tsx
 │       │   │   └── [projectSlug]/
 │       │   │       ├── page.tsx      # 团队项目页（列表/看板双视图）
 │       │   │       └── tasks/[taskId]/ # 团队任务详情
-│       │   └── [module]/page.tsx    # 模块占位页（calendar/analysis；个人 settings）
+│       │   └── [module]/page.tsx    # 模块占位页（analysis；个人 settings）
 └── api/
     └── cron/
         └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
 ```
 
-- 个人空间的 `calendar / analysis / settings` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）；`kanban` 两个空间均已有真实页面（见 §5.3）。
+- 个人空间的 `analysis / settings` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）；`kanban` / `calendar` 两个空间均已有真实页面（见 §5.3 / §5.4）。
 - 动态段名约束：Next 要求同一位置的动态段名唯一，团队空间已占用 `[teamSlug]`，因此占位页沿用该段名，URL 语义仍是 `spaceRef`（`personal` 或团队 slug）。
 - `personal` 为保留 spaceRef：团队 slug 生成需避开 `personal`（当前无 guard，排期 X1）。
 - 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
@@ -182,6 +185,29 @@ URL query 契约（筛选状态进 URL，RSC 服务端过滤三列与 done 计�
 - 空态文案（已定）：「这个空间还没有任务,去 Dashboard 或项目页创建第一项任务。」；当前三列始终渲染，列内空态显示「暂无任务」，空间级空态未单独接线。筛选条计数：个人「N 个任务」（三列卡片 + 窗口外 done），团队「N 个未完成任务」（todo + in_progress）。
 - 团队看板页头「＋ 新建项目」仅 owner / admin 渲染，与 `/space/{teamSlug}/projects/new` 的权限门槛一致。
 - 已知限制：展开后的「更早」done 卡没有详情链接（RSC 只为近 7 天卡片生成 `taskHrefs`；原型同样不链接）。
+
+### 5.4 空间级 Calendar（v1.1 M4）
+
+两个空间一套组件（`features/calendar/`，`SpaceCalendar` 以 `variant` 区分个人 / 团队）：
+
+| 路由 | 数据范围 |
+|---|---|
+| `/space/personal/calendar` | 本人的全部个人任务（含零散任务），按截止日期落格 |
+| `/space/{teamSlug}/calendar` | 该团队全部项目下的任务（含未指派），非成员 404（不泄露团队存在性） |
+
+URL query 契约（月份进 URL，RSC 按 query 服务端取数）：
+
+| 参数 | 语义 |
+|---|---|
+| `month={YYYY-MM}` | 月网格显示的月份；翻月由 client 组件 `router.push` 写回 |
+| 缺失 / 非法 / 数组参数 | **静默回退当前月**（`todayInShanghai().slice(0, 7)`，不 500、不报错） |
+
+- 月网格固定 42 格（周一起始的 6 周，含月份前后补齐日期），单格最多 3 条 chip，溢出显示「还有 K 项」；done 按**原截止日期**落格并划线淡显；无 `due_date` 的任务不进网格，只在页头留「N 项任务没有截止日期 →」计数入口（个人版跳 Dashboard）。
+- 侧栏两块**锚定「今天」、不随所显示月份翻动**（Ruling：翻月只换月网格）：① 本周任务 = 今天所在自然周 `[getWeekStart(today), +6]`，按日分组、今天组置顶，**含 done**（划线留在原位）；② 本月即将到期 = `(本周结束, 今天所在月月末]` 且**排除 done**（Ruling），日期升序，默认 5 条 + 「查看本月其余 K 项」原地展开 / 收起。
+- 取数三窗口独立：`features/calendar/service.ts` 的 `getPersonalSpaceCalendar` / `getTeamSpaceCalendar` 并行查询月网格窗口、本周窗口、本月临期窗口与无截止日期计数；排序统一 `due_date asc, created_at desc`。团队行 `LEFT JOIN users` 取负责人（未指派 / 成员被移除后为 null）。
+- 团队 chip 前缀为负责人头像（首字 + 按 `assigneeId` 哈希的定色盘底色）或「未指派」描边 tag；个人版 chip 不带负责人。
+- 只读：chip / 侧栏条目按 `taskHrefs`（RSC 构造）渲染为详情链接，点空白格无行为；不做拖拽改期。窄屏（<861px）侧栏整体堆到月历下方。
+- 权限：团队页在 RSC 内先做成员资格校验再取数，非成员 `notFound()`；个人页数据范围恒为本人。
 
 ## 6. 数据模型
 
@@ -315,7 +341,8 @@ CRON_SECRET=...
 | 团队 Dashboard `/space/[teamSlug]/dashboard` | ✅ v1.1 M2：四张统计卡 + 项目健康度 + 重要节点（前 10）+ 成员负载 |
 | 个人/团队项目页（列表 + 看板双视图）与任务详情 | ✅ 已迁入 `/space/{spaceRef}/projects/...`、`/space/personal/tasks/{id}` |
 | 空间级 Kanban `/space/{spaceRef}/kanban` | ✅ v1.1 M3：三列跨项目聚合、`?project=` / `?assignee=` 筛选（见 §5.3）、拖拽改状态、done 7 天收敛 + 原地展开 |
-| 空间级 Calendar / Analysis / 个人设置 | 🟡 占位页 `/space/{spaceRef}/{module}`，待 M4–M6 |
+| 空间级 Calendar `/space/{spaceRef}/calendar` | ✅ v1.1 M4：月网格 + 本周清单 + 本月即将到期，`?month=` 翻月（见 §5.4）；只读 |
+| 空间级 Analysis / 个人设置 | 🟡 占位页 `/space/{spaceRef}/{module}`，待 M5–M6 |
 | cron 到期扫描（`CRON_SECRET` 鉴权、幂等） | ✅ 已完成 |
 
 ## 13. 建议的实施顺序（概要）
