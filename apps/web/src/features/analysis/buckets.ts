@@ -19,16 +19,23 @@ export interface TrendBucket {
 /**
  * 解析分析页范围参数，只接受字面量 `"7"` / `"30"` / `"90"`。
  *
- * `undefined`、数组（重复 query 参数）、带空格或其他任何值一律回落 30，
- * 避免依赖 `Number()` 的隐式转换（`"30 "` 会被转成 30）。
+ * `undefined`、带空格或其他任何值一律回落 30；数组（重复 query 参数）
+ * 不读取任何元素，直接回落 30——不依赖 `Number()` 的隐式转换
+ * （`"30 "` 会被转成 30）。
  */
 export function parseAnalysisRange(
   param: string | string[] | undefined,
 ): AnalysisRange {
-  const raw = Array.isArray(param) ? param[0] : param;
+  const raw = Array.isArray(param) ? undefined : param;
 
-  if (raw === "7" || raw === "30" || raw === "90") {
-    return Number(raw) as AnalysisRange;
+  if (raw === "7") {
+    return 7;
+  }
+  if (raw === "30") {
+    return 30;
+  }
+  if (raw === "90") {
+    return 90;
   }
 
   return DEFAULT_RANGE;
@@ -54,7 +61,7 @@ function dailyBuckets(start: string, end: string): TrendBucket[] {
   const buckets: TrendBucket[] = [];
 
   for (let cursor = start; cursor <= end; cursor = addDays(cursor, 1)) {
-    buckets.push({ label: cursor.slice(5), start: cursor, end: cursor });
+    buckets.push({ label: toBucketLabel(cursor), start: cursor, end: cursor });
   }
 
   return buckets;

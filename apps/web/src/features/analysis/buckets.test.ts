@@ -12,6 +12,10 @@ import {
   type TrendBucket,
 } from "./buckets";
 
+// 钉住宿主时区：`shanghaiDay` 的零点翻转断言只有在宿主 TZ 固定后
+// 才能稳定暴露「漏写 timeZone 选项」这类回归（本机 CST 下 UTC 15:59 恰好也是同日）。
+process.env.TZ = "UTC";
+
 describe("parseAnalysisRange", () => {
   it.each([
     ["7", 7],
@@ -24,7 +28,8 @@ describe("parseAnalysisRange", () => {
   it.each([
     undefined,
     "abc",
-    ["30"],
+    ["7"],
+    ["7", "30"],
     "30 ",
     "",
     "0",
@@ -82,6 +87,20 @@ describe("trendBuckets", () => {
       label: "01-04",
       start: "2027-01-04",
       end: "2027-01-05",
+    });
+  });
+  it("90 天第二锚点（首桶起点到今天差 95 天，余 4）：2026-11-20 → 14 桶，末桶 11-16 ~ 11-20", () => {
+    const buckets = trendBuckets("2026-11-20", 90);
+    expect(buckets).toHaveLength(14);
+    expect(buckets[0]).toEqual({
+      label: "08-17",
+      start: "2026-08-17",
+      end: "2026-08-23",
+    });
+    expect(buckets[13]).toEqual({
+      label: "11-16",
+      start: "2026-11-16",
+      end: "2026-11-20",
     });
   });
   it("90 天周桶相邻 start 连续（相差 7 天），中间桶 end = start + 6", () => {
