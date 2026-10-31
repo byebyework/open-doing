@@ -289,13 +289,33 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
       createdAt: shanghai("2026-09-01"),
       updatedAt: shanghai("2026-09-20"),
     });
+    // 边界：完成日恰为 today-29（2026-10-01）→ 进分母。
+    // 若窗口起点被误写成 today-30（09-30），下面这条 09-30 完成会混入分母。
+    await createTask(db, {
+      title: "窗口起点完成",
+      createdById: member.id,
+      status: "done",
+      dueDate: "2026-10-05",
+      createdAt: shanghai("2026-09-01"),
+      updatedAt: shanghai("2026-10-01"),
+    });
+    // 边界：完成日恰为 today-30（2026-09-30）→ 不进分母。
+    await createTask(db, {
+      title: "窗口前一天完成",
+      createdById: member.id,
+      status: "done",
+      dueDate: "2026-10-01",
+      createdAt: shanghai("2026-09-01"),
+      updatedAt: shanghai("2026-09-30"),
+    });
 
     // 用 range=7 调用：按时率固定近 30 天，不随 range 缩小。
+    // 分母 = 10-19 / 10-25 / 10-11 / 10-01 四条有截止的 done；09-30 与 09-20 被窗口排除。
     const data = await getPersonalSpaceAnalysis(member.id, 7, TODAY, db);
     expect(data.stats.onTime).toEqual({
-      denominator: 3,
-      onTime: 2,
-      ratePercent: 67,
+      denominator: 4,
+      onTime: 3,
+      ratePercent: 75,
     });
 
     // 删除全部有截止的任务后：分母 0 → ratePercent null（无除零 / NaN）。
@@ -341,11 +361,23 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
       createdAt: shanghai("2026-09-01"),
       updatedAt: shanghai("2026-09-30"),
     });
+    // 本月完成（上海 10-05）：`doneThisMonth` 应为非 0。
+    await createTask(db, {
+      title: "本月完成",
+      createdById: member.id,
+      status: "done",
+      dueDate: null,
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-05"),
+    });
 
     const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
 
     // 昨天到期 + 进行中逾期 = 2；今天到期、done 过期任务都不算。
     expect(data.stats.overdue).toBe(2);
+    // 进行中 1 条；本月完成 1 条（09-30 完成的旧任务不算本月）。
+    expect(data.stats.inProgress).toBe(1);
+    expect(data.stats.doneThisMonth).toBe(1);
   });
 
   it("⑥ futureDue：未完成且 dueDate ∈ [today, today+13]，首末桶含端点", async () => {
@@ -365,6 +397,9 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
       createdAt: shanghai("2026-10-01"),
       updatedAt: shanghai("2026-10-01"),
     });
+    // 说明：查询里的 `lte(tasks.dueDate, futureEnd)` 是 SQL 侧纵深防御。
+    // 即使去掉该条件，窗口外的日期也会被 `bucketIndexForDay` 丢弃（返回 -1），
+    // 输出层无法观察到差异——本夹具只作语义备忘，上界保护由 SQL 条件承担。
     await createTask(db, {
       title: "超出窗口",
       createdById: member.id,
@@ -486,5 +521,65 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     expect(data.projectComparison).toEqual([
       { projectId: teamProject.id, projectName: "团队项目", doneCount: 1 },
     ]);
+  });
+
+  it("⑨ 范围谓词覆盖 stats / createdVsCompleted / futureDue：他人任务不进任何聚合", async () => {
+    const member = await createUser(db, "member");
+    const other = await createUser(db, "other");
+
+    // 给 member 与 other 各造一组形状相同的任务：只要任一查询漏掉
+    // `eq(tasks.assigneeId, userId)`，计数就会翻倍 / 对对碰。
+    const seedScopeFixture = async (ownerId: string) => {
+      await createTask(db, { title: "进行中", createdById: ownerId, assigneeId: ownerId, status: "in_progress", createdAt: shanghai("2026-10-01"), updatedAt: shanghai("2026-10-01") });
+      await createTask(db, { title: "逾期", createdById: ownerId, assigneeId: ownerId, dueDate: "2026-10-29", createdAt: shanghai("2026-10-01"), updatedAt: shanghai("2026-10-01") });
+      await createTask(db, { title: "未来到期", createdById: ownerId, assigneeId: ownerId, dueDate: "2026-11-02", createdAt: shanghai("2026-10-01"), updatedAt: shanghai("2026-10-01") });
+      await createTask(db, { title: "窗口内创建", createdById: ownerId, assigneeId: ownerId, createdAt: shanghai("2026-10-20"), updatedAt: shanghai("2026-10-20") });
+    };
+    await seedScopeFixture(member.id);
+    await seedScopeFixture(other.id);
+
+    const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
+
+    // 进行中 / 逾期各恰好 1（member 的那条）。
+    expect(data.stats.inProgress).toBe(1);
+    expect(data.stats.overdue).toBe(1);
+
+    // 4 条 member 任务均在窗口内创建；other 的 4 条不得计入。
+    const createdByLabel = new Map(
+      data.createdVsCompleted.map((point) => [point.label, point.created]),
+    );
+    expect(data.createdVsCompleted.reduce((sum, point) => sum + point.created, 0)).toBe(4);
+    expect(createdByLabel.get("10-20")).toBe(1);
+
+    // 未来到期分布只有 member 的 1 条。
+    expect(data.futureDue.reduce((sum, point) => sum + point.count, 0)).toBe(1);
+  });
+
+  it("⑩ 上海日换算跨 UTC 日期边界：完成日 / 创建日按 Asia/Shanghai 归属", async () => {
+    const member = await createUser(db, "member");
+    // 上海 2026-10-15 00:30 = UTC 2026-10-14T16:30Z；
+    // 上海 2026-10-16 00:30 = UTC 2026-10-15T16:30Z。
+    // 若 SQL 漏掉 `AT TIME ZONE 'Asia/Shanghai'`（会话时区 UTC），两条会
+    // 各自提前一天落到 10-14 / 10-15。
+    await createTask(db, {
+      title: "跨 UTC 边界完成",
+      createdById: member.id,
+      status: "done",
+      createdAt: shanghai("2026-10-16", "00:30:00"),
+      updatedAt: shanghai("2026-10-15", "00:30:00"),
+    });
+
+    const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
+
+    const trendByLabel = new Map(
+      data.completionTrend.map((point) => [point.label, point.count]),
+    );
+    expect(trendByLabel.get("10-15")).toBe(1);
+    expect(trendByLabel.get("10-14")).toBe(0);
+
+    const byLabel = new Map(data.createdVsCompleted.map((point) => [point.label, point]));
+    expect(byLabel.get("10-16")).toEqual({ label: "10-16", created: 1, completed: 0 });
+    expect(byLabel.get("10-15")).toEqual({ label: "10-15", created: 0, completed: 1 });
+    expect(byLabel.get("10-14")).toEqual({ label: "10-14", created: 0, completed: 0 });
   });
 });
