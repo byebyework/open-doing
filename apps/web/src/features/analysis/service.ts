@@ -1,4 +1,4 @@
-import { addDays } from "@open-doing/types";
+import { addDays, type SpaceType } from "@open-doing/types";
 import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 
 import { getTeamOverview } from "@/features/dashboard/team-overview/service";
@@ -54,6 +54,8 @@ export interface ProjectComparisonRow {
   projectId: string | null;
   /** 无项目任务为空字符串。 */
   projectName: string;
+  /** 任务所属空间：个人项目为 personal，团队项目（含无项目的团队任务）为 team。 */
+  spaceType: SpaceType;
   doneCount: number;
 }
 
@@ -94,6 +96,8 @@ export interface ProjectHealthRow {
   hasOverdue: boolean;
   hasDueSoon: boolean;
   taskCount: number;
+  /** 该项目全部已完成任务数（不限 6 周窗口）。 */
+  doneTotal: number;
   /** 近 6 周内完成的团队任务数（与 `weeklyDone` 同窗口）。 */
   doneCount: number;
   /** 恒长 6，对应 `recentWeekBuckets(today, 6)`，末桶为本自然周。 */
@@ -205,6 +209,7 @@ export async function getPersonalSpaceAnalysis(
         .select({
           projectId: tasks.projectId,
           projectName: projects.name,
+          spaceType: tasks.spaceType,
           doneCount: sql<number>`count(*)::int`,
         })
         .from(tasks)
@@ -217,7 +222,7 @@ export async function getPersonalSpaceAnalysis(
             sql`${completedDay} <= ${window.end}`,
           ),
         )
-        .groupBy(tasks.projectId, projects.name)
+        .groupBy(tasks.projectId, projects.name, tasks.spaceType)
         .orderBy(
           desc(sql`count(*)`),
           // doneCount 平局时按项目名升序；无项目任务用空串参与排序。
@@ -238,6 +243,7 @@ export async function getPersonalSpaceAnalysis(
     projectComparison: projectRows.map((row) => ({
       projectId: row.projectId ?? null,
       projectName: row.projectName ?? "",
+      spaceType: row.spaceType,
       doneCount: row.doneCount,
     })),
   };
@@ -259,7 +265,7 @@ export async function getPersonalSpaceAnalysis(
  * - `throughput` 只统计 `rangeWindow(range)` 内完成的团队任务，完成日为
  *   `updated_at` 的上海日历日（M3 代理口径）；分桶与个人完成趋势同法。
  * - `projectHealth.weeklyDone` / `doneCount` 固定近 6 个自然周，末桶为本
- *   周；不足 6 项补 0。
+ *   周；`doneTotal` 为项目全部已完成数（不限窗口）；不足 6 项补 0。
  * - `zombieTasks`：`in_progress` 且 `updated_at` 早于 **today-14 上海零点**
  *   （恰为 today-14 当天任意时刻不算僵尸），按最后更新升序取前 10；
  *   `stalledDays` 按上海日计算，僵尸因此恒 ≥ 15。
@@ -282,7 +288,6 @@ export async function getTeamSpaceAnalysis(
   const window = rangeWindow(today, range);
   const weekStart = getWeekStart(today);
   const weekBuckets = recentWeekBuckets(today, 6);
-  const sixWeekStart = weekBuckets[0]!.start;
   const zombieCutoff = addDays(today, -14);
   const scope = teamScope(teamId);
 
@@ -323,13 +328,7 @@ export async function getTeamSpaceAnalysis(
       .select({ projectId: tasks.projectId, completedDay })
       .from(tasks)
       .innerJoin(projects, eq(tasks.projectId, projects.id))
-      .where(
-        and(
-          scope,
-          eq(tasks.status, "done"),
-          sql`${completedDay} >= ${sixWeekStart}`,
-        ),
-      ),
+      .where(and(scope, eq(tasks.status, "done"))),
     client
       .select({
         id: tasks.id,
@@ -381,6 +380,7 @@ export async function getTeamSpaceAnalysis(
         hasOverdue: project.hasOverdue,
         hasDueSoon: project.hasDueSoon,
         taskCount: project.taskCount,
+        doneTotal: aggregate?.doneTotal ?? 0,
         doneCount: aggregate?.doneCount ?? 0,
         weeklyDone: aggregate
           ? [...aggregate.weeklyDone]
@@ -398,14 +398,19 @@ export async function getTeamSpaceAnalysis(
   };
 }
 
-/** 项目完成聚合：近 6 周 done 明细 → 每项目完成数与周分桶。 */
+/**
+ * 项目完成聚合：全部 done 明细 → 每项目全部完成数 + 近 6 周完成数与周分桶。
+ *
+ * `doneTotal` 计全部已完成；`doneCount` / `weeklyDone` 只计 6 周窗口内，
+ * 窗口外明细在 `bucketIndexForDay` 返回 -1 时被丢弃。
+ */
 function aggregateProjectDone(
   rows: { projectId: string | null; completedDay: string }[],
   weekBuckets: TrendBucket[],
-): Map<string, { doneCount: number; weeklyDone: number[] }> {
+): Map<string, { doneTotal: number; doneCount: number; weeklyDone: number[] }> {
   const aggregates = new Map<
     string,
-    { doneCount: number; weeklyDone: number[] }
+    { doneTotal: number; doneCount: number; weeklyDone: number[] }
   >();
 
   for (const row of rows) {
@@ -416,15 +421,17 @@ function aggregateProjectDone(
     let aggregate = aggregates.get(row.projectId);
     if (!aggregate) {
       aggregate = {
+        doneTotal: 0,
         doneCount: 0,
         weeklyDone: new Array<number>(weekBuckets.length).fill(0),
       };
       aggregates.set(row.projectId, aggregate);
     }
 
-    aggregate.doneCount += 1;
+    aggregate.doneTotal += 1;
     const index = bucketIndexForDay(weekBuckets, row.completedDay);
     if (index >= 0) {
+      aggregate.doneCount += 1;
       aggregate.weeklyDone[index]! += 1;
     }
   }

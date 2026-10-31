@@ -60,6 +60,7 @@ export default async function TeamAnalysisPage(
       range={range}
       today={today}
       basePath={moduleHref(team.slug, "analysis")}
+      spaceRef={team.slug}
       personal={null}
       team={teamAnalysis}
     />

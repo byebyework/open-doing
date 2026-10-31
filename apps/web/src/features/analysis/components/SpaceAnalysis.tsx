@@ -7,10 +7,15 @@ import {
   HEALTH_COLOR_RULES,
   resolveProjectHealthLevel,
 } from "@/features/dashboard/team-overview/constants";
-import { moduleHref } from "@/lib/routes";
+import { moduleHref, type SpaceRef } from "@/lib/routes";
 import { getWeekStart } from "@/lib/today";
 
-import type { AnalysisRange, TrendBucket } from "../buckets";
+import {
+  futureDueBuckets,
+  trendBuckets,
+  type AnalysisRange,
+  type TrendBucket,
+} from "../buckets";
 import type { PersonalSpaceAnalysis, TeamSpaceAnalysis } from "../service";
 import { AnalysisRangeSelector } from "./AnalysisRangeSelector";
 import { HBarList, TrendChart, WeekMiniBars } from "./charts";
@@ -23,6 +28,8 @@ export interface SpaceAnalysisProps {
   today: string;
   /** 模块根路径（`moduleHref(spaceRef, "analysis")`） */
   basePath: string;
+  /** 空间引用（`personal` 或团队 slug），用于 Kanban 等站内跳转。 */
+  spaceRef: SpaceRef;
   personal: PersonalSpaceAnalysis | null;
   team: TeamSpaceAnalysis | null;
 }
@@ -116,18 +123,14 @@ function CardHeader({
   );
 }
 
-/** `range` 对应的聚合粒度文案（90 天按周，其余按日）。 */
-function bucketUnit(range: AnalysisRange): "日" | "周" {
-  return range === 90 ? "周" : "日";
-}
-
-/** 趋势点只有 label；图表只需要 label，start/end 用 label 占位即可。 */
-function toTrendBuckets(points: { label: string }[]): TrendBucket[] {
-  return points.map((point) => ({
-    label: point.label,
-    start: point.label,
-    end: point.label,
-  }));
+/**
+ * 从实际分桶推导聚合粒度：存在跨天桶即为按周，否则按日。
+ *
+ * 不按 `range === 90` 重新编码规则——7/30 天与未来 14 天都是逐日桶，
+ * 90 天由 `trendBuckets` 切成自然周桶。
+ */
+function bucketGrain(buckets: TrendBucket[]): "日" | "周" {
+  return buckets.some((bucket) => bucket.start !== bucket.end) ? "周" : "日";
 }
 
 function sum(values: number[]): number {
@@ -167,11 +170,15 @@ function PersonalBody({
   range: AnalysisRange;
   today: string;
 }) {
-  const unit = bucketUnit(range);
+  // 图表使用真实分桶（含 start/end），与 service 的趋势点一一对应。
+  const buckets = trendBuckets(today, range);
+  const dueBuckets = futureDueBuckets(today);
+  const unit = bucketGrain(buckets);
+  // 仅逐日桶的末桶代表「今天」；90 天周桶的末桶代表本周，不能标「今天」。
+  const todayIndex = unit === "日" ? buckets.length - 1 : undefined;
   const { stats } = analysis;
 
   const completionValues = analysis.completionTrend.map((point) => point.count);
-  const completionBuckets = toTrendBuckets(analysis.completionTrend);
   const completionTotal = sum(completionValues);
 
   const createdValues = analysis.createdVsCompleted.map(
@@ -180,24 +187,27 @@ function PersonalBody({
   const completedValues = analysis.createdVsCompleted.map(
     (point) => point.completed,
   );
-  const createdBuckets = toTrendBuckets(analysis.createdVsCompleted);
   const createdTotal = sum(createdValues);
   const completedTotal = sum(completedValues);
 
   const futureDueValues = analysis.futureDue.map((point) => point.count);
-  const futureDueBuckets = toTrendBuckets(analysis.futureDue);
   const futureDueTotal = sum(futureDueValues);
 
   const projectMax = Math.max(
     0,
     ...analysis.projectComparison.map((row) => row.doneCount),
   );
-  const projectRows = analysis.projectComparison.map((row) => ({
-    key: row.projectId ?? `no-project-${row.projectName}`,
-    name: row.projectName || "无项目",
-    count: row.doneCount,
-    max: projectMax,
-  }));
+  const projectRows = analysis.projectComparison.map((row) => {
+    const name = row.projectName || "无项目";
+    return {
+      key: row.projectId ?? `no-project-${row.projectName}`,
+      name,
+      title: `${name} · 近 ${range} 天完成 ${row.doneCount} 项`,
+      tag: row.spaceType === "team" ? "团队" : undefined,
+      count: row.doneCount,
+      max: projectMax,
+    };
+  });
 
   const monthStart = `${today.slice(5, 7)}-01`;
   const rateValue =
@@ -242,8 +252,9 @@ function PersonalBody({
         />
         <div className="mt-3">
           <TrendChart
-            buckets={completionBuckets}
+            buckets={buckets}
             series={[{ tone: "primary", values: completionValues }]}
+            todayIndex={todayIndex}
           />
         </div>
       </section>
@@ -272,11 +283,12 @@ function PersonalBody({
           </div>
           <div className="mt-3">
             <TrendChart
-              buckets={createdBuckets}
+              buckets={buckets}
               series={[
                 { tone: "teal", values: createdValues },
                 { tone: "primary", values: completedValues },
               ]}
+              todayIndex={todayIndex}
             />
           </div>
         </section>
@@ -288,10 +300,11 @@ function PersonalBody({
           />
           <div className="mt-3">
             <TrendChart
-              buckets={futureDueBuckets}
+              buckets={dueBuckets}
               series={[{ tone: "primary", values: futureDueValues }]}
               formatValue={(value) => `${value} 项到期`}
               emptyLabel="无"
+              todayIndex={0}
             />
           </div>
           <InfoCallout className="mt-3">
@@ -326,21 +339,22 @@ function TeamBody({
   analysis,
   range,
   today,
-  basePath,
+  spaceRef,
 }: {
   analysis: TeamSpaceAnalysis;
   range: AnalysisRange;
   today: string;
-  basePath: string;
+  spaceRef: SpaceRef;
 }) {
-  const unit = bucketUnit(range);
+  const buckets = trendBuckets(today, range);
+  const unit = bucketGrain(buckets);
+  // 仅逐日桶的末桶代表「今天」；90 天周桶的末桶代表本周，不能标「今天」。
+  const todayIndex = unit === "日" ? buckets.length - 1 : undefined;
   const { stats } = analysis;
   const weekStart = getWeekStart(today);
-  const spaceRef = basePath.split("/")[2] ?? "personal";
   const kanbanHref = moduleHref(spaceRef, "kanban");
 
   const throughputValues = analysis.throughput.map((point) => point.count);
-  const throughputBuckets = toTrendBuckets(analysis.throughput);
   const throughputTotal = sum(throughputValues);
 
   const maxLoad = Math.max(
@@ -350,6 +364,7 @@ function TeamBody({
   const memberRows = analysis.members.map((member) => ({
     key: member.userId,
     name: member.username,
+    title: `${member.username} · 进行中 ${member.inProgress} 项`,
     sub:
       member.overdue > 0
         ? `已逾期 ${member.overdue} 项`
@@ -399,8 +414,9 @@ function TeamBody({
         />
         <div className="mt-3">
           <TrendChart
-            buckets={throughputBuckets}
+            buckets={buckets}
             series={[{ tone: "primary", values: throughputValues }]}
+            todayIndex={todayIndex}
           />
         </div>
       </section>
@@ -452,11 +468,11 @@ function TeamBody({
                           {project.projectName}
                         </div>
                         <div className="mt-0.5 text-[12px] text-[#5f6368]">
-                          {project.taskCount} 个任务 · {project.doneCount} 已完成
+                          {project.taskCount} 个任务 · {project.doneTotal} 已完成
                         </div>
                       </div>
                       <span
-                        className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold"
+                        className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold"
                         style={{
                           background: rule.background,
                           color: rule.color,
@@ -543,7 +559,7 @@ function TeamBody({
                   </div>
                 </div>
                 <span
-                  className="ml-auto inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[11.5px] font-semibold"
+                  className="ml-auto inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold"
                   style={{
                     background: "rgba(255, 176, 32, 0.12)",
                     color: "#a66b00",
@@ -582,6 +598,7 @@ export function SpaceAnalysis({
   range,
   today,
   basePath,
+  spaceRef,
   personal,
   team,
 }: SpaceAnalysisProps) {
@@ -595,7 +612,7 @@ export function SpaceAnalysis({
         analysis={team}
         range={range}
         today={today}
-        basePath={basePath}
+        spaceRef={spaceRef}
       />
     );
   }

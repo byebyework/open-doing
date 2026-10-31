@@ -36,6 +36,8 @@ export interface TrendChartProps {
   formatValue?: (value: number) => string;
   /** 单系列 0 值悬停文案，默认「无完成」。 */
   emptyLabel?: string;
+  /** 「今天」所在桶下标；悬停文案给该桶加「今天 」前缀（未来截止为首桶）。 */
+  todayIndex?: number;
 }
 
 /**
@@ -55,6 +57,7 @@ export function TrendChart({
   yMax,
   formatValue,
   emptyLabel = "无完成",
+  todayIndex,
 }: TrendChartProps) {
   const allValues = series.flatMap((item) => item.values);
   const maxValue = allValues.length > 0 ? Math.max(...allValues) : 0;
@@ -118,7 +121,9 @@ export function TrendChart({
               <div
                 key={`${bucket.start}-${bucket.label}-${bucketIndex}`}
                 title={columnTitle(
-                  bucket.label,
+                  bucketIndex === todayIndex
+                    ? `今天 ${bucket.label}`
+                    : bucket.label,
                   series,
                   bucketIndex,
                   formatValue,
@@ -235,6 +240,8 @@ export interface HBarRow {
   key: string;
   /** 主名（项目名 / 成员名）。 */
   name: string;
+  /** 原生悬停文案；缺省为「名称 · 计数」，调用方可传原型口径的完整句式。 */
+  title?: string;
   /** 次行说明（成员负载的逾期 / 临期注记）；提供时按双行布局渲染。 */
   sub?: string;
   /** 行内标签（如「团队」）。 */
@@ -258,7 +265,10 @@ export function HBarList({ rows }: { rows: HBarRow[] }) {
         return (
           <div
             key={row.key}
-            title={`${row.name}${row.tag ? ` · ${row.tag}` : ""} · ${row.count}`}
+            title={
+              row.title ??
+              `${row.name}${row.tag ? ` · ${row.tag}` : ""} · ${row.count}`
+            }
             className={`flex min-w-0 items-center gap-3 py-[13px] ${
               index > 0 ? "border-t border-[#e1e3e6]" : ""
             }`}
@@ -277,7 +287,7 @@ export function HBarList({ rows }: { rows: HBarRow[] }) {
                 {row.name}
                 {row.tag ? (
                   <span
-                    className="ml-1.5 inline-flex items-center rounded-full px-2 py-0.5 align-middle text-[11px] font-medium"
+                    className="ml-1.5 inline-flex items-center rounded-full px-2.5 py-0.5 align-middle text-[12px] font-medium"
                     style={{
                       background: "rgba(155, 135, 245, 0.14)",
                       color: "#6d4fd4",

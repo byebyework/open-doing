@@ -505,10 +505,20 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
 
     expect(data.projectComparison).toEqual([
-      { projectId: alpha.id, projectName: "Alpha", doneCount: 2 },
+      {
+        projectId: alpha.id,
+        projectName: "Alpha",
+        spaceType: "personal",
+        doneCount: 2,
+      },
       // doneCount 相同（1）时按 projectName 升序：空串在 "Beta" 之前。
-      { projectId: null, projectName: "", doneCount: 1 },
-      { projectId: beta.id, projectName: "Beta", doneCount: 1 },
+      { projectId: null, projectName: "", spaceType: "personal", doneCount: 1 },
+      {
+        projectId: beta.id,
+        projectName: "Beta",
+        spaceType: "personal",
+        doneCount: 1,
+      },
     ]);
   });
 
@@ -550,7 +560,71 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
 
     expect(data.completionTrend.reduce((sum, point) => sum + point.count, 0)).toBe(1);
     expect(data.projectComparison).toEqual([
-      { projectId: teamProject.id, projectName: "团队项目", doneCount: 1 },
+      {
+        projectId: teamProject.id,
+        projectName: "团队项目",
+        spaceType: "team",
+        doneCount: 1,
+      },
+    ]);
+  });
+
+  it("⑪ projectComparison 的 spaceType：个人项目与团队项目在同一对比中分别标记", async () => {
+    const member = await createUser(db, "member");
+    const team = await createTeam(db, {
+      ownerId: member.id,
+      name: "团队",
+      slug: "space-team",
+    });
+    const personalProject = await createPersonalProject(db, {
+      ownerId: member.id,
+      name: "Alpha Personal",
+      slug: "alpha-personal",
+    });
+    const teamProject = await createTeamProject(db, {
+      teamId: team.id,
+      name: "Beta Team",
+      slug: "beta-team",
+    });
+
+    // 两个项目各 1 条 done；用 ASCII 项目名消除中文 collation 的排序差异。
+    await createTask(db, {
+      title: "个人完成",
+      createdById: member.id,
+      assigneeId: member.id,
+      spaceType: "personal",
+      projectId: personalProject.id,
+      status: "done",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-05"),
+    });
+    await createTask(db, {
+      title: "团队完成",
+      createdById: member.id,
+      assigneeId: member.id,
+      spaceType: "team",
+      projectId: teamProject.id,
+      status: "done",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-06"),
+    });
+
+    const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
+
+    // 手算：doneCount 均为 1，按项目名 "Alpha Personal" < "Beta Team" 排序。
+    expect(data.projectComparison).toEqual([
+      {
+        projectId: personalProject.id,
+        projectName: "Alpha Personal",
+        spaceType: "personal",
+        doneCount: 1,
+      },
+      {
+        projectId: teamProject.id,
+        projectName: "Beta Team",
+        spaceType: "team",
+        doneCount: 1,
+      },
     ]);
   });
 
@@ -802,6 +876,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         hasOverdue: true,
         hasDueSoon: false,
         taskCount: 3,
+        doneTotal: 1,
         doneCount: 1,
         weeklyDone: [0, 0, 0, 0, 0, 1],
       },
@@ -812,6 +887,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         hasOverdue: false,
         hasDueSoon: true,
         taskCount: 1,
+        doneTotal: 0,
         doneCount: 0,
         weeklyDone: [0, 0, 0, 0, 0, 0],
       },
@@ -822,6 +898,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         hasOverdue: false,
         hasDueSoon: false,
         taskCount: 0,
+        doneTotal: 0,
         doneCount: 0,
         weeklyDone: [0, 0, 0, 0, 0, 0],
       },
@@ -997,7 +1074,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
     ).toBe(4);
   });
 
-  it("⑤ weeklyDone：末桶为本周、上周落前桶；六周窗口外不计入 doneCount", async () => {
+  it("⑤ weeklyDone：末桶为本周、上周落前桶；窗口外不计入 doneCount 但计入 doneTotal", async () => {
     const owner = await createUser(db, "林夏");
     const team = await createTeam(db, {
       ownerId: owner.id,
@@ -1034,7 +1111,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
     await seedDone("本周四完成", alpha.id, shanghai("2026-10-29", "10:00:00"));
     await seedDone("上周完成", alpha.id, shanghai("2026-10-20", "10:00:00"));
     await seedDone("更早一周完成", alpha.id, shanghai("2026-10-07", "10:00:00"));
-    // 六周窗口起点（09-21）前一天：不计入 doneCount / weeklyDone。
+    // 六周窗口起点（09-21）前一天：不计入 doneCount / weeklyDone，但计入 doneTotal。
     await seedDone("窗口外完成", alpha.id, shanghai("2026-09-20", "10:00:00"));
 
     const data = await getTeamSpaceAnalysis(
@@ -1050,6 +1127,8 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         hasOverdue: false,
         hasDueSoon: false,
         taskCount: 5,
+        // 手算：5 条 done（4 条窗口内 + 1 条 09-20 窗口外）。
+        doneTotal: 5,
         doneCount: 4,
         weeklyDone: [0, 0, 1, 0, 1, 2],
       },
@@ -1060,6 +1139,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         hasOverdue: false,
         hasDueSoon: false,
         taskCount: 0,
+        doneTotal: 0,
         doneCount: 0,
         weeklyDone: [0, 0, 0, 0, 0, 0],
       },
@@ -1296,6 +1376,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         hasOverdue: false,
         hasDueSoon: false,
         taskCount: 1,
+        doneTotal: 1,
         doneCount: 1,
         weeklyDone: [0, 0, 0, 0, 0, 1],
       },

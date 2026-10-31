@@ -34,6 +34,7 @@ export default async function PersonalAnalysisPage(
       range={range}
       today={today}
       basePath={moduleHref("personal", "analysis")}
+      spaceRef="personal"
       personal={personal}
       team={null}
     />
