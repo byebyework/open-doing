@@ -628,6 +628,39 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     ]);
   });
 
+  it("⑫ projectComparison 的无项目行按 spaceType 区分，不会合并成一行", async () => {
+    const member = await createUser(db, "member");
+
+    const seedDone = (
+      title: string,
+      spaceType: SpaceType,
+      updatedAt: Date,
+    ) =>
+      createTask(db, {
+        title,
+        createdById: member.id,
+        assigneeId: member.id,
+        spaceType,
+        projectId: null,
+        status: "done",
+        createdAt: shanghai("2026-10-01"),
+        updatedAt,
+      });
+
+    // 个人 2 条、团队 1 条，且都没有项目：分组键为 projectId + name + spaceType，
+    // 因此必须是两行（不是一行「无项目」）；doneCount 差保证排序稳定。
+    await seedDone("个人无项目一", "personal", shanghai("2026-10-05"));
+    await seedDone("个人无项目二", "personal", shanghai("2026-10-06"));
+    await seedDone("团队无项目", "team", shanghai("2026-10-07"));
+
+    const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
+
+    expect(data.projectComparison).toEqual([
+      { projectId: null, projectName: "", spaceType: "personal", doneCount: 2 },
+      { projectId: null, projectName: "", spaceType: "team", doneCount: 1 },
+    ]);
+  });
+
   it("⑨ 范围谓词覆盖 stats / createdVsCompleted / futureDue：他人任务不进任何聚合", async () => {
     const member = await createUser(db, "member");
     const other = await createUser(db, "other");
@@ -1382,5 +1415,82 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       },
     ]);
     expect(data.zombieTasks).toEqual([]);
+  });
+
+  it("⑨ unassignedCount：只计未指派且未完成的团队任务，done / 已指派 / 个人空间不计", async () => {
+    const owner = await createUser(db, "林夏");
+    const team = await createTeam(db, {
+      ownerId: owner.id,
+      name: "分析小队",
+      slug: "analysis-squad",
+    });
+    const project = await createTeamProject(db, {
+      teamId: team.id,
+      name: "主项目",
+      slug: "main",
+    });
+
+    // 未指派 + todo / in_progress：计入（2 条）。
+    await createTask(db, {
+      title: "未指派待办",
+      createdById: owner.id,
+      assigneeId: null,
+      spaceType: "team",
+      projectId: project.id,
+      status: "todo",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-28"),
+    });
+    await createTask(db, {
+      title: "未指派进行中",
+      createdById: owner.id,
+      assigneeId: null,
+      spaceType: "team",
+      projectId: project.id,
+      status: "in_progress",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-29"),
+    });
+    // 未指派但 done：不再需要指派，不计入。
+    await createTask(db, {
+      title: "未指派完成",
+      createdById: owner.id,
+      assigneeId: null,
+      spaceType: "team",
+      projectId: project.id,
+      status: "done",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-27"),
+    });
+    // 已指派进行中：不计入。
+    await createTask(db, {
+      title: "已指派进行中",
+      createdById: owner.id,
+      assigneeId: owner.id,
+      spaceType: "team",
+      projectId: project.id,
+      status: "in_progress",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-29"),
+    });
+    // 个人空间未指派：不属于团队概览。
+    await createTask(db, {
+      title: "个人未指派",
+      createdById: owner.id,
+      assigneeId: null,
+      spaceType: "personal",
+      projectId: null,
+      status: "todo",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-29"),
+    });
+
+    const data = await getTeamSpaceAnalysis(
+      { teamId: team.id, teamSlug: team.slug, range: 30, today: TODAY },
+      db,
+    );
+
+    // 手算：只有「未指派待办」与「未指派进行中」两条。
+    expect(data.unassignedCount).toBe(2);
   });
 });

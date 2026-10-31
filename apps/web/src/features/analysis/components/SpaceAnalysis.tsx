@@ -200,7 +200,7 @@ function PersonalBody({
   const projectRows = analysis.projectComparison.map((row) => {
     const name = row.projectName || "无项目";
     return {
-      key: row.projectId ?? `no-project-${row.projectName}`,
+      key: row.projectId ?? `no-project-${row.spaceType}`,
       name,
       title: `${name} · 近 ${range} 天完成 ${row.doneCount} 项`,
       tag: row.spaceType === "team" ? "团队" : undefined,
@@ -436,7 +436,16 @@ function TeamBody({
               <HBarList rows={memberRows} />
             )}
           </div>
-          {/* 「未指派任务 N 项」callout 已按定稿偏差省略：getTeamOverview 不提供该计数。 */}
+          <InfoCallout className="mt-3">
+            未指派任务 {analysis.unassignedCount} 项 · 前往{" "}
+            <Link
+              href={kanbanHref}
+              className="font-medium underline underline-offset-2"
+            >
+              Kanban
+            </Link>{" "}
+            指派。
+          </InfoCallout>
         </section>
 
         <section className={CARD_CLASS}>

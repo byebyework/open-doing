@@ -118,6 +118,8 @@ export interface TeamSpaceAnalysis {
   stats: TeamAnalysisStats;
   throughput: AnalysisTrendPoint[];
   members: TeamMemberLoadRow[];
+  /** 未指派且未完成的团队任务数（`getTeamOverview.unassigned` 同口径）。 */
+  unassignedCount: number;
   projectHealth: ProjectHealthRow[];
   zombieTasks: ZombieTaskItem[];
 }
@@ -266,6 +268,8 @@ export async function getPersonalSpaceAnalysis(
  *   `updated_at` 的上海日历日（M3 代理口径）；分桶与个人完成趋势同法。
  * - `projectHealth.weeklyDone` / `doneCount` 固定近 6 个自然周，末桶为本
  *   周；`doneTotal` 为项目全部已完成数（不限窗口）；不足 6 项补 0。
+ * - `unassignedCount` 直接取 `getTeamOverview.unassigned.length`（未指派且
+ *   未完成），不新增查询。
  * - `zombieTasks`：`in_progress` 且 `updated_at` 早于 **today-14 上海零点**
  *   （恰为 today-14 当天任意时刻不算僵尸），按最后更新升序取前 10；
  *   `stalledDays` 按上海日计算，僵尸因此恒 ≥ 15。
@@ -370,6 +374,7 @@ export async function getTeamSpaceAnalysis(
         overdue,
       }),
     ),
+    unassignedCount: overview.unassigned.length,
     projectHealth: overview.projects.map((project) => {
       const aggregate = projectAggregates.get(project.projectId);
 
@@ -439,22 +444,13 @@ function aggregateProjectDone(
   return aggregates;
 }
 
-/** 吞吐趋势：done 且完成日 ∈ range 窗口，每个桶一个点（含 0）。 */
+/** 吞吐趋势：与个人完成趋势同口径，复用同一分桶实现。 */
 function toThroughput(
   today: string,
   range: AnalysisRange,
   rows: { completedDay: string }[],
 ): AnalysisTrendPoint[] {
-  const buckets = trendBuckets(today, range);
-  const counts = countIntoBuckets(
-    buckets,
-    rows.map((row) => row.completedDay),
-  );
-
-  return buckets.map((bucket, index) => ({
-    label: bucket.label,
-    count: counts[index]!,
-  }));
+  return toCompletionTrend(today, range, rows);
 }
 
 /**
