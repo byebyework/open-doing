@@ -1,0 +1,431 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>增长突击队 Analysis · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* ===== M5 Analysis 自绘图表 ===== */
+    .legend { display: inline-flex; gap: 14px; font-size: 12.5px; color: var(--color-text-muted); }
+    .legend i { width: 10px; height: 10px; border-radius: 3px; display: inline-block; margin-right: 5px; vertical-align: -1px; }
+    .legend .s-done { background: var(--color-primary); }
+
+    .vz { display: flex; gap: 6px; padding: 10px var(--space-4) var(--space-4); }
+    .vz-yl { position: relative; width: 26px; flex: none; }
+    .vz-yl span {
+      position: absolute; right: 0; transform: translateY(50%);
+      font-size: 11px; color: var(--color-text-muted); font-variant-numeric: tabular-nums;
+    }
+    .vz-plot { position: relative; flex: 1; }
+    .vz-grid { position: absolute; inset: 0; }
+    .vz-grid i { position: absolute; left: 0; right: 0; height: 1px; background: var(--color-border); }
+    .vz-grid i.base { bottom: 0; background: var(--color-border-strong); }
+    .vz-cols {
+      position: absolute; inset: 0; display: flex; align-items: flex-end;
+      gap: 3px; padding-top: 24px;
+    }
+    .vz-c { flex: 1; display: flex; align-items: flex-end; justify-content: center; gap: 2px; height: 100%; }
+    .vz-c i {
+      width: 9px; border-radius: 4px 4px 0 0; background: var(--color-primary);
+      position: relative; min-height: 0;
+    }
+    .vz-c i:hover { filter: brightness(1.08); }
+    .vz-c i em {
+      position: absolute; top: -19px; left: 50%; transform: translateX(-50%);
+      font-style: normal; font-size: 11px; font-weight: 600; color: var(--color-text-secondary);
+    }
+    .vz-x { display: flex; gap: 3px; margin-top: 6px; flex: 1; }
+    .vz-x span {
+      flex: 1; min-width: 0; white-space: nowrap; text-align: center;
+      font-size: 11px; color: var(--color-text-muted); font-variant-numeric: tabular-nums;
+    }
+    .vz-x-pad { width: 32px; flex: none; }
+
+    .hbar-row { display: flex; align-items: center; gap: var(--space-3); padding: 13px 0; }
+    .hbar-row + .hbar-row { border-top: 1px solid var(--color-border); }
+    .hbar-who { width: 96px; flex: none; line-height: 1.3; }
+    .hbar-who .name { font-size: 13.5px; font-weight: 600; }
+    .hbar-who .sub { font-size: 12px; color: var(--color-text-muted); }
+    .hbar-track { flex: 1; display: flex; align-items: center; gap: 8px; }
+    .hbar-fill { height: 14px; background: var(--color-primary); border-radius: 0 4px 4px 0; min-width: 2px; }
+    .hbar-fill:hover { filter: brightness(1.08); }
+    .hbar-val { font-size: 12.5px; font-weight: 600; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; flex: none; }
+
+    /* 项目健康度:进度条 + 近 6 周完成节奏迷你柱 */
+    .week-note { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+    .week-note .cap { font-size: 12px; color: var(--color-text-muted); }
+    .week-bars { display: inline-flex; align-items: flex-end; gap: 3px; height: 14px; }
+    .week-bars i { width: 6px; background: var(--color-primary); border-radius: 2px 2px 0 0; opacity: .85; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏 ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <div class="popover-wrap switcher-wrap">
+        <button class="team-switcher" type="button" data-popover-trigger="space-menu">
+          <span class="dot"></span>
+          <span class="name">增长突击队</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="popover switcher-menu" id="space-menu">
+          <div class="menu-label">个人</div>
+          <a class="menu-item" href="space-dashboard-personal.html">
+            <span class="m-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="m-name">个人空间</span>
+          </a>
+          <div class="menu-label">我的团队</div>
+          <a class="menu-item active" href="space-dashboard-team.html">
+            <span class="m-dot" style="background:var(--accent-lavender);"></span>
+            <span class="m-name">增长突击队</span>
+            <span class="check">✓</span>
+          </a>
+          <div class="menu-divider"></div>
+          <button class="menu-item ghost" type="button">＋ 创建团队</button>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-group-label">增长突击队</div>
+        <a class="nav-item" href="space-dashboard-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item" href="space-kanban-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="8" rx="1"/></svg>
+          Kanban
+        </a>
+        <a class="nav-item" href="space-calendar-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a class="nav-item active" href="space-analysis-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          Analysis
+        </a>
+        <a class="nav-item" href="team-settings.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.15.35.23.72.23 1.09"/></svg>
+          设置
+        </a>
+
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          待处理邀请
+          <span class="count-badge">2</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">增长突击队 <span class="sep">/</span> <strong>Analysis</strong></div>
+        <div class="topbar-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          搜索任务… <kbd>⌘K</kbd>
+        </div>
+        <div class="popover-wrap">
+          <button class="icon-btn" data-popover-trigger="notif-pop" aria-label="通知">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="notif-dot">5</span>
+          </button>
+          <div class="popover" id="notif-pop">
+            <div class="popover-head">通知 <button class="btn btn-text btn-sm">全部已读</button></div>
+            <div style="max-height:340px;overflow:auto;">
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--accent-lavender-bg);color:#6d4fd4;">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                </span>
+                <div class="notif-body"><b>何川</b> 邀请你加入团队「效率工程部」<div class="notif-time">2 分钟前</div></div>
+              </div>
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--color-error-bg);color:var(--color-error);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">今天 09:00</div></div>
+              </div>
+              <div class="notif-item">
+                <span class="notif-icon" style="background:var(--accent-mint-bg);color:var(--accent-mint);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <div class="notif-body"><b>苏晓</b> 评论了「完成首页新版视觉稿」<div class="notif-time">昨天 17:42</div></div>
+              </div>
+            </div>
+            <div class="popover-foot"><a href="#" class="text-sm">查看全部通知</a></div>
+          </div>
+        </div>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">Analysis</h1>
+            <div class="sub">吞吐、成员负载与项目健康度——看清团队的推进节奏；今天的风险看 Dashboard。</div>
+          </div>
+          <div class="page-actions">
+            <div class="seg" role="group" aria-label="时间范围">
+              <button type="button">近 7 天</button>
+              <button type="button" class="active">近 30 天</button>
+              <button type="button">近 90 天</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- 统计行：恒为当前快照，不随时间范围变化 -->
+        <div class="stats-grid stagger">
+          <div class="card stat">
+            <div class="label">在册项目</div>
+            <div class="value">3</div>
+            <div class="delta">移动端 2.0 · 官网改版 · Q4 用户增长活动</div>
+          </div>
+          <div class="card stat">
+            <div class="label">团队整体进度</div>
+            <div class="value" style="color:var(--color-primary);">48%</div>
+            <div class="delta">较上周 +4 个百分点 · 按任务等权平均</div>
+          </div>
+          <div class="card stat">
+            <div class="label">当前逾期</div>
+            <div class="value" style="color:var(--color-error);">2</div>
+            <div class="delta">最久逾期 5 天（安卓端崩溃率治理）</div>
+          </div>
+          <div class="card stat">
+            <div class="label">本周完成</div>
+            <div class="value" style="color:var(--color-success);">9</div>
+            <div class="delta">自本周一（10-26）以来</div>
+          </div>
+        </div>
+
+        <!-- ⑥ 吞吐：近 30 天按日，单系列 -->
+        <section class="card anim-in" style="margin-top:var(--space-5);">
+          <div class="card-header">
+            <h2 class="h3">吞吐</h2>
+            <span class="text-caption" style="margin-left:auto;">近 30 天 · 按日 · 共完成 53 项</span>
+          </div>
+          <div class="vz">
+            <div class="vz-yl" style="height:190px;">
+              <span style="bottom:151px;">4</span>
+              <span style="bottom:79px;">2</span>
+              <span style="bottom:-5px;">0</span>
+            </div>
+            <div class="vz-plot" style="height:190px;">
+              <div class="vz-grid">
+                <i style="bottom:72px;"></i>
+                <i style="bottom:144px;"></i>
+                <i class="base"></i>
+              </div>
+              <div class="vz-cols">
+                <div class="vz-c" title="10-01 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-02 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-03 · 完成 3"><i style="height:108px;"></i></div>
+                <div class="vz-c" title="10-04 · 无完成"></div>
+                <div class="vz-c" title="10-05 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-06 · 完成 4"><i style="height:144px;"></i></div>
+                <div class="vz-c" title="10-07 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-08 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-09 · 无完成"></div>
+                <div class="vz-c" title="10-10 · 完成 3"><i style="height:108px;"></i></div>
+                <div class="vz-c" title="10-11 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-12 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-13 · 完成 4"><i style="height:144px;"><em>4</em></i></div>
+                <div class="vz-c" title="10-14 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-15 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-16 · 无完成"></div>
+                <div class="vz-c" title="10-17 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-18 · 完成 3"><i style="height:108px;"></i></div>
+                <div class="vz-c" title="10-19 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-20 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-21 · 完成 3"><i style="height:108px;"></i></div>
+                <div class="vz-c" title="10-22 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-23 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-24 · 无完成"></div>
+                <div class="vz-c" title="10-25 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="10-26 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-27 · 完成 2"><i style="height:72px;"></i></div>
+                <div class="vz-c" title="10-28 · 完成 3"><i style="height:108px;"></i></div>
+                <div class="vz-c" title="10-29 · 完成 1"><i style="height:36px;"></i></div>
+                <div class="vz-c" title="今天 10-30 · 完成 2"><i style="height:72px;"><em>2</em></i></div>
+              </div>
+            </div>
+          </div>
+          <div class="vz-x" style="padding:0 var(--space-4) var(--space-3);margin-top:0;">
+            <span class="vz-x-pad"></span>
+            <span>10-01</span><span></span><span></span><span></span><span></span>
+            <span>10-06</span><span></span><span></span><span></span><span></span>
+            <span>10-11</span><span></span><span></span><span></span><span></span>
+            <span>10-16</span><span></span><span></span><span></span><span></span>
+            <span>10-21</span><span></span><span></span><span></span><span></span>
+            <span>10-26</span><span></span><span></span><span style="text-align:right;">10-30</span>
+          </div>
+        </section>
+
+        <!-- ⑦ 成员负载分布 ｜ ⑧ 项目健康度 -->
+        <div class="grid-2 even" style="margin-top:var(--space-4);">
+          <section class="card anim-in">
+            <div class="card-header">
+              <h2 class="h3">成员负载分布</h2>
+              <span class="text-caption" style="margin-left:auto;">当前进行中任务数 · 可回看任意历史日</span>
+            </div>
+            <div style="padding:0 var(--space-4) var(--space-3);">
+              <div class="hbar-row" title="林夏 · 进行中 5 项">
+                <span class="avatar av-lavender">林</span>
+                <div class="hbar-who"><div class="name">林夏（我）</div><div class="sub">临期 2 项</div></div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:100%;"></div><b class="hbar-val">5</b></div>
+              </div>
+              <div class="hbar-row" title="高远 · 进行中 4 项">
+                <span class="avatar av-tangerine">高</span>
+                <div class="hbar-who"><div class="name">高远</div><div class="sub">已逾期 1 项</div></div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:80%;"></div><b class="hbar-val">4</b></div>
+              </div>
+              <div class="hbar-row" title="陈默 · 进行中 3 项">
+                <span class="avatar av-sky">陈</span>
+                <div class="hbar-who"><div class="name">陈默</div><div class="sub">临期 1 项</div></div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:60%;"></div><b class="hbar-val">3</b></div>
+              </div>
+              <div class="hbar-row" title="苏晓 · 进行中 2 项">
+                <span class="avatar av-mint">苏</span>
+                <div class="hbar-who"><div class="name">苏晓</div><div class="sub">无逾期</div></div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:40%;"></div><b class="hbar-val">2</b></div>
+              </div>
+              <div class="hbar-row" title="周牧 · 进行中 1 项">
+                <span class="avatar av-coral">牧</span>
+                <div class="hbar-who"><div class="name">周牧</div><div class="sub">无逾期</div></div>
+                <div class="hbar-track"><div class="hbar-fill" style="width:20%;"></div><b class="hbar-val">1</b></div>
+              </div>
+            </div>
+            <div class="callout info" style="margin:0 var(--space-4) var(--space-4);">
+              <span style="flex:none;">ℹ</span>
+              <span>未指派任务 1 项 · 前往 <a href="space-kanban-team.html">Kanban</a> 指派。</span>
+            </div>
+          </section>
+
+          <section class="card anim-in">
+            <div class="card-header">
+              <h2 class="h3">项目健康度</h2>
+              <span class="text-caption" style="margin-left:auto;">进度按任务完成度自动聚合</span>
+            </div>
+            <div style="padding:0 var(--space-4) var(--space-2);">
+              <div class="project-progress-row">
+                <div class="ppr-head">
+                  <div style="flex:1;min-width:0;">
+                    <div class="name">移动端 2.0</div>
+                    <div class="text-caption" style="margin-top:2px;">25 个任务 · 12 已完成</div>
+                  </div>
+                  <span class="tag tag-overdue">已逾期</span>
+                  <span class="pct" style="color:var(--color-error);">48%</span>
+                </div>
+                <div class="progress is-error"><span style="width:48%;"></span></div>
+                <div class="week-note">
+                  <span class="cap">近 6 周完成</span>
+                  <span class="week-bars" title="近 6 周每周完成 2 / 3 / 1 / 2 / 2 / 1 项">
+                    <i style="height:8px;"></i><i style="height:12px;"></i><i style="height:4px;"></i><i style="height:8px;"></i><i style="height:8px;"></i><i style="height:4px;"></i>
+                  </span>
+                </div>
+              </div>
+
+              <div class="project-progress-row">
+                <div class="ppr-head">
+                  <div style="flex:1;min-width:0;">
+                    <div class="name">官网改版</div>
+                    <div class="text-caption" style="margin-top:2px;">18 个任务 · 11 已完成</div>
+                  </div>
+                  <span class="tag tag-due-soon">临期</span>
+                  <span class="pct" style="color:#a66b00;">62%</span>
+                </div>
+                <div class="progress is-warning"><span style="width:62%;"></span></div>
+                <div class="week-note">
+                  <span class="cap">近 6 周完成</span>
+                  <span class="week-bars" title="近 6 周每周完成 1 / 2 / 2 / 3 / 1 / 2 项">
+                    <i style="height:4px;"></i><i style="height:8px;"></i><i style="height:8px;"></i><i style="height:12px;"></i><i style="height:4px;"></i><i style="height:8px;"></i>
+                  </span>
+                </div>
+              </div>
+
+              <div class="project-progress-row">
+                <div class="ppr-head">
+                  <div style="flex:1;min-width:0;">
+                    <div class="name">Q4 用户增长活动</div>
+                    <div class="text-caption" style="margin-top:2px;">20 个任务 · 7 已完成</div>
+                  </div>
+                  <span class="tag tag-done">正常</span>
+                  <span class="pct" style="color:var(--color-success);">35%</span>
+                </div>
+                <div class="progress is-success"><span style="width:35%;"></span></div>
+                <div class="week-note">
+                  <span class="cap">近 6 周完成</span>
+                  <span class="week-bars" title="近 6 周每周完成 0 / 1 / 1 / 2 / 2 / 3 项">
+                    <i style="height:4px;"></i><i style="height:4px;"></i><i style="height:8px;"></i><i style="height:8px;"></i><i style="height:12px;"></i>
+                  </span>
+                </div>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <!-- ⑨ 僵尸任务：进行中且超过 14 天未更新 -->
+        <section class="card anim-in" style="margin-top:var(--space-4);">
+          <div class="card-header">
+            <h2 class="h3">僵尸任务</h2>
+            <span class="text-caption" style="margin-left:auto;">进行中且超过 14 天未更新 · 按停留时长降序</span>
+          </div>
+
+          <div class="risk-item">
+            <span class="risk-icon due">🕸</span>
+            <div class="risk-body">
+              <div class="t">安卓端性能预研</div>
+              <div class="m">移动端 2.0 · 高远 · 最后更新 10-07，已停留 23 天</div>
+            </div>
+            <span class="tag tag-overdue no-dot" style="margin-left:auto;">停留 23 天</span>
+          </div>
+
+          <div class="risk-item">
+            <span class="risk-icon due">🕸</span>
+            <div class="risk-body">
+              <div class="t">竞品定价策略梳理</div>
+              <div class="m">Q4 用户增长活动 · 陈默 · 最后更新 10-12，已停留 18 天</div>
+            </div>
+            <span class="tag tag-due-soon no-dot" style="margin-left:auto;">停留 18 天</span>
+          </div>
+
+          <div class="risk-item">
+            <span class="risk-icon due" style="background:var(--color-surface-inset);color:var(--color-text-muted);">🕸</span>
+            <div class="risk-body">
+              <div class="t">旧版官网归档方案</div>
+              <div class="m">官网改版 · 苏晓 · 最后更新 10-14，已停留 16 天</div>
+            </div>
+            <span class="tag tag-neutral no-dot" style="margin-left:auto;">停留 16 天</span>
+          </div>
+
+          <div style="border-top:1px solid var(--color-border);padding:10px var(--space-4);">
+            <a href="space-kanban-team.html" class="text-sm">处理或关闭这些任务 · 前往 Kanban →</a>
+          </div>
+        </section>
+
+        <div class="callout info" style="margin-top:var(--space-4);">
+          <span style="flex:none;">ℹ</span>
+          <span>口径说明：完成日按任务最近一次状态更新时间近似（与 Calendar、通知同口径）；成员负载按「创建 ≤ 查询日 &lt; 完成日」重建，可回看任意历史日；僵尸任务 = 进行中且超过 14 天未更新。时间范围只影响趋势区块，顶部统计卡恒为当前快照。切换「近 90 天」时柱状图改为按周聚合。</span>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+</body>
+</html>
