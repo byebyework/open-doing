@@ -1,14 +1,23 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
+import {
+  createPersonalProject,
+  createPersonalTask,
+  openPersonalProject,
+  registerUser,
+  shanghaiToday,
+  uniqueLabel,
+  uniqueUsername,
+} from "../utils/flows";
 
 /**
  * 关键流 8：空间级 Analysis（v1.1 M5，`/space/{spaceRef}/analysis`）。
  *
  * 覆盖（对照实现计划的 Task 5）：
- * 1. 个人分析页统计行动态 label + 四个区块标题，默认「近 30 天」高亮；
+ * 1. 个人分析页统计行四个 label + 四个区块标题，默认「近 30 天」高亮；
  * 2. 切「近 7 天」写回 URL，趋势区块按新范围渲染，统计行文案不变
- *    （统计卡恒为当前快照，range 只作用于趋势区块）；
+ *    （统计卡恒为当前快照，range 只作用于趋势区块）；用一张 10 天前到期
+ *    的未完成任务让「当前逾期」= 1，证明统计行没有随 range 重过滤；
  * 3. 非法 `?range=abc` 宽容回退「近 30 天」（沿 M4 month 同款语义）；
  * 4. 团队成员访问团队分析页，吞吐 / 成员负载分布 / 项目健康度 / 僵尸任务可见；
  * 5. 非成员访问团队分析页 404（不泄露团队存在性）。
@@ -59,10 +68,10 @@ test.describe("flow 8: 空间级 Analysis", () => {
     for (const label of PERSONAL_STAT_LABELS) {
       await expect(statCard(page, label)).toBeVisible();
     }
-    await expect(statValue(page, "进行中")).toHaveText("0");
-    await expect(statValue(page, "本月完成")).toHaveText("0");
-    await expect(statValue(page, "当前逾期")).toHaveText("0");
-    await expect(statValue(page, "按时率")).toHaveText("—");
+    await expectStatValue(page, "进行中", "0");
+    await expectStatValue(page, "本月完成", "0");
+    await expectStatValue(page, "当前逾期", "0");
+    await expectStatValue(page, "按时率", "—");
     // 按时率口径恒为近 30 天（与 range 无关）。
     await expect(statCard(page, "按时率")).toContainText(
       "近 30 天 · 暂无有截止日期的已完成",
@@ -91,9 +100,22 @@ test.describe("flow 8: 空间级 Analysis", () => {
   });
 
   test("切换近 7 天写回 URL 且统计行文案不变", async ({ page }) => {
-    await registerUser(page, uniqueUsername("e2e_an2"));
+    const username = uniqueUsername("e2e_an2");
+    const projectName = uniqueLabel("E2E an overdue project");
+    const taskTitle = uniqueLabel("E2E an overdue task");
+
+    await registerUser(page, username);
+    // 10 天前到期且未完成：落在近 30 天窗口内、近 7 天窗口外。
+    // 若统计行被错误地按 range 过滤，「当前逾期」会从 1 变 0，本用例即失败。
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, {
+      title: taskTitle,
+      dueDate: shiftDate(shanghaiToday(), -10),
+    });
 
     await page.goto("/space/personal/analysis");
+    await expectStatValue(page, "当前逾期", "1");
 
     // 切换前抓取统计行整段文案（快照口径下不随 range 变化）。
     const statsRow = statCard(page, "进行中").locator("..");
@@ -115,7 +137,9 @@ test.describe("flow 8: 空间级 Analysis", () => {
     expect(
       await statCard(page, "进行中").locator("..").textContent(),
     ).toBe(statsBefore);
-    await expect(statValue(page, "按时率")).toHaveText("—");
+    // 「当前逾期」仍是 1（10 天前到期的任务没有被 7 天窗口过滤掉）。
+    await expectStatValue(page, "当前逾期", "1");
+    await expectStatValue(page, "按时率", "—");
   });
 
   test("非法 range 宽容回退近 30 天", async ({ page }) => {
@@ -191,14 +215,34 @@ test.describe("flow 8: 空间级 Analysis", () => {
   });
 });
 
-/** 统计卡根节点：label 文本所在 div 的父级。 */
+/** 统计卡根节点：以卡内唯一的 label 文本锚定卡片容器。 */
 function statCard(page: Page, label: string) {
   return page.getByText(label, { exact: true }).locator("..");
 }
 
-/** 统计卡数值：根节点下第二个 div（标签、数值、说明三行）。 */
-function statValue(page: Page, label: string) {
-  return statCard(page, label).locator("div").nth(1);
+/**
+ * 断言统计卡数值：在卡片范围内按精确文本定位，不依赖子节点顺序。
+ *
+ * label 与 hint 都是固定长文案，卡内唯一能精确等于数值的节点就是数值格。
+ */
+async function expectStatValue(
+  page: Page,
+  label: string,
+  value: string,
+): Promise<void> {
+  await expect(
+    statCard(page, label).getByText(value, { exact: true }),
+  ).toBeVisible();
+}
+
+/** `YYYY-MM-DD` 加减天数（UTC 毫秒算术，与 `lib/today` 同口径）。 */
+function shiftDate(date: string, days: number): string {
+  const [year, month, day] = date.split("-").map(Number);
+  const shifted = new Date(
+    Date.UTC(year!, month! - 1, day!) + days * 86_400_000,
+  );
+
+  return shifted.toISOString().slice(0, 10);
 }
 
 /**
