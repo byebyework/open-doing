@@ -1,13 +1,18 @@
 import { addDays } from "@open-doing/types";
 import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
 
+import { getTeamOverview } from "@/features/dashboard/team-overview/service";
+import { teamScope } from "@/features/kanban/service";
+import { daysBetween, getWeekStart } from "@/lib/today";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks } from "@/server/db/schema";
+import { projects, tasks, users } from "@/server/db/schema";
 
 import {
   bucketIndexForDay,
   futureDueBuckets,
   rangeWindow,
+  recentWeekBuckets,
+  shanghaiDay,
   trendBuckets,
   type AnalysisRange,
   type TrendBucket,
@@ -59,6 +64,58 @@ export interface PersonalSpaceAnalysis {
   createdVsCompleted: CreatedCompletedPoint[];
   futureDue: AnalysisTrendPoint[];
   projectComparison: ProjectComparisonRow[];
+}
+
+/** 僵尸任务行：长时间停留在 `in_progress` 的团队任务。 */
+export interface ZombieTaskItem {
+  id: string;
+  title: string;
+  projectName: string;
+  /** 责任人用户名；未指派时为 null。 */
+  assigneeName: string | null;
+  /** 距最后更新（上海日）的天数，僵尸至少 15 天。 */
+  stalledDays: number;
+}
+
+/** 团队空间统计卡（当前快照，不随 `range` 变化）。 */
+export interface TeamAnalysisStats {
+  projectCount: number;
+  /** `Math.round(avgProgress * 100)`，即团队整体进度百分比。 */
+  avgProgressPercent: number;
+  overdue: number;
+  doneThisWeek: number;
+}
+
+/** 项目健康度行：快照 + 近 6 周完成分桶。 */
+export interface ProjectHealthRow {
+  projectId: string;
+  projectName: string;
+  progressPercent: number;
+  hasOverdue: boolean;
+  hasDueSoon: boolean;
+  taskCount: number;
+  /** 近 6 周内完成的团队任务数（与 `weeklyDone` 同窗口）。 */
+  doneCount: number;
+  /** 恒长 6，对应 `recentWeekBuckets(today, 6)`，末桶为本自然周。 */
+  weeklyDone: number[];
+}
+
+/** 团队成员负载行（从团队概览快照裁剪，丢弃任务列表）。 */
+export interface TeamMemberLoadRow {
+  userId: string;
+  username: string;
+  inProgress: number;
+  dueSoon: number;
+  overdue: number;
+}
+
+/** 团队空间 Analysis 一次取数的全部数据（DTO 可序列化）。 */
+export interface TeamSpaceAnalysis {
+  stats: TeamAnalysisStats;
+  throughput: AnalysisTrendPoint[];
+  members: TeamMemberLoadRow[];
+  projectHealth: ProjectHealthRow[];
+  zombieTasks: ZombieTaskItem[];
 }
 
 /**
@@ -184,6 +241,213 @@ export async function getPersonalSpaceAnalysis(
       doneCount: row.doneCount,
     })),
   };
+}
+
+/**
+ * 团队空间 Analysis 聚合（M5）。
+ *
+ * **权限前置条件**：调用方（团队 Analysis 页面）必须先校验团队存在且当前
+ * 用户是成员（非成员 / 不存在一律 404）；本函数只按 `teamId` 聚合，不做
+ * 成员判断，因此不能直接暴露为公开 API。
+ *
+ * 口径如下：
+ * - 范围恒为 `teamScope(teamId)`（`space_type = 'team'` + 任务所属项目属于该
+ *   团队），未指派任务天然纳入；与 Kanban / Calendar 团队口径一致。
+ * - `stats` / `members` / `projectHealth` 的基础字段来自 `getTeamOverview`
+ *   的当前快照（不随 `range` 变化）；`doneThisWeek` 以 `updatedAt` 归入
+ *   今天所在自然周（周一为起点，上海时区）。
+ * - `throughput` 只统计 `rangeWindow(range)` 内完成的团队任务，完成日为
+ *   `updated_at` 的上海日历日（M3 代理口径）；分桶与个人完成趋势同法。
+ * - `projectHealth.weeklyDone` / `doneCount` 固定近 6 个自然周，末桶为本
+ *   周；不足 6 项补 0。
+ * - `zombieTasks`：`in_progress` 且 `updated_at` 早于 **today-14 上海零点**
+ *   （恰为 today-14 当天任意时刻不算僵尸），按最后更新升序取前 10；
+ *   `stalledDays` 按上海日计算，僵尸因此恒 ≥ 15。
+ *
+ * 已知边界（§M5 数据口径）：完成日以 `updated_at` 近似，删除任务后无法
+ * 重建其历史完成记录，趋势会随之失真——本函数不回填已删除任务。
+ *
+ * 五组查询并行执行：快照 + 本周完成计数 + 吞吐 + 近 6 周完成明细 + 僵尸任务。
+ */
+export async function getTeamSpaceAnalysis(
+  input: {
+    teamId: string;
+    teamSlug: string;
+    range: AnalysisRange;
+    today: string;
+  },
+  client: DbClient = db,
+): Promise<TeamSpaceAnalysis> {
+  const { teamId, teamSlug, range, today } = input;
+  const window = rangeWindow(today, range);
+  const weekStart = getWeekStart(today);
+  const weekBuckets = recentWeekBuckets(today, 6);
+  const sixWeekStart = weekBuckets[0]!.start;
+  const zombieCutoff = addDays(today, -14);
+  const scope = teamScope(teamId);
+
+  const [
+    overview,
+    doneThisWeekRows,
+    throughputRows,
+    projectDoneRows,
+    zombieRows,
+  ] = await Promise.all([
+    getTeamOverview({ teamId, teamSlug, today }, client),
+    client
+      .select({ count: sql<number>`count(*)::int` })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(
+        and(
+          scope,
+          eq(tasks.status, "done"),
+          // `weekStart` 是上海本地日历日，显式换算为 timestamptz，
+          // 不跟随数据库会话时区（沿 `getMyTaskStats` 的注释口径）。
+          sql`${tasks.updatedAt} >= (${weekStart}::timestamp AT TIME ZONE 'Asia/Shanghai')`,
+        ),
+      ),
+    client
+      .select({ completedDay })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(
+        and(
+          scope,
+          eq(tasks.status, "done"),
+          sql`${completedDay} >= ${window.start}`,
+          sql`${completedDay} <= ${window.end}`,
+        ),
+      ),
+    client
+      .select({ projectId: tasks.projectId, completedDay })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .where(
+        and(
+          scope,
+          eq(tasks.status, "done"),
+          sql`${completedDay} >= ${sixWeekStart}`,
+        ),
+      ),
+    client
+      .select({
+        id: tasks.id,
+        title: tasks.title,
+        projectName: projects.name,
+        assigneeName: users.username,
+        updatedAt: tasks.updatedAt,
+      })
+      .from(tasks)
+      .innerJoin(projects, eq(tasks.projectId, projects.id))
+      .leftJoin(users, eq(tasks.assigneeId, users.id))
+      .where(
+        and(
+          scope,
+          eq(tasks.status, "in_progress"),
+          sql`${tasks.updatedAt} < (${zombieCutoff}::timestamp AT TIME ZONE 'Asia/Shanghai')`,
+        ),
+      )
+      .orderBy(asc(tasks.updatedAt))
+      .limit(10),
+  ]);
+
+  const projectAggregates = aggregateProjectDone(projectDoneRows, weekBuckets);
+
+  return {
+    stats: {
+      projectCount: overview.teamStats.projectCount,
+      avgProgressPercent: Math.round(overview.teamStats.avgProgress * 100),
+      overdue: overview.teamStats.overdueCount,
+      doneThisWeek: doneThisWeekRows[0]?.count ?? 0,
+    },
+    throughput: toThroughput(today, range, throughputRows),
+    members: overview.members.map(
+      ({ userId, username, inProgress, dueSoon, overdue }) => ({
+        userId,
+        username,
+        inProgress,
+        dueSoon,
+        overdue,
+      }),
+    ),
+    projectHealth: overview.projects.map((project) => {
+      const aggregate = projectAggregates.get(project.projectId);
+
+      return {
+        projectId: project.projectId,
+        projectName: project.projectName,
+        progressPercent: Math.round(project.progress * 100),
+        hasOverdue: project.hasOverdue,
+        hasDueSoon: project.hasDueSoon,
+        taskCount: project.taskCount,
+        doneCount: aggregate?.doneCount ?? 0,
+        weeklyDone: aggregate
+          ? [...aggregate.weeklyDone]
+          : new Array<number>(weekBuckets.length).fill(0),
+      };
+    }),
+    zombieTasks: zombieRows.map((row) => ({
+      id: row.id,
+      title: row.title,
+      projectName: row.projectName,
+      assigneeName: row.assigneeName ?? null,
+      // 按上海日历日计算停留天数：跨 UTC 日边界的更新不会多算一天。
+      stalledDays: daysBetween(shanghaiDay(row.updatedAt), today),
+    })),
+  };
+}
+
+/** 项目完成聚合：近 6 周 done 明细 → 每项目完成数与周分桶。 */
+function aggregateProjectDone(
+  rows: { projectId: string | null; completedDay: string }[],
+  weekBuckets: TrendBucket[],
+): Map<string, { doneCount: number; weeklyDone: number[] }> {
+  const aggregates = new Map<
+    string,
+    { doneCount: number; weeklyDone: number[] }
+  >();
+
+  for (const row of rows) {
+    if (!row.projectId) {
+      continue;
+    }
+
+    let aggregate = aggregates.get(row.projectId);
+    if (!aggregate) {
+      aggregate = {
+        doneCount: 0,
+        weeklyDone: new Array<number>(weekBuckets.length).fill(0),
+      };
+      aggregates.set(row.projectId, aggregate);
+    }
+
+    aggregate.doneCount += 1;
+    const index = bucketIndexForDay(weekBuckets, row.completedDay);
+    if (index >= 0) {
+      aggregate.weeklyDone[index]! += 1;
+    }
+  }
+
+  return aggregates;
+}
+
+/** 吞吐趋势：done 且完成日 ∈ range 窗口，每个桶一个点（含 0）。 */
+function toThroughput(
+  today: string,
+  range: AnalysisRange,
+  rows: { completedDay: string }[],
+): AnalysisTrendPoint[] {
+  const buckets = trendBuckets(today, range);
+  const counts = countIntoBuckets(
+    buckets,
+    rows.map((row) => row.completedDay),
+  );
+
+  return buckets.map((bucket, index) => ({
+    label: bucket.label,
+    count: counts[index]!,
+  }));
 }
 
 /**
