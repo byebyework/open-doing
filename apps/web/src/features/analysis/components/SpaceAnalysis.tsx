@@ -46,18 +46,8 @@ const INFO_CALLOUT_STYLE = {
   color: "#0b6fb8",
 } as const;
 
-const PERSONAL_SUBTITLE =
-  "完成节奏、积压涨消与截止分布——回顾你这段时间的推进；今天的待办看 Dashboard。";
-const TEAM_SUBTITLE =
-  "吞吐、成员负载与项目健康度——看清团队的推进节奏；今天的风险看 Dashboard。";
-
-const PERSONAL_FOOTER_NOTE =
-  "口径说明：完成日按任务最近一次状态更新时间近似（与 Calendar、通知同口径）；「按时率」只统计有截止日期的已完成任务，无截止日期不进分母；时间范围只影响趋势区块，顶部统计卡恒为当前快照。切换「近 90 天」时柱状图改为按周聚合。";
-const TEAM_FOOTER_NOTE =
-  "口径说明：完成日按任务最近一次状态更新时间近似（与 Calendar、通知同口径）；成员负载为当前快照（进行中任务数），不随 range 变化；僵尸任务 = 进行中且超过 14 天未更新。时间范围只影响趋势区块，顶部统计卡恒为当前快照。切换「近 90 天」时柱状图改为按周聚合。";
-
 /** 页头：标题 + 口径说明 + 右侧范围切换。 */
-function PageHeader({
+async function PageHeader({
   variant,
   range,
   basePath,
@@ -66,6 +56,8 @@ function PageHeader({
   range: AnalysisRange;
   basePath: string;
 }) {
+  const t = await getTranslations("analysis");
+
   return (
     <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
       <div className="min-w-0">
@@ -73,7 +65,7 @@ function PageHeader({
           Analysis
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
-          {variant === "personal" ? PERSONAL_SUBTITLE : TEAM_SUBTITLE}
+          {variant === "personal" ? t("personalSubtitle") : t("teamSubtitle")}
         </p>
       </div>
       <div className="flex flex-none items-center gap-2">
@@ -131,8 +123,8 @@ function CardHeader({
  * 不按 `range === 90` 重新编码规则——7/30 天与未来 14 天都是逐日桶，
  * 90 天由 `trendBuckets` 切成自然周桶。
  */
-function bucketGrain(buckets: TrendBucket[]): "日" | "周" {
-  return buckets.some((bucket) => bucket.start !== bucket.end) ? "周" : "日";
+function bucketGrain(buckets: TrendBucket[]): "day" | "week" {
+  return buckets.some((bucket) => bucket.start !== bucket.end) ? "week" : "day";
 }
 
 function sum(values: number[]): number {
@@ -163,7 +155,7 @@ function LegendSwatch({ color }: { color: string }) {
 }
 
 /** 个人空间 Analysis 主体。 */
-function PersonalBody({
+async function PersonalBody({
   analysis,
   range,
   today,
@@ -172,12 +164,14 @@ function PersonalBody({
   range: AnalysisRange;
   today: string;
 }) {
+  const t = await getTranslations("analysis");
+  const tDashboard = await getTranslations("dashboard");
   // 图表使用真实分桶（含 start/end），与 service 的趋势点一一对应。
   const buckets = trendBuckets(today, range);
   const dueBuckets = futureDueBuckets(today);
   const unit = bucketGrain(buckets);
   // 仅逐日桶的末桶代表「今天」；90 天周桶的末桶代表本周，不能标「今天」。
-  const todayIndex = unit === "日" ? buckets.length - 1 : undefined;
+  const todayIndex = unit === "day" ? buckets.length - 1 : undefined;
   const { stats } = analysis;
 
   const completionValues = analysis.completionTrend.map((point) => point.count);
@@ -200,12 +194,16 @@ function PersonalBody({
     ...analysis.projectComparison.map((row) => row.doneCount),
   );
   const projectRows = analysis.projectComparison.map((row) => {
-    const name = row.projectName || "无项目";
+    const name = row.projectName || t("noProject");
     return {
       key: row.projectId ?? `no-project-${row.spaceType}`,
       name,
-      title: `${name} · 近 ${range} 天完成 ${row.doneCount} 项`,
-      tag: row.spaceType === "team" ? "团队" : undefined,
+      title: t("hbarTitle", {
+        name,
+        range,
+        count: row.doneCount,
+      }),
+      tag: row.spaceType === "team" ? tDashboard("sourceTeam") : undefined,
       count: row.doneCount,
       max: projectMax,
     };
@@ -216,31 +214,38 @@ function PersonalBody({
     stats.onTime.ratePercent === null ? "—" : `${stats.onTime.ratePercent}%`;
   const rateHint =
     stats.onTime.denominator === 0
-      ? "近 30 天 · 暂无有截止日期的已完成"
-      : `近 30 天 · ${stats.onTime.denominator} 项有截止的已完成中 ${stats.onTime.onTime} 项按时`;
+      ? t("onTimeNone")
+      : t("onTimeSome", {
+          total: stats.onTime.denominator,
+          onTime: stats.onTime.onTime,
+        });
 
   return (
     <>
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
-          label="进行中"
+          label={t("statInProgress")}
           value={stats.inProgress}
-          hint="含个人与指派给你的团队任务"
+          hint={t("statInProgressHint")}
         />
         <StatCard
-          label="本月完成"
+          label={t("statDoneThisMonth")}
           value={stats.doneThisMonth}
-          hint={`自 ${monthStart} 以来`}
+          hint={t("sinceDate", { date: monthStart })}
           color="#00b894"
         />
         <StatCard
-          label="当前逾期"
+          label={t("statOverdueNow")}
           value={stats.overdue}
-          hint={stats.overdue > 0 ? "建议今天优先处理" : "暂无逾期"}
+          hint={
+            stats.overdue > 0
+              ? t("overdueHintAction")
+              : tDashboard("overdueHintNone")
+          }
           color="#ff5757"
         />
         <StatCard
-          label="按时率"
+          label={t("onTimeRate")}
           value={rateValue}
           hint={rateHint}
           color="#7d2ae8"
@@ -249,8 +254,12 @@ function PersonalBody({
 
       <section className={`${CARD_CLASS} mt-5`}>
         <CardHeader
-          title="完成趋势"
-          caption={`近 ${range} 天 · 按${unit} · 共完成 ${completionTotal} 项`}
+          title={t("trendTitle")}
+          caption={t("captionDone", {
+            range,
+            grain: unit === "day" ? t("grainDay") : t("grainWeek"),
+            count: completionTotal,
+          })}
         />
         <div className="mt-3">
           <TrendChart
@@ -264,24 +273,28 @@ function PersonalBody({
       <div className="mt-4 grid grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
         <section className={CARD_CLASS}>
           <CardHeader
-            title="新增 vs 完成"
+            title={t("flowTitle")}
             extra={
               <span className="inline-flex items-center gap-3.5 text-[12.5px] text-[#5f6368]">
                 <span className="inline-flex items-center">
                   <LegendSwatch color="#0e9ba3" />
-                  新增
+                  {t("legendCreated")}
                 </span>
                 <span className="inline-flex items-center">
                   <LegendSwatch color="#7d2ae8" />
-                  完成
+                  {t("legendCompleted")}
                 </span>
               </span>
             }
           />
           <div className="mt-1 text-[12px] text-[#5f6368]">
-            近 {range} 天 · 按{unit} · 新增 {createdTotal} 项 / 完成{" "}
-            {completedTotal} 项，积压{" "}
-            {signedDiff(createdTotal - completedTotal)}
+            {t("captionFlow", {
+              range,
+              grain: unit === "day" ? t("grainDay") : t("grainWeek"),
+              created: createdTotal,
+              completed: completedTotal,
+              backlog: signedDiff(createdTotal - completedTotal),
+            })}
           </div>
           <div className="mt-3">
             <TrendChart
@@ -297,33 +310,31 @@ function PersonalBody({
 
         <section className={CARD_CLASS}>
           <CardHeader
-            title="未来截止分布"
-            caption={`未来 14 天 · 按日 · 共 ${futureDueTotal} 项`}
+            title={t("futureTitle")}
+            caption={t("captionFuture", { count: futureDueTotal })}
           />
           <div className="mt-3">
             <TrendChart
               buckets={dueBuckets}
               series={[{ tone: "primary", values: futureDueValues }]}
-              formatValue={(value) => `${value} 项到期`}
-              emptyLabel="无"
+              formatValue={(value) => t("valueDue", { value })}
+              emptyLabel={t("none")}
               todayIndex={0}
             />
           </div>
-          <InfoCallout className="mt-3">
-            含个人与指派给你的团队任务；逾期任务不计入未来分布，看上方「当前逾期」。
-          </InfoCallout>
+          <InfoCallout className="mt-3">{t("futureHint")}</InfoCallout>
         </section>
       </div>
 
       <section className={`${CARD_CLASS} mt-4`}>
         <CardHeader
-          title="项目对比"
-          caption={`近 ${range} 天完成任务数 · 含个人与团队项目`}
+          title={t("projectCompareTitle")}
+          caption={t("projectCompareCaption", { range })}
         />
         <div className="mt-3">
           {projectRows.length === 0 ? (
             <p className="py-3 text-[13px] text-[#5f6368]">
-              暂无项目完成数据。
+              {t("projectCompareEmpty")}
             </p>
           ) : (
             <HBarList rows={projectRows} />
@@ -331,7 +342,7 @@ function PersonalBody({
         </div>
       </section>
 
-      <InfoCallout className="mt-4">{PERSONAL_FOOTER_NOTE}</InfoCallout>
+      <InfoCallout className="mt-4">{t("personalFooterNote")}</InfoCallout>
     </>
   );
 }
@@ -348,11 +359,13 @@ async function TeamBody({
   today: string;
   spaceRef: SpaceRef;
 }) {
+  const t = await getTranslations("analysis");
   const tDashboard = await getTranslations("dashboard");
+  const tTasks = await getTranslations("tasks");
   const buckets = trendBuckets(today, range);
   const unit = bucketGrain(buckets);
   // 仅逐日桶的末桶代表「今天」；90 天周桶的末桶代表本周，不能标「今天」。
-  const todayIndex = unit === "日" ? buckets.length - 1 : undefined;
+  const todayIndex = unit === "day" ? buckets.length - 1 : undefined;
   const { stats } = analysis;
   const weekStart = getWeekStart(today);
   const kanbanHref = moduleHref(spaceRef, "kanban");
@@ -367,13 +380,16 @@ async function TeamBody({
   const memberRows = analysis.members.map((member) => ({
     key: member.userId,
     name: member.username,
-    title: `${member.username} · 进行中 ${member.inProgress} 项`,
+    title: t("memberRowTitle", {
+      name: member.username,
+      count: member.inProgress,
+    }),
     sub:
       member.overdue > 0
-        ? `已逾期 ${member.overdue} 项`
+        ? tDashboard("loadOverdue", { count: member.overdue })
         : member.dueSoon > 0
-          ? `临期 ${member.dueSoon} 项`
-          : "无逾期",
+          ? tDashboard("loadDueSoon", { count: member.dueSoon })
+          : t("noOverdue"),
     count: member.inProgress,
     max: maxLoad,
   }));
@@ -386,34 +402,44 @@ async function TeamBody({
     <>
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
-          label="在册项目"
+          label={tDashboard("statProjects")}
           value={stats.projectCount}
-          hint={projectNames || "团队全部项目"}
+          hint={projectNames || tDashboard("statProjectsHint")}
         />
         <StatCard
-          label="团队整体进度"
+          label={tDashboard("statOverallProgress")}
           value={`${stats.avgProgressPercent}%`}
-          hint="按任务等权平均"
+          hint={tDashboard("statOverallProgressHint")}
           color="#7d2ae8"
         />
         <StatCard
-          label="当前逾期"
+          label={t("statOverdueNow")}
           value={stats.overdue}
-          hint={stats.overdue > 0 ? "请优先处理" : "暂无逾期"}
+          hint={
+            stats.overdue > 0
+              ? tDashboard("statOverdueTasksHint")
+              : tDashboard("overdueHintNone")
+          }
           color="#ff5757"
         />
         <StatCard
-          label="本周完成"
+          label={t("statDoneThisWeek")}
           value={stats.doneThisWeek}
-          hint={`自本周一（${weekStart.slice(5)}）以来`}
+          hint={tDashboard("statDoneThisWeekHint", {
+            date: weekStart.slice(5),
+          })}
           color="#00b894"
         />
       </div>
 
       <section className={`${CARD_CLASS} mt-5`}>
         <CardHeader
-          title="吞吐"
-          caption={`近 ${range} 天 · 按${unit} · 共完成 ${throughputTotal} 项`}
+          title={t("throughputTitle")}
+          caption={t("captionDone", {
+            range,
+            grain: unit === "day" ? t("grainDay") : t("grainWeek"),
+            count: throughputTotal,
+          })}
         />
         <div className="mt-3">
           <TrendChart
@@ -427,38 +453,40 @@ async function TeamBody({
       <div className="mt-4 grid grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
         <section className={CARD_CLASS}>
           <CardHeader
-            title="成员负载分布"
-            caption="当前进行中任务数"
+            title={t("memberLoadTitle")}
+            caption={t("memberLoadCaption")}
           />
           <div className="mt-3">
             {memberRows.length === 0 ? (
               <p className="py-3 text-[13px] text-[#5f6368]">
-                暂无成员负载数据。
+                {t("memberLoadEmpty")}
               </p>
             ) : (
               <HBarList rows={memberRows} />
             )}
           </div>
           <InfoCallout className="mt-3">
-            未指派任务 {analysis.unassignedCount} 项 · 前往{" "}
+            {t("unassignedPrefix", { count: analysis.unassignedCount })}
             <Link
               href={kanbanHref}
               className="font-medium underline underline-offset-2"
             >
               Kanban
-            </Link>{" "}
-            指派。
+            </Link>
+            {t("unassignedSuffix")}
           </InfoCallout>
         </section>
 
         <section className={CARD_CLASS}>
           <CardHeader
-            title="项目健康度"
-            caption="进度按任务完成度自动聚合"
+            title={tDashboard("healthTitle")}
+            caption={tDashboard("healthHint")}
           />
           <div className="mt-3">
             {analysis.projectHealth.length === 0 ? (
-              <p className="py-3 text-[13px] text-[#5f6368]">暂无项目。</p>
+              <p className="py-3 text-[13px] text-[#5f6368]">
+                {t("noProjects")}
+              </p>
             ) : (
               analysis.projectHealth.map((project, index) => {
                 const level = resolveProjectHealthLevel(
@@ -480,7 +508,10 @@ async function TeamBody({
                           {project.projectName}
                         </div>
                         <div className="mt-0.5 text-[12px] text-[#5f6368]">
-                          {project.taskCount} 个任务 · {project.doneTotal} 已完成
+                          {t("projectLine", {
+                            count: project.taskCount,
+                            done: project.doneTotal,
+                          })}
                         </div>
                       </div>
                       <span
@@ -523,11 +554,13 @@ async function TeamBody({
 
                     <div className="mt-2 flex items-center gap-2.5">
                       <span className="text-[12px] text-[#5f6368]">
-                        近 6 周完成
+                        {t("weeklyDoneLabel")}
                       </span>
                       <WeekMiniBars
                         values={project.weeklyDone}
-                        title={`近 6 周每周完成 ${project.weeklyDone.join(" / ")} 项`}
+                        title={t("weeklyDoneTitle", {
+                          list: project.weeklyDone.join(" / "),
+                        })}
                       />
                     </div>
                   </div>
@@ -540,12 +573,14 @@ async function TeamBody({
 
       <section className={`${CARD_CLASS} mt-4`}>
         <CardHeader
-          title="僵尸任务"
-          caption="进行中且超过 14 天未更新 · 按停留时长降序"
+          title={t("zombieTitle")}
+          caption={t("zombieCaption")}
         />
 
         {analysis.zombieTasks.length === 0 ? (
-          <p className="mt-3 text-[13px] text-[#5f6368]">暂无僵尸任务。</p>
+          <p className="mt-3 text-[13px] text-[#5f6368]">
+            {t("zombieEmpty")}
+          </p>
         ) : (
           <div className="mt-2">
             {analysis.zombieTasks.map((task) => (
@@ -565,9 +600,12 @@ async function TeamBody({
                     {task.title}
                   </div>
                   <div className="mt-1 text-[12px] text-[#5f6368]">
-                    {task.projectName} · {task.assigneeName ?? "未指派"} ·
-                    最后更新 {addDays(today, -task.stalledDays).slice(5)}，已停留{" "}
-                    {task.stalledDays} 天
+                    {task.projectName} ·{" "}
+                    {task.assigneeName ?? tTasks("unassigned")} ·{" "}
+                    {t("lastUpdatedLine", {
+                      date: addDays(today, -task.stalledDays).slice(5),
+                      days: task.stalledDays,
+                    })}
                   </div>
                 </div>
                 <span
@@ -577,7 +615,7 @@ async function TeamBody({
                     color: "#a66b00",
                   }}
                 >
-                  停留 {task.stalledDays} 天
+                  {t("stalledBadge", { days: task.stalledDays })}
                 </span>
               </div>
             ))}
@@ -589,12 +627,12 @@ async function TeamBody({
             href={kanbanHref}
             className="text-[13px] font-medium text-[#7d2ae8] no-underline hover:underline"
           >
-            处理或关闭这些任务 · 前往 Kanban →
+            {t("zombieFooter")}
           </Link>
         </div>
       </section>
 
-      <InfoCallout className="mt-4">{TEAM_FOOTER_NOTE}</InfoCallout>
+      <InfoCallout className="mt-4">{t("teamFooterNote")}</InfoCallout>
     </>
   );
 }

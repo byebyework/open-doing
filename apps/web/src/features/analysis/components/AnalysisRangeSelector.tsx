@@ -1,15 +1,9 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
 import type { AnalysisRange } from "../buckets";
-
-/** 三个时间范围按钮（文案与顺序对照原型 `.seg`）。 */
-const RANGE_OPTIONS: { value: AnalysisRange; label: string }[] = [
-  { value: 7, label: "近 7 天" },
-  { value: 30, label: "近 30 天" },
-  { value: 90, label: "近 90 天" },
-];
 
 /** 分析页时间范围切换器入参。 */
 export interface AnalysisRangeSelectorProps {
@@ -30,15 +24,23 @@ export function AnalysisRangeSelector({
   range,
 }: AnalysisRangeSelectorProps) {
   const router = useRouter();
+  const t = useTranslations("analysis");
+
+  // 文案与顺序对照原型 `.seg`。
+  const rangeOptions: { value: AnalysisRange; label: string }[] = [
+    { value: 7, label: t("rangeDays", { range: 7 }) },
+    { value: 30, label: t("rangeDays", { range: 30 }) },
+    { value: 90, label: t("rangeDays", { range: 90 }) },
+  ];
 
   return (
     <div
       role="group"
-      aria-label="时间范围"
+      aria-label={t("rangeGroupAria")}
       className="inline-flex items-center gap-[2px] rounded-lg p-[3px]"
       style={{ background: "#e8eaed" }}
     >
-      {RANGE_OPTIONS.map((option) => {
+      {rangeOptions.map((option) => {
         const active = option.value === range;
 
         return (
