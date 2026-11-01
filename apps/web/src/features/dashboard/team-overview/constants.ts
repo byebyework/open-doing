@@ -12,20 +12,24 @@
  */
 export const HEALTH_COLOR_RULES = {
   overdue: {
-    label: "已逾期",
     color: "#ff5757",
     background: "rgba(255, 87, 87, 0.1)",
   },
   dueSoon: {
-    label: "临期",
     color: "#a66b00",
     background: "rgba(255, 176, 32, 0.12)",
   },
   normal: {
-    label: "正常",
     color: "#00b894",
     background: "rgba(0, 184, 148, 0.1)",
   },
+} as const;
+
+/** 健康度标签的消息 key（`dashboard` 命名空间），语言无关，渲染时翻译。 */
+export const HEALTH_LABEL_KEYS = {
+  overdue: "healthOverdue",
+  dueSoon: "healthDueSoon",
+  normal: "healthNormal",
 } as const;
 
 /** 项目健康度级别，键与 `HEALTH_COLOR_RULES` 一致。 */

@@ -1,3 +1,4 @@
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/EmptyState";
@@ -54,20 +55,29 @@ export interface MilestoneListProps {
  * 行内展示任务标题与「项目 · 责任人 · 截止日期」；逾期行追加逾期天数。
  * 行内链接直达任务详情，卡片尾部引导到空间级 Kanban 看全部任务。
  */
-export function MilestoneList({ teamSlug, tasks, today }: MilestoneListProps) {
+export async function MilestoneList({
+  teamSlug,
+  tasks,
+  today,
+}: MilestoneListProps) {
+  const t = await getTranslations("dashboard");
+  const tTasks = await getTranslations("tasks");
+
   return (
     <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h2 className="text-[15px] font-bold text-[#0e1318]">重要节点</h2>
+        <h2 className="text-[15px] font-bold text-[#0e1318]">
+          {t("milestonesTitle")}
+        </h2>
         <span className="ml-auto text-[12px] text-[#9aa0a6]">
-          未完成任务 · 按截止日期升序
+          {t("milestonesHint")}
         </span>
       </div>
 
       {tasks.length === 0 ? (
         <EmptyState
-          title="暂无重要节点"
-          description="团队未完成任务设置了截止日期后，这里会自动按日期排序。"
+          title={t("emptyMilestonesTitle")}
+          description={t("emptyMilestonesDescription")}
         />
       ) : (
         <ul className="mt-1 flex flex-col">
@@ -106,14 +116,16 @@ export function MilestoneList({ teamSlug, tasks, today }: MilestoneListProps) {
                           task.assigneeName ? undefined : "text-[#a66b00]"
                         }
                       >
-                        {task.assigneeName ?? "未指派"}
+                        {task.assigneeName ?? tTasks("unassigned")}
                       </span>
                       <span aria-hidden="true">·</span>
                       <span className="whitespace-nowrap" title={task.dueDate}>
-                        截止 {shortDate(task.dueDate)}
                         {task.kind === "overdue"
-                          ? `，已逾期 ${overdueDays} 天`
-                          : ""}
+                          ? t("dueOverdueLine", {
+                              date: shortDate(task.dueDate),
+                              days: overdueDays,
+                            })
+                          : t("dueLine", { date: shortDate(task.dueDate) })}
                       </span>
                     </div>
                   </div>
@@ -129,7 +141,7 @@ export function MilestoneList({ teamSlug, tasks, today }: MilestoneListProps) {
           href={moduleHref(teamSlug, "kanban")}
           className="text-[12.5px] font-medium text-[#7d2ae8] hover:underline"
         >
-          查看全部任务 · 前往 Kanban →
+          {t("viewAllTasks")}
         </Link>
       </div>
     </section>

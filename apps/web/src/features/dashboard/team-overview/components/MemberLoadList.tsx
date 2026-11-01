@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
 
@@ -29,26 +30,29 @@ function groupTasksByProject(tasks: MemberLoad["tasks"]) {
   return Array.from(groups.entries());
 }
 
-/** 计数文案：有值时用语义色，全 0 时显示「暂无进行中任务」。 */
+/** 计数文案：有值时用语义色，全 0 时置灰。文案按语言在渲染期翻译。 */
 function LoadSummary({ member }: { member: MemberLoad }) {
+  const t = useTranslations("dashboard");
   const parts = [
-    { label: "进行中", value: member.inProgress, color: "#5f6368" },
-    { label: "临期", value: member.dueSoon, color: "#a66b00" },
-    { label: "已逾期", value: member.overdue, color: "#ff5757" },
-  ];
+    {
+      key: "loadInProgress",
+      value: member.inProgress,
+      color: "#5f6368",
+    },
+    { key: "loadDueSoon", value: member.dueSoon, color: "#a66b00" },
+    { key: "loadOverdue", value: member.overdue, color: "#ff5757" },
+  ] as const;
 
   return (
     <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[#9aa0a6]">
       {parts.map((part) => (
-        <span key={part.label} className="whitespace-nowrap">
-          {part.label}{" "}
+        <span key={part.key} className="whitespace-nowrap">
           <span
             className="font-semibold"
             style={{ color: part.value > 0 ? part.color : "#9aa0a6" }}
           >
-            {part.value}
-          </span>{" "}
-          项
+            {t(part.key, { count: part.value })}
+          </span>
         </span>
       ))}
     </div>
@@ -63,13 +67,14 @@ function LoadSummary({ member }: { member: MemberLoad }) {
  * 组件不提供任何改派 / 催办入口——概览页保持只读。
  */
 export function MemberLoadList({ members, today }: MemberLoadListProps) {
+  const t = useTranslations("dashboard");
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   if (members.length === 0) {
     return (
       <EmptyState
-        title="暂无成员"
-        description="团队成员加入后，这里会展示各自的任务负载。"
+        title={t("emptyMembersTitle")}
+        description={t("emptyMembersDescription")}
       />
     );
   }
@@ -101,7 +106,7 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                 <LoadSummary member={member} />
               </div>
               <span className="shrink-0 whitespace-nowrap text-[12px] text-[#5f6368]">
-                {expanded ? "收起" : "查看任务"}
+                {expanded ? t("collapse") : t("viewTasks")}
               </span>
               <svg
                 width="14"
@@ -128,7 +133,7 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
               >
                 {groups.length === 0 ? (
                   <p className="py-1 text-[12.5px] text-[#9aa0a6]">
-                    该成员暂无团队任务。
+                    {t("memberNoTasks")}
                   </p>
                 ) : (
                   groups.map(([projectName, tasks]) => (
@@ -158,7 +163,7 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                                   />
                                 ) : (
                                   <span className="whitespace-nowrap text-[12px] text-[#9aa0a6]">
-                                    无截止日期
+                                    {t("noDueDate")}
                                   </span>
                                 )}
                               </span>

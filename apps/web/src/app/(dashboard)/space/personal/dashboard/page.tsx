@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
@@ -36,6 +37,7 @@ function daysBetween(later: string, earlier: string): number {
  * prop 传给 client，保证服务端/客户端渲染一致。
  */
 export default async function PersonalDashboardPage() {
+  const t = await getTranslations("dashboard");
   const user = await requireUser();
   const today = todayInShanghai();
   const weekStart = getWeekStart(today);
@@ -57,8 +59,8 @@ export default async function PersonalDashboardPage() {
   }, 0);
   const overdueHint =
     stats.overdue > 0
-      ? `最久逾期 ${maxOverdueDays} 天，建议今天兜底`
-      : "暂无逾期";
+      ? t("overdueHintDays", { days: maxOverdueDays })
+      : t("overdueHintNone");
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
@@ -68,8 +70,7 @@ export default async function PersonalDashboardPage() {
             Dashboard
           </h1>
           <p className="mt-1.5 text-[14px] text-[#5f6368]">
-            今天要做的、快到期的，以及逾期需要兜底的，都在这里；任务全景看
-            Kanban。
+            {t("personalSubtitle")}
           </p>
         </div>
         <div className="flex flex-none items-center gap-2">
@@ -80,26 +81,32 @@ export default async function PersonalDashboardPage() {
 
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
-          label="进行中"
+          label={t("statInProgress")}
           value={stats.inProgress}
-          hint={`个人 ${stats.inProgressPersonal} 项 · 团队 ${stats.inProgressTeam} 项`}
+          hint={t("statInProgressHint", {
+            personal: stats.inProgressPersonal,
+            team: stats.inProgressTeam,
+          })}
         />
         <StatCard
-          label="今日 / 明日到期"
+          label={t("statDueSoon")}
           value={stats.dueSoon}
-          hint={`今天 ${stats.dueToday} 项 · 明天 ${tomorrowCount} 项`}
+          hint={t("statDueSoonHint", {
+            today: stats.dueToday,
+            tomorrow: tomorrowCount,
+          })}
           color="#a66b00"
         />
         <StatCard
-          label="已逾期"
+          label={t("statOverdue")}
           value={stats.overdue}
           hint={overdueHint}
           color="#ff5757"
         />
         <StatCard
-          label="本周已完成"
+          label={t("statDoneThisWeek")}
           value={stats.doneThisWeek}
-          hint={`自本周一（${weekStart.slice(5)}）以来`}
+          hint={t("statDoneThisWeekHint", { date: weekStart.slice(5) })}
           color="#00b894"
         />
       </div>
@@ -119,10 +126,7 @@ export default async function PersonalDashboardPage() {
         <span aria-hidden="true" className="flex-none">
           ℹ
         </span>
-        <span>
-          列表只保留「今天该看的」：截止早于今天的逾期任务置顶；已勾选完成的任务即从列表消失。想按状态或项目翻看全部任务，去
-          Kanban。
-        </span>
+        <span>{t("listCallout")}</span>
       </div>
     </div>
   );

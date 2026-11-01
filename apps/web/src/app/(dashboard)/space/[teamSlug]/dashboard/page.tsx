@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -9,6 +10,7 @@ import { requireUser } from "@/features/auth/session";
 import { MemberLoadList } from "@/features/dashboard/team-overview/components/MemberLoadList";
 import {
   HEALTH_COLOR_RULES,
+  HEALTH_LABEL_KEYS,
   resolveProjectHealthLevel,
 } from "@/features/dashboard/team-overview/constants";
 import { getTeamOverview } from "@/features/dashboard/team-overview/service";
@@ -51,6 +53,7 @@ export default async function TeamDashboardPage(
   const membership = team ? await getMembership(team.id, user.id) : null;
   if (!team || !membership) notFound();
 
+  const t = await getTranslations("dashboard");
   const today = todayInShanghai();
   const overview = await getTeamOverview({
     teamId: team.id,
@@ -65,32 +68,32 @@ export default async function TeamDashboardPage(
           Dashboard
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
-          项目健康度、重要节点与成员负载，数据自任务自动聚合；任务全景看 Kanban。
+          {t("teamSubtitle")}
         </p>
       </header>
 
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
-          label="在册项目"
+          label={t("statProjects")}
           value={overview.teamStats.projectCount}
-          hint="团队全部项目"
+          hint={t("statProjectsHint")}
         />
         <StatCard
-          label="团队整体进度"
+          label={t("statOverallProgress")}
           value={`${Math.round(overview.teamStats.avgProgress * 100)}%`}
-          hint="按任务等权平均"
+          hint={t("statOverallProgressHint")}
           color="#7d2ae8"
         />
         <StatCard
-          label="临期任务"
+          label={t("statDueSoonTasks")}
           value={overview.teamStats.dueSoonCount}
-          hint="今天 / 明天到期"
+          hint={t("statDueSoonTasksHint")}
           color="#a66b00"
         />
         <StatCard
-          label="已逾期"
+          label={t("statOverdue")}
           value={overview.teamStats.overdueCount}
-          hint="请优先处理"
+          hint={t("statOverdueTasksHint")}
           color="#ff5757"
         />
       </div>
@@ -98,16 +101,18 @@ export default async function TeamDashboardPage(
       <div className="mt-6 grid min-w-0 grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
         <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="text-[15px] font-bold text-[#0e1318]">项目健康度</h2>
+            <h2 className="text-[15px] font-bold text-[#0e1318]">
+              {t("healthTitle")}
+            </h2>
             <span className="ml-auto text-[12px] text-[#9aa0a6]">
-              进度按任务完成度自动聚合
+              {t("healthHint")}
             </span>
           </div>
 
           {overview.projects.length === 0 ? (
             <EmptyState
-              title="暂无项目"
-              description="团队创建项目并添加任务后，这里会自动聚合健康度。"
+              title={t("emptyProjectsTitle")}
+              description={t("emptyProjectsDescription")}
             />
           ) : (
             <ul className="mt-3 flex flex-col gap-3">
@@ -131,7 +136,7 @@ export default async function TeamDashboardPage(
                             {project.projectName}
                           </div>
                           <div className="mt-0.5 text-[12px] text-[#9aa0a6]">
-                            {project.taskCount} 个任务
+                            {t("taskCount", { count: project.taskCount })}
                           </div>
                         </div>
                         <span
@@ -141,7 +146,7 @@ export default async function TeamDashboardPage(
                             background: rule.background,
                           }}
                         >
-                          {rule.label}
+                          {t(HEALTH_LABEL_KEYS[level])}
                         </span>
                         <span
                           className="w-10 shrink-0 text-right text-[12.5px] font-semibold"
@@ -170,9 +175,11 @@ export default async function TeamDashboardPage(
 
       <section className="mt-5 min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="text-[15px] font-bold text-[#0e1318]">成员负载</h2>
+          <h2 className="text-[15px] font-bold text-[#0e1318]">
+            {t("memberLoadTitle")}
+          </h2>
           <span className="ml-auto text-[12px] text-[#9aa0a6]">
-            进行中任务数 · 点击成员查看其项目任务
+            {t("memberLoadHint")}
           </span>
         </div>
         <MemberLoadList members={overview.members} today={today} />
@@ -185,15 +192,10 @@ export default async function TeamDashboardPage(
             ℹ
           </span>
           <span>
-            未指派任务 {overview.unassigned.length} 项 ·
-            完整列表与指派引导已移至{" "}
-            <Link
-              href={moduleHref(team.slug, "kanban")}
-              className="font-medium underline underline-offset-2"
-            >
-              Kanban
-            </Link>
-            （空间级看板）。
+            {t("unassignedCallout", {
+              count: overview.unassigned.length,
+              link: "Kanban",
+            })}
           </span>
         </div>
       </section>

@@ -4,6 +4,8 @@ import { Alert, Button, Form, Input, Modal, Select, message } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { useTranslations } from "next-intl";
+
 import { createPersonalTaskAction } from "@/features/personal/tasks/actions";
 import { createTeamTaskAction } from "@/features/tasks/actions";
 
@@ -47,6 +49,7 @@ interface ProjectSelectGroup {
  */
 function buildProjectGroups(
   projects: CrossSpaceProjectOption[],
+  t: (key: "teamGroupLabel" | "personalSpaceGroup" | "noProjectOption") => string,
 ): ProjectSelectGroup[] {
   const personal = projects.filter((project) => project.teamId === null);
   const teamGroups = new Map<string, ProjectSelectGroup>();
@@ -56,7 +59,7 @@ function buildProjectGroups(
 
     const key = project.teamId;
     const group = teamGroups.get(key) ?? {
-      label: project.teamName ?? "团队",
+      label: project.teamName ?? t("teamGroupLabel"),
       options: [],
     };
     group.options.push({
@@ -68,9 +71,9 @@ function buildProjectGroups(
 
   return [
     {
-      label: "个人空间",
+      label: t("personalSpaceGroup"),
       options: [
-        { value: "", label: "不属于项目" },
+        { value: "", label: t("noProjectOption") },
         ...personal.map((project) => ({
           value: project.projectId,
           label: project.projectName,
@@ -94,11 +97,13 @@ export function NewTaskModal({
   onSuccess,
   onCancel,
 }: NewTaskModalProps) {
+  const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const projectGroups = buildProjectGroups(projects);
+  const projectGroups = buildProjectGroups(projects, t);
 
   /** `destroyOnHidden` 卸载表单后，下次打开按 `initialValues` 重新挂载。 */
   function handleOpenChange(visible: boolean) {
@@ -156,10 +161,10 @@ export function NewTaskModal({
         return;
       }
 
-      message.success("任务已创建");
+      message.success(t("taskCreated"));
       onSuccess();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -168,9 +173,9 @@ export function NewTaskModal({
   return (
     <Modal
       open={open}
-      title="新建任务"
-      okText="创建任务"
-      cancelText="取消"
+      title={t("newTaskTitle")}
+      okText={t("okCreateTask")}
+      cancelText={tCommon("cancel")}
       confirmLoading={submitting}
       onOk={() => form.submit()}
       onCancel={onCancel}
@@ -202,26 +207,26 @@ export function NewTaskModal({
         disabled={submitting}
       >
         <Form.Item
-          label="标题"
+          label={t("title")}
           name="title"
           rules={[
-            { required: true, whitespace: true, message: "请输入任务标题" },
-            { max: 200, message: "任务标题不能超过 200 个字符" },
+            { required: true, whitespace: true, message: t("titleRequired") },
+            { max: 200, message: t("titleTooLong", { max: 200 }) },
           ]}
         >
-          <Input placeholder="任务要做什么？" maxLength={200} autoFocus />
+          <Input placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
         </Form.Item>
 
-        <Form.Item label="所属空间 / 项目" name="projectId">
+        <Form.Item label={t("spaceProjectLabel")} name="projectId">
           <Select options={projectGroups} />
         </Form.Item>
 
-        <Form.Item label="截止日期" name="dueDate">
+        <Form.Item label={t("dueDateLabel")} name="dueDate">
           <Input type="date" style={{ maxWidth: 220 }} />
         </Form.Item>
 
-        <Form.Item label="描述" name="description">
-          <Input.TextArea rows={4} placeholder="补充背景、验收标准…" />
+        <Form.Item label={t("descriptionLabel")} name="description">
+          <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} />
         </Form.Item>
       </Form>
     </Modal>
@@ -235,12 +240,13 @@ export function NewTaskButton({
   projects: CrossSpaceProjectOption[];
 }) {
   const router = useRouter();
+  const t = useTranslations("tasks");
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button type="primary" onClick={() => setOpen(true)}>
-        ＋ 新建任务
+        {t("newTaskButton")}
       </Button>
 
       <NewTaskModal

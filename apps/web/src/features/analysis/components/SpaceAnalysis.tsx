@@ -1,10 +1,12 @@
 import { addDays } from "@open-doing/types";
+import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
 import { StatCard } from "@/components/ui/StatCard";
 import {
   HEALTH_COLOR_RULES,
+  HEALTH_LABEL_KEYS,
   resolveProjectHealthLevel,
 } from "@/features/dashboard/team-overview/constants";
 import { moduleHref, type SpaceRef } from "@/lib/routes";
@@ -335,7 +337,7 @@ function PersonalBody({
 }
 
 /** 团队空间 Analysis 主体。 */
-function TeamBody({
+async function TeamBody({
   analysis,
   range,
   today,
@@ -346,6 +348,7 @@ function TeamBody({
   today: string;
   spaceRef: SpaceRef;
 }) {
+  const tDashboard = await getTranslations("dashboard");
   const buckets = trendBuckets(today, range);
   const unit = bucketGrain(buckets);
   // 仅逐日桶的末桶代表「今天」；90 天周桶的末桶代表本周，不能标「今天」。
@@ -492,7 +495,7 @@ function TeamBody({
                           style={{ background: "currentColor" }}
                           aria-hidden="true"
                         />
-                        {rule.label}
+                        {tDashboard(HEALTH_LABEL_KEYS[level])}
                       </span>
                       <span
                         className="w-10 shrink-0 text-right text-[13px] font-bold"
@@ -602,7 +605,7 @@ function TeamBody({
  * 纯服务端组件：只消费已序列化的 DTO，按 `variant` 分支渲染；
  * 唯一交互（时间范围切换）下沉到 `AnalysisRangeSelector`。
  */
-export function SpaceAnalysis({
+export async function SpaceAnalysis({
   variant,
   range,
   today,

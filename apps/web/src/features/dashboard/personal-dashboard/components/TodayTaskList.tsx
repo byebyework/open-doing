@@ -1,6 +1,7 @@
 "use client";
 
 import { Checkbox, message } from "antd";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -25,7 +26,15 @@ export interface TodayTaskListProps {
   todayCount: number;
 }
 
-const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
+const WEEKDAY_KEYS = [
+  "weekdaySun",
+  "weekdayMon",
+  "weekdayTue",
+  "weekdayWed",
+  "weekdayThu",
+  "weekdayFri",
+  "weekdaySat",
+] as const;
 
 /** 将 `YYYY-MM-DD` 显示为原型同款 `MM-DD`。 */
 function shortDate(date: string): string {
@@ -42,26 +51,34 @@ function daysBetween(later: string, earlier: string): number {
   return Math.round((toUtc(later) - toUtc(earlier)) / 86_400_000);
 }
 
-/** 卡片头日期：「今天 · 10 月 21 日 周三」。 */
-function formatHeaderDate(today: string): string {
+/** 卡片头日期部件：「今天 · 10 月 21 日 周三」。星期 key 由消息文件按语言翻译。 */
+function headerDateParts(today: string): {
+  month: number;
+  day: number;
+  weekdayKey: (typeof WEEKDAY_KEYS)[number];
+} {
   const [year, month, day] = today.split("-").map(Number);
-  const weekday =
-    WEEKDAY_LABELS[new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay()];
-
-  return `今天 · ${month} 月 ${day} 日 ${weekday}`;
+  return {
+    month,
+    day,
+    weekdayKey: WEEKDAY_KEYS[
+      new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay()
+    ],
+  };
 }
 
 /** 来源标签：团队任务品牌紫浅底 / 个人任务薄荷浅底（原型 tag 配色）。 */
 function SourceTag({ task }: { task: MyTaskListItem }) {
+  const t = useTranslations("dashboard");
   const isTeam = task.spaceType === "team";
 
   const label = isTeam
     ? task.projectName
-      ? `团队 · ${task.projectName}`
-      : "团队"
+      ? t("sourceTeamWithProject", { name: task.projectName })
+      : t("sourceTeam")
     : task.projectName
-      ? `个人 · ${task.projectName}`
-      : "个人";
+      ? t("sourcePersonalWithProject", { name: task.projectName })
+      : t("sourcePersonal");
 
   return (
     <span
@@ -85,6 +102,7 @@ function DueLabel({
   dueDate: string | null;
   today: string;
 }) {
+  const t = useTranslations("dashboard");
   if (!dueDate) return null;
 
   if (dueDate < today) {
@@ -93,7 +111,7 @@ function DueLabel({
         className="whitespace-nowrap text-[12.5px] font-semibold text-[#ff5757]"
         title={dueDate}
       >
-        截止 {shortDate(dueDate)} · 已逾期 {daysBetween(today, dueDate)} 天
+        {t("dueOverdueBadge", { date: shortDate(dueDate), days: daysBetween(today, dueDate) })}
       </span>
     );
   }
@@ -103,7 +121,7 @@ function DueLabel({
       className="whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
       title={dueDate}
     >
-      今天到期
+      {t("dueTodayLabel")}
     </span>
   );
 }
@@ -124,6 +142,8 @@ export function TodayTaskList({
   todayCount,
 }: TodayTaskListProps) {
   const router = useRouter();
+  const t = useTranslations("dashboard");
+  const header = headerDateParts(today);
   const [syncedTasks, setSyncedTasks] = useState(tasks);
   const [doneIds, setDoneIds] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
@@ -169,14 +189,14 @@ export function TodayTaskList({
 
       if (!ok) {
         restore(task.id);
-        message.error("更新失败，请重试");
+        message.error(t("updateFailed"));
         return;
       }
 
       router.refresh();
     } catch {
       restore(task.id);
-      message.error("更新失败，请重试");
+      message.error(t("updateFailed"));
     }
   }
 
@@ -184,26 +204,30 @@ export function TodayTaskList({
     <section className="mt-5 min-w-0 rounded-xl border border-[#e1e3e6] bg-white shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
       <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 pb-2 pt-4 min-[861px]:px-5">
         <h2 className="text-[15px] font-bold text-[#0e1318]">
-          {formatHeaderDate(today)}
+          {t("todayHeader", {
+            month: header.month,
+            day: header.day,
+            weekday: t(header.weekdayKey),
+          })}
         </h2>
         <span
           className="ml-auto whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-medium"
           style={{ background: "rgba(255,87,87,0.1)", color: "#ff5757" }}
         >
-          {overdueCount} 逾期
+          {t("badgeOverdue", { count: overdueCount })}
         </span>
         <span
           className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-medium"
           style={{ background: "rgba(255,176,32,0.12)", color: "#a66b00" }}
         >
-          {todayCount} 今天
+          {t("badgeToday", { count: todayCount })}
         </span>
       </div>
 
       {tasks.length === 0 ? (
         <EmptyState
-          title="今天没有到期或逾期的任务"
-          description="可以安心推进进行中的任务，或去 Kanban 查看任务全景。"
+          title={t("emptyTodayTitle")}
+          description={t("emptyTodayDescription")}
         />
       ) : (
         <ul className="px-4 min-[861px]:px-5">
@@ -221,7 +245,7 @@ export function TodayTaskList({
                   }`}
                 >
                   <Checkbox
-                    aria-label={`标记完成：${task.title}`}
+                    aria-label={t("markCompleteAria", { title: task.title })}
                     checked={done}
                     disabled={done}
                     onChange={() => {
@@ -243,7 +267,7 @@ export function TodayTaskList({
                     </Link>
                     <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-[#5f6368]">
                       <SourceTag task={task} />
-                      <span>我</span>
+                      <span>{t("me")}</span>
                     </div>
                   </div>
 
@@ -263,8 +287,9 @@ export function TodayTaskList({
             href={moduleHref("personal", "kanban")}
             className="text-[12.5px] text-[#7d2ae8] no-underline hover:underline"
           >
-            还有 {total - tasks.length} 项未完成任务（含未来截止）· 前往 Kanban
-            查看全部 →
+            {t("moreTasksFooter", {
+              count: total - tasks.length,
+            })}
           </Link>
         </div>
       ) : null}
