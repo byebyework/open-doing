@@ -16,20 +16,38 @@ import { standardFailuresForRequest } from "@/lib/action-failure";
 /**
  * Server Action 统一返回值（全仓复用）：
  * - 成功：`{ ok: true, data }`
- * - 失败：`{ ok: false, errors }`，键为字段名或 `form`，值为中文错误文案
+ * - 失败：`{ ok: false, errors }`，键为字段名或 `form`，值为按用户语言翻译的错误文案
  */
 export type ActionResult<T> =
   | { ok: true; data: T }
   | { ok: false; errors: Record<string, string> };
 
-/** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
+/**
+ * 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。
+ *
+ * AuthError 携带 i18n 通道时按请求语言翻译（落对应字段）；否则回退
+ * message（zh 兜底）。`fallbackKey` 是 `auth` 命名空间的兜底文案 key。
+ */
+async function toFailure(
+  error: unknown,
+  fallbackKey: "registerFailed" | "loginFailed" | "changePasswordFailed" | "signOutFailed",
+): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof AuthError) {
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field]: failures.custom(`auth.${error.i18n.key}`, error.i18n.params).errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field]: error.message } };
   }
 
   console.error("[auth] Server Action 执行失败", error);
-  return { ok: false, errors: { form: fallback } };
+  const failures = await standardFailuresForRequest();
+  return failures.custom(`auth.${fallbackKey}`);
 }
 
 export async function registerAction(input: AuthInput): Promise<ActionResult<User>> {
@@ -38,7 +56,7 @@ export async function registerAction(input: AuthInput): Promise<ActionResult<Use
     await createSession(user.id);
     return { ok: true, data: user };
   } catch (error) {
-    return toFailure(error, "注册失败，请稍后重试");
+    return toFailure(error, "registerFailed");
   }
 }
 
@@ -48,7 +66,7 @@ export async function loginAction(input: AuthInput): Promise<ActionResult<User>>
     await createSession(user.id);
     return { ok: true, data: user };
   } catch (error) {
-    return toFailure(error, "登录失败，请稍后重试");
+    return toFailure(error, "loginFailed");
   }
 }
 
@@ -75,7 +93,7 @@ export async function changePasswordAction(input: {
     });
     return { ok: true, data: true };
   } catch (error) {
-    return toFailure(error, "修改密码失败，请稍后重试");
+    return toFailure(error, "changePasswordFailed");
   }
 }
 
@@ -84,6 +102,6 @@ export async function logoutAction(): Promise<ActionResult<true>> {
     await logout();
     return { ok: true, data: true };
   } catch (error) {
-    return toFailure(error, "退出登录失败，请稍后重试");
+    return toFailure(error, "signOutFailed");
   }
 }

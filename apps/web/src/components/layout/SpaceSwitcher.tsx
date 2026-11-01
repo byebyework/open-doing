@@ -3,6 +3,7 @@
 import { Dropdown } from "antd";
 import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 
 import {
   createTeamHref,
@@ -58,6 +59,7 @@ export function selectedSpaceKey(
 export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const t = useTranslations("nav");
 
   const teamSlugs = teams.map((team) => team.slug);
   const selectedKey = selectedSpaceKey(pathname, teamSlugs);
@@ -70,20 +72,20 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
         : `team:${selectedKey}`;
   // 触发按钮沿用原型：有归属团队时展示团队名，否则回退为个人空间。
   const currentLabel =
-    teams.find((team) => team.slug === selectedKey)?.name ?? "个人空间";
+    teams.find((team) => team.slug === selectedKey)?.name ?? t("personalSpace");
 
   const items: MenuProps["items"] = [
     {
       type: "group",
-      label: "个人",
-      children: [{ key: "personal", label: "个人空间" }],
+      label: t("personal"),
+      children: [{ key: "personal", label: t("personalSpace") }],
     },
     // 无团队时省略分组标题，避免出现空分组。
     ...(teams.length > 0
       ? [
           {
             type: "group" as const,
-            label: "我的团队",
+            label: t("myTeams"),
             children: teams.map((team) => ({
               key: `team:${team.slug}`,
               label: (
@@ -97,8 +99,8 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
         ]
       : []),
     { type: "divider" },
-    { key: "create-team", label: "创建团队" },
-    { key: "join-team", label: "凭码加入" },
+    { key: "create-team", label: t("createTeam") },
+    { key: "join-team", label: t("joinByCode") },
   ];
 
   /** 菜单点击：固定入口跳静态路由；`team:` 前缀项解码为团队 slug。 */

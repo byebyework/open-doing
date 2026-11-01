@@ -2,6 +2,7 @@
 
 import { Modal } from "antd";
 import type { ReactNode } from "react";
+import { useTranslations } from "next-intl";
 
 /** ConfirmModal 入参。 */
 export interface ConfirmModalProps {
@@ -32,18 +33,21 @@ export function ConfirmModal({
   open,
   title,
   content,
-  confirmText = "确认",
+  confirmText,
   danger = false,
   loading = false,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
+  const t = useTranslations("common");
+  const okText = confirmText ?? t("confirm");
+
   return (
     <Modal
       open={open}
       title={title}
-      okText={confirmText}
-      cancelText="取消"
+      okText={okText}
+      cancelText={t("cancel")}
       confirmLoading={loading}
       okButtonProps={{ danger }}
       onOk={onConfirm}

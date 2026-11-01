@@ -17,6 +17,7 @@ import {
 } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -28,17 +29,17 @@ import { SubtaskList } from "@/features/personal/tasks/components/SubtaskList";
 import { spaceDashboardHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
-import { assigneeCalloutText, shouldShowAssigneeCallout } from "./callout";
+import { assigneeCalloutKey, shouldShowAssigneeCallout } from "./callout";
 import type { TaskDetailModel, TaskDetailViewProps } from "./types";
 
 /** 状态展示顺序（与项目页 / 看板一致）。 */
 const STATUS_ORDER: readonly TaskStatus[] = ["todo", "in_progress", "done"];
 
-/** 状态中文文案。 */
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: "未开始",
-  in_progress: "进行中",
-  done: "已完成",
+/** 状态 → `status` 命名空间文案 key。 */
+const STATUS_LABEL_KEY: Record<TaskStatus, "notStarted" | "inProgress" | "completed"> = {
+  todo: "notStarted",
+  in_progress: "inProgress",
+  done: "completed",
 };
 
 /** 将 `YYYY-MM-DD` 显示为 `MM-DD`。 */
@@ -124,6 +125,8 @@ function EditTaskModal({
   onCancel,
 }: EditTaskModalProps) {
   const [form] = Form.useForm<EditTaskFormValues>();
+  const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleFinish(values: EditTaskFormValues) {
@@ -146,9 +149,9 @@ function EditTaskModal({
   return (
     <Modal
       open={open}
-      title="编辑任务"
-      okText="保存"
-      cancelText="取消"
+      title={t("editTask")}
+      okText={tCommon("save")}
+      cancelText={tCommon("cancel")}
       confirmLoading={submitting}
       onOk={() => form.submit()}
       onCancel={onCancel}
@@ -168,22 +171,22 @@ function EditTaskModal({
         onFinish={handleFinish}
       >
         <Form.Item
-          label="标题"
+          label={t("title")}
           name="title"
           rules={[
-            { required: true, whitespace: true, message: "请输入任务标题" },
-            { max: 200, message: "任务标题不能超过 200 个字符" },
+            { required: true, whitespace: true, message: t("titleRequired") },
+            { max: 200, message: t("titleTooLong", { max: 200 }) },
           ]}
         >
-          <Input placeholder="任务要做什么？" maxLength={200} autoFocus />
+          <Input placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
         </Form.Item>
 
-        <Form.Item label="截止日期" name="dueDate">
+        <Form.Item label={t("dueDateLabel")} name="dueDate">
           <Input type="date" style={{ maxWidth: 220 }} />
         </Form.Item>
 
-        <Form.Item label="描述" name="description">
-          <Input.TextArea rows={4} placeholder="补充背景、验收标准…" />
+        <Form.Item label={t("descriptionLabel")} name="description">
+          <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} />
         </Form.Item>
       </Form>
     </Modal>
@@ -207,13 +210,18 @@ export function TaskDetailView({
   permissions,
   onAction,
   backHref = spaceDashboardHref("personal"),
-  backLabel = "← 返回项目",
+  backLabel,
   currentUserId,
   assigneeOptions,
   onAssign,
 }: TaskDetailViewProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
+  const tDate = useTranslations("date");
+  const tCommon = useTranslations("common");
   const today = todayInShanghai();
+  const resolvedBackLabel = backLabel ?? t("backToProject");
 
   // 服务端刷新（router.refresh）后以最新 props 为准；渲染期同步 props →
   // state 是 React 推荐的「props 变化时调整 state」写法。
@@ -351,7 +359,7 @@ export function TaskDetailView({
   const statusMenuItems: MenuProps["items"] = STATUS_ORDER.map(
     (candidate) => ({
       key: candidate,
-      label: STATUS_LABEL[candidate],
+      label: tStatus(STATUS_LABEL_KEY[candidate]),
       disabled: candidate === status,
     }),
   );
@@ -364,7 +372,7 @@ export function TaskDetailView({
         href={backHref}
         className="mb-4 inline-block text-[13px] text-[#5f6368] no-underline hover:text-[#7d2ae8] hover:underline"
       >
-        {backLabel}
+        {resolvedBackLabel}
       </Link>
 
       <div className="grid min-w-0 grid-cols-1 items-start gap-6 min-[1101px]:grid-cols-[minmax(0,1fr)_300px]">
@@ -378,11 +386,12 @@ export function TaskDetailView({
             <StatusTag status={status} />
 
             {overdue ? (
-              <DueTag tone="overdue">已逾期</DueTag>
+              <DueTag tone="overdue">{tDate("overdue")}</DueTag>
             ) : dueSoon && task.dueDate ? (
               <DueTag tone="soon">
-                {task.dueDate === today ? "今天" : "明天"}{" "}
-                {shortDate(task.dueDate)} 到期
+                {task.dueDate === today
+                  ? t("dueTodayFull", { date: shortDate(task.dueDate) })
+                  : t("dueTomorrowFull", { date: shortDate(task.dueDate) })}
               </DueTag>
             ) : null}
           </div>
@@ -393,7 +402,7 @@ export function TaskDetailView({
             </p>
           ) : (
             <p className="mt-4 text-[14px] leading-[1.65] text-[#9aa0a6]">
-              暂无描述
+              {t("noDescription")}
             </p>
           )}
 
@@ -401,8 +410,8 @@ export function TaskDetailView({
             <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px] text-[#5f6368]">
               <span>
                 {hasSubtasks
-                  ? `任务进度 · ${completed}/${total} 个子任务`
-                  : "任务进度"}
+                  ? t("progressWithSubtasks", { completed, total })
+                  : t("progress")}
               </span>
               <span
                 className={
@@ -411,14 +420,14 @@ export function TaskDetailView({
               >
                 {hasSubtasks
                   ? `${percent}%`
-                  : `无子任务，按状态计 ${percent}%`}
+                  : t("noSubtasksProgress", { percent })}
               </span>
             </div>
             <ProgressBar value={progress} />
           </div>
 
           <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
-            子任务 · {completed}/{total}
+            {t("subtasksProgress", { completed, total })}
           </h2>
           {/* 子任务与状态同属编辑权：只读态下复选框禁用、增删入口隐藏。 */}
           <SubtaskList
@@ -437,7 +446,7 @@ export function TaskDetailView({
           />
 
           <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
-            评论 · {task.comments.length}
+            {t("commentsCount", { count: task.comments.length })}
           </h2>
           <CommentBox
             comments={task.comments}
@@ -450,7 +459,7 @@ export function TaskDetailView({
         {/* 右列：元信息 */}
         <aside className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
           <div>
-            <MetaRow label="状态">
+            <MetaRow label={t("statusLabel")}>
               <StatusTag status={status} />
               {/* 只读（团队态非责任人 / 非管理员）时不给状态切换入口：
                   服务层同样会拒绝，但界面不应先给出可点的假象。 */}
@@ -466,13 +475,13 @@ export function TaskDetailView({
                   }}
                 >
                   <Button type="text" size="small" className="px-1">
-                    更改
+                    {t("change")}
                   </Button>
                 </Dropdown>
               ) : null}
             </MetaRow>
 
-            <MetaRow label="责任人">
+            <MetaRow label={t("assigneeLabel")}>
               {space === "team" &&
               permissions.canAssign &&
               assigneeOptions &&
@@ -481,10 +490,10 @@ export function TaskDetailView({
                   size="small"
                   showSearch
                   optionFilterProp="label"
-                  aria-label="责任人"
+                  aria-label={t("assigneeLabel")}
                   style={{ width: 170 }}
                   value={assigneeId ?? undefined}
-                  placeholder="未指派"
+                  placeholder={t("unassigned")}
                   loading={assigneePending}
                   disabled={assigneePending}
                   // 未指派是占位，不是可选项：成员离职后任务保留未指派状态，
@@ -496,7 +505,7 @@ export function TaskDetailView({
                       ? [
                           {
                             id: assigneeId,
-                            name: task.assigneeName ?? "已离开成员",
+                            name: task.assigneeName ?? t("leftMember"),
                           },
                         ]
                       : []),
@@ -517,29 +526,37 @@ export function TaskDetailView({
                   </span>
                 </>
               ) : (
-                <span className="font-normal text-[#9aa0a6]">未指派</span>
+                <span className="font-normal text-[#9aa0a6]">
+                  {t("unassigned")}
+                </span>
               )}
             </MetaRow>
 
-            <MetaRow label="截止日期">
+            <MetaRow label={t("dueDateLabel")}>
               {task.dueDate ? (
                 <>
                   <span>{shortDate(task.dueDate)}</span>
                   {overdue ? (
-                    <span className="font-semibold text-[#ff5757]">已逾期</span>
+                    <span className="font-semibold text-[#ff5757]">
+                      {tDate("overdue")}
+                    </span>
                   ) : dueSoon ? (
                     <span className="text-[#a66b00]">
-                      {task.dueDate === today ? "今天" : "明天"}
+                      {task.dueDate === today
+                        ? tDate("today")
+                        : tDate("tomorrow")}
                     </span>
                   ) : null}
-                  {dueSoon ? <DueTag tone="soon">临期</DueTag> : null}
+                  {dueSoon ? (
+                    <DueTag tone="soon">{t("dueSoonTag")}</DueTag>
+                  ) : null}
                 </>
               ) : (
                 <span className="font-normal text-[#9aa0a6]">—</span>
               )}
             </MetaRow>
 
-            <MetaRow label="所属项目">
+            <MetaRow label={t("projectLabel")}>
               {task.projectId && task.projectName ? (
                 <Link
                   href={backHref}
@@ -553,9 +570,12 @@ export function TaskDetailView({
             </MetaRow>
 
             {task.creatorName ? (
-              <MetaRow label="创建人">
+              <MetaRow label={t("creatorLabel")}>
                 <span className="font-normal text-[#5f6368]">
-                  {task.creatorName} · {formatShanghaiDate(task.createdAt)} 创建
+                  {t("createdAtLine", {
+                    name: task.creatorName,
+                    date: formatShanghaiDate(task.createdAt),
+                  })}
                 </span>
               </MetaRow>
             ) : null}
@@ -563,14 +583,14 @@ export function TaskDetailView({
 
           <div className="mt-4 border-t border-[#e1e3e6] pt-4">
             <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px] text-[#5f6368]">
-              <span>任务进度</span>
+              <span>{t("progress")}</span>
               <span>{percent}%</span>
             </div>
             <ProgressBar value={progress} />
             <p className="mt-2 text-[12px] leading-relaxed text-[#9aa0a6]">
               {hasSubtasks
-                ? `由 ${completed}/${total} 个子任务完成度自动计算`
-                : "按任务状态自动计算"}
+                ? t("progressHintWithSubtasks", { completed, total })
+                : t("progressHintByStatus")}
             </p>
           </div>
 
@@ -592,14 +612,14 @@ export function TaskDetailView({
               }}
             >
               <span aria-hidden="true">ℹ</span>
-              <span>{assigneeCalloutText(permissions.canEdit)}</span>
+              <span>{t(assigneeCalloutKey(permissions.canEdit))}</span>
             </div>
           ) : null}
 
           <div className="mt-4 flex flex-col gap-2">
             {permissions.canEdit ? (
               <Button type="primary" block onClick={() => setEditOpen(true)}>
-                编辑任务
+                {t("editTask")}
               </Button>
             ) : null}
 
@@ -612,13 +632,13 @@ export function TaskDetailView({
                   void changeStatus(nextStatus);
                 }}
               >
-                {status === "done" ? "标记为未完成" : "标记为已完成"}
+                {status === "done" ? t("markNotDone") : t("markDone")}
               </Button>
             ) : null}
 
             {permissions.canDelete ? (
               <Button danger block onClick={() => setDeleteOpen(true)}>
-                删除任务
+                {t("deleteTask")}
               </Button>
             ) : null}
           </div>
@@ -634,9 +654,9 @@ export function TaskDetailView({
 
       <ConfirmModal
         open={deleteOpen}
-        title="删除任务"
-        content={`删除后子任务与评论一并删除，且不可恢复。确定删除「${task.title}」吗？`}
-        confirmText="删除"
+        title={t("deleteTask")}
+        content={t("deleteConfirm", { title: task.title })}
+        confirmText={tCommon("delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

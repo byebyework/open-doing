@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTranslations } from "next-intl";
 import type { ComponentType } from "react";
 
 import { invitesHref, moduleHref, type SpaceModule } from "@/lib/routes";
@@ -144,12 +145,16 @@ function InvitesIcon() {
 }
 
 /** 当前空间五模块（顺序与原型侧栏一致）。 */
-const MODULES: { module: SpaceModule; label: string; Icon: ComponentType }[] = [
-  { module: "dashboard", label: "Dashboard", Icon: DashboardIcon },
-  { module: "kanban", label: "Kanban", Icon: KanbanIcon },
-  { module: "calendar", label: "Calendar", Icon: CalendarIcon },
-  { module: "analysis", label: "Analysis", Icon: AnalysisIcon },
-  { module: "settings", label: "设置", Icon: SettingsIcon },
+const MODULES: {
+  module: SpaceModule;
+  labelKey: "dashboard" | "kanban" | "calendar" | "analysis" | "settingsLabel";
+  Icon: ComponentType;
+}[] = [
+  { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
+  { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
+  { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
+  { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
+  { module: "settings", labelKey: "settingsLabel", Icon: SettingsIcon },
 ];
 
 /** SpaceNavMenu 入参。 */
@@ -175,13 +180,16 @@ export function resolveSpaceLocation(pathname: string): {
   return { spaceRef: segments[1], module: segments[2] ?? null };
 }
 
-/** 当前空间显示名：个人空间固定文案，团队取团队名，未知 slug 回退个人空间语义。 */
+/**
+ * 当前空间显示名：团队取团队名；个人空间与未知 slug 返回 null，
+ * 由调用方用 `nav.personalSpace` 翻译兜底（本函数保持纯函数、不依赖 hook）。
+ */
 export function resolveSpaceLabel(
   spaceRef: string,
   teams: SpaceNavData["teams"],
-): string {
-  if (spaceRef === "personal") return "个人空间";
-  return teams.find((team) => team.slug === spaceRef)?.name ?? "个人空间";
+): string | null {
+  if (spaceRef === "personal") return null;
+  return teams.find((team) => team.slug === spaceRef)?.name ?? null;
 }
 
 /**
@@ -195,11 +203,12 @@ export function resolveSpaceLabel(
 export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
   // hook 必须在任何提前 return 之前无条件调用。
   const pathname = usePathname();
+  const t = useTranslations("nav");
 
   if (!data.loggedIn) return null;
 
   const { spaceRef, module: activeModule } = resolveSpaceLocation(pathname);
-  const spaceLabel = resolveSpaceLabel(spaceRef, data.teams);
+  const spaceLabel = resolveSpaceLabel(spaceRef, data.teams) ?? t("personalSpace");
   const invitesActive =
     pathname === invitesHref() || pathname.startsWith(`${invitesHref()}/`);
 
@@ -207,7 +216,7 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
     <>
       <div className="flex flex-col">
         <div className={NAV_GROUP_LABEL}>{spaceLabel}</div>
-        {MODULES.map(({ module, label, Icon }) => {
+        {MODULES.map(({ module, labelKey, Icon }) => {
           const active = activeModule === module;
 
           return (
@@ -220,14 +229,14 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
               }`}
             >
               <Icon />
-              {label}
+              {t(labelKey)}
             </Link>
           );
         })}
       </div>
 
       <div className="flex flex-col">
-        <div className={NAV_GROUP_LABEL}>账号</div>
+        <div className={NAV_GROUP_LABEL}>{t("accountGroup")}</div>
         <Link
           href={invitesHref()}
           aria-current={invitesActive ? "page" : undefined}
@@ -236,7 +245,7 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
           }`}
         >
           <InvitesIcon />
-          <span className="min-w-0 flex-1">待处理邀请</span>
+          <span className="min-w-0 flex-1">{t("pendingInvites")}</span>
           {data.pendingInviteCount > 0 ? (
             <span className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[#ff5757] px-1 text-[11px] font-bold text-white">
               {data.pendingInviteCount}

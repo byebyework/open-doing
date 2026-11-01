@@ -1,4 +1,5 @@
 import { isDueSoon, isOverdue, type TaskStatus } from "@open-doing/types";
+import { useTranslations } from "next-intl";
 
 /** DueText 入参。 */
 export interface DueTextProps {
@@ -22,6 +23,7 @@ function shortDate(date: string): string {
  * 其余显示 `MM-DD`。无截止日期时返回 null（调用方自行决定占位）。
  */
 export function DueText({ dueDate, status, today }: DueTextProps) {
+  const t = useTranslations("date");
   if (!dueDate) {
     return null;
   }
@@ -32,7 +34,7 @@ export function DueText({ dueDate, status, today }: DueTextProps) {
         className="inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold text-[#ff5757]"
         title={dueDate}
       >
-        已逾期 · {shortDate(dueDate)}
+        {t("overdueWithDate", { date: shortDate(dueDate) })}
       </span>
     );
   }
@@ -43,7 +45,7 @@ export function DueText({ dueDate, status, today }: DueTextProps) {
         className="inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
         title={dueDate}
       >
-        {dueDate === today ? "今天" : "明天"}
+        {dueDate === today ? t("today") : t("tomorrow")}
       </span>
     );
   }

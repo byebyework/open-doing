@@ -1,6 +1,7 @@
 "use client";
 
 import { Progress } from "antd";
+import { useTranslations } from "next-intl";
 
 /** ProgressBar 入参。 */
 export interface ProgressBarProps {
@@ -15,6 +16,7 @@ export interface ProgressBarProps {
  * 超出范围的输入会被钳制到 0 ~ 100。
  */
 export function ProgressBar({ value }: ProgressBarProps) {
+  const t = useTranslations("common");
   const percent = Math.min(100, Math.max(0, value * 100));
 
   return (
@@ -24,7 +26,7 @@ export function ProgressBar({ value }: ProgressBarProps) {
       size={{ height: 6 }}
       strokeColor="#7d2ae8"
       railColor="#e8eaed"
-      aria-label={`进度 ${Math.round(percent)}%`}
+      aria-label={t("progress", { percent: Math.round(percent) })}
     />
   );
 }

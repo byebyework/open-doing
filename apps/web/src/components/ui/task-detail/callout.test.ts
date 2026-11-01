@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  assigneeCalloutText,
+  assigneeCalloutKey,
   shouldShowAssigneeCallout,
 } from "./callout";
 
@@ -66,18 +66,12 @@ describe("shouldShowAssigneeCallout", () => {
   });
 });
 
-describe("assigneeCalloutText", () => {
-  it("可编辑时包含编辑说明", () => {
-    expect(assigneeCalloutText(true)).toBe(
-      "你是此任务的责任人，可以编辑任务内容；团队所有成员都可以发表评论。",
-    );
+describe("assigneeCalloutKey", () => {
+  it("可编辑时返回带编辑说明的 key", () => {
+    expect(assigneeCalloutKey(true)).toBe("assigneeCalloutEditable");
   });
 
-  it("不可编辑时不宣称可以编辑", () => {
-    const text = assigneeCalloutText(false);
-    expect(text).toBe(
-      "你是此任务的责任人；团队所有成员都可以发表评论。",
-    );
-    expect(text).not.toContain("可以编辑");
+  it("不可编辑时返回不含编辑说明的 key", () => {
+    expect(assigneeCalloutKey(false)).toBe("assigneeCallout");
   });
 });

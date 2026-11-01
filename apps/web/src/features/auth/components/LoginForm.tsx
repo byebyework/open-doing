@@ -3,6 +3,7 @@
 import { Alert, Button, Form, Input } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { spaceDashboardHref } from "@/lib/routes";
@@ -22,6 +23,8 @@ interface LoginValues {
  */
 export function LoginForm() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<LoginValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -56,7 +59,7 @@ export function LoginForm() {
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -72,9 +75,9 @@ export function LoginForm() {
       </span>
 
       <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
-        欢迎回来
+        {t("welcomeBack")}
       </h1>
-      <p className="mb-7 text-[14px] text-[#5f6368]">登录你的 Open Doing 账号</p>
+      <p className="mb-7 text-[14px] text-[#5f6368]">{t("loginSubtitle")}</p>
 
       {formError ? (
         <Alert
@@ -94,32 +97,32 @@ export function LoginForm() {
         disabled={submitting}
       >
         <Form.Item
-          label="用户名"
+          label={t("usernameLabel")}
           name="username"
-          rules={[{ required: true, message: "请输入用户名" }]}
+          rules={[{ required: true, message: t("usernameRequired") }]}
         >
           <Input
             size="large"
-            placeholder="请输入用户名"
+            placeholder={t("usernamePlaceholder")}
             autoComplete="username"
             autoFocus
           />
         </Form.Item>
 
         <Form.Item
-          label="密码"
+          label={t("passwordLabel")}
           name="password"
-          rules={[{ required: true, message: "请输入密码" }]}
+          rules={[{ required: true, message: t("passwordRequired") }]}
         >
           <Input.Password
             size="large"
-            placeholder="请输入密码"
+            placeholder={t("passwordPlaceholder")}
             autoComplete="current-password"
           />
         </Form.Item>
 
         <div className="-mt-1 mb-4 flex justify-end">
-          <span className="text-[12px] text-[#9aa0a6]">v1 暂不支持找回密码</span>
+          <span className="text-[12px] text-[#9aa0a6]">{t("noPasswordRecovery")}</span>
         </div>
 
         <Button
@@ -135,14 +138,14 @@ export function LoginForm() {
             fontWeight: 600,
           }}
         >
-          登 录
+          {t("signInButton")}
         </Button>
       </Form>
 
       <p className="mt-5 text-center text-[13px] text-[#5f6368]">
-        还没有账号？{" "}
+        {t("noAccount")}{" "}
         <Link href="/register" className="font-semibold text-[#7d2ae8]">
-          立即注册
+          {t("registerNow")}
         </Link>
       </p>
     </div>

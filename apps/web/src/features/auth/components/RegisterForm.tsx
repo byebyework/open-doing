@@ -3,6 +3,7 @@
 import { Alert, Button, Form, Input } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { spaceDashboardHref } from "@/lib/routes";
@@ -20,9 +21,6 @@ interface RegisterValues {
   confirmPassword: string;
 }
 
-const USERNAME_LENGTH_MESSAGE = `用户名需为 ${USERNAME_MIN_LENGTH}–${USERNAME_MAX_LENGTH} 个字符`;
-const PASSWORD_LENGTH_MESSAGE = `密码至少 ${PASSWORD_MIN_LENGTH} 位`;
-
 /**
  * 注册表单（客户端交互层）。
  *
@@ -31,6 +29,8 @@ const PASSWORD_LENGTH_MESSAGE = `密码至少 ${PASSWORD_MIN_LENGTH} 位`;
  */
 export function RegisterForm() {
   const router = useRouter();
+  const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<RegisterValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -65,7 +65,7 @@ export function RegisterForm() {
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -81,9 +81,9 @@ export function RegisterForm() {
       </span>
 
       <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
-        创建账号
+        {t("createAccount")}
       </h1>
-      <p className="mb-6 text-[14px] text-[#5f6368]">只需用户名和密码，无需邮箱</p>
+      <p className="mb-6 text-[14px] text-[#5f6368]">{t("registerSubtitle")}</p>
 
       {formError ? (
         <Alert
@@ -103,57 +103,75 @@ export function RegisterForm() {
         disabled={submitting}
       >
         <Form.Item
-          label="用户名"
+          label={t("usernameLabel")}
           name="username"
-          extra={`${USERNAME_MIN_LENGTH}–${USERNAME_MAX_LENGTH} 个字符，全局唯一，注册后用于登录与显示`}
+          extra={t("usernameExtra", {
+            min: USERNAME_MIN_LENGTH,
+            max: USERNAME_MAX_LENGTH,
+          })}
           rules={[
-            { required: true, message: "请输入用户名" },
-            { min: USERNAME_MIN_LENGTH, message: USERNAME_LENGTH_MESSAGE },
-            { max: USERNAME_MAX_LENGTH, message: USERNAME_LENGTH_MESSAGE },
+            { required: true, message: t("usernameRequired") },
+            {
+              min: USERNAME_MIN_LENGTH,
+              message: t("usernameLength", {
+                min: USERNAME_MIN_LENGTH,
+                max: USERNAME_MAX_LENGTH,
+              }),
+            },
+            {
+              max: USERNAME_MAX_LENGTH,
+              message: t("usernameLength", {
+                min: USERNAME_MIN_LENGTH,
+                max: USERNAME_MAX_LENGTH,
+              }),
+            },
           ]}
         >
           <Input
             size="large"
-            placeholder="给自己起个名字，全局唯一"
+            placeholder={t("usernameRegisterPlaceholder")}
             autoComplete="username"
             autoFocus
           />
         </Form.Item>
 
         <Form.Item
-          label="密码"
+          label={t("passwordLabel")}
           name="password"
           rules={[
-            { required: true, message: "请输入密码" },
-            { min: PASSWORD_MIN_LENGTH, message: PASSWORD_LENGTH_MESSAGE },
+            { required: true, message: t("passwordRequired") },
+            {
+              min: PASSWORD_MIN_LENGTH,
+              message: t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }),
+            },
           ]}
         >
           <Input.Password
             size="large"
-            placeholder="至少 8 位"
+            placeholder={t("passwordRegisterPlaceholder")}
             autoComplete="new-password"
           />
         </Form.Item>
 
         <Form.Item
-          label="确认密码"
+          label={t("confirmPasswordLabel")}
           name="confirmPassword"
           dependencies={["password"]}
           rules={[
-            { required: true, message: "请再次输入密码" },
+            { required: true, message: t("confirmPasswordRequired") },
             ({ getFieldValue }) => ({
               validator(_rule, value: string) {
                 if (!value || getFieldValue("password") === value) {
                   return Promise.resolve();
                 }
-                return Promise.reject(new Error("两次输入的密码不一致"));
+                return Promise.reject(new Error(t("passwordMismatch")));
               },
             }),
           ]}
         >
           <Input.Password
             size="large"
-            placeholder="再次输入密码"
+            placeholder={t("confirmPasswordPlaceholder")}
             autoComplete="new-password"
           />
         </Form.Item>
@@ -161,9 +179,9 @@ export function RegisterForm() {
         <div className="mb-5 flex gap-2 rounded-lg bg-[#eaf5ff] px-4 py-3 text-[12.5px] leading-[1.5] text-[#0b6fb8]">
           <span aria-hidden="true">ℹ</span>
           <span>
-            注册成功后系统会自动生成形如{" "}
+            {t("uidHintBefore")}{" "}
             <b className="font-mono">doing_xxxx</b>{" "}
-            的专属 UID，队友通过 UID 邀请你加入团队。
+            {t("uidHintAfter")}
           </span>
         </div>
 
@@ -180,14 +198,14 @@ export function RegisterForm() {
             fontWeight: 600,
           }}
         >
-          注 册
+          {t("signUpButton")}
         </Button>
       </Form>
 
       <p className="mt-5 text-center text-[13px] text-[#5f6368]">
-        已有账号？{" "}
+        {t("hasAccount")}{" "}
         <Link href="/login" className="font-semibold text-[#7d2ae8]">
-          直接登录
+          {t("signInInstead")}
         </Link>
       </p>
     </div>

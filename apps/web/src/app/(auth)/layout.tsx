@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
+import { getTranslations } from "next-intl/server";
 
 import { getCurrentUser } from "@/features/auth/session";
 import { spaceDashboardHref } from "@/lib/routes";
@@ -12,6 +13,7 @@ import { spaceDashboardHref } from "@/lib/routes";
  * 已登录用户访问 /login、/register 时统一跳到个人空间首页。
  */
 export default async function AuthLayout({ children }: { children: ReactNode }) {
+  const t = await getTranslations("auth");
   const user = await getCurrentUser();
   if (user) redirect(spaceDashboardHref("personal"));
 
@@ -39,18 +41,18 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
 
         <div className="relative my-auto max-w-[420px] py-10">
           <p className="text-[28px] font-extrabold leading-[1.3] tracking-[-0.01em]">
-            让每个人的进展，
+            {t("brandLine1")}
             <br />
-            都被看见。
+            {t("brandLine2")}
           </p>
           <p className="mt-4 text-[14px] text-white/70">
-            个人任务、团队项目、进度概览，一处掌握。
+            {t("brandTagline")}
           </p>
           <div className="mt-6 flex flex-col gap-3">
             {[
-              "个人空间理清自己的待办",
-              "团队项目进度实时同步",
-              "项目健康度与成员负载一览",
+              t("brandPoint1"),
+              t("brandPoint2"),
+              t("brandPoint3"),
             ].map((point) => (
               <div
                 key={point}

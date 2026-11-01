@@ -7,6 +7,7 @@ import {
   toUser,
   usernameExists,
 } from "@/features/users/service";
+import type { DomainErrorI18n } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import { db, type DbClient } from "@/server/db/client";
 import { errorChain, isUniqueViolation } from "@/server/db/errors";
@@ -49,17 +50,25 @@ export type AuthErrorField =
  * 认证领域错误。
  *
  * `field` 供 Server Action 映射为表单字段错误；不把数据库/哈希细节
- * 泄露给客户端。
+ * 泄露给客户端。`i18n` 为可选翻译通道（与 DomainError 同构）：
+ * `message` 保持 zh 兜底，携带 i18n 时由 action 按请求语言翻译。
  */
 export class AuthError extends Error {
   readonly code: AuthErrorCode;
   readonly field: AuthErrorField;
+  readonly i18n?: DomainErrorI18n;
 
-  constructor(code: AuthErrorCode, message: string, field: AuthErrorField = "form") {
+  constructor(
+    code: AuthErrorCode,
+    message: string,
+    field: AuthErrorField = "form",
+    i18n?: DomainErrorI18n,
+  ) {
     super(message);
     this.name = "AuthError";
     this.code = code;
     this.field = field;
+    this.i18n = i18n;
   }
 }
 
@@ -77,7 +86,9 @@ function normalizePassword(value: unknown): string {
 }
 
 function invalidCredentials(): AuthError {
-  return new AuthError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE, "form");
+  return new AuthError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE, "form", {
+    key: "invalidCredentials",
+  });
 }
 
 /** 注册入参校验：用户名 2–20 字符，密码至少 8 位。 */
@@ -86,23 +97,32 @@ function validateRegistration(input: AuthInput): { username: string; password: s
   const password = normalizePassword(input?.password);
 
   if (!username) {
-    throw new AuthError("VALIDATION", "请输入用户名", "username");
+    throw new AuthError("VALIDATION", "请输入用户名", "username", {
+      key: "usernameRequired",
+    });
   }
   if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
     throw new AuthError(
       "VALIDATION",
       `用户名需为 ${USERNAME_MIN_LENGTH}–${USERNAME_MAX_LENGTH} 个字符`,
       "username",
+      {
+        key: "usernameLength",
+        params: { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH },
+      },
     );
   }
   if (!password) {
-    throw new AuthError("VALIDATION", "请输入密码", "password");
+    throw new AuthError("VALIDATION", "请输入密码", "password", {
+      key: "passwordRequired",
+    });
   }
   if (password.length < PASSWORD_MIN_LENGTH) {
     throw new AuthError(
       "VALIDATION",
       `密码至少 ${PASSWORD_MIN_LENGTH} 位`,
       "password",
+      { key: "passwordMinLength", params: { min: PASSWORD_MIN_LENGTH } },
     );
   }
 
@@ -136,7 +156,9 @@ export async function registerUser(
   const { username, password } = validateRegistration(input);
 
   if (await usernameExists(username, client)) {
-    throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username");
+    throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
+      key: "usernameTaken",
+    });
   }
 
   const passwordHash = await hash(password);
@@ -158,7 +180,9 @@ export async function registerUser(
       if (!isUniqueViolation(error)) throw error;
 
       if (isUsernameConflict(error)) {
-        throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username");
+        throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
+          key: "usernameTaken",
+        });
       }
       // 其余唯一冲突只可能来自 UID：重新生成后重试。
     }
@@ -168,6 +192,7 @@ export async function registerUser(
     "UID_GENERATION_FAILED",
     "系统繁忙，请稍后重试",
     "form",
+    { key: "uidGenerationFailed" },
   );
 }
 
@@ -225,6 +250,7 @@ export async function changePassword(
       "VALIDATION",
       `新密码至少 ${PASSWORD_MIN_LENGTH} 位`,
       "newPassword",
+      { key: "newPasswordMinLength", params: { min: PASSWORD_MIN_LENGTH } },
     );
   }
 
@@ -247,7 +273,9 @@ export async function changePassword(
   }
 
   if (!oldPasswordMatches) {
-    throw new AuthError("INVALID_CREDENTIALS", "旧密码不正确", "oldPassword");
+    throw new AuthError("INVALID_CREDENTIALS", "旧密码不正确", "oldPassword", {
+      key: "oldPasswordIncorrect",
+    });
   }
 
   await client

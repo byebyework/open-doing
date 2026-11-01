@@ -30,9 +30,12 @@ export function shouldShowAssigneeCallout({
   );
 }
 
-/** 责任人 callout 文案；不可编辑时省略「可以编辑任务内容」。 */
-export function assigneeCalloutText(canEdit: boolean): string {
-  return canEdit
-    ? "你是此任务的责任人，可以编辑任务内容；团队所有成员都可以发表评论。"
-    : "你是此任务的责任人；团队所有成员都可以发表评论。";
+/**
+ * 责任人 callout 的文案 key（`tasks` 命名空间）；不可编辑时省略「可以编辑任务内容」。
+ * 本模块保持纯函数、不依赖 hook，翻译由组件层用 `useTranslations("tasks")` 完成。
+ */
+export function assigneeCalloutKey(
+  canEdit: boolean,
+): "assigneeCalloutEditable" | "assigneeCallout" {
+  return canEdit ? "assigneeCalloutEditable" : "assigneeCallout";
 }

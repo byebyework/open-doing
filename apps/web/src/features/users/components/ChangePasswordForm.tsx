@@ -22,6 +22,7 @@ interface ChangePasswordValues {
  */
 export function ChangePasswordForm() {
   const t = useTranslations("settings");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<ChangePasswordValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -68,7 +69,7 @@ export function ChangePasswordForm() {
       message.success(t("passwordUpdated"));
       form.resetFields();
     } catch {
-      setFormError(t("networkError"));
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }

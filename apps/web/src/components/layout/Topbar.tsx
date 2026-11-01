@@ -3,6 +3,7 @@
 import type { User } from "@open-doing/types";
 import { Dropdown, Input, type MenuProps } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -25,10 +26,11 @@ export interface TopbarProps {
  */
 export function Topbar({ user, mobileNav }: TopbarProps) {
   const router = useRouter();
+  const t = useTranslations("nav");
   const [loggingOut, setLoggingOut] = useState(false);
 
   const userMenuItems: MenuProps["items"] = [
-    { key: "logout", label: "退出登录", danger: true },
+    { key: "logout", label: t("logout"), danger: true },
   ];
 
   async function handleUserMenuClick({ key }: { key: string }) {
@@ -64,8 +66,8 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
       <div className="ml-auto hidden w-[240px] shrink-0 min-[861px]:block">
         <Input
           disabled
-          aria-label="搜索任务"
-          placeholder="搜索任务…"
+          aria-label={t("searchAria")}
+          placeholder={t("searchPlaceholder")}
           prefix={
             <svg
               width="15"
@@ -101,7 +103,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
         >
           <button
             type="button"
-            aria-label={`当前用户 ${user.username}，打开用户菜单`}
+            aria-label={t("currentUserAria", { name: user.username })}
             className="cursor-pointer rounded-full border-0 bg-transparent p-0"
           >
             <UserAvatar username={user.username} size={30} />
@@ -110,7 +112,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
       ) : (
         <span
           className="h-[30px] w-[30px] shrink-0 rounded-full bg-[#e8eaed]"
-          aria-label="未登录用户"
+          aria-label={t("notSignedInAria")}
           role="img"
         />
       )}
