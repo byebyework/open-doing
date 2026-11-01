@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Input } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -63,6 +64,8 @@ export function CommentBox({
   onAdd,
   onDelete,
 }: CommentBoxProps) {
+  const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -98,7 +101,7 @@ export function CommentBox({
   return (
     <div>
       {comments.length === 0 ? (
-        <p className="py-2 text-[13px] text-[#9aa0a6]">暂无评论</p>
+        <p className="py-2 text-[13px] text-[#9aa0a6]">{t("noComments")}</p>
       ) : (
         <div className="flex flex-col gap-5">
           {comments.map((comment) => (
@@ -125,7 +128,7 @@ export function CommentBox({
                         void handleDelete(comment.id);
                       }}
                     >
-                      删除
+                      {tCommon("delete")}
                     </Button>
                   ) : null}
                 </div>
@@ -144,9 +147,9 @@ export function CommentBox({
           value={draft}
           rows={3}
           maxLength={2000}
-          aria-label="评论内容"
+          aria-label={t("commentAria")}
           showCount
-          placeholder="写下你的评论…"
+          placeholder={t("commentPlaceholder")}
           disabled={submitting}
           onChange={(event) => setDraft(event.target.value)}
         />
@@ -156,7 +159,7 @@ export function CommentBox({
             disabled={submitting || draft.length === 0}
             onClick={() => setDraft("")}
           >
-            取消
+            {tCommon("cancel")}
           </Button>
           <Button
             type="primary"
@@ -166,7 +169,7 @@ export function CommentBox({
               void handleSubmit();
             }}
           >
-            发表评论
+            {t("postComment")}
           </Button>
         </div>
       </div>

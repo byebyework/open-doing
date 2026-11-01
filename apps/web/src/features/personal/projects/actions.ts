@@ -22,6 +22,17 @@ type Failure = Extract<ActionResult<never>, { ok: false }>;
  */
 async function toFailure(error: unknown): Promise<Failure> {
   if (error instanceof DomainError) {
+    // 个人项目领域文案在 personal 命名空间；无 i18n 通道时回退 message（zh 兜底）。
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field ?? "form"]: failures
+            .custom(`personal.${error.i18n.key}`, error.i18n.params).errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field ?? "form"]: error.message } };
   }
 

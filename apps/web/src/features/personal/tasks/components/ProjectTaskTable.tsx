@@ -3,6 +3,7 @@
 import type { TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import { Button, Select } from "antd";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -15,7 +16,7 @@ import { personalTaskHref } from "@/lib/routes";
 
 import { NewTaskModal } from "./NewTaskModal";
 import {
-  TASK_STATUS_LABEL,
+  TASK_STATUS_KEYS,
   TASK_STATUS_ORDER,
   TaskRowActions,
   type ProjectTask,
@@ -26,20 +27,6 @@ type StatusFilter = "all" | TaskStatus;
 
 /** 排序方式（「按截止日期」为默认）。 */
 type SortKey = "dueDate" | "status" | "createdAt";
-
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "状态：全部" },
-  ...TASK_STATUS_ORDER.map((status) => ({
-    value: status,
-    label: TASK_STATUS_LABEL[status],
-  })),
-];
-
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "dueDate", label: "排序：按截止日期" },
-  { value: "status", label: "按状态" },
-  { value: "createdAt", label: "按创建时间" },
-];
 
 /** 无截止日期的任务排在最后。 */
 const NO_DUE_DATE = "9999-12-31";
@@ -93,6 +80,8 @@ export function ProjectTaskTable({
   projects,
 }: ProjectTaskTableProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("dueDate");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
@@ -120,39 +109,49 @@ export function ProjectTaskTable({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select<StatusFilter>
           size="small"
-          aria-label="按状态筛选"
+          aria-label={t("filterByStatusAria")}
           value={statusFilter}
           onChange={setStatusFilter}
-          options={STATUS_OPTIONS}
+          options={[
+            { value: "all", label: t("filterAllStatus") },
+            ...TASK_STATUS_ORDER.map((status) => ({
+              value: status,
+              label: tStatus(TASK_STATUS_KEYS[status]),
+            })),
+          ]}
           style={{ width: 120 }}
         />
         <Select<SortKey>
           size="small"
-          aria-label="排序方式"
+          aria-label={t("sortByAria")}
           value={sort}
           onChange={setSort}
-          options={SORT_OPTIONS}
+          options={[
+            { value: "dueDate", label: t("sortDueDate") },
+            { value: "status", label: t("sortStatus") },
+            { value: "createdAt", label: t("sortCreatedAt") },
+          ]}
           style={{ width: 150 }}
         />
         <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
-          共 {visibleTasks.length} 条
+          {t("totalCount", { count: visibleTasks.length })}
         </span>
       </div>
 
       <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white px-4 py-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:px-5">
         {isEmptyProject ? (
           <EmptyState
-            title="暂无任务"
-            description="创建第一个任务，开始跟踪你的进展。"
+            title={t("emptyTasksTitle")}
+            description={t("emptyTasksPersonalHint")}
             action={
               <Button type="primary" onClick={() => setNewTaskOpen(true)}>
-                ＋ 新建任务
+                {t("newTaskButton")}
               </Button>
             }
           />
         ) : visibleTasks.length === 0 ? (
           <p className="py-10 text-center text-[13px] text-[#9aa0a6]">
-            没有符合筛选条件的任务
+            {t("filteredEmpty")}
           </p>
         ) : (
           // 窄屏沿用原型策略：表格在卡片内横向滚动，页面本身不横向溢出。
@@ -161,16 +160,16 @@ export function ProjectTaskTable({
               <thead>
                 <tr>
                   <th className="border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
-                    任务
+                    {t("colTask")}
                   </th>
                   <th className="w-24 border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
-                    状态
+                    {t("statusLabel")}
                   </th>
                   <th className="w-[170px] border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
-                    进度
+                    {t("colProgress")}
                   </th>
                   <th className="w-[130px] border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
-                    截止日期
+                    {t("dueDateLabel")}
                   </th>
                 </tr>
               </thead>
@@ -226,13 +225,16 @@ export function ProjectTaskTable({
                               <ProgressBar value={progress} />
                             </div>
                             <span className="text-[12px] text-[#9aa0a6]">
-                              {completedCount}/{task.subtasks.length} 子任务 ·{" "}
-                              {Math.round(progress * 100)}%
+                              {t("tableSubtasksProgress", {
+                                completed: completedCount,
+                                total: task.subtasks.length,
+                                percent: Math.round(progress * 100),
+                              })}
                             </span>
                           </div>
                         ) : (
                           <span className="text-[12px] text-[#9aa0a6]">
-                            无子任务，按状态计 {Math.round(progress * 100)}%
+                            {t("noSubtasksProgress", { percent: Math.round(progress * 100) })}
                           </span>
                         )}
                       </td>

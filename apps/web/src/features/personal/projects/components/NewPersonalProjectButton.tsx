@@ -1,6 +1,7 @@
 "use client";
 
 import { Button } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -16,11 +17,12 @@ import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
  */
 export function NewPersonalProjectButton() {
   const router = useRouter();
+  const t = useTranslations("personal");
   const [open, setOpen] = useState(false);
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>＋ 新建个人项目</Button>
+      <Button onClick={() => setOpen(true)}>{t("newProjectButton")}</Button>
 
       <PersonalProjectFormModal
         open={open}

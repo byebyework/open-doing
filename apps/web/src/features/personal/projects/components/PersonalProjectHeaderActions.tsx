@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -14,10 +15,6 @@ export interface PersonalProjectHeaderActionsProps {
   project: { id: string; name: string; description?: string };
 }
 
-function firstError(errors: Record<string, string>): string {
-  return errors.form ?? Object.values(errors)[0] ?? "操作失败，请稍后重试";
-}
-
 /**
  * 项目占位页的「编辑 / 删除」操作区（P-3 会替换为完整项目页操作区）。
  *
@@ -28,6 +25,9 @@ export function PersonalProjectHeaderActions({
   project,
 }: PersonalProjectHeaderActionsProps) {
   const router = useRouter();
+  const t = useTranslations("personal");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -39,16 +39,16 @@ export function PersonalProjectHeaderActions({
       const result = await deletePersonalProjectAction(project.id);
 
       if (!result.ok) {
-        message.error(firstError(result.errors));
+        message.error(result.errors.form ?? Object.values(result.errors)[0] ?? tErrors("operationFailed"));
         return;
       }
 
-      message.success("项目已删除");
+      message.success(t("projectDeleted"));
       setDeleteOpen(false);
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -57,10 +57,10 @@ export function PersonalProjectHeaderActions({
   return (
     <div className="flex shrink-0 items-center gap-1">
       <Button type="text" onClick={() => setEditOpen(true)}>
-        编辑
+        {tCommon("edit")}
       </Button>
       <Button type="text" danger onClick={() => setDeleteOpen(true)}>
-        删除
+        {tCommon("delete")}
       </Button>
 
       <PersonalProjectFormModal
@@ -76,9 +76,9 @@ export function PersonalProjectHeaderActions({
 
       <ConfirmModal
         open={deleteOpen}
-        title="删除项目"
-        content={`删除后项目内任务一并删除，且不可恢复。确定删除「${project.name}」吗？`}
-        confirmText="删除"
+        title={t("deleteTitle")}
+        content={t("deleteConfirm", { name: project.name })}
+        confirmText={tCommon("delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

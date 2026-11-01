@@ -2,6 +2,7 @@
 
 import type { Subtask, Task, TaskStatus } from "@open-doing/types";
 import { Button, Dropdown, Segmented, message, type MenuProps } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -25,20 +26,25 @@ export const TASK_STATUS_ORDER: readonly TaskStatus[] = [
   "done",
 ];
 
-/** 状态的中文文案。 */
-export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: "未开始",
-  in_progress: "进行中",
-  done: "已完成",
+/** 状态 -> `status` 命名空间文案 key（渲染处用 tStatus 翻译）。 */
+export const TASK_STATUS_KEYS: Record<
+  TaskStatus,
+  "notStarted" | "inProgress" | "completed"
+> = {
+  todo: "notStarted",
+  in_progress: "inProgress",
+  done: "completed",
 };
 
-/** Server Action 失败时取第一条可展示文案。 */
-function firstError(errors: Record<string, string>): string {
-  return errors.form ?? Object.values(errors)[0] ?? "操作失败，请稍后重试";
+/** Server Action 失败时取第一条可展示文案（兜底文案由调用方按语言传入）。 */
+function firstError(errors: Record<string, string>, fallback: string): string {
+  return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
 /** 行内状态切换的共享逻辑（列表下拉与看板移动端按钮共用）。 */
 function useStatusChange(task: ProjectTask, onChanged: () => void) {
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
   const [pending, setPending] = useState<TaskStatus | null>(null);
 
   async function change(status: TaskStatus) {
@@ -49,13 +55,13 @@ function useStatusChange(task: ProjectTask, onChanged: () => void) {
       const result = await updatePersonalTaskAction(task.id, { status });
 
       if (!result.ok) {
-        message.error(firstError(result.errors));
+        message.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -80,6 +86,10 @@ export interface TaskRowActionsProps {
  */
 export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   const { pending, change } = useStatusChange(task, onChanged);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -87,12 +97,12 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
   const items: MenuProps["items"] = [
     ...TASK_STATUS_ORDER.map((status) => ({
       key: `status:${status}`,
-      label: `标记为${TASK_STATUS_LABEL[status]}`,
+      label: t("markAs", { status: tStatus(TASK_STATUS_KEYS[status]) }),
       disabled: status === task.status,
     })),
     { type: "divider" as const },
-    { key: "edit", label: "编辑" },
-    { key: "delete", label: "删除", danger: true },
+    { key: "edit", label: tCommon("edit") },
+    { key: "delete", label: tCommon("delete"), danger: true },
   ];
 
   function handleMenuClick({ key }: { key: string }) {
@@ -116,15 +126,15 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
       const result = await deletePersonalTaskAction(task.id);
 
       if (!result.ok) {
-        message.error(firstError(result.errors));
+        message.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
-      message.success("任务已删除");
+      message.success(t("taskDeleted"));
       setDeleteOpen(false);
       onChanged();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -141,7 +151,7 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
         <Button
           type="text"
           size="small"
-          aria-label={`任务「${task.title}」的操作`}
+          aria-label={t("rowActionsAria", { title: task.title })}
           className="shrink-0"
           style={{ color: "#9aa0a6" }}
         >
@@ -161,9 +171,9 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
 
       <ConfirmModal
         open={deleteOpen}
-        title="删除任务"
-        content={`删除后不可恢复，确定删除「${task.title}」吗？`}
-        confirmText="删除"
+        title={t("deleteTask")}
+        content={t("deleteRowConfirm", { title: task.title })}
+        confirmText={tCommon("delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}
@@ -190,6 +200,7 @@ export function TaskStatusButtons({
   task,
   onChanged,
 }: TaskStatusButtonsProps) {
+  const tStatus = useTranslations("status");
   const { pending, change } = useStatusChange(task, onChanged);
 
   return (
@@ -208,7 +219,7 @@ export function TaskStatusButtons({
               void change(status);
             }}
           >
-            {TASK_STATUS_LABEL[status]}
+            {tStatus(TASK_STATUS_KEYS[status])}
           </Button>
         );
       })}
@@ -241,6 +252,7 @@ export function PersonalProjectPageActions({
   projects,
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   return (
@@ -249,8 +261,8 @@ export function PersonalProjectPageActions({
 
       <Segmented<"list" | "board">
         options={[
-          { label: "列表", value: "list" },
-          { label: "看板", value: "board" },
+          { label: t("viewList"), value: "list" },
+          { label: t("viewBoard"), value: "board" },
         ]}
         value={view}
         onChange={(nextView) => {
@@ -259,7 +271,7 @@ export function PersonalProjectPageActions({
       />
 
       <Button type="primary" onClick={() => setNewTaskOpen(true)}>
-        ＋ 新建任务
+        {t("newTaskButton")}
       </Button>
 
       <NewTaskModal

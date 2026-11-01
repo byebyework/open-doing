@@ -42,12 +42,13 @@ function validateName(value: unknown): string {
   const name = normalizeName(value);
 
   if (!name) {
-    throw new DomainError("请输入项目名称", "name");
+    throw new DomainError("请输入项目名称", "name", { key: "nameRequired" });
   }
   if (name.length > PROJECT_NAME_MAX_LENGTH) {
     throw new DomainError(
       `项目名称不能超过 ${PROJECT_NAME_MAX_LENGTH} 个字符`,
       "name",
+      { key: "nameTooLong", params: { max: PROJECT_NAME_MAX_LENGTH } },
     );
   }
 
@@ -61,6 +62,7 @@ function validateDescription(value: unknown): string | undefined {
     throw new DomainError(
       `描述不能超过 ${PROJECT_DESCRIPTION_MAX_LENGTH} 个字符`,
       "description",
+      { key: "descriptionTooLong", params: { max: PROJECT_DESCRIPTION_MAX_LENGTH } },
     );
   }
 
@@ -175,7 +177,7 @@ export async function updatePersonalProject(
 ): Promise<Project> {
   const existing = await findOwnedProjectRow(userId, projectId, client);
   if (!existing) {
-    throw new DomainError("项目不存在或无权访问");
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
   const changes: Partial<Pick<ProjectRow, "name" | "description">> = {};
@@ -198,7 +200,7 @@ export async function updatePersonalProject(
     .returning();
 
   if (!row) {
-    throw new DomainError("项目不存在或无权访问");
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
   return toProject(row);
@@ -221,6 +223,6 @@ export async function deletePersonalProject(
     .returning({ id: projects.id });
 
   if (!row) {
-    throw new DomainError("项目不存在或无权访问");
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 }

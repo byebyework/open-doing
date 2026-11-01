@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -26,15 +27,15 @@ import { useIsDesktop } from "@/features/kanban/components/useIsDesktop";
 import { updatePersonalTaskAction } from "../actions";
 import { NewTaskModal } from "./NewTaskModal";
 import {
-  TASK_STATUS_LABEL,
+  TASK_STATUS_KEYS,
   TASK_STATUS_ORDER,
   TaskStatusButtons,
   type ProjectTask,
 } from "./TaskRowActions";
 
-/** Server Action 失败时取第一条可展示文案。 */
-function firstError(errors: Record<string, string>): string {
-  return errors.form ?? Object.values(errors)[0] ?? "操作失败，请稍后重试";
+/** Server Action 失败时取第一条可展示文案（兜底文案由调用方按语言传入）。 */
+function firstError(errors: Record<string, string>, fallback: string): string {
+  return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
 /** 看板视图入参。 */
@@ -156,12 +157,14 @@ function KanbanColumn({
   onNewTask: () => void;
   onChanged: () => void;
 }) {
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
     <section
       ref={setNodeRef}
-      aria-label={TASK_STATUS_LABEL[status]}
+      aria-label={tStatus(TASK_STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver
           ? "bg-[#eef0fc] outline outline-2 outline-dashed outline-offset-[-4px] outline-[#7d2ae8]"
@@ -170,7 +173,7 @@ function KanbanColumn({
     >
       <header className="flex items-center gap-2 px-2 pb-3 pt-1">
         <span className="text-[13.5px] font-bold text-[#0e1318]">
-          {TASK_STATUS_LABEL[status]}
+          {tStatus(TASK_STATUS_KEYS[status])}
         </span>
         <span className="rounded-full bg-[#e8eaed] px-2 py-0.5 text-[11px] font-bold text-[#5f6368]">
           {tasks.length}
@@ -180,7 +183,7 @@ function KanbanColumn({
             type="text"
             size="small"
             className="ml-auto"
-            aria-label="新建任务"
+            aria-label={t("newTaskAria")}
             onClick={onNewTask}
           >
             ＋
@@ -191,7 +194,7 @@ function KanbanColumn({
       <div className="flex flex-col gap-2">
         {tasks.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[#e1e3e6] px-3 py-4 text-center text-[12.5px] text-[#9aa0a6]">
-            暂无任务
+            {t("emptyTasksTitle")}
           </p>
         ) : (
           tasks.map((task) => (
@@ -223,6 +226,8 @@ export function PersonalKanban({
   projects,
 }: PersonalKanbanProps) {
   const router = useRouter();
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
   const isDesktop = useIsDesktop();
   const [items, setItems] = useState<ProjectTask[]>(tasks);
   const [syncedTasks, setSyncedTasks] = useState<ProjectTask[]>(tasks);
@@ -284,7 +289,7 @@ export function PersonalKanban({
             item.id === taskId ? { ...item, status: previousStatus } : item,
           ),
         );
-        message.error(firstError(result.errors));
+        message.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
@@ -295,7 +300,7 @@ export function PersonalKanban({
           item.id === taskId ? { ...item, status: previousStatus } : item,
         ),
       );
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     }
   }
 

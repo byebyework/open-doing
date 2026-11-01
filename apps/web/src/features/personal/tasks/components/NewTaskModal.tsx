@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, Form, Input, Modal, Select, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { createPersonalTaskAction } from "../actions";
@@ -44,6 +45,8 @@ export function NewTaskModal({
   onSuccess,
   onCancel,
 }: NewTaskModalProps) {
+  const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -91,10 +94,10 @@ export function NewTaskModal({
         return;
       }
 
-      message.success("任务已创建");
+      message.success(t("taskCreated"));
       onSuccess();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -103,9 +106,9 @@ export function NewTaskModal({
   return (
     <Modal
       open={open}
-      title="新建任务"
-      okText="创建任务"
-      cancelText="取消"
+      title={t("newTaskTitle")}
+      okText={t("okCreateTask")}
+      cancelText={tCommon("cancel")}
       confirmLoading={submitting}
       onOk={() => form.submit()}
       onCancel={onCancel}
@@ -137,34 +140,34 @@ export function NewTaskModal({
         disabled={submitting}
       >
         <Form.Item
-          label="标题"
+          label={t("title")}
           name="title"
           rules={[
-            { required: true, whitespace: true, message: "请输入任务标题" },
-            { max: 200, message: "任务标题不能超过 200 个字符" },
+            { required: true, whitespace: true, message: t("titleRequired") },
+            { max: 200, message: t("titleTooLong", { max: 200 }) },
           ]}
         >
-          <Input placeholder="任务要做什么？" maxLength={200} autoFocus />
+          <Input placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
         </Form.Item>
 
-        <Form.Item label="所属空间 / 项目" name="projectId">
+        <Form.Item label={t("spaceProjectLabel")} name="projectId">
           <Select
             options={[
               ...projects.map((project) => ({
                 value: project.id,
-                label: `个人空间 / ${project.name}`,
+                label: t("personalProjectOption", { name: project.name }),
               })),
-              { value: "", label: "个人空间 · 不属于项目" },
+              { value: "", label: t("personalLooseOption") },
             ]}
           />
         </Form.Item>
 
-        <Form.Item label="截止日期" name="dueDate">
+        <Form.Item label={t("dueDateLabel")} name="dueDate">
           <Input type="date" style={{ maxWidth: 220 }} />
         </Form.Item>
 
-        <Form.Item label="描述" name="description">
-          <Input.TextArea rows={4} placeholder="补充背景、验收标准…" />
+        <Form.Item label={t("descriptionLabel")} name="description">
+          <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} />
         </Form.Item>
       </Form>
     </Modal>

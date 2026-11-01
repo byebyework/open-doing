@@ -2,6 +2,7 @@
 
 import type { Subtask } from "@open-doing/types";
 import { Button, Checkbox, Input } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 /** 子任务列表入参（`onToggle` / `onAdd` / `onRemove` 缺省时对应 UI 只读或隐藏）。 */
@@ -28,6 +29,8 @@ export function SubtaskList({
   onAdd,
   onRemove,
 }: SubtaskListProps) {
+  const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [draft, setDraft] = useState("");
   const [adding, setAdding] = useState(false);
@@ -76,7 +79,7 @@ export function SubtaskList({
   return (
     <div>
       {subtasks.length === 0 ? (
-        <p className="py-2 text-[13px] text-[#9aa0a6]">暂无子任务</p>
+        <p className="py-2 text-[13px] text-[#9aa0a6]">{t("noSubtasks")}</p>
       ) : (
         <div className="flex flex-col">
           {subtasks.map((subtask) => (
@@ -114,7 +117,7 @@ export function SubtaskList({
                     void handleRemove(subtask.id);
                   }}
                 >
-                  删除
+                  {tCommon("delete")}
                 </Button>
               ) : null}
             </div>
@@ -126,8 +129,8 @@ export function SubtaskList({
         <div className="mt-2 flex items-center gap-2">
           <Input
             value={draft}
-            placeholder="＋ 添加子任务"
-            aria-label="新子任务的标题"
+            placeholder={t("subtaskPlaceholder")}
+            aria-label={t("subtaskAria")}
             maxLength={200}
             disabled={adding}
             onChange={(event) => setDraft(event.target.value)}
@@ -142,7 +145,7 @@ export function SubtaskList({
             loading={adding}
             disabled={!draft.trim()}
           >
-            添加
+            {t("add")}
           </Button>
         </div>
       ) : null}

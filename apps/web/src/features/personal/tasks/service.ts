@@ -101,11 +101,17 @@ function validateTitle(value: unknown, label: "任务" | "子任务"): string {
     label === "任务" ? TASK_TITLE_MAX_LENGTH : SUBTASK_TITLE_MAX_LENGTH;
   const title = typeof value === "string" ? value.trim() : "";
 
+  const taskKey = label === "任务";
   if (!title) {
-    throw new DomainError(`请输入${label}标题`, "title");
+    throw new DomainError(`请输入${label}标题`, "title", {
+      key: taskKey ? "titleRequired" : "subtaskTitleRequired",
+    });
   }
   if (title.length > max) {
-    throw new DomainError(`${label}标题不能超过 ${max} 个字符`, "title");
+    throw new DomainError(`${label}标题不能超过 ${max} 个字符`, "title", {
+      key: taskKey ? "titleTooLong" : "subtaskTitleTooLong",
+      params: { max },
+    });
   }
 
   return title;
@@ -126,13 +132,13 @@ function normalizeDescription(value: unknown): string | null {
 function validateDueDate(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== "string") {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate");
+    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
   }
 
   const dueDate = value.trim();
   if (!dueDate) return null;
   if (!DUE_DATE_PATTERN.test(dueDate)) {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate");
+    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
   }
 
   const [year, month, day] = dueDate.split("-").map(Number);
@@ -143,7 +149,7 @@ function validateDueDate(value: unknown): string | null {
     parsed.getUTCDate() === day;
 
   if (!isRealDate) {
-    throw new DomainError("截止日期不是有效日期", "dueDate");
+    throw new DomainError("截止日期不是有效日期", "dueDate", { key: "dueDateInvalid" });
   }
 
   return dueDate;
@@ -155,7 +161,7 @@ function validateStatus(value: unknown): TaskStatus {
     return value as TaskStatus;
   }
 
-  throw new DomainError("任务状态不合法", "status");
+  throw new DomainError("任务状态不合法", "status", { key: "statusInvalid" });
 }
 
 /** 评论内容去空白后校验 1–2000 字。 */
@@ -163,12 +169,13 @@ function validateCommentContent(value: unknown): string {
   const content = typeof value === "string" ? value.trim() : "";
 
   if (!content) {
-    throw new DomainError("请输入评论内容", "content");
+    throw new DomainError("请输入评论内容", "content", { key: "commentRequired" });
   }
   if (content.length > COMMENT_MAX_LENGTH) {
     throw new DomainError(
       `评论不能超过 ${COMMENT_MAX_LENGTH} 个字符`,
       "content",
+      { key: "commentTooLong", params: { max: COMMENT_MAX_LENGTH } },
     );
   }
 
@@ -213,7 +220,7 @@ async function requireOwnedPersonalTaskRow(
 ): Promise<TaskRow> {
   const row = await findOwnedPersonalTaskRow(userId, taskId, client);
   if (!row) {
-    throw new DomainError("任务不存在或无权访问");
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 
   return row;
@@ -254,7 +261,7 @@ export async function createPersonalTask(
   const projectId = normalizeProjectId(input?.projectId);
 
   if (projectId && !(await isOwnedPersonalProject(userId, projectId, client))) {
-    throw new DomainError("项目不存在或无权访问", "projectId");
+    throw new DomainError("项目不存在或无权访问", "projectId", { key: "projectNotFound" });
   }
 
   const [row] = await client
@@ -272,7 +279,7 @@ export async function createPersonalTask(
     .returning();
 
   if (!row) {
-    throw new DomainError("任务创建失败，请稍后重试");
+    throw new DomainError("任务创建失败，请稍后重试", undefined, { key: "taskCreateFailed" });
   }
 
   return toTask(row);
@@ -461,7 +468,7 @@ export async function updatePersonalTask(
     .returning();
 
   if (!row) {
-    throw new DomainError("任务不存在或无权访问");
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 
   return toTask(row);
@@ -478,7 +485,7 @@ export async function deletePersonalTask(
   client: DbClient = db,
 ): Promise<void> {
   if (!isUuid(taskId)) {
-    throw new DomainError("任务不存在或无权访问");
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 
   const [row] = await client
@@ -493,7 +500,7 @@ export async function deletePersonalTask(
     .returning({ id: tasks.id });
 
   if (!row) {
-    throw new DomainError("任务不存在或无权访问");
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 }
 
@@ -513,7 +520,7 @@ export async function addPersonalSubtask(
     .returning();
 
   if (!row) {
-    throw new DomainError("子任务创建失败，请稍后重试");
+    throw new DomainError("子任务创建失败，请稍后重试", undefined, { key: "subtaskCreateFailed" });
   }
 
   return toSubtask(row);
@@ -529,7 +536,7 @@ export async function removePersonalSubtask(
   await requireOwnedPersonalTaskRow(userId, taskId, client);
 
   if (!isUuid(subtaskId)) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
   const [row] = await client
@@ -538,7 +545,7 @@ export async function removePersonalSubtask(
     .returning({ id: subtasks.id });
 
   if (!row) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 }
 
@@ -558,7 +565,7 @@ export async function togglePersonalSubtask(
   await requireOwnedPersonalTaskRow(userId, taskId, client);
 
   if (!isUuid(subtaskId)) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
   const [row] = await client
@@ -571,7 +578,7 @@ export async function togglePersonalSubtask(
     .returning();
 
   if (!row) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
   return toSubtask(row);
@@ -593,7 +600,7 @@ export async function addPersonalComment(
     .returning();
 
   if (!row) {
-    throw new DomainError("评论创建失败，请稍后重试");
+    throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
   }
 
   return toComment(row);
@@ -609,7 +616,7 @@ export async function deletePersonalComment(
   await requireOwnedPersonalTaskRow(userId, taskId, client);
 
   if (!isUuid(commentId)) {
-    throw new DomainError("评论不存在或无权删除");
+    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 
   const [row] = await client
@@ -624,6 +631,6 @@ export async function deletePersonalComment(
     .returning({ id: comments.id });
 
   if (!row) {
-    throw new DomainError("评论不存在或无权删除");
+    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 }

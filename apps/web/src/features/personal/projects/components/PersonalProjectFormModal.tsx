@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, Form, Input, Modal, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import {
@@ -32,10 +33,6 @@ interface FieldError {
   errors: string[];
 }
 
-/** 原型中的可见性说明（逐字）。 */
-const INFO_TEXT =
-  "个人项目仅你自己可见，与团队项目相互独立；项目中的任务同样会汇总到「我的任务」。";
-
 /**
  * 个人项目新建 / 编辑弹窗。
  *
@@ -49,6 +46,8 @@ export function PersonalProjectFormModal({
   onSuccess,
   onCancel,
 }: PersonalProjectFormModalProps) {
+  const t = useTranslations("personal");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -65,7 +64,7 @@ export function PersonalProjectFormModal({
 
   async function handleFinish(values: FormValues) {
     if (mode === "edit" && !project) {
-      setFormError("缺少项目信息");
+      setFormError(t("missingProject"));
       return;
     }
 
@@ -99,10 +98,10 @@ export function PersonalProjectFormModal({
         return;
       }
 
-      message.success(mode === "edit" ? "项目已保存" : "项目已创建");
+      message.success(mode === "edit" ? t("projectSaved") : t("projectCreated"));
       onSuccess();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -111,9 +110,9 @@ export function PersonalProjectFormModal({
   return (
     <Modal
       open={open}
-      title={mode === "create" ? "新建个人项目" : "编辑项目"}
-      okText={mode === "create" ? "创建项目" : "保存"}
-      cancelText="取消"
+      title={mode === "create" ? t("modalTitleCreate") : t("modalTitleEdit")}
+      okText={mode === "create" ? t("okCreate") : tCommon("save")}
+      cancelText={tCommon("cancel")}
       confirmLoading={submitting}
       onOk={() => form.submit()}
       onCancel={onCancel}
@@ -121,7 +120,7 @@ export function PersonalProjectFormModal({
       destroyOnHidden
       width={480}
     >
-      <Alert type="info" showIcon title={INFO_TEXT} className="mb-5" />
+      <Alert type="info" showIcon title={t("infoText")} className="mb-5" />
 
       {formError ? (
         <Alert
@@ -145,28 +144,28 @@ export function PersonalProjectFormModal({
         disabled={submitting}
       >
         <Form.Item
-          label="项目名称"
+          label={t("nameLabel")}
           name="name"
           rules={[
-            { required: true, whitespace: true, message: "请输入项目名称" },
-            { max: 50, message: "项目名称不能超过 50 个字符" },
+            { required: true, whitespace: true, message: t("nameRequired") },
+            { max: 50, message: t("nameTooLong", { max: 50 }) },
           ]}
         >
           <Input
-            placeholder="例如：学习成长、装修、求职准备"
+            placeholder={t("namePlaceholder")}
             maxLength={50}
             autoFocus
           />
         </Form.Item>
 
         <Form.Item
-          label="描述（可选）"
+          label={t("descriptionOptional")}
           name="description"
-          rules={[{ max: 500, message: "描述不能超过 500 个字符" }]}
+          rules={[{ max: 500, message: t("descriptionTooLong", { max: 500 }) }]}
         >
           <Input.TextArea
             rows={4}
-            placeholder="这个项目用来归集什么事？"
+            placeholder={t("descriptionPlaceholder")}
             maxLength={500}
             showCount
           />
