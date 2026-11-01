@@ -3,6 +3,7 @@
 import { Button, message, Tag } from "antd";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -11,11 +12,18 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { respondToJoinRequestAction } from "../actions";
 import type { TeamJoinRequestView } from "../service";
 
-/** 已处理申请的结果 tag（与 /invites「我的加入申请」复用同一套文案与配色）。 */
-const RESULT_LABELS = {
-  approved: { label: "已通过", color: "#00b894", background: "rgba(0, 184, 148, 0.12)" },
-  declined: { label: "未通过", color: "#5f6368", background: "#f1f3f4" },
-  cancelled: { label: "已取消", color: "#5f6368", background: "#f1f3f4" },
+/** 已处理申请的结果 tag key（与 /invites「我的加入申请」复用同一套 key 与配色）。 */
+const RESULT_KEYS = {
+  approved: "tagApproved",
+  declined: "tagNotApproved",
+  cancelled: "tagCancelled",
+} as const;
+
+/** 结果 tag 配色（与 /invites 复用；配色与语言无关）。 */
+const RESULT_COLORS = {
+  approved: { color: "#00b894", background: "rgba(0, 184, 148, 0.12)" },
+  declined: { color: "#5f6368", background: "#f1f3f4" },
+  cancelled: { color: "#5f6368", background: "#f1f3f4" },
 } as const;
 
 export interface JoinRequestListProps {
@@ -32,6 +40,8 @@ export interface JoinRequestListProps {
  */
 export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [submittingId, setSubmittingId] = useState<string | null>(null);
   const [declining, setDeclining] = useState<TeamJoinRequestView | null>(null);
 
@@ -47,17 +57,16 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
 
       if (!result.ok) {
         message.error(
-          result.errors.form ??
-            (approve ? "通过加入申请失败，请稍后重试" : "拒绝加入申请失败，请稍后重试"),
+          result.errors.form ?? (approve ? t("approveFailedUi") : t("declineFailedUi")),
         );
         return;
       }
 
-      message.success(approve ? "已通过加入申请" : "已拒绝加入申请");
+      message.success(approve ? t("approveDone") : t("declineDone"));
       setDeclining(null);
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmittingId(null);
     }
@@ -66,7 +75,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
   return (
     <div className="min-w-0">
       {pending.length === 0 ? (
-        <p className="text-[13px] text-[#9aa0a6]">暂无待处理的加入申请</p>
+        <p className="text-[13px] text-[#9aa0a6]">{t("noPendingJoinRequests")}</p>
       ) : (
         pending.map(({ request, user }) => (
           // 窄屏（375px）允许换行：头像 / 用户名 / UID / 时间 / 操作折行，
@@ -83,7 +92,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
               {user.uid}
             </span>
             <span className="ml-auto text-[12px] text-[#9aa0a6]">
-              {dayjs(request.createdAt).format("MM-DD HH:mm")} 申请
+              {t("requestedAtSuffix", { time: dayjs(request.createdAt).format("MM-DD HH:mm") })}
             </span>
             <span className="flex flex-none items-center gap-1.5">
               <Button
@@ -91,20 +100,20 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
                 size="small"
                 loading={submittingId === request.id}
                 disabled={busy && submittingId !== request.id}
-                aria-label={`通过 ${user.username} 的加入申请`}
+                aria-label={t("approveAria", { name: user.username })}
                 onClick={() => respond(request.id, true)}
               >
-                通过
+                {t("approve")}
               </Button>
               <Button
                 type="text"
                 danger
                 size="small"
                 disabled={busy}
-                aria-label={`拒绝 ${user.username} 的加入申请`}
+                aria-label={t("declineAria", { name: user.username })}
                 onClick={() => setDeclining({ request, user })}
               >
-                拒绝
+                {t("decline")}
               </Button>
             </span>
           </div>
@@ -112,7 +121,10 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
       )}
 
       {processed.map(({ request, user }) => {
-        const result = RESULT_LABELS[request.status as keyof typeof RESULT_LABELS];
+        const resultKey =
+          RESULT_KEYS[request.status as keyof typeof RESULT_KEYS];
+        const resultColor =
+          RESULT_COLORS[request.status as keyof typeof RESULT_COLORS];
         const time = request.respondedAt ?? request.createdAt;
 
         return (
@@ -122,13 +134,13 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
           >
             <Tag
               style={{
-                color: result.color,
-                background: result.background,
+                color: resultColor.color,
+                background: resultColor.background,
                 border: "none",
                 borderRadius: 999,
               }}
             >
-              {result.label}
+              {t(resultKey)}
             </Tag>
             <UserAvatar username={user.username} />
             <span className="max-w-[180px] truncate text-[13px] font-medium text-[#0e1318]">
@@ -146,13 +158,13 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
 
       <ConfirmModal
         open={declining !== null}
-        title="拒绝加入申请"
+        title={t("declineJoinTitle")}
         content={
           declining
-            ? `确定拒绝「${declining.user.username}」的加入申请吗？对方将收到未通过的通知。`
+            ? t("declineJoinConfirm", { name: declining.user.username })
             : null
         }
-        confirmText="拒绝"
+        confirmText={t("decline")}
         danger
         loading={declining !== null && submittingId === declining.request.id}
         onConfirm={() => {

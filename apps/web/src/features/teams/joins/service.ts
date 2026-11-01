@@ -4,6 +4,7 @@ import type { TeamJoinRequest } from "@open-doing/types";
 import { markTeamJoinNotificationsRead } from "@/features/notifications/queries";
 import { createNotification } from "@/features/notifications/service";
 import { generateJoinCode } from "@/lib/join-code";
+import type { DomainErrorI18n } from "@/lib/domain-error";
 import { isUuid } from "@/lib/task-fields";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
@@ -31,12 +32,19 @@ export type JoinErrorField = "code" | "form";
 export class JoinError extends Error {
   readonly code: JoinErrorCode;
   readonly field: JoinErrorField;
+  readonly i18n?: DomainErrorI18n;
 
-  constructor(code: JoinErrorCode, message: string, field: JoinErrorField = "form") {
+  constructor(
+    code: JoinErrorCode,
+    message: string,
+    field: JoinErrorField = "form",
+    i18n?: DomainErrorI18n,
+  ) {
     super(message);
     this.name = "JoinError";
     this.code = code;
     this.field = field;
+    this.i18n = i18n;
   }
 }
 
@@ -89,7 +97,7 @@ export async function getTeamJoinSettings(
     .limit(1);
 
   if (!row) {
-    throw new JoinError("INVALID", "团队不存在或已失效", "form");
+    throw new JoinError("INVALID", "团队不存在或已失效", "form", { key: "teamNotFound" });
   }
 
   return row;
@@ -122,7 +130,7 @@ export async function resetJoinCode(
       .returning({ joinCode: teams.joinCode });
 
     if (!row) {
-      throw new JoinError("INVALID", "团队不存在或已失效", "form");
+      throw new JoinError("INVALID", "团队不存在或已失效", "form", { key: "teamNotFound" });
     }
     return row.joinCode;
   };
@@ -136,7 +144,7 @@ export async function resetJoinCode(
     }
   }
 
-  throw new JoinError("VALIDATION", "入群码生成失败，请稍后重试", "form");
+  throw new JoinError("VALIDATION", "入群码生成失败，请稍后重试", "form", { key: "joinCodeGenerateFailed" });
 }
 
 /** 开关凭码加入：owner/admin 可操作；关闭后仍保留当前码，重新开启即复用。 */
@@ -154,7 +162,7 @@ export async function setJoinCodeEnabled(
     .returning({ id: teams.id });
 
   if (!row) {
-    throw new JoinError("INVALID", "团队不存在或已失效", "form");
+    throw new JoinError("INVALID", "团队不存在或已失效", "form", { key: "teamNotFound" });
   }
 }
 
@@ -181,7 +189,7 @@ export async function createJoinRequest(
 
   // 格式不合法与码不存在共用同一文案，避免泄露团队信息。
   if (!JOIN_CODE_PATTERN.test(code)) {
-    throw new JoinError("CODE_INVALID", "入群码无效", "code");
+    throw new JoinError("CODE_INVALID", "入群码无效", "code", { key: "joinCodeInvalid" });
   }
 
   const [teamRow] = await client
@@ -191,13 +199,13 @@ export async function createJoinRequest(
     .limit(1);
 
   if (!teamRow) {
-    throw new JoinError("CODE_INVALID", "入群码无效", "code");
+    throw new JoinError("CODE_INVALID", "入群码无效", "code", { key: "joinCodeInvalid" });
   }
   if (!teamRow.joinCodeEnabled) {
-    throw new JoinError("JOIN_DISABLED", "该团队已关闭凭码加入", "code");
+    throw new JoinError("JOIN_DISABLED", "该团队已关闭凭码加入", "code", { key: "joinCodeDisabled" });
   }
   if (await getMembership(teamRow.id, input.actorId, client)) {
-    throw new JoinError("ALREADY_MEMBER", "你已是该团队成员", "code");
+    throw new JoinError("ALREADY_MEMBER", "你已是该团队成员", "code", { key: "joinAlreadyMember" });
   }
 
   const pending = await client
@@ -212,7 +220,7 @@ export async function createJoinRequest(
     )
     .limit(1);
   if (pending.length > 0) {
-    throw new JoinError("PENDING_EXISTS", "你已提交过加入申请，请等待审批", "code");
+    throw new JoinError("PENDING_EXISTS", "你已提交过加入申请，请等待审批", "code", { key: "joinPendingExists" });
   }
 
   const attemptInsert = async (tx: DbClient): Promise<TeamJoinRequest> => {
@@ -253,7 +261,7 @@ export async function createJoinRequest(
   } catch (error) {
     // 并发竞态：pending 部分唯一索引兜底。
     if (isUniqueViolation(error)) {
-      throw new JoinError("PENDING_EXISTS", "你已提交过加入申请，请等待审批", "code");
+      throw new JoinError("PENDING_EXISTS", "你已提交过加入申请，请等待审批", "code", { key: "joinPendingExists" });
     }
     throw error;
   }
@@ -277,7 +285,7 @@ export async function respondToJoinRequest(
   client: DbClient = db,
 ): Promise<TeamJoinRequest> {
   if (!input?.requestId || !isUuid(input.requestId)) {
-    throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+    throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
   }
 
   const run = async (tx: DbClient): Promise<TeamJoinRequest> => {
@@ -288,14 +296,14 @@ export async function respondToJoinRequest(
       .limit(1);
 
     if (!row) {
-      throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
     const membership = await getMembership(row.teamId, input.actorId, tx);
     assertCan(membership?.role ?? null, "team:invite");
 
     if (row.status !== "pending") {
-      throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
     const [updated] = await tx
@@ -315,7 +323,7 @@ export async function respondToJoinRequest(
       .returning();
 
     if (!updated) {
-      throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
     if (input.approve) {
@@ -326,7 +334,7 @@ export async function respondToJoinRequest(
       } catch (error) {
         if (isUniqueViolation(error)) {
           // 邀请接受竞态：申请人已是成员。抛出后整事务回滚，申请保持 pending。
-          throw new JoinError("ALREADY_MEMBER", "该用户已是团队成员", "form");
+          throw new JoinError("ALREADY_MEMBER", "该用户已是团队成员", "form", { key: "uidAlreadyMember" });
         }
         throw error;
       }
@@ -367,7 +375,7 @@ export async function cancelJoinRequest(
   client: DbClient = db,
 ): Promise<TeamJoinRequest> {
   if (!input?.requestId || !isUuid(input.requestId)) {
-    throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+    throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
   }
 
   const run = async (tx: DbClient): Promise<TeamJoinRequest> => {
@@ -378,7 +386,7 @@ export async function cancelJoinRequest(
       .limit(1);
 
     if (!row || row.userId !== input.actorId || row.status !== "pending") {
-      throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
     const [updated] = await tx
@@ -394,7 +402,7 @@ export async function cancelJoinRequest(
       .returning();
 
     if (!updated) {
-      throw new JoinError("INVALID", "加入申请不存在或已失效", "form");
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
     // 撤回不通知审批人（设计：静默取消），但同一事务内清掉此前投递的审批通知。

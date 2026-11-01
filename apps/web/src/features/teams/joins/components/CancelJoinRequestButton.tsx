@@ -2,6 +2,7 @@
 
 import { Button, message } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -22,6 +23,8 @@ export function CancelJoinRequestButton({
   teamName: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [confirming, setConfirming] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -32,15 +35,15 @@ export function CancelJoinRequestButton({
       const result = await cancelJoinRequestAction({ requestId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "取消加入申请失败，请稍后重试");
+        message.error(result.errors.form ?? t("cancelRequestFailedUi"));
         return;
       }
 
-      message.success("已取消加入申请");
+      message.success(t("cancelRequestDone"));
       setConfirming(false);
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -49,14 +52,14 @@ export function CancelJoinRequestButton({
   return (
     <>
       <Button type="text" danger size="small" onClick={() => setConfirming(true)}>
-        取消申请
+        {t("cancelRequest")}
       </Button>
 
       <ConfirmModal
         open={confirming}
-        title="取消加入申请"
-        content={`确定取消向「${teamName}」的加入申请吗？取消后可凭同一加入码重新申请。`}
-        confirmText="取消申请"
+        title={t("cancelRequest")}
+        content={t("cancelRequestConfirm", { team: teamName })}
+        confirmText={t("cancelRequest")}
         danger
         loading={submitting}
         onConfirm={handleConfirm}

@@ -17,9 +17,27 @@ import { standardFailuresForRequest } from "@/lib/action-failure";
 
 export type { CreateInviteInput } from "./service";
 
-/** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-async function toFailure(error: unknown, fallback: string): Promise<{ ok: false; errors: Record<string, string> }> {
+/**
+ * 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。
+ *
+ * InviteError 携带 i18n 通道时按请求语言翻译（落对应字段）；否则回退
+ * message（zh 兜底）。`fallbackKey` 是 `teams` 命名空间的兜底文案 key。
+ */
+async function toFailure(
+  error: unknown,
+  fallbackKey: "inviteSendFailed" | "inviteRescindFailed" | "inviteRespondFailed",
+): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof InviteError) {
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field]: failures.custom(`teams.${error.i18n.key}`, error.i18n.params)
+            .errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
@@ -27,7 +45,7 @@ async function toFailure(error: unknown, fallback: string): Promise<{ ok: false;
   }
 
   console.error("[teams/invites] Server Action 执行失败", error);
-  return { ok: false, errors: { form: fallback } };
+  return (await standardFailuresForRequest()).custom(`teams.${fallbackKey}`);
 }
 
 /** 按 UID 发起邀请（owner/admin）。 */
@@ -43,7 +61,7 @@ export async function createInviteAction(
     const invite = await createInvite({ ...input, actorId: user.id });
     return { ok: true, data: invite };
   } catch (error) {
-    return toFailure(error, "发送邀请失败，请稍后重试");
+    return toFailure(error, "inviteSendFailed");
   }
 }
 
@@ -60,7 +78,7 @@ export async function rescindInviteAction(
     const invite = await rescindInvite({ ...input, actorId: user.id });
     return { ok: true, data: invite };
   } catch (error) {
-    return toFailure(error, "撤销邀请失败，请稍后重试");
+    return toFailure(error, "inviteRescindFailed");
   }
 }
 
@@ -77,6 +95,6 @@ export async function respondToInviteAction(
     const team = await respondToInvite({ inviteId: input.inviteId, actorId: user.id, accept: input.accept });
     return { ok: true, data: team };
   } catch (error) {
-    return toFailure(error, "处理邀请失败，请稍后重试");
+    return toFailure(error, "inviteRespondFailed");
   }
 }

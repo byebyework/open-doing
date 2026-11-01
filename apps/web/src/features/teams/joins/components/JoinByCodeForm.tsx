@@ -3,6 +3,7 @@
 import { Alert, Button, Form, Input, message } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { invitesHref } from "@/lib/routes";
@@ -21,6 +22,8 @@ interface JoinValues {
  */
 export function JoinByCodeForm() {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<JoinValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -40,11 +43,11 @@ export function JoinByCodeForm() {
         return;
       }
 
-      message.success("申请已提交，等待管理员审批");
+      message.success(t("joinSubmitted"));
       form.resetFields();
       router.refresh();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -64,14 +67,14 @@ export function JoinByCodeForm() {
         disabled={submitting}
       >
         <Form.Item
-          label="团队加入码"
+          label={t("joinCodeLabel")}
           name="code"
-          rules={[{ required: true, message: "请输入团队加入码" }]}
-          extra="向团队管理员索取 8 位加入码；提交后可在「待处理邀请」页查看审批进度。"
+          rules={[{ required: true, message: t("joinCodeRequired") }]}
+          extra={t("joinCodeHint")}
         >
           <Input
             size="large"
-            placeholder="如 K7M29XQ4"
+            placeholder={t("joinCodePlaceholder")}
             spellCheck={false}
             autoComplete="off"
             autoFocus
@@ -79,16 +82,16 @@ export function JoinByCodeForm() {
         </Form.Item>
 
         <Button type="primary" size="large" htmlType="submit" loading={submitting}>
-          提交申请
+          {t("submitRequest")}
         </Button>
       </Form>
 
       <p className="mt-5 text-[13px] text-[#5f6368]">
-        提交后可在{" "}
+        {t("trackBefore")}{" "}
         <Link href={invitesHref()} className="font-semibold text-[#7d2ae8]">
-          待处理邀请
+          {t("invitesTitle")}
         </Link>{" "}
-        页查看审批状态。
+        {t("trackAfter")}
       </p>
     </div>
   );

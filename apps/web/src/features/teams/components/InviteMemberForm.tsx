@@ -2,6 +2,7 @@
 
 import { Alert, Button, Form, Input, message } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { createInviteAction } from "../invites/actions";
@@ -18,6 +19,8 @@ interface InviteValues {
  */
 export function InviteMemberForm({ teamId }: { teamId: string }) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<InviteValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -41,11 +44,11 @@ export function InviteMemberForm({ teamId }: { teamId: string }) {
         return;
       }
 
-      message.success("已发送邀请");
+      message.success(t("inviteSent"));
       form.resetFields();
       router.refresh();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -59,16 +62,16 @@ export function InviteMemberForm({ teamId }: { teamId: string }) {
 
       <Form form={form} layout="vertical" requiredMark={false} onFinish={handleFinish} disabled={submitting}>
         <Form.Item
-          label="对方 UID"
+          label={t("uidLabel")}
           name="uid"
-          rules={[{ required: true, message: "请输入 UID 后缀" }]}
-          extra="UID 必须属于已注册用户；不允许对同一人重复发起待处理邀请。"
+          rules={[{ required: true, message: t("uidRequired") }]}
+          extra={t("uidExtra")}
         >
-          <Input prefix="doing_" placeholder="输入 UID 后缀，如 x7k2m9" maxLength={6} autoFocus />
+          <Input prefix="doing_" placeholder={t("uidPlaceholder")} maxLength={6} autoFocus />
         </Form.Item>
 
         <Button type="primary" htmlType="submit" loading={submitting}>
-          发送邀请
+          {t("sendInvite")}
         </Button>
       </Form>
     </div>

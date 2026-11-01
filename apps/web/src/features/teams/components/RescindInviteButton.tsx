@@ -2,6 +2,7 @@
 
 import { Button, message } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { rescindInviteAction } from "../invites/actions";
@@ -14,6 +15,8 @@ import { rescindInviteAction } from "../invites/actions";
  */
 export function RescindInviteButton({ inviteId, teamId }: { inviteId: string; teamId: string }) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
 
   async function handleClick() {
@@ -23,14 +26,14 @@ export function RescindInviteButton({ inviteId, teamId }: { inviteId: string; te
       const result = await rescindInviteAction({ inviteId, teamId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "撤销邀请失败，请稍后重试");
+        message.error(result.errors.form ?? t("inviteRescindFailed"));
         return;
       }
 
-      message.success("已撤销邀请");
+      message.success(t("inviteRescinded"));
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -38,7 +41,7 @@ export function RescindInviteButton({ inviteId, teamId }: { inviteId: string; te
 
   return (
     <Button type="text" danger size="small" loading={submitting} onClick={handleClick}>
-      撤销
+      {t("rescind")}
     </Button>
   );
 }

@@ -17,9 +17,32 @@ import {
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
-/** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-async function toFailure(error: unknown, fallback: string): Promise<{ ok: false; errors: Record<string, string> }> {
+/**
+ * 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。
+ *
+ * JoinError 携带 i18n 通道时按请求语言翻译（field 为 "code" 时落表单
+ * 入群码字段，为 "form" 时落在表单顶部）；否则回退 message（zh 兜底）。
+ */
+async function toFailure(
+  error: unknown,
+  fallbackKey:
+    | "joinSubmitFailed"
+    | "joinRespondFailed"
+    | "joinCancelFailed"
+    | "joinCodeResetFailed"
+    | "joinCodeSaveFailed",
+): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof JoinError) {
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field]: failures.custom(`teams.${error.i18n.key}`, error.i18n.params)
+            .errors.form!,
+        },
+      };
+    }
     // field 为 "code" 时落表单入群码字段，为 "form" 时落在表单顶部。
     return { ok: false, errors: { [error.field]: error.message } };
   }
@@ -28,7 +51,7 @@ async function toFailure(error: unknown, fallback: string): Promise<{ ok: false;
   }
 
   console.error("[teams/joins] Server Action 执行失败", error);
-  return { ok: false, errors: { form: fallback } };
+  return (await standardFailuresForRequest()).custom(`teams.${fallbackKey}`);
 }
 
 /** 凭入群码发起加入申请（任何已登录用户）。 */
@@ -47,7 +70,7 @@ export async function createJoinRequestAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: request };
   } catch (error) {
-    return toFailure(error, "提交加入申请失败，请稍后重试");
+    return toFailure(error, "joinSubmitFailed");
   }
 }
 
@@ -72,7 +95,7 @@ export async function respondToJoinRequestAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: request };
   } catch (error) {
-    return toFailure(error, "处理加入申请失败，请稍后重试");
+    return toFailure(error, "joinRespondFailed");
   }
 }
 
@@ -92,7 +115,7 @@ export async function cancelJoinRequestAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: request };
   } catch (error) {
-    return toFailure(error, "撤回加入申请失败，请稍后重试");
+    return toFailure(error, "joinCancelFailed");
   }
 }
 
@@ -112,7 +135,7 @@ export async function resetJoinCodeAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: { joinCode } };
   } catch (error) {
-    return toFailure(error, "重置入群码失败，请稍后重试");
+    return toFailure(error, "joinCodeResetFailed");
   }
 }
 
@@ -137,6 +160,6 @@ export async function setJoinCodeEnabledAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: { joinCodeEnabled: input.enabled } };
   } catch (error) {
-    return toFailure(error, "保存入群设置失败，请稍后重试");
+    return toFailure(error, "joinCodeSaveFailed");
   }
 }

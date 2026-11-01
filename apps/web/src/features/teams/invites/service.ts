@@ -2,6 +2,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { Team, TeamInvite } from "@open-doing/types";
 
 import { findByUid } from "@/features/users/service";
+import type { DomainErrorI18n } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
 import { teamInvites, teamMemberships, teams, users } from "@/server/db/schema";
@@ -29,12 +30,19 @@ export type InviteErrorField = "uid" | "form";
 export class InviteError extends Error {
   readonly code: InviteErrorCode;
   readonly field: InviteErrorField;
+  readonly i18n?: DomainErrorI18n;
 
-  constructor(code: InviteErrorCode, message: string, field: InviteErrorField = "form") {
+  constructor(
+    code: InviteErrorCode,
+    message: string,
+    field: InviteErrorField = "form",
+    i18n?: DomainErrorI18n,
+  ) {
     super(message);
     this.name = "InviteError";
     this.code = code;
     this.field = field;
+    this.i18n = i18n;
   }
 }
 
@@ -69,7 +77,7 @@ export async function createInvite(
 ): Promise<TeamInvite> {
   const uid = typeof input?.uid === "string" ? input.uid.trim() : "";
   if (!uid) {
-    throw new InviteError("UID_NOT_FOUND", "UID 无效", "uid");
+    throw new InviteError("UID_NOT_FOUND", "UID 无效", "uid", { key: "uidInvalid" });
   }
 
   const membership = await getMembership(input.teamId, input.actorId, client);
@@ -77,13 +85,13 @@ export async function createInvite(
 
   const invitee = await findByUid(uid, client);
   if (!invitee) {
-    throw new InviteError("UID_NOT_FOUND", "UID 无效", "uid");
+    throw new InviteError("UID_NOT_FOUND", "UID 无效", "uid", { key: "uidInvalid" });
   }
   if (invitee.id === input.actorId) {
-    throw new InviteError("SELF", "不能邀请自己", "uid");
+    throw new InviteError("SELF", "不能邀请自己", "uid", { key: "uidSelf" });
   }
   if (await getMembership(input.teamId, invitee.id, client)) {
-    throw new InviteError("ALREADY_MEMBER", "该用户已是团队成员", "uid");
+    throw new InviteError("ALREADY_MEMBER", "该用户已是团队成员", "uid", { key: "uidAlreadyMember" });
   }
 
   const pending = await client
@@ -98,7 +106,7 @@ export async function createInvite(
     )
     .limit(1);
   if (pending.length > 0) {
-    throw new InviteError("PENDING_EXISTS", "已向该用户发出待处理邀请", "uid");
+    throw new InviteError("PENDING_EXISTS", "已向该用户发出待处理邀请", "uid", { key: "invitePendingExists" });
   }
 
   const attemptInsert = async (tx: DbClient): Promise<TeamInvite> => {
@@ -132,7 +140,7 @@ export async function createInvite(
   } catch (error) {
     // 并发竞态：pending 部分唯一索引兜底。
     if (isUniqueViolation(error)) {
-      throw new InviteError("PENDING_EXISTS", "已向该用户发出待处理邀请", "uid");
+      throw new InviteError("PENDING_EXISTS", "已向该用户发出待处理邀请", "uid", { key: "invitePendingExists" });
     }
     throw error;
   }
@@ -163,7 +171,7 @@ export async function rescindInvite(
       .limit(1);
 
     if (!row || row.status !== "pending") {
-      throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+      throw new InviteError("INVALID", "邀请不存在或已失效", "form", { key: "inviteInvalid" });
     }
 
     const [updated] = await tx
@@ -206,7 +214,7 @@ export async function respondToInvite(
   client: DbClient = db,
 ): Promise<Team> {
   if (!input?.inviteId) {
-    throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+    throw new InviteError("INVALID", "邀请不存在或已失效", "form", { key: "inviteInvalid" });
   }
 
   const run = async (tx: DbClient): Promise<Team> => {
@@ -217,7 +225,7 @@ export async function respondToInvite(
       .limit(1);
 
     if (!row || row.status !== "pending" || row.inviteeId !== input.actorId) {
-      throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+      throw new InviteError("INVALID", "邀请不存在或已失效", "form", { key: "inviteInvalid" });
     }
 
     const respondedAt = new Date();
@@ -237,7 +245,7 @@ export async function respondToInvite(
       [teamRow] = await tx.select().from(teams).where(eq(teams.id, row.teamId)).limit(1);
     }
     if (!teamRow) {
-      throw new InviteError("INVALID", "邀请不存在或已失效", "form");
+      throw new InviteError("INVALID", "邀请不存在或已失效", "form", { key: "inviteInvalid" });
     }
 
     // T-3 明文授权的唯一跨文件接线（N 轨道）：响应邀请后把被邀请人本人的

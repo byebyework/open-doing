@@ -2,6 +2,7 @@
 
 import { Button, message } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { respondToInviteAction } from "../actions";
@@ -14,6 +15,8 @@ import { respondToInviteAction } from "../actions";
  */
 export function InviteRespondButtons({ inviteId }: { inviteId: string }) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState<"accept" | "decline" | null>(null);
 
   async function handleRespond(accept: boolean) {
@@ -23,14 +26,14 @@ export function InviteRespondButtons({ inviteId }: { inviteId: string }) {
       const result = await respondToInviteAction({ inviteId, accept });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "处理邀请失败，请稍后重试");
+        message.error(result.errors.form ?? t("inviteRespondFailed"));
         return;
       }
 
-      message.success(accept ? "已加入团队" : "已拒绝邀请");
+      message.success(accept ? t("joinedTeam") : t("declinedInviteToast"));
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmitting(null);
     }
@@ -39,10 +42,10 @@ export function InviteRespondButtons({ inviteId }: { inviteId: string }) {
   return (
     <span className="flex shrink-0 items-center gap-2">
       <Button type="primary" size="small" loading={submitting === "accept"} onClick={() => handleRespond(true)}>
-        接受
+        {t("accept")}
       </Button>
       <Button size="small" loading={submitting === "decline"} onClick={() => handleRespond(false)}>
-        拒绝
+        {t("decline")}
       </Button>
     </span>
   );

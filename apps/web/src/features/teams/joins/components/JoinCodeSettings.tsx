@@ -2,6 +2,7 @@
 
 import { Button, message, Switch, Typography } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
@@ -28,6 +29,8 @@ export function JoinCodeSettings({
   joinCodeEnabled,
 }: JoinCodeSettingsProps) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [enabled, setEnabled] = useState(joinCodeEnabled);
   const [syncedEnabled, setSyncedEnabled] = useState(joinCodeEnabled);
   const [toggling, setToggling] = useState(false);
@@ -50,15 +53,15 @@ export function JoinCodeSettings({
       const result = await setJoinCodeEnabledAction({ teamId, enabled: nextEnabled });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "保存凭码加入设置失败，请稍后重试");
+        message.error(result.errors.form ?? t("joinCodeSettingsFailed"));
         setEnabled(previous);
         return;
       }
 
-      message.success(nextEnabled ? "已开启凭码加入" : "已关闭凭码加入");
+      message.success(nextEnabled ? t("joinCodeEnabledOnToast") : t("joinCodeEnabledOffToast"));
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
       setEnabled(previous);
     } finally {
       setToggling(false);
@@ -72,15 +75,15 @@ export function JoinCodeSettings({
       const result = await resetJoinCodeAction({ teamId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "重置加入码失败，请稍后重试");
+        message.error(result.errors.form ?? t("joinCodeResetFailedUi"));
         return;
       }
 
-      message.success("加入码已重置");
+      message.success(t("joinCodeResetDone"));
       setConfirming(false);
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setResetting(false);
     }
@@ -89,7 +92,7 @@ export function JoinCodeSettings({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="text-[13px] text-[#5f6368]">团队加入码</span>
+        <span className="text-[13px] text-[#5f6368]">{t("joinCodeLabel")}</span>
         <Typography.Text
           copyable
           className="font-mono text-[16px] font-semibold tracking-[0.12em] text-[#0e1318]"
@@ -101,22 +104,22 @@ export function JoinCodeSettings({
           loading={resetting}
           onClick={() => setConfirming(true)}
         >
-          重置加入码
+          {t("joinCodeReset")}
         </Button>
       </div>
 
       <label className="flex cursor-pointer items-center gap-2.5">
         <Switch checked={enabled} loading={toggling} onChange={handleToggle} />
         <span className="text-[13px] text-[#5f6368]">
-          {enabled ? "已开启：成员可凭码申请加入" : "已关闭：成员无法凭码加入"}
+          {enabled ? t("joinCodeEnabledOn") : t("joinCodeEnabledOff")}
         </span>
       </label>
 
       <ConfirmModal
         open={confirming}
-        title="重置加入码"
-        content="重置后旧加入码立即失效，尚未处理完的申请不受影响；请把新码重新告知成员。"
-        confirmText="重置"
+        title={t("joinCodeReset")}
+        content={t("joinCodeResetConfirm")}
+        confirmText={t("reset")}
         danger
         loading={resetting}
         onConfirm={handleReset}
