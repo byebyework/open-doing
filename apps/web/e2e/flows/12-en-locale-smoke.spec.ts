@@ -116,6 +116,14 @@ test.describe("flow 12: 英文界面冒烟", () => {
     );
     expect(hydrationErrors, hydrationErrors.join("\n")).toEqual([]);
     expect(pageErrors, pageErrors.join("\n")).toEqual([]);
+    // antd 静态 message/modal 无法消费动态主题上下文（须走 App.useApp）。
+    const staticContextWarnings = consoleErrors.filter((text) =>
+      /Static function can not consume context/i.test(text),
+    );
+    expect(
+      staticContextWarnings,
+      staticContextWarnings.join("\n"),
+    ).toEqual([]);
 
     // ===== users.language = 'en' =====
     assertE2EDatabaseUrl(E2E_DATABASE_URL);
