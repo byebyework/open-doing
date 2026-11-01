@@ -1,0 +1,188 @@
+import { expect, test, type Page } from "@playwright/test";
+
+import {
+  E2E_PASSWORD,
+  createPersonalProject,
+  createPersonalTask,
+  openPersonalProject,
+  registerUser,
+  uniqueLabel,
+  uniqueUsername,
+} from "../utils/flows";
+
+/**
+ * 关键流 9：个人空间设置（v1.1 M6，`/space/personal/settings`）。
+ *
+ * 覆盖（对照实现计划的 Task 6）：
+ * 1. 侧栏「设置」进入设置页，三个区块标题 + 两个提醒 Switch 默认开启；
+ * 2. 改密码全流程：旧密码错误落在字段错误；正确改密后 toast 且保持登录；
+ *    登出后旧密码登录失败、新密码成功；
+ * 3. 关闭「临期提醒」后刷新仍为关（持久化）；
+ * 4. 个人项目按最近活动排序：先建者产生任务动态后置顶（Kanban 项目筛选
+ *    下拉顺序即 `listPersonalProjects` 的返回顺序）。
+ *
+ * 每个用例自建新用户，不依赖 seed 用户（林夏），避免互相污染。
+ */
+
+test.describe.configure({ timeout: 120_000 });
+
+/** 设置页三个区块标题（顺序即渲染顺序）。 */
+const SECTION_TITLES = ["账户安全", "任务提醒", "项目排序"] as const;
+
+test.describe("flow 9: 个人空间设置", () => {
+  test("侧栏进入设置页，三区块与默认开启的开关", async ({ page }) => {
+    await registerUser(page, uniqueUsername("e2e_st1"));
+
+    // 从侧栏「设置」进入新页面（M4 起挂着的 404 链接在本里程碑修复）。
+    await page.getByRole("link", { name: "设置", exact: true }).click();
+    await expect(page).toHaveURL(/\/space\/personal\/settings$/, {
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByRole("heading", { name: "设置", level: 1 }),
+    ).toBeVisible();
+
+    for (const title of SECTION_TITLES) {
+      await expect(
+        page.getByRole("heading", { name: title, level: 2 }),
+      ).toBeVisible();
+    }
+
+    // 两个提醒开关默认全开（迁移列 DEFAULT true）。
+    await expect(
+      page.getByRole("switch", { name: "临期提醒" }),
+    ).toHaveAttribute("aria-checked", "true");
+    await expect(
+      page.getByRole("switch", { name: "逾期提醒" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("改密码：旧密码错误提示、成功 toast、登出后新密码生效", async ({
+    page,
+  }) => {
+    const username = uniqueUsername("e2e_st2");
+    const newPassword = "e2e-new-password-456";
+
+    await registerUser(page, username);
+    await page.goto("/space/personal/settings");
+
+    const oldPasswordInput = page.getByLabel("旧密码", { exact: true });
+    const newPasswordInput = page.getByLabel("新密码", { exact: true });
+    const confirmPasswordInput = page.getByLabel("确认新密码", {
+      exact: true,
+    });
+
+    // ① 旧密码错误：错误落在旧密码字段，不落表单级 alert。
+    await oldPasswordInput.fill("definitely-wrong-password");
+    await newPasswordInput.fill(newPassword);
+    await confirmPasswordInput.fill(newPassword);
+    await page.getByRole("button", { name: "更新密码" }).click();
+    await expect(page.getByText("旧密码不正确")).toBeVisible();
+
+    // ② 旧密码正确：toast「密码已更新」，且仍停留在设置页（保持登录）。
+    await oldPasswordInput.fill(E2E_PASSWORD);
+    await page.getByRole("button", { name: "更新密码" }).click();
+    await expect(page.getByText("密码已更新")).toBeVisible();
+    await expect(page).toHaveURL(/\/space\/personal\/settings$/);
+    await expect(
+      page.getByRole("heading", { name: "设置", level: 1 }),
+    ).toBeVisible();
+
+    // ③ 登出（顶栏用户菜单）。
+    await page
+      .getByRole("button", { name: /打开用户菜单/ })
+      .click();
+    await page.getByRole("menuitem", { name: "退出登录" }).click();
+    await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
+
+    // ④ 旧密码登录失败：恒定文案「用户名或密码错误」（表单级 alert）。
+    await page.getByLabel("用户名").fill(username);
+    await page.getByLabel("密码", { exact: true }).fill(E2E_PASSWORD);
+    await page.getByRole("button", { name: /登\s*录/ }).click();
+    await expect(page.getByText("用户名或密码错误")).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/);
+
+    // ⑤ 新密码登录成功。
+    await page.getByLabel("密码", { exact: true }).fill(newPassword);
+    await page.getByRole("button", { name: /登\s*录/ }).click();
+    await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+      timeout: 30_000,
+    });
+  });
+
+  test("关闭临期提醒后刷新仍为关", async ({ page }) => {
+    await registerUser(page, uniqueUsername("e2e_st3"));
+    await page.goto("/space/personal/settings");
+
+    const dueSoonSwitch = page.getByRole("switch", { name: "临期提醒" });
+    await expect(dueSoonSwitch).toHaveAttribute("aria-checked", "true");
+
+    // 等 Server Action 的 POST 真正完成，避免刷新早于落库。
+    const saved = page.waitForResponse(
+      (response) =>
+        response.request().method() === "POST" &&
+        response.url().includes("/space/personal/settings"),
+    );
+    await dueSoonSwitch.click();
+    await saved;
+
+    await expect(dueSoonSwitch).toHaveAttribute("aria-checked", "false");
+
+    // 刷新后从 RSC 重新取数，仍是关闭状态（已持久化）。
+    await page.reload();
+    await expect(
+      page.getByRole("switch", { name: "临期提醒" }),
+    ).toHaveAttribute("aria-checked", "false");
+    // 另一个开关不受影响。
+    await expect(
+      page.getByRole("switch", { name: "逾期提醒" }),
+    ).toHaveAttribute("aria-checked", "true");
+  });
+
+  test("个人项目按最近活动排序：后加任务的项目置顶", async ({ page }) => {
+    const projectA = uniqueLabel("E2E st proj A");
+    const projectB = uniqueLabel("E2E st proj B");
+    const taskA = uniqueLabel("E2E st task A");
+
+    await registerUser(page, uniqueUsername("e2e_st4"));
+
+    // 先建 A、后建 B：两者都没有任务时按 createdAt 降序，B 在前。
+    await createPersonalProject(page, projectA);
+    await createPersonalProject(page, projectB);
+
+    await page.goto("/space/personal/kanban");
+    await expectProjectOrder(page, [projectB, projectA]);
+
+    // 给先建的 A 产生任务动态 → A 的最近活动晚于 B 的创建时间。
+    await openPersonalProject(page, projectA);
+    await createPersonalTask(page, { title: taskA });
+
+    // 刷新后顺序变化：A 置顶，证明排序消费的是「最近活动」而非创建时间。
+    await page.goto("/space/personal/kanban");
+    await expectProjectOrder(page, [projectA, projectB]);
+  });
+});
+
+/**
+ * 断言 Kanban 项目筛选下拉的选项顺序。
+ *
+ * 下拉的 options 即 `listPersonalProjects` 的返回顺序（「全部项目」固定第一项），
+ * 因此无需专用 fixture 即可通过 UI 低成本验证排序。
+ */
+async function expectProjectOrder(
+  page: Page,
+  names: readonly string[],
+): Promise<void> {
+  const trigger = page.getByLabel("按项目筛选");
+  await trigger.click();
+
+  const options = page.locator(".ant-select-item-option");
+  await expect(options).toHaveCount(names.length + 1); // +「全部项目」
+  await expect(options.nth(0)).toHaveText("全部项目");
+
+  for (const [index, name] of names.entries()) {
+    await expect(options.nth(index + 1)).toHaveText(name);
+  }
+
+  await page.keyboard.press("Escape");
+}
