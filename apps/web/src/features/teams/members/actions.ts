@@ -10,6 +10,7 @@ import { getTeamBySlug } from "@/features/teams/service";
 import {
   GovernanceError,
   MemberError,
+  TeamPolicyError,
   dissolveTeam,
   leaveTeam,
   removeMember,
@@ -17,18 +18,50 @@ import {
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
-/** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
+/**
+ * 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。
+ *
+ * MemberError / GovernanceError / TeamPolicyError 携带 i18n 通道时按请求
+ * 语言翻译（落 form 字段）；否则回退 message（zh 兜底）。
+ * `fallbackKey` 是 `teams` 命名空间的兜底文案 key。
+ */
+async function toFailure(
+  error: unknown,
+  fallbackKey: "removeFailed" | "leaveFailed" | "transferFailed" | "dissolveFailed",
+): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof MemberError || error instanceof GovernanceError) {
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field]: failures.custom(`teams.${error.i18n.key}`, error.i18n.params)
+            .errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field]: error.message } };
   }
-  if (error instanceof TeamPermissionError) {
+  // TeamPolicyError 先于 TeamPermissionError 判定：策略文案走 i18n 通道。
+  if (error instanceof TeamPolicyError) {
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          form: failures.custom(`teams.${error.i18n.key}`, error.i18n.params).errors.form!,
+        },
+      };
+    }
     // 策略性文案（如「请先转让团队或解散团队」）原样透出。
     return { ok: false, errors: { form: error.message } };
   }
+  if (error instanceof TeamPermissionError) {
+    return (await standardFailuresForRequest()).forbidden();
+  }
 
   console.error("[teams/members] Server Action 执行失败", error);
-  return { ok: false, errors: { form: fallback } };
+  return (await standardFailuresForRequest()).custom(`teams.${fallbackKey}`);
 }
 
 /**
@@ -58,7 +91,7 @@ export async function removeMemberAction(input: {
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
     if (!team) {
-      return { ok: false, errors: { form: "团队不存在或无权访问" } };
+      return (await standardFailuresForRequest()).custom("teams.teamNotFoundOrForbidden");
     }
 
     await removeMember({
@@ -71,7 +104,7 @@ export async function removeMemberAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: null };
   } catch (error) {
-    return toFailure(error, "移除成员失败，请稍后重试");
+    return toFailure(error, "removeFailed");
   }
 }
 
@@ -85,7 +118,7 @@ export async function leaveTeamAction(input: { teamSlug: string }): Promise<Acti
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
     if (!team) {
-      return { ok: false, errors: { form: "团队不存在或无权访问" } };
+      return (await standardFailuresForRequest()).custom("teams.teamNotFoundOrForbidden");
     }
 
     await leaveTeam({ teamId: team.id, actorId: user.id });
@@ -93,7 +126,7 @@ export async function leaveTeamAction(input: { teamSlug: string }): Promise<Acti
     revalidatePath("/", "layout");
     return { ok: true, data: null };
   } catch (error) {
-    return toFailure(error, "退出团队失败，请稍后重试");
+    return toFailure(error, "leaveFailed");
   }
 }
 
@@ -110,7 +143,7 @@ export async function transferTeamAction(input: {
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
     if (!team) {
-      return { ok: false, errors: { form: "团队不存在或无权访问" } };
+      return (await standardFailuresForRequest()).custom("teams.teamNotFoundOrForbidden");
     }
 
     await transferTeam({
@@ -123,7 +156,7 @@ export async function transferTeamAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: null };
   } catch (error) {
-    return toFailure(error, "转让团队失败，请稍后重试");
+    return toFailure(error, "transferFailed");
   }
 }
 
@@ -139,7 +172,7 @@ export async function dissolveTeamAction(input: {
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
     if (!team) {
-      return { ok: false, errors: { form: "团队不存在或无权访问" } };
+      return (await standardFailuresForRequest()).custom("teams.teamNotFoundOrForbidden");
     }
 
     await dissolveTeam({ teamId: team.id, actorId: user.id });
@@ -148,6 +181,6 @@ export async function dissolveTeamAction(input: {
     revalidatePath("/", "layout");
     return { ok: true, data: null };
   } catch (error) {
-    return toFailure(error, "解散团队失败，请稍后重试");
+    return toFailure(error, "dissolveFailed");
   }
 }

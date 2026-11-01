@@ -1,4 +1,5 @@
 import { Tag } from "antd";
+import { getTranslations } from "next-intl/server";
 import dayjs from "dayjs";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -6,11 +7,17 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { RemoveMemberButton } from "../members/components/RemoveMemberButton";
 import type { MemberView } from "../service";
 
-/** 角色 -> 展示文案与配色（对照原型角色 tag：owner/admin 用品牌色，member 用中性灰）。 */
-const ROLE_LABELS: Record<MemberView["membership"]["role"], { label: string; color: string; background: string }> = {
-  owner: { label: "所有者", color: "#7d2ae8", background: "rgba(125, 42, 232, 0.12)" },
-  admin: { label: "管理员", color: "#7d2ae8", background: "rgba(125, 42, 232, 0.12)" },
-  member: { label: "成员", color: "#5f6368", background: "#f1f3f4" },
+/** 角色 -> 配色（语言无关）；文案 key 见 ROLE_KEYS，渲染时按请求语言翻译。 */
+const ROLE_COLORS: Record<MemberView["membership"]["role"], { color: string; background: string }> = {
+  owner: { color: "#7d2ae8", background: "rgba(125, 42, 232, 0.12)" },
+  admin: { color: "#7d2ae8", background: "rgba(125, 42, 232, 0.12)" },
+  member: { color: "#5f6368", background: "#f1f3f4" },
+};
+
+const ROLE_KEYS: Record<MemberView["membership"]["role"], "roleOwner" | "roleAdmin" | "roleMember"> = {
+  owner: "roleOwner",
+  admin: "roleAdmin",
+  member: "roleMember",
 };
 
 export interface MemberListProps {
@@ -29,12 +36,13 @@ export interface MemberListProps {
  * 只读展示；owner/admin 额外看到每行「移除」按钮（owner 行与自己的行除外），
  * 成员行的移除操作在 client 组件内二次确认并调用 server action。
  */
-export function MemberList({
+export async function MemberList({
   members,
   teamSlug,
   canManage = false,
   currentUserId,
 }: MemberListProps) {
+  const t = await getTranslations("teams");
   const actionTeamSlug = canManage ? teamSlug : undefined;
 
   return (
@@ -44,15 +52,15 @@ export function MemberList({
       <table className="w-full border-collapse text-[13px]">
         <thead>
           <tr className="text-left text-[#9aa0a6]">
-            <th className="pb-2 font-medium">成员</th>
-            <th className="pb-2 font-medium">角色</th>
-            <th className="pb-2 font-medium">加入时间</th>
-            {actionTeamSlug ? <th className="pb-2 text-right font-medium">操作</th> : null}
+            <th className="pb-2 font-medium">{t("colMember")}</th>
+            <th className="pb-2 font-medium">{t("colRole")}</th>
+            <th className="pb-2 font-medium">{t("colJoinedAt")}</th>
+            {actionTeamSlug ? <th className="pb-2 text-right font-medium">{t("colActions")}</th> : null}
           </tr>
         </thead>
         <tbody>
           {members.map(({ membership, user }) => {
-            const role = ROLE_LABELS[membership.role];
+            const roleColor = ROLE_COLORS[membership.role];
             return (
               <tr key={membership.id} className="border-t border-[#eceef0]">
                 <td className="py-2.5">
@@ -63,8 +71,8 @@ export function MemberList({
                   </span>
                 </td>
                 <td className="py-2.5">
-                  <Tag style={{ color: role.color, background: role.background, border: "none", borderRadius: 999 }}>
-                    {role.label}
+                  <Tag style={{ color: roleColor.color, background: roleColor.background, border: "none", borderRadius: 999 }}>
+                    {t(ROLE_KEYS[membership.role])}
                   </Tag>
                 </td>
                 <td className="py-2.5 text-[#5f6368]">{dayjs(membership.joinedAt).format("MM-DD")}</td>

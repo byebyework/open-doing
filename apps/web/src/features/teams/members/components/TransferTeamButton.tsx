@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Select, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -29,6 +30,8 @@ export interface TransferTeamButtonProps {
  */
 export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonProps) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [targetUserId, setTargetUserId] = useState<string | undefined>();
   const [submitting, setSubmitting] = useState(false);
@@ -40,7 +43,7 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
 
   async function handleConfirm() {
     if (!targetUserId) {
-      message.warning("请选择受让人");
+      message.warning(t("selectTransferee"));
       return;
     }
 
@@ -50,16 +53,16 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
       const result = await transferTeamAction({ teamSlug, targetUserId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "转让团队失败，请稍后重试");
+        message.error(result.errors.form ?? t("transferFailed"));
         return;
       }
 
-      message.success("已转让团队");
+      message.success(t("transferredTeam"));
       setOpen(false);
       setTargetUserId(undefined);
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -69,24 +72,24 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
     <>
       <Button
         disabled={candidates.length === 0}
-        title={candidates.length === 0 ? "团队暂无其他成员可转让" : undefined}
+        title={candidates.length === 0 ? t("noTransferee") : undefined}
         onClick={handleOpen}
       >
-        转让团队
+        {t("transferTeam")}
       </Button>
 
       <ConfirmModal
         open={open}
-        title="转让团队"
+        title={t("transferTeam")}
         content={
           <div>
             <p className="mb-3 text-[13px] text-[#5f6368]">
-              转让后受让人将成为团队所有者，你将变为管理员。确定转让团队吗？
+              {t("transferConfirmIntro")}
             </p>
             <Select
               className="w-full"
-              aria-label="选择新的所有者"
-              placeholder="选择新的所有者"
+              aria-label={t("selectNewOwner")}
+              placeholder={t("selectNewOwner")}
               options={candidates.map((candidate) => ({
                 value: candidate.userId,
                 label: `${candidate.username}（${candidate.uid}）`,
@@ -96,7 +99,7 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
             />
           </div>
         }
-        confirmText="确认转让"
+        confirmText={t("confirmTransfer")}
         loading={submitting}
         onConfirm={handleConfirm}
         onCancel={() => setOpen(false)}

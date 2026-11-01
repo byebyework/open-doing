@@ -14,6 +14,7 @@ import {
 import {
   GovernanceError,
   MemberError,
+  TeamPolicyError,
   dissolveTeam,
   leaveTeam,
   removeMember,
@@ -168,13 +169,13 @@ describe("成员移除 / 主动退出 actions", () => {
     expect(mockRevalidatePath).not.toHaveBeenCalled();
   });
 
-  it("owner 退出的策略错误文案原样透出", async () => {
+  it("owner 退出的策略错误按请求语言翻译", async () => {
     mockGetCurrentUser.mockResolvedValue(currentUser);
     mockGetTeamBySlug.mockResolvedValue(team);
     mockGetMembership.mockResolvedValue({ ...membership, role: "owner" });
-    const policyError = new TeamPermissionError("team:leave");
-    policyError.message = "请先转让团队或解散团队";
-    mockLeaveTeam.mockRejectedValue(policyError);
+    mockLeaveTeam.mockRejectedValue(
+      new TeamPolicyError("team:leave", "请先转让团队或解散团队", { key: "leaveOwnerFirst" }),
+    );
 
     expect(await leaveTeamAction({ teamSlug: team.slug })).toEqual({
       ok: false,

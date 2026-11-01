@@ -1,5 +1,6 @@
 import { and, eq, inArray } from "drizzle-orm";
 
+import type { DomainErrorI18n } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import { projects, tasks, teamMemberships, teams } from "@/server/db/schema";
 
@@ -21,11 +22,13 @@ export type MemberErrorCode = "NOT_FOUND";
 export class MemberError extends Error {
   readonly code: MemberErrorCode;
   readonly field = "form" as const;
+  readonly i18n?: DomainErrorI18n;
 
-  constructor(code: MemberErrorCode, message: string) {
+  constructor(code: MemberErrorCode, message: string, i18n?: DomainErrorI18n) {
     super(message);
     this.name = "MemberError";
     this.code = code;
+    this.i18n = i18n;
   }
 }
 
@@ -33,11 +36,14 @@ export class MemberError extends Error {
  * 团队策略性拒绝（须先转让等），仍是权限错误的一种，调用方按 403 处理；
  * 但覆盖默认文案，便于 UI 展示可操作提示。
  */
-class TeamPolicyError extends TeamPermissionError {
-  constructor(action: TeamAction, message: string) {
+export class TeamPolicyError extends TeamPermissionError {
+  readonly i18n?: DomainErrorI18n;
+
+  constructor(action: TeamAction, message: string, i18n?: DomainErrorI18n) {
     super(action);
     // Error.message 在构造后可写；实例仍是 TeamPermissionError。
     this.message = message;
+    this.i18n = i18n;
   }
 }
 
@@ -52,11 +58,13 @@ export type GovernanceErrorCode = "TEAM_NOT_FOUND" | "TARGET_NOT_MEMBER" | "SELF
 export class GovernanceError extends Error {
   readonly code: GovernanceErrorCode;
   readonly field = "form" as const;
+  readonly i18n?: DomainErrorI18n;
 
-  constructor(code: GovernanceErrorCode, message: string) {
+  constructor(code: GovernanceErrorCode, message: string, i18n?: DomainErrorI18n) {
     super(message);
     this.name = "GovernanceError";
     this.code = code;
+    this.i18n = i18n;
   }
 }
 
@@ -68,7 +76,7 @@ async function assertTeamExists(tx: DbClient, teamId: string): Promise<void> {
     .where(eq(teams.id, teamId))
     .limit(1);
   if (!row) {
-    throw new GovernanceError("TEAM_NOT_FOUND", "团队不存在");
+    throw new GovernanceError("TEAM_NOT_FOUND", "团队不存在", { key: "teamMissing" });
   }
 }
 
@@ -133,10 +141,10 @@ export async function removeMember(
 
     const targetMembership = await getMembership(input.teamId, input.targetUserId, tx);
     if (!targetMembership) {
-      throw new MemberError("NOT_FOUND", "成员不存在或已退出");
+      throw new MemberError("NOT_FOUND", "成员不存在或已退出", { key: "memberNotFound" });
     }
     if (targetMembership.role === "owner") {
-      throw new TeamPolicyError("team:transfer", "请先转让团队后再移除成员");
+      throw new TeamPolicyError("team:transfer", "请先转让团队后再移除成员", { key: "removeOwnerFirst" });
     }
 
     await removeMembershipAndClearAssignments(tx, {
@@ -169,7 +177,7 @@ export async function leaveTeam(
 
     // owner 先给出可操作文案；其余角色交给统一权限矩阵判定。
     if (actorMembership?.role === "owner") {
-      throw new TeamPolicyError("team:leave", "请先转让团队或解散团队");
+      throw new TeamPolicyError("team:leave", "请先转让团队或解散团队", { key: "leaveOwnerFirst" });
     }
     assertCan(actorMembership?.role ?? null, "team:leave");
 
@@ -206,12 +214,12 @@ export async function transferTeam(
     assertCan(actorMembership?.role ?? null, "team:transfer");
 
     if (input.targetUserId === input.actorId) {
-      throw new GovernanceError("SELF_TRANSFER", "不能转让给自己");
+      throw new GovernanceError("SELF_TRANSFER", "不能转让给自己", { key: "selfTransfer" });
     }
 
     const targetMembership = await getMembership(input.teamId, input.targetUserId, tx);
     if (!targetMembership) {
-      throw new GovernanceError("TARGET_NOT_MEMBER", "目标用户不是团队成员");
+      throw new GovernanceError("TARGET_NOT_MEMBER", "目标用户不是团队成员", { key: "targetNotMember" });
     }
 
     await tx

@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -27,6 +28,8 @@ export function RemoveMemberButton({
   targetUsername,
 }: RemoveMemberButtonProps) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -37,15 +40,15 @@ export function RemoveMemberButton({
       const result = await removeMemberAction({ teamSlug, targetUserId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "移除成员失败，请稍后重试");
+        message.error(result.errors.form ?? t("removeFailed"));
         return;
       }
 
-      message.success("已移除成员");
+      message.success(t("memberRemoved"));
       setOpen(false);
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -54,14 +57,14 @@ export function RemoveMemberButton({
   return (
     <>
       <Button type="text" danger size="small" onClick={() => setOpen(true)}>
-        移除
+        {t("remove")}
       </Button>
 
       <ConfirmModal
         open={open}
-        title="移除成员"
-        content={`确定将「${targetUsername}」移出团队吗？其负责的任务将变为未指派。`}
-        confirmText="移除"
+        title={t("removeMemberTitle")}
+        content={t("removeMemberConfirm", { name: targetUsername })}
+        confirmText={t("remove")}
         danger
         loading={submitting}
         onConfirm={handleConfirm}

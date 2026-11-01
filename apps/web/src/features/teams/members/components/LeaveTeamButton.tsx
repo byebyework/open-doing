@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -16,6 +17,8 @@ import { leaveTeamAction } from "../actions";
  */
 export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,16 +29,16 @@ export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
       const result = await leaveTeamAction({ teamSlug });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "退出团队失败，请稍后重试");
+        message.error(result.errors.form ?? t("leaveFailed"));
         return;
       }
 
-      message.success("已退出团队");
+      message.success(t("leftTeam"));
       setOpen(false);
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -44,14 +47,14 @@ export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
   return (
     <>
       <Button danger onClick={() => setOpen(true)}>
-        退出团队
+        {t("leaveTeam")}
       </Button>
 
       <ConfirmModal
         open={open}
-        title="退出团队"
-        content="退出后你负责的任务将变为未指派，由管理员重新分配。确定退出团队吗？"
-        confirmText="退出团队"
+        title={t("leaveTeam")}
+        content={t("leaveTeamConfirm")}
+        confirmText={t("leaveTeam")}
         danger
         loading={submitting}
         onConfirm={handleConfirm}
