@@ -2,7 +2,7 @@ import { addDays, isDueSoon, isOverdue } from "@open-doing/types";
 import { and, eq, inArray, isNotNull, lt, ne, or } from "drizzle-orm";
 
 import { db, type DbClient } from "@/server/db/client";
-import { notifications, projects, tasks } from "@/server/db/schema";
+import { notifications, projects, tasks, users } from "@/server/db/schema";
 
 /** 单次到期扫描的写入统计（按实际插入行数计，去重后的数量）。 */
 export interface DueScanResult {
@@ -32,7 +32,8 @@ export function shanghaiToday(now: Date = new Date()): string {
  * - 只看 `status != 'done'`、有截止日期且已指派的任务；
  * - `due_date < today` → `task_overdue`；
  * - `due_date` 为 today 或明天 → `task_due_soon`；
- * - 接收人 = assignee，`actorId = null`，带任务自身的 team/project/task 关联。
+ * - 接收人 = assignee，`actorId = null`，带任务自身的 team/project/task 关联；
+ * - 接收人关闭了对应提醒开关时，该类型不投递（另一类型照常）。
  *
  * 幂等：单条批量 `INSERT ... ON CONFLICT DO NOTHING`，由部分唯一索引
  * `(user_id, task_id, type) WHERE task_id IS NOT NULL` 兜底，重复扫描不新增行。
@@ -53,9 +54,12 @@ export async function runDueScan(
       assigneeId: tasks.assigneeId,
       projectId: tasks.projectId,
       teamId: projects.teamId,
+      dueSoonReminderEnabled: users.dueSoonReminderEnabled,
+      overdueReminderEnabled: users.overdueReminderEnabled,
     })
     .from(tasks)
     .leftJoin(projects, eq(tasks.projectId, projects.id))
+    .innerJoin(users, eq(tasks.assigneeId, users.id))
     .where(
       and(
         ne(tasks.status, "done"),
@@ -77,6 +81,17 @@ export async function runDueScan(
         ? "task_due_soon"
         : null;
     if (!type) {
+      continue;
+    }
+
+    // 按接收人的个人设置过滤 cron 投递：对应开关关闭时跳过该类型。
+    // 注意这里只影响本扫描（cron）投递的到期/逾期提醒——评论、指派、邀请等
+    // 协作通知由各领域动作在同一业务事务内直接产生，从不经过 runDueScan；
+    // 也不删除任何存量通知，仅是不再新增。
+    if (
+      (type === "task_due_soon" && !row.dueSoonReminderEnabled) ||
+      (type === "task_overdue" && !row.overdueReminderEnabled)
+    ) {
       continue;
     }
 

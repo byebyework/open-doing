@@ -23,19 +23,32 @@ const YESTERDAY = "2026-10-23";
 const TOMORROW = "2026-10-25";
 const DAY_AFTER_TOMORROW = "2026-10-26";
 
-async function createUser(db: DbClient, username: string) {
+async function createUser(
+  db: DbClient,
+  username: string,
+  prefs: {
+    dueSoonReminderEnabled?: boolean;
+    overdueReminderEnabled?: boolean;
+  } = {},
+) {
   const uid = generateUid();
   const [row] = await db
     .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
+    .values({ uid, username, passwordHash: "test-hash", ...prefs })
     .returning();
   return row!;
 }
 
-/** 造数上下文：owner + assignee，一个团队项目与一个个人任务。 */
-async function seed(db: DbClient) {
+/** 造数上下文：owner + assignee（可指定提醒开关），一个团队项目。 */
+async function seed(
+  db: DbClient,
+  assigneePrefs: {
+    dueSoonReminderEnabled?: boolean;
+    overdueReminderEnabled?: boolean;
+  } = {},
+) {
   const owner = await createUser(db, "owner");
-  const assignee = await createUser(db, "assignee");
+  const assignee = await createUser(db, "assignee", assigneePrefs);
 
   const [team] = await db
     .insert(teams)
@@ -230,6 +243,127 @@ describe.skipIf(!hasTestDatabase)("到期扫描 runDueScan", () => {
       projectId: null,
       actorId: null,
     });
+  });
+
+  it("关闭逾期提醒：逾期任务不投递 task_overdue，临期任务照常投递 task_due_soon", async () => {
+    const { owner, assignee, teamProject } = await seed(db, {
+      overdueReminderEnabled: false,
+    });
+    const overdueTask = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "已逾期",
+      dueDate: YESTERDAY,
+    });
+    const dueSoonTask = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "临期",
+      dueDate: TOMORROW,
+    });
+
+    expect(await runDueScan(db, TODAY)).toEqual({ dueSoon: 1, overdue: 0 });
+
+    const rows = await listUserNotifications(db, assignee.id);
+    expect(rows.map((row) => [row.taskId, row.type])).toEqual([
+      [dueSoonTask.id, "task_due_soon"],
+    ]);
+    expect(rows.some((row) => row.taskId === overdueTask.id)).toBe(false);
+  });
+
+  it("关闭临期提醒：临期任务不投递 task_due_soon，逾期任务照常投递 task_overdue", async () => {
+    const { owner, assignee, teamProject } = await seed(db, {
+      dueSoonReminderEnabled: false,
+    });
+    const overdueTask = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "已逾期",
+      dueDate: YESTERDAY,
+    });
+    const dueSoonTask = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "临期",
+      dueDate: TODAY,
+    });
+
+    expect(await runDueScan(db, TODAY)).toEqual({ dueSoon: 0, overdue: 1 });
+
+    const rows = await listUserNotifications(db, assignee.id);
+    expect(rows.map((row) => [row.taskId, row.type])).toEqual([
+      [overdueTask.id, "task_overdue"],
+    ]);
+    expect(rows.some((row) => row.taskId === dueSoonTask.id)).toBe(false);
+  });
+
+  it("开关全开（默认）：两类通知照常投递，重复扫描仍幂等", async () => {
+    const { owner, assignee, teamProject } = await seed(db);
+    const overdueTask = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "已逾期",
+      dueDate: YESTERDAY,
+    });
+    const dueSoonTask = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "临期",
+      dueDate: TOMORROW,
+    });
+
+    expect(await runDueScan(db, TODAY)).toEqual({ dueSoon: 1, overdue: 1 });
+    expect(await runDueScan(db, TODAY)).toEqual({ dueSoon: 0, overdue: 0 });
+
+    const rows = await listUserNotifications(db, assignee.id);
+    expect(rows.map((row) => [row.taskId, row.type]).sort()).toEqual(
+      [
+        [overdueTask.id, "task_overdue"],
+        [dueSoonTask.id, "task_due_soon"],
+      ].sort(),
+    );
+  });
+
+  it("开关只过滤 cron 投递：领域通知与存量通知都不受影响", async () => {
+    const { owner, assignee, teamProject } = await seed(db, {
+      dueSoonReminderEnabled: false,
+      overdueReminderEnabled: false,
+    });
+    const task = await createTask(db, {
+      createdById: owner.id,
+      projectId: teamProject.id,
+      assigneeId: assignee.id,
+      title: "已逾期",
+      dueDate: YESTERDAY,
+    });
+
+    // 领域动作产生的协作通知（评论）在业务事务内直接落库，不经过 runDueScan。
+    await db.insert(notifications).values({
+      userId: assignee.id,
+      type: "task_commented",
+      taskId: task.id,
+      actorId: owner.id,
+    });
+    // 开关关闭前已存在的存量 cron 通知，扫描不会删除它。
+    await db.insert(notifications).values({
+      userId: assignee.id,
+      type: "task_overdue",
+      taskId: task.id,
+    });
+
+    expect(await runDueScan(db, TODAY)).toEqual({ dueSoon: 0, overdue: 0 });
+
+    const rows = await listUserNotifications(db, assignee.id);
+    expect(rows.map((row) => row.type).sort()).toEqual([
+      "task_commented",
+      "task_overdue",
+    ]);
   });
 });
 
