@@ -72,12 +72,21 @@ test.describe("flow 9: 个人空间设置", () => {
       exact: true,
     });
 
-    // ① 旧密码错误：错误落在旧密码字段，不落表单级 alert。
+    // ① 旧密码错误：错误落在旧密码 Form.Item 内，不落表单级 alert。
     await oldPasswordInput.fill("definitely-wrong-password");
     await newPasswordInput.fill(newPassword);
     await confirmPasswordInput.fill(newPassword);
     await page.getByRole("button", { name: "更新密码" }).click();
-    await expect(page.getByText("旧密码不正确")).toBeVisible();
+
+    // 以包含「旧密码」输入框的 Form.Item 为作用域，而不是页面级文本——
+    // 否则错误即便错误地落到 errors.form 也仍会通过。
+    const oldPasswordItem = page
+      .locator(".ant-form-item")
+      .filter({ has: oldPasswordInput });
+    await expect(oldPasswordItem).toHaveCount(1);
+    await expect(oldPasswordItem.getByText("旧密码不正确")).toBeVisible();
+    // 反向钉住：表单级错误 Alert 不应出现。
+    await expect(page.locator(".ant-alert-error")).toHaveCount(0);
 
     // ② 旧密码正确：toast「密码已更新」，且仍停留在设置页（保持登录）。
     await oldPasswordInput.fill(E2E_PASSWORD);
