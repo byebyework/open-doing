@@ -1,5 +1,6 @@
 import { hash, verify } from "@node-rs/argon2";
 import type { User } from "@open-doing/types";
+import { eq } from "drizzle-orm";
 
 import {
   getCredentialsByUsername,
@@ -37,7 +38,12 @@ export type AuthErrorCode =
   | "INVALID_CREDENTIALS"
   | "UID_GENERATION_FAILED";
 
-export type AuthErrorField = "username" | "password" | "form";
+export type AuthErrorField =
+  | "username"
+  | "password"
+  | "oldPassword"
+  | "newPassword"
+  | "form";
 
 /**
  * 认证领域错误。
@@ -191,6 +197,67 @@ export async function login(input: AuthInput, client: DbClient = db): Promise<Us
   if (!passwordMatches) throw invalidCredentials();
 
   return credentials.user;
+}
+
+export interface ChangePasswordInput {
+  userId: string;
+  oldPassword: string;
+  newPassword: string;
+}
+
+/**
+ * 修改密码。
+ *
+ * - 新密码先做长度校验（与注册同一规则），旧密码错误与登录同用
+ *   `INVALID_CREDENTIALS`，但落到 `oldPassword` 字段；
+ * - 旧密码校验通过后重新哈希写入，绝不明文落库；
+ * - 不触碰会话：无状态 JWT 继续有效，用户保持登录。
+ */
+export async function changePassword(
+  input: ChangePasswordInput,
+  client: DbClient = db,
+): Promise<true> {
+  const newPassword = normalizePassword(input?.newPassword);
+
+  if (!newPassword) {
+    throw new AuthError("VALIDATION", "请输入新密码", "newPassword");
+  }
+  if (newPassword.length < PASSWORD_MIN_LENGTH) {
+    throw new AuthError(
+      "VALIDATION",
+      `新密码至少 ${PASSWORD_MIN_LENGTH} 位`,
+      "newPassword",
+    );
+  }
+
+  const userId = typeof input?.userId === "string" ? input.userId : "";
+  const [credentials] = await client
+    .select({ passwordHash: users.passwordHash })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  const oldPassword = normalizePassword(input?.oldPassword);
+  let oldPasswordMatches = false;
+  if (credentials) {
+    try {
+      oldPasswordMatches = await verify(credentials.passwordHash, oldPassword);
+    } catch {
+      // 哈希损坏等异常同样按旧密码错误处理，不泄露内部状态。
+      oldPasswordMatches = false;
+    }
+  }
+
+  if (!oldPasswordMatches) {
+    throw new AuthError("INVALID_CREDENTIALS", "旧密码不正确", "oldPassword");
+  }
+
+  await client
+    .update(users)
+    .set({ passwordHash: await hash(newPassword) })
+    .where(eq(users.id, userId));
+
+  return true;
 }
 
 /** 登出：清除无状态会话 cookie。 */

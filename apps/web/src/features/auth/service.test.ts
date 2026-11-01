@@ -1,13 +1,14 @@
+import { verify } from "@node-rs/argon2";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
-import { findByUid, getUserById } from "@/features/users/service";
+import { findByUid, getCredentialsByUsername, getUserById } from "@/features/users/service";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
-import { AuthError, login, registerUser } from "./service";
+import { AuthError, changePassword, login, registerUser } from "./service";
 
 /**
  * 包装真实 generateUid，默认走真实随机；UID 碰撞用例用
@@ -136,6 +137,80 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
       code: "INVALID_CREDENTIALS",
       field: "form",
       message: "用户名或密码错误",
+    });
+  });
+
+  it("修改密码成功：返回 true，新密码可验证、旧密码失效", async () => {
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
+
+    await expect(
+      changePassword(
+        { userId: user.id, oldPassword: "password123", newPassword: "newpassword456" },
+        db,
+      ),
+    ).resolves.toBe(true);
+
+    const credentials = await getCredentialsByUsername("alice", db);
+    expect(credentials).not.toBeNull();
+    await expect(verify(credentials!.passwordHash, "newpassword456")).resolves.toBe(true);
+    await expect(verify(credentials!.passwordHash, "password123")).resolves.toBe(false);
+  });
+
+  it("修改密码：旧密码错误 → AuthError(field oldPassword)", async () => {
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
+
+    const error = await changePassword(
+      { userId: user.id, oldPassword: "wrongpass", newPassword: "newpassword456" },
+      db,
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect(error).toMatchObject({
+      code: "INVALID_CREDENTIALS",
+      field: "oldPassword",
+      message: "旧密码不正确",
+    });
+  });
+
+  it("修改密码：新密码不足 8 位 → field newPassword 且提示至少 8 位", async () => {
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
+
+    const error = await changePassword(
+      { userId: user.id, oldPassword: "password123", newPassword: "short12" },
+      db,
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect(error).toMatchObject({
+      code: "VALIDATION",
+      field: "newPassword",
+      message: expect.stringContaining("至少 8 位"),
+    });
+  });
+
+  it("修改密码：新密码为空 → field newPassword", async () => {
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
+
+    const error = await changePassword(
+      { userId: user.id, oldPassword: "password123", newPassword: "" },
+      db,
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(AuthError);
+    expect(error).toMatchObject({ code: "VALIDATION", field: "newPassword" });
+  });
+
+  it("改密全链路：改密后新密码可登录，旧密码登录失败", async () => {
+    const user = await registerUser({ username: "alice", password: "password123" }, db);
+
+    await changePassword(
+      { userId: user.id, oldPassword: "password123", newPassword: "newpassword456" },
+      db,
+    );
+
+    await expect(login({ username: "alice", password: "newpassword456" }, db)).resolves.toEqual(user);
+    await expect(login({ username: "alice", password: "password123" }, db)).rejects.toMatchObject({
+      code: "INVALID_CREDENTIALS",
     });
   });
 

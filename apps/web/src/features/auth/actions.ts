@@ -4,12 +4,13 @@ import type { User } from "@open-doing/types";
 
 import {
   AuthError,
+  changePassword,
   login,
   logout,
   registerUser,
   type AuthInput,
 } from "./service";
-import { createSession } from "./session";
+import { createSession, getCurrentUser } from "./session";
 
 /**
  * Server Action 统一返回值（全仓复用）：
@@ -47,6 +48,33 @@ export async function loginAction(input: AuthInput): Promise<ActionResult<User>>
     return { ok: true, data: user };
   } catch (error) {
     return toFailure(error, "登录失败，请稍后重试");
+  }
+}
+
+/**
+ * 修改当前会话用户的密码。
+ *
+ * 个人设置页调用；未登录直接返回表单错误、不重定向。成功返回
+ * `true`，会话不变（无状态 JWT），用户保持登录。
+ */
+export async function changePasswordAction(input: {
+  oldPassword: string;
+  newPassword: string;
+}): Promise<ActionResult<true>> {
+  try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return { ok: false, errors: { form: "请先登录" } };
+    }
+
+    await changePassword({
+      userId: user.id,
+      oldPassword: input?.oldPassword,
+      newPassword: input?.newPassword,
+    });
+    return { ok: true, data: true };
+  } catch (error) {
+    return toFailure(error, "修改密码失败，请稍后重试");
   }
 }
 
