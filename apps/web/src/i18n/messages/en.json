@@ -172,7 +172,20 @@
     "backToMyTasks": "← Back to my tasks"
   },
   "teams": {
-    "team": "Team"
+    "team": "Team",
+    "createFailed": "Failed to create team. Please try again later.",
+    "renameFailed": "Failed to save team changes. Please try again later.",
+    "slugFailed": "Failed to generate the team URL. Please try again later.",
+    "nameRequired": "Please enter a team name",
+    "nameLength": "Team name must be {min}–{max} characters",
+    "nameLabel": "Team name",
+    "namePlaceholder": "e.g. Growth squad",
+    "createTitle": "Create a team",
+    "createSubtitle": "You automatically become the team owner when you create one.",
+    "haveJoinCode": "Have a join code?",
+    "joinByCode": "Join by code",
+    "saved": "Saved",
+    "saveChanges": "Save changes"
   },
   "personal": {
     "space": "Personal space"

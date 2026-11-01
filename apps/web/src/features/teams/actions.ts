@@ -11,9 +11,27 @@ import { standardFailuresForRequest } from "@/lib/action-failure";
 
 export type { CreateTeamInput } from "./service";
 
-/** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-async function toFailure(error: unknown, fallback: string): Promise<{ ok: false; errors: Record<string, string> }> {
+/**
+ * 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。
+ *
+ * TeamError 携带 i18n 通道时按请求语言翻译（落对应字段）；否则回退
+ * message（zh 兜底）。`fallbackKey` 是 `teams` 命名空间的兜底文案 key。
+ */
+async function toFailure(
+  error: unknown,
+  fallbackKey: "createFailed" | "renameFailed",
+): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof TeamError) {
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field]: failures.custom(`teams.${error.i18n.key}`, error.i18n.params)
+            .errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
@@ -21,7 +39,7 @@ async function toFailure(error: unknown, fallback: string): Promise<{ ok: false;
   }
 
   console.error("[teams] Server Action 执行失败", error);
-  return { ok: false, errors: { form: fallback } };
+  return (await standardFailuresForRequest()).custom(`teams.${fallbackKey}`);
 }
 
 /** 创建团队：成功后创建者即为 owner。 */
@@ -37,7 +55,7 @@ export async function createTeamAction(
     const team = await createTeam(input, user.id);
     return { ok: true, data: team };
   } catch (error) {
-    return toFailure(error, "创建团队失败，请稍后重试");
+    return toFailure(error, "createFailed");
   }
 }
 
@@ -55,6 +73,6 @@ export async function renameTeamAction(input: {
     const team = await renameTeam({ teamId: input.teamId, actorId: user.id, name: input.name });
     return { ok: true, data: team };
   } catch (error) {
-    return toFailure(error, "保存团队信息失败，请稍后重试");
+    return toFailure(error, "renameFailed");
   }
 }

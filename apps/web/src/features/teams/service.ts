@@ -2,6 +2,7 @@ import { asc, eq, like } from "drizzle-orm";
 import type { Team, TeamMembership } from "@open-doing/types";
 
 import { generateJoinCode } from "@/lib/join-code";
+import type { DomainErrorI18n } from "@/lib/domain-error";
 import { RESERVED_SPACE_SLUGS, slugWithCounter, slugifyName } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
@@ -29,16 +30,25 @@ export interface CreateTeamInput {
  * 团队领域错误。
  *
  * `field` 供 Server Action 映射为表单字段错误；不把数据库细节泄露给客户端。
+ * `i18n` 为可选翻译通道（与 DomainError 同构）：`message` 保持 zh 兜底，
+ * 携带 i18n 时由 action 按请求语言翻译。
  */
 export class TeamError extends Error {
   readonly code: TeamErrorCode;
   readonly field: TeamErrorField;
+  readonly i18n?: DomainErrorI18n;
 
-  constructor(code: TeamErrorCode, message: string, field: TeamErrorField = "form") {
+  constructor(
+    code: TeamErrorCode,
+    message: string,
+    field: TeamErrorField = "form",
+    i18n?: DomainErrorI18n,
+  ) {
     super(message);
     this.name = "TeamError";
     this.code = code;
     this.field = field;
+    this.i18n = i18n;
   }
 }
 
@@ -58,13 +68,19 @@ function validateName(name: unknown): string {
   const trimmed = typeof name === "string" ? name.trim() : "";
 
   if (!trimmed) {
-    throw new TeamError("VALIDATION", "请输入团队名称", "name");
+    throw new TeamError("VALIDATION", "请输入团队名称", "name", {
+      key: "nameRequired",
+    });
   }
   if (trimmed.length < NAME_MIN_LENGTH || trimmed.length > NAME_MAX_LENGTH) {
     throw new TeamError(
       "VALIDATION",
       `团队名称需为 ${NAME_MIN_LENGTH}–${NAME_MAX_LENGTH} 个字符`,
       "name",
+      {
+        key: "nameLength",
+        params: { min: NAME_MIN_LENGTH, max: NAME_MAX_LENGTH },
+      },
     );
   }
 
@@ -92,7 +108,9 @@ async function nextFreeSlug(base: string, client: DbClient): Promise<string> {
     }
   }
 
-  throw new TeamError("SLUG_FAILED", "团队地址生成失败，请稍后重试", "form");
+  throw new TeamError("SLUG_FAILED", "团队地址生成失败，请稍后重试", "form", {
+    key: "slugFailed",
+  });
 }
 
 /**
@@ -139,7 +157,9 @@ export async function createTeam(
     }
   }
 
-  throw new TeamError("SLUG_FAILED", "团队地址生成失败，请稍后重试", "form");
+  throw new TeamError("SLUG_FAILED", "团队地址生成失败，请稍后重试", "form", {
+    key: "slugFailed",
+  });
 }
 
 /** 按 slug 查团队，未命中返回 null（调用方决定 404 语义）。 */

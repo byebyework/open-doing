@@ -2,6 +2,7 @@
 
 import { Alert, Button, Form, Input, message } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { renameTeamAction } from "../actions";
@@ -17,6 +18,8 @@ interface RenameTeamValues {
  */
 export function RenameTeamForm({ teamId, name }: { teamId: string; name: string }) {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<RenameTeamValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -36,10 +39,10 @@ export function RenameTeamForm({ teamId, name }: { teamId: string; name: string 
         return;
       }
 
-      message.success("已保存");
+      message.success(t("saved"));
       router.refresh();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -60,15 +63,15 @@ export function RenameTeamForm({ teamId, name }: { teamId: string; name: string 
         disabled={submitting}
       >
         <Form.Item
-          label="团队名称"
+          label={t("nameLabel")}
           name="name"
-          rules={[{ required: true, message: "请输入团队名称" }]}
+          rules={[{ required: true, message: t("nameRequired") }]}
         >
-          <Input placeholder="团队名称" maxLength={30} />
+          <Input placeholder={t("nameLabel")} maxLength={30} />
         </Form.Item>
 
         <Button type="primary" htmlType="submit" size="small" loading={submitting}>
-          保存修改
+          {t("saveChanges")}
         </Button>
       </Form>
     </div>

@@ -172,7 +172,20 @@
     "backToMyTasks": "← 返回我的任务"
   },
   "teams": {
-    "team": "团队"
+    "team": "团队",
+    "createFailed": "创建团队失败，请稍后重试",
+    "renameFailed": "保存团队信息失败，请稍后重试",
+    "slugFailed": "团队地址生成失败，请稍后重试",
+    "nameRequired": "请输入团队名称",
+    "nameLength": "团队名称需为 {min}–{max} 个字符",
+    "nameLabel": "团队名称",
+    "namePlaceholder": "如：增长突击队",
+    "createTitle": "创建团队",
+    "createSubtitle": "创建后你会自动成为团队所有者。",
+    "haveJoinCode": "已有加入码？",
+    "joinByCode": "凭码加入",
+    "saved": "已保存",
+    "saveChanges": "保存修改"
   },
   "personal": {
     "space": "个人空间"

@@ -2,6 +2,7 @@
 
 import { Alert, Button, Form, Input } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { teamSettingsHref } from "@/lib/routes";
@@ -20,6 +21,8 @@ interface CreateTeamValues {
  */
 export function CreateTeamForm() {
   const router = useRouter();
+  const t = useTranslations("teams");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<CreateTeamValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -42,7 +45,7 @@ export function CreateTeamForm() {
       router.push(teamSettingsHref(result.data.slug));
       router.refresh();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -56,15 +59,15 @@ export function CreateTeamForm() {
 
       <Form form={form} layout="vertical" requiredMark={false} onFinish={handleFinish} disabled={submitting}>
         <Form.Item
-          label="团队名称"
+          label={t("nameLabel")}
           name="name"
-          rules={[{ required: true, message: "请输入团队名称" }]}
+          rules={[{ required: true, message: t("nameRequired") }]}
         >
-          <Input size="large" placeholder="如：增长突击队" maxLength={30} autoFocus />
+          <Input size="large" placeholder={t("namePlaceholder")} maxLength={30} autoFocus />
         </Form.Item>
 
         <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
-          创建团队
+          {t("createTitle")}
         </Button>
       </Form>
     </div>
