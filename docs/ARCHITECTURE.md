@@ -75,15 +75,15 @@ packages/
 ```
 features/
 ├── auth/       注册、登录、登出、会话
-├── users/      用户资料、按 UID 查询（邀请时用）
+├── users/      用户资料、按 UID 查询（邀请时用）、提醒偏好与个人设置组件
 ├── teams/      团队、成员关系、邀请、角色与权限判定
-├── projects/   项目 CRUD
+├── projects/   项目 CRUD（项目页头部操作）
 ├── tasks/      任务、子任务、评论、看板状态流转
 ├── kanban/     空间级 Kanban：跨项目聚合、筛选与 done 收敛
 ├── calendar/   空间级 Calendar：按截止日期聚合月网格与本周 / 本月临期清单
 ├── analysis/   空间级 Analysis：完成趋势 / 吞吐 / 成员负载 / 项目健康度
-├── personal/   个人空间：个人项目、Dashboard 与个人设置
-├── dashboard/  团队 Dashboard：健康度、重要节点与成员负载
+├── personal/   个人空间：个人任务（看板/详情）与个人项目
+├── dashboard/  个人 Dashboard（personal-dashboard / my-tasks）与团队 Dashboard（team-dashboard / team-overview）
 └── notifications/ 通知、已读、到期扫描
 ```
 
@@ -130,9 +130,9 @@ app/
 │       │   ├── kanban/page.tsx      # 团队空间 Kanban：跨项目聚合 + ?project / ?assignee 筛选
 │       │   ├── calendar/page.tsx    # 团队空间 Calendar：团队全部任务（含未指派）+ ?month
 │       │   ├── analysis/page.tsx    # 团队空间 Analysis：吞吐 / 成员负载 / 健康度 / 僵尸任务（?range）
-│       │   ├── settings/page.tsx    # 团队设置：成员、邀请、凭码加入与审批、项目、团队管理
+│       │   ├── settings/page.tsx    # 团队设置：团队信息/改名、邀请成员、凭码加入与申请审批、成员、危险操作
 │       │   └── projects/
-│       │       ├── new/page.tsx
+│       │       ├── new/page.tsx      # 新建团队项目（编辑/删除在项目页头部操作）
 │       │       └── [projectSlug]/
 │       │           ├── page.tsx      # 团队项目页（列表/看板双视图）
 │       │           └── tasks/[taskId]/ # 团队任务详情
@@ -361,7 +361,7 @@ CRON_SECRET=...
 | 空间级 Kanban `/space/{spaceRef}/kanban` | ✅ v1.1 M3：三列跨项目聚合、`?project=` / `?assignee=` 筛选（见 §5.3）、拖拽改状态、done 7 天收敛 + 原地展开 |
 | 空间级 Calendar `/space/{spaceRef}/calendar` | ✅ v1.1 M4：月网格 + 本周清单 + 本月即将到期，`?month=` 翻月（见 §5.4）；只读 |
 | 空间级 Analysis `/space/{spaceRef}/analysis` | ✅ v1.1 M5：个人 5 区块 / 团队 4 区块，`?range=7\|30\|90`（见 §5.5）；只读自绘图表 |
-| 空间级设置 `/space/{spaceRef}/settings` | ✅ v1.1 M6：个人设置为改密码 + 提醒开关 + 项目排序说明；团队设置沿用 v1（成员、邀请、凭码加入、项目与团队管理） |
+| 空间级设置 `/space/{spaceRef}/settings` | ✅ v1.1 M6：个人设置为改密码 + 提醒开关 + 项目排序说明；团队设置为团队信息/改名、邀请成员、凭码加入与申请审批、成员、危险操作；项目创建/编辑/删除在 `/projects/new` 与项目页 |
 | 设计令牌 `tokens.css` | ✅ X1：与原型 `design-tokens.css` 变量名/取值 1:1，经 `globals.css` 全局解析；品牌字体未加载（无授权来源，回退栈保留） |
 | cron 到期扫描（`CRON_SECRET` 鉴权、幂等） | ✅ 已完成 |
 
@@ -370,11 +370,11 @@ CRON_SECRET=...
 1. 基础设施：Docker Postgres、Drizzle 接入、schema 与首个迁移、修订共享类型。
 2. UI 基座：接入 antd v6（AntdRegistry、ConfigProvider zh_CN、亮色主题）、关闭 Tailwind preflight、搭建应用整体布局。
 3. 认证：注册/登录/会话、路由守卫。
-4. 个人空间：个人项目 CRUD、任务/子任务/评论的增删改查（含不属于项目的个人任务）、我的任务页、个人项目页、任务详情。
+4. 个人空间：个人项目 CRUD、任务/子任务/评论的增删改查（含不属于项目的个人任务）、个人 Dashboard（「我的任务」页已由 v1.1 M2 的 Dashboard 取代）、个人项目页、任务详情。
 5. 团队与项目：创建团队、按 UID 邀请/接受、成员与权限、团队项目 CRUD。
 6. 团队任务：指派、项目列表/看板、权限边界。
 7. 团队概览聚合页、未指派任务区。
 8. 通知中心与 cron 到期扫描。
-9. 团队设置：移除成员、退出、删除项目、解散/转让。
+9. 团队设置：移除成员、退出、解散/转让；项目删除在项目页。
 
 详细计划在设计文档确认后另行编写。
