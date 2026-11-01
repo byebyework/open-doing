@@ -39,6 +39,9 @@ function makeTask(overrides: Partial<TeamTaskRow> = {}): TeamTaskRow {
  */
 function render(role: TeamRole, task: TeamTaskRow): string {
   return renderToStaticMarkup(
+    // NextIntlClientProvider 的类型把 children 定为必填 props，无法用
+    // createElement 第三参传递；此处 children-prop 写法是必需的。
+    // eslint-disable-next-line react/no-children-prop
     createElement(NextIntlClientProvider, {
       locale: "zh",
       messages: zh,
