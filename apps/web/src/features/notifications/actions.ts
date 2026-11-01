@@ -8,6 +8,7 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
 } from "./queries";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 /** 失败结果统一结构；未知错误只返回通用提示，避免泄露内部信息。 */
 function failure(message: string): { ok: false; errors: Record<string, string> } {
@@ -26,7 +27,7 @@ export async function markNotificationReadAction(
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return failure("请先登录");
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const marked = await markNotificationRead({ userId: user.id, notificationId });
@@ -38,7 +39,7 @@ export async function markNotificationReadAction(
     return { ok: true, data: { unreadCount } };
   } catch (error) {
     console.error("[notifications] 标记通知已读失败", error);
-    return failure("操作失败，请稍后重试");
+    return (await standardFailuresForRequest()).unexpected();
   }
 }
 
@@ -49,7 +50,7 @@ export async function markAllNotificationsReadAction(): Promise<
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return failure("请先登录");
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     await markAllNotificationsRead(user.id);
@@ -57,6 +58,6 @@ export async function markAllNotificationsReadAction(): Promise<
     return { ok: true, data: { unreadCount } };
   } catch (error) {
     console.error("[notifications] 全部标记已读失败", error);
-    return failure("操作失败，请稍后重试");
+    return (await standardFailuresForRequest()).unexpected();
   }
 }

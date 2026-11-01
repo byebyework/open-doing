@@ -15,6 +15,7 @@ import {
   removeMember,
   transferTeam,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
 function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
@@ -52,7 +53,7 @@ export async function removeMemberAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
@@ -79,7 +80,7 @@ export async function leaveTeamAction(input: { teamSlug: string }): Promise<Acti
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
@@ -104,7 +105,7 @@ export async function transferTeamAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);
@@ -133,7 +134,7 @@ export async function dissolveTeamAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await resolveTeamForActor(input.teamSlug, user.id);

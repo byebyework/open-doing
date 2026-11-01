@@ -11,6 +11,7 @@ import {
   deletePersonalProject,
   updatePersonalProject,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 type Failure = Extract<ActionResult<never>, { ok: false }>;
 
@@ -19,13 +20,13 @@ type Failure = Extract<ActionResult<never>, { ok: false }>;
  *
  * 复用 auth 的 `ActionResult` 契约，个人空间所有 Server Action 返回值一致。
  */
-function toFailure(error: unknown): Failure {
+async function toFailure(error: unknown): Promise<Failure> {
   if (error instanceof DomainError) {
     return { ok: false, errors: { [error.field ?? "form"]: error.message } };
   }
 
   console.error("[personal/projects] Server Action 执行失败", error);
-  return { ok: false, errors: { form: "操作失败，请稍后重试" } };
+  return (await standardFailuresForRequest()).unexpected();
 }
 
 /**

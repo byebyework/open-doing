@@ -51,7 +51,8 @@
     "notLoggedIn": "请先登录",
     "forbidden": "没有权限执行该操作",
     "operationFailed": "操作失败，请稍后重试",
-    "invalidLanguage": "暂不支持的语言"
+    "invalidLanguage": "暂不支持的语言",
+    "teamForbidden": "没有权限查看该团队"
   },
   "status": {
     "notStarted": "未开始",

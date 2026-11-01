@@ -13,16 +13,17 @@ import {
   respondToInvite,
   type CreateInviteInput,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 export type { CreateInviteInput } from "./service";
 
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
+async function toFailure(error: unknown, fallback: string): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof InviteError) {
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
-    return { ok: false, errors: { form: "没有权限执行该操作" } };
+    return (await standardFailuresForRequest()).forbidden();
   }
 
   console.error("[teams/invites] Server Action 执行失败", error);
@@ -36,7 +37,7 @@ export async function createInviteAction(
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const invite = await createInvite({ ...input, actorId: user.id });
@@ -53,7 +54,7 @@ export async function rescindInviteAction(
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const invite = await rescindInvite({ ...input, actorId: user.id });
@@ -70,7 +71,7 @@ export async function respondToInviteAction(
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await respondToInvite({ inviteId: input.inviteId, actorId: user.id, accept: input.accept });

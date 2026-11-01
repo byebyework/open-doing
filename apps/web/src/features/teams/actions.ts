@@ -7,16 +7,17 @@ import type { ActionResult } from "@/features/auth/actions";
 import { TeamPermissionError } from "./permissions";
 
 import { TeamError, createTeam, renameTeam, type CreateTeamInput } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 export type { CreateTeamInput } from "./service";
 
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
+async function toFailure(error: unknown, fallback: string): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof TeamError) {
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
-    return { ok: false, errors: { form: "没有权限执行该操作" } };
+    return (await standardFailuresForRequest()).forbidden();
   }
 
   console.error("[teams] Server Action 执行失败", error);
@@ -30,7 +31,7 @@ export async function createTeamAction(
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await createTeam(input, user.id);
@@ -48,7 +49,7 @@ export async function renameTeamAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const team = await renameTeam({ teamId: input.teamId, actorId: user.id, name: input.name });

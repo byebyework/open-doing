@@ -11,6 +11,7 @@ import {
   type AuthInput,
 } from "./service";
 import { createSession, getCurrentUser } from "./session";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 /**
  * Server Action 统一返回值（全仓复用）：
@@ -64,7 +65,7 @@ export async function changePasswordAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     await changePassword({

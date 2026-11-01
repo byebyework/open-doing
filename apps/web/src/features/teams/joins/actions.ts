@@ -15,15 +15,16 @@ import {
   respondToJoinRequest,
   setJoinCodeEnabled,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-function toFailure(error: unknown, fallback: string): { ok: false; errors: Record<string, string> } {
+async function toFailure(error: unknown, fallback: string): Promise<{ ok: false; errors: Record<string, string> }> {
   if (error instanceof JoinError) {
     // field 为 "code" 时落表单入群码字段，为 "form" 时落在表单顶部。
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
-    return { ok: false, errors: { form: "没有权限执行该操作" } };
+    return (await standardFailuresForRequest()).forbidden();
   }
 
   console.error("[teams/joins] Server Action 执行失败", error);
@@ -37,7 +38,7 @@ export async function createJoinRequestAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const request = await createJoinRequest({ code: input.code, actorId: user.id });
@@ -58,7 +59,7 @@ export async function respondToJoinRequestAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const request = await respondToJoinRequest({
@@ -82,7 +83,7 @@ export async function cancelJoinRequestAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const request = await cancelJoinRequest({ requestId: input.requestId, actorId: user.id });
@@ -102,7 +103,7 @@ export async function resetJoinCodeAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     const joinCode = await resetJoinCode({ teamId: input.teamId, actorId: user.id });
@@ -123,7 +124,7 @@ export async function setJoinCodeEnabledAction(input: {
   try {
     const user = await getCurrentUser();
     if (!user) {
-      return { ok: false, errors: { form: "请先登录" } };
+      return (await standardFailuresForRequest()).notLoggedIn();
     }
 
     await setJoinCodeEnabled({

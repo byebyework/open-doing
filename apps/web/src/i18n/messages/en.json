@@ -51,7 +51,8 @@
     "notLoggedIn": "Please sign in first",
     "forbidden": "You do not have permission to perform this action",
     "operationFailed": "Operation failed, please try again later",
-    "invalidLanguage": "Unsupported language"
+    "invalidLanguage": "Unsupported language",
+    "teamForbidden": "You do not have permission to view this team"
   },
   "status": {
     "notStarted": "Not started",

@@ -13,6 +13,7 @@ import {
   getOlderDoneTeamTasks,
   type KanbanCardItem,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 /** 展开取数入参；筛选字段均可选，未知 / 他人的 slug 忽略（回退全部）。 */
 type OlderDoneTasksInput =
@@ -30,15 +31,10 @@ type Failure = Extract<ActionResult<never>, { ok: false }>;
  * 团队不存在与非成员共用同一文案：不区分「无此团队」与「无权查看」，
  * 避免通过错误信息探测团队 slug 是否存在。
  */
-const NO_TEAM_ACCESS: Failure = {
-  ok: false,
-  errors: { form: "没有权限查看该团队" },
-};
-
 /** 未知错误只返回通用提示，避免泄露内部信息（与其它 feature 的 action 一致）。 */
-function toFailure(error: unknown): Failure {
+async function toFailure(error: unknown): Promise<Failure> {
   console.error("[kanban] Server Action 执行失败", error);
-  return { ok: false, errors: { form: "操作失败，请稍后重试" } };
+  return (await standardFailuresForRequest()).unexpected();
 }
 
 /**
@@ -59,7 +55,7 @@ export async function getOlderDoneTasksAction(
   // Server Action 入参在传输层可被篡改（null / 缺字段），先做窄化守卫，
   // 避免下方解引用抛出未捕获 TypeError；文案与授权失败区分开。
   if (!input || (input.spaceType !== "personal" && input.spaceType !== "team")) {
-    return { ok: false, errors: { form: "操作失败，请稍后重试" } };
+    return (await standardFailuresForRequest()).unexpected();
   }
 
   if (input.spaceType === "personal") {
@@ -87,14 +83,14 @@ export async function getOlderDoneTasksAction(
   }
 
   const user = await getCurrentUser();
-  if (!user) return NO_TEAM_ACCESS;
+  if (!user) return (await standardFailuresForRequest()).custom("errors.teamForbidden");
 
   try {
     const team = await getTeamBySlug(input.teamSlug);
-    if (!team) return NO_TEAM_ACCESS;
+    if (!team) return (await standardFailuresForRequest()).custom("errors.teamForbidden");
 
     const membership = await getMembership(team.id, user.id);
-    if (!membership) return NO_TEAM_ACCESS;
+    if (!membership) return (await standardFailuresForRequest()).custom("errors.teamForbidden");
 
     const project =
       typeof input.projectSlug === "string" && input.projectSlug

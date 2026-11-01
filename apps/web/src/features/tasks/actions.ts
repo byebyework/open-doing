@@ -18,29 +18,24 @@ import {
   toggleTeamSubtask,
   updateTeamTask,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 type Failure = Extract<ActionResult<never>, { ok: false }>;
-
-/** 未登录统一返回表单错误（由页面负责跳转登录）。 */
-const NOT_LOGGED_IN: Failure = {
-  ok: false,
-  errors: { form: "请先登录" },
-};
 
 /**
  * 领域错误 -> 字段错误；权限错误 -> 表单级 403 文案；
  * 未知错误只返回通用提示，避免泄露内部信息。
  */
-function toFailure(error: unknown): Failure {
+async function toFailure(error: unknown): Promise<Failure> {
   if (error instanceof DomainError) {
     return { ok: false, errors: { [error.field ?? "form"]: error.message } };
   }
   if (error instanceof TaskPermissionError || error instanceof TeamPermissionError) {
-    return { ok: false, errors: { form: "没有权限执行该操作" } };
+    return (await standardFailuresForRequest()).forbidden();
   }
 
   console.error("[tasks] Server Action 执行失败", error);
-  return { ok: false, errors: { form: "操作失败，请稍后重试" } };
+  return (await standardFailuresForRequest()).unexpected();
 }
 
 /** 创建团队任务（任何成员；指派缺省为自己）。 */
@@ -53,7 +48,7 @@ export async function createTeamTaskAction(input: {
   assigneeId?: string | null;
 }): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     const task = await createTeamTask({ ...input, actorId: user.id });
@@ -76,7 +71,7 @@ export async function updateTeamTaskAction(
   },
 ): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     const task = await updateTeamTask({ taskId, ...input, actorId: user.id });
@@ -92,7 +87,7 @@ export async function deleteTeamTaskAction(input: {
   taskId: string;
 }): Promise<ActionResult<true>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     await deleteTeamTask({ ...input, actorId: user.id });
@@ -109,7 +104,7 @@ export async function addTeamSubtaskAction(input: {
   title: string;
 }): Promise<ActionResult<Subtask>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     const subtask = await addTeamSubtask({ ...input, actorId: user.id });
@@ -126,7 +121,7 @@ export async function removeTeamSubtaskAction(input: {
   subtaskId: string;
 }): Promise<ActionResult<true>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     await removeTeamSubtask({ ...input, actorId: user.id });
@@ -144,7 +139,7 @@ export async function toggleTeamSubtaskAction(input: {
   completed: boolean;
 }): Promise<ActionResult<Subtask>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     const subtask = await toggleTeamSubtask({ ...input, actorId: user.id });
@@ -161,7 +156,7 @@ export async function addTeamCommentAction(input: {
   content: string;
 }): Promise<ActionResult<Comment>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     const comment = await addTeamComment({ ...input, actorId: user.id });
@@ -178,7 +173,7 @@ export async function deleteTeamCommentAction(input: {
   commentId: string;
 }): Promise<ActionResult<true>> {
   const user = await getCurrentUser();
-  if (!user) return NOT_LOGGED_IN;
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
     await deleteTeamComment({ ...input, actorId: user.id });

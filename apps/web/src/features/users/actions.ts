@@ -10,6 +10,7 @@ import {
 import { cookies } from "next/headers";
 
 import { updateUserLanguage, updateReminderPrefs, type ReminderPrefs } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 /**
  * 更新当前会话用户的提醒开关。
@@ -23,7 +24,7 @@ export async function updateReminderPrefsAction(input: {
 }): Promise<ActionResult<ReminderPrefs>> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, errors: { form: "请先登录" } };
+    return (await standardFailuresForRequest()).notLoggedIn();
   }
 
   // 只接受布尔值，忽略其它类型，避免把畸形入参写进数据库。
@@ -43,7 +44,7 @@ export async function updateReminderPrefsAction(input: {
     return { ok: true, data: prefs };
   } catch (error) {
     console.error("[users] Server Action 执行失败", error);
-    return { ok: false, errors: { form: "设置保存失败，请稍后重试" } };
+    return (await standardFailuresForRequest()).custom("settings.saveFailed");
   }
 }
 
@@ -58,7 +59,7 @@ export async function updateLanguageAction(input: {
 }): Promise<ActionResult<void>> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, errors: { form: "请先登录" } };
+    return (await standardFailuresForRequest()).notLoggedIn();
   }
 
   const language = normalizeLocale(input?.language);
@@ -77,6 +78,6 @@ export async function updateLanguageAction(input: {
     return { ok: true, data: undefined };
   } catch (error) {
     console.error("[users] 切换语言失败", error);
-    return { ok: false, errors: { form: "设置保存失败，请稍后重试" } };
+    return (await standardFailuresForRequest()).custom("settings.saveFailed");
   }
 }

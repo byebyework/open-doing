@@ -12,20 +12,21 @@ import {
   deleteTeamProject,
   updateTeamProject,
 } from "./service";
+import { standardFailuresForRequest } from "@/lib/action-failure";
 
 type Failure = Extract<ActionResult<never>, { ok: false }>;
 
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
-function toFailure(error: unknown): Failure {
+async function toFailure(error: unknown): Promise<Failure> {
   if (error instanceof DomainError) {
     return { ok: false, errors: { [error.field ?? "form"]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
-    return { ok: false, errors: { form: "没有权限执行该操作" } };
+    return (await standardFailuresForRequest()).forbidden();
   }
 
   console.error("[projects] Server Action 执行失败", error);
-  return { ok: false, errors: { form: "操作失败，请稍后重试" } };
+  return (await standardFailuresForRequest()).unexpected();
 }
 
 /** 创建团队项目（仅 owner/admin，服务层再次校验）。 */
@@ -36,7 +37,7 @@ export async function createTeamProjectAction(input: {
 }): Promise<ActionResult<Project>> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, errors: { form: "请先登录" } };
+    return (await standardFailuresForRequest()).notLoggedIn();
   }
 
   try {
@@ -56,7 +57,7 @@ export async function updateTeamProjectAction(input: {
 }): Promise<ActionResult<Project>> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, errors: { form: "请先登录" } };
+    return (await standardFailuresForRequest()).notLoggedIn();
   }
 
   try {
@@ -74,7 +75,7 @@ export async function deleteTeamProjectAction(input: {
 }): Promise<ActionResult<true>> {
   const user = await getCurrentUser();
   if (!user) {
-    return { ok: false, errors: { form: "请先登录" } };
+    return (await standardFailuresForRequest()).notLoggedIn();
   }
 
   try {
