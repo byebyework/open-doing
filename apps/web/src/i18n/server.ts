@@ -11,6 +11,7 @@ import {
   resolveRequestLocale,
   type AppLocale,
 } from "./config";
+import type { AppMessages } from "./translate";
 
 /**
  * 请求级 locale(每请求缓存):
@@ -38,3 +39,17 @@ export default getRequestConfig(async () => {
     messages: (await import(`./messages/${locale}.json`)).default,
   };
 });
+
+/** messages 加载缓存(模块级,每 locale 只 import 一次)。 */
+const messagesCache = {} as Record<AppLocale, Promise<AppMessages>>;
+
+/**
+ * 加载指定 locale 的完整 messages(供 Server Action 错误翻译等
+ * 非渲染场景使用;渲染走 next-intl 的 getRequestConfig)。
+ */
+export function loadMessages(locale: AppLocale): Promise<AppMessages> {
+  messagesCache[locale] ??= import(`./messages/${locale}.json`).then(
+    (m) => m.default,
+  );
+  return messagesCache[locale];
+}
