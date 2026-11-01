@@ -1,10 +1,10 @@
 import type { Project } from "@open-doing/types";
-import { and, asc, eq } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
 import { generateUniqueSlug } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
-import { projects } from "@/server/db/schema";
+import { projects, tasks } from "@/server/db/schema";
 
 /** 项目名称长度上限（与表单校验一致）。 */
 export const PROJECT_NAME_MAX_LENGTH = 50;
@@ -68,7 +68,10 @@ function validateDescription(value: unknown): string | undefined {
 }
 
 /**
- * 列出某用户的全部个人项目，按创建时间升序。
+ * 列出某用户的全部个人项目，按最近活动时间降序。
+ *
+ * 活动时间 = 项目内任务的最大 `updated_at`；没有任何任务时回落到项目创建时间，
+ * 因此空项目不会凭空置顶。活动时间相同再按创建时间降序。
  *
  * 只按 `owner_id` 过滤，不返回任何团队项目。
  */
@@ -76,11 +79,16 @@ export async function listPersonalProjects(
   userId: string,
   client: DbClient = db,
 ): Promise<Project[]> {
+  const lastActivityAt = sql<Date>`COALESCE(
+    (SELECT max(${tasks.updatedAt}) FROM ${tasks} WHERE ${tasks.projectId} = ${projects.id}),
+    ${projects.createdAt}
+  )`;
+
   const rows = await client
     .select()
     .from(projects)
     .where(eq(projects.ownerId, userId))
-    .orderBy(asc(projects.createdAt));
+    .orderBy(desc(lastActivityAt), desc(projects.createdAt));
 
   return rows.map(toProject);
 }

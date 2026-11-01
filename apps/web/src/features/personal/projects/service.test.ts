@@ -192,7 +192,7 @@ describe.skipIf(!hasTestDatabase)("个人项目 service", () => {
     expect(project.slug).toBe("project");
   });
 
-  it("列表：只返回本人项目，按 createdAt 升序", async () => {
+  it("列表：只返回本人项目，无任务时按 createdAt 降序", async () => {
     const owner = await createUser("owner");
     const other = await createUser("other");
 
@@ -212,8 +212,95 @@ describe.skipIf(!hasTestDatabase)("个人项目 service", () => {
 
     const list: Project[] = await listPersonalProjects(owner, db);
 
-    expect(list.map((item) => item.name)).toEqual(["Earlier", "Later"]);
+    expect(list.map((item) => item.name)).toEqual(["Later", "Earlier"]);
     expect(list.every((item) => item.ownerId === owner)).toBe(true);
+  });
+
+  it("列表：按最近活动排序，无任务项目按 createdAt 落位", async () => {
+    const owner = await createUser("owner");
+
+    const recent = await createPersonalProject(owner, { name: "Recent" }, db);
+    const empty = await createPersonalProject(owner, { name: "Empty" }, db);
+    const stale = await createPersonalProject(owner, { name: "Stale" }, db);
+
+    // 手算活动时间：Recent 今天更新 > Empty 的创建时间（三天前）> Stale 一周前的更新。
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-09-01T00:00:00.000Z") })
+      .where(eq(projects.id, recent.id));
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-10-28T00:00:00.000Z") })
+      .where(eq(projects.id, empty.id));
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-09-10T00:00:00.000Z") })
+      .where(eq(projects.id, stale.id));
+
+    await db.insert(tasks).values([
+      {
+        projectId: recent.id,
+        spaceType: "personal",
+        title: "今天的更新",
+        status: "todo",
+        createdById: owner,
+        updatedAt: new Date("2026-11-01T00:00:00.000Z"),
+      },
+      {
+        projectId: stale.id,
+        spaceType: "personal",
+        title: "一周前的更新",
+        status: "todo",
+        createdById: owner,
+        updatedAt: new Date("2026-10-25T00:00:00.000Z"),
+      },
+    ]);
+
+    const list = await listPersonalProjects(owner, db);
+
+    // Empty 没有任务，用 createdAt（10-28）参与排序，落在 Recent（11-01）与 Stale（10-25）之间。
+    expect(list.map((item) => item.name)).toEqual(["Recent", "Empty", "Stale"]);
+  });
+
+  it("列表：活动时间并列时按 createdAt 降序", async () => {
+    const owner = await createUser("owner");
+
+    const older = await createPersonalProject(owner, { name: "Older" }, db);
+    const newer = await createPersonalProject(owner, { name: "Newer" }, db);
+
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-09-01T00:00:00.000Z") })
+      .where(eq(projects.id, older.id));
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-09-20T00:00:00.000Z") })
+      .where(eq(projects.id, newer.id));
+
+    // 两个项目最后活动时间相同（同一秒），由 createdAt 新者在前。
+    const sameActivity = new Date("2026-10-15T00:00:00.000Z");
+    await db.insert(tasks).values([
+      {
+        projectId: older.id,
+        spaceType: "personal",
+        title: "Older 的更新",
+        status: "todo",
+        createdById: owner,
+        updatedAt: sameActivity,
+      },
+      {
+        projectId: newer.id,
+        spaceType: "personal",
+        title: "Newer 的更新",
+        status: "todo",
+        createdById: owner,
+        updatedAt: sameActivity,
+      },
+    ]);
+
+    const list = await listPersonalProjects(owner, db);
+
+    expect(list.map((item) => item.name)).toEqual(["Newer", "Older"]);
   });
 
   it("校验：名称必填且不超过 50 字，描述不超过 500 字", async () => {
