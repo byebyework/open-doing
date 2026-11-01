@@ -67,7 +67,8 @@ export function MobileNav({ data }: MobileNavProps) {
 
       <Drawer
         placement="left"
-        width={280}
+        // antd v6 废弃 width/height,统一走 size(支持 number,渲染结果与 width 一致)
+        size={280}
         open={open}
         onClose={() => setOpen(false)}
         title={
