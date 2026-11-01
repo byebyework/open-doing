@@ -36,16 +36,30 @@ export function getWeekStart(today: string): string {
   return addDays(today, -offset);
 }
 
+/** 星期消息 key（`date` 命名空间），索引与 `Date#getUTCDay` 一致（0=周日）。 */
+export const WEEKDAY_KEYS = [
+  "weekdaySun",
+  "weekdayMon",
+  "weekdayTue",
+  "weekdayWed",
+  "weekdayThu",
+  "weekdayFri",
+  "weekdaySat",
+] as const;
+
 /**
- * `YYYY-MM-DD` → 「周X」（如 `2026-10-21` → `周三`）。
+ * `YYYY-MM-DD` → 星期索引（0=周日 … 6=周六）。
  *
  * 与 `getWeekStart` 同口径：把日历日按 UTC 毫秒解析，不依赖系统时区。
  */
 export function weekdayLabel(today: string): string {
-  const [year, month, day] = today.split("-").map(Number);
-  const weekday = new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay();
+  return WEEKDAY_LABELS[weekdayIndex(today)]!;
+}
 
-  return WEEKDAY_LABELS[weekday]!;
+export function weekdayIndex(today: string): number {
+  const [year, month, day] = today.split("-").map(Number);
+
+  return new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay();
 }
 
 /** 把 UTC 毫秒时间戳格式化为 `YYYY-MM-DD` 日历日。 */

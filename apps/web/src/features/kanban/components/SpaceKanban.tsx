@@ -14,6 +14,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { useTranslations } from "next-intl";
 import { Button, Tag, message } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -61,11 +62,11 @@ export interface SpaceKanbanProps {
 /** 看板列顺序。 */
 const STATUS_ORDER: readonly TaskStatus[] = ["todo", "in_progress", "done"];
 
-/** 列头文案（对照原型：待办 / 进行中 / 已完成）。 */
-const STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: "待办",
-  in_progress: "进行中",
-  done: "已完成",
+/** 列头文案 key（`kanban` 命名空间），语言无关，渲染时翻译。 */
+const STATUS_KEYS: Record<TaskStatus, "colTodo" | "colInProgress" | "colDone"> = {
+  todo: "colTodo",
+  in_progress: "colInProgress",
+  done: "colDone",
 };
 
 /**
@@ -100,9 +101,9 @@ function toLocalBoard(board: SpaceBoard | TeamSpaceBoard): LocalBoard {
   };
 }
 
-/** Server Action 失败时取第一条可展示文案。 */
-function firstError(errors: Record<string, string>): string {
-  return errors.form ?? Object.values(errors)[0] ?? "操作失败，请稍后重试";
+/** Server Action 失败时取第一条可展示文案（兜底文案由调用方按语言传入）。 */
+function firstError(errors: Record<string, string>, fallback: string): string {
+  return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
 /** 将 `YYYY-MM-DD` 显示为原型同款 `MM-DD`。 */
@@ -148,8 +149,9 @@ function ProjectTag({
   variant: "personal" | "team";
   projectName: string;
 }) {
+  const t = useTranslations("kanban");
   const isTeam = variant === "team";
-  const label = isTeam ? projectName : projectName || "个人";
+  const label = isTeam ? projectName : projectName || t("personalFallback");
 
   return (
     <span
@@ -171,13 +173,15 @@ function ProjectTag({
  * 未来灰「MM-DD」/ 无「—」；done 卡显示完成日期「MM-DD 完成」。
  */
 function DueLabel({ card, today }: { card: BoardCard; today: string }) {
+  const t = useTranslations("kanban");
+  const tDate = useTranslations("date");
   if (card.status === "done") {
     return card.completedAt ? (
       <span
         className="whitespace-nowrap text-[12.5px] text-[#9aa0a6]"
         title={card.completedAt}
       >
-        {completedShortDate(card.completedAt)} 完成
+        {t("completedOn", { date: completedShortDate(card.completedAt) })}
       </span>
     ) : (
       <span className="text-[12.5px] text-[#9aa0a6]">—</span>
@@ -194,7 +198,10 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
         className="whitespace-nowrap text-[12.5px] font-semibold text-[#ff5757]"
         title={card.dueDate}
       >
-        {shortDate(card.dueDate)} · 已逾期 {daysBetween(today, card.dueDate)} 天
+        {t("overdueShort", {
+          date: shortDate(card.dueDate),
+          days: daysBetween(today, card.dueDate),
+        })}
       </span>
     );
   }
@@ -205,7 +212,7 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
         className="whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
         title={card.dueDate}
       >
-        {card.dueDate === today ? "今天到期" : "明天到期"}
+        {card.dueDate === today ? tDate("dueToday") : tDate("dueTomorrow")}
       </span>
     );
   }
@@ -234,6 +241,9 @@ function SpaceStatusButtons({
   editable: boolean;
   onChanged: () => void;
 }) {
+  const t = useTranslations("kanban");
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
   const [pending, setPending] = useState<TaskStatus | null>(null);
 
   async function change(status: TaskStatus) {
@@ -251,13 +261,13 @@ function SpaceStatusButtons({
       if (!result) return;
 
       if (!result.ok) {
-        message.error(firstError(result.errors));
+        message.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -279,7 +289,7 @@ function SpaceStatusButtons({
               void change(status);
             }}
           >
-            {STATUS_LABEL[status]}
+            {t(STATUS_KEYS[status])}
           </Button>
         );
       })}
@@ -307,6 +317,8 @@ function SpaceKanbanCard({
   teamId?: string;
   onChanged: () => void;
 }) {
+  const t = useTranslations("kanban");
+  const tTasks = useTranslations("tasks");
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: card.id, disabled: !draggable });
 
@@ -337,7 +349,10 @@ function SpaceKanbanCard({
           <span className="flex-1" />
           {card.subtaskTotal > 0 ? (
             <span className="text-[11.5px] tabular-nums text-[#9aa0a6]">
-              子任务 {card.subtaskDone}/{card.subtaskTotal}
+              {t("subtasksCount", {
+                done: card.subtaskDone,
+                total: card.subtaskTotal,
+              })}
             </span>
           ) : null}
         </div>
@@ -380,7 +395,7 @@ function SpaceKanbanCard({
                   lineHeight: "20px",
                 }}
               >
-                未指派
+                {tTasks("unassigned")}
               </Tag>
             )
           ) : null}
@@ -440,12 +455,13 @@ function SpaceKanbanColumn({
   canEditCard: (card: BoardCard) => boolean;
   onChanged: () => void;
 }) {
+  const t = useTranslations("kanban");
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
     <section
       ref={setNodeRef}
-      aria-label={STATUS_LABEL[status]}
+      aria-label={t(STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver
           ? "bg-[#eef0fc] outline outline-2 outline-dashed outline-offset-[-4px] outline-[#7d2ae8]"
@@ -454,7 +470,7 @@ function SpaceKanbanColumn({
     >
       <header className="flex items-center gap-2 px-2 pb-3 pt-1">
         <span className="text-[13.5px] font-bold text-[#0e1318]">
-          {STATUS_LABEL[status]}
+          {t(STATUS_KEYS[status])}
         </span>
         <span className="rounded-full bg-[#e8eaed] px-2 py-0.5 text-[11px] font-bold text-[#5f6368]">
           {count}
@@ -464,7 +480,7 @@ function SpaceKanbanColumn({
             className="rounded-full px-2 py-0.5 text-[11px] font-bold"
             style={{ color: "#ff5757", background: "rgba(255,87,87,0.1)" }}
           >
-            逾期 {overdueCount}
+            {t("overdueBadge", { count: overdueCount })}
           </span>
         ) : null}
         {status === "done" ? (
@@ -475,12 +491,12 @@ function SpaceKanbanColumn({
               background: "rgba(155,135,245,0.14)",
             }}
           >
-            本周 {weekDoneCount}
+            {t("weekDoneBadge", { count: weekDoneCount })}
           </span>
         ) : null}
         {status === "todo" ? (
           <span className="ml-auto text-[11.5px] text-[#9aa0a6]">
-            按截止日期排序
+            {t("sortedByDueDate")}
           </span>
         ) : null}
       </header>
@@ -488,7 +504,7 @@ function SpaceKanbanColumn({
       <div className="flex flex-col gap-2">
         {cards.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[#e1e3e6] px-3 py-4 text-center text-[12.5px] text-[#9aa0a6]">
-            暂无任务
+            {t("emptyColumn")}
           </p>
         ) : (
           cards.map((card) => {
@@ -519,11 +535,11 @@ function SpaceKanbanColumn({
           >
             <span className="text-[12px] font-medium text-[#7d2ae8]">
               {expanded
-                ? `已显示全部 ${count} 项 · 收起`
-                : `查看更早 ${doneOlderCount} 项已完成 →`}
+                ? t("collapseAll", { count })
+                : t("expandOlder", { count: doneOlderCount })}
             </span>
             <span className="mt-0.5 block text-[11px] text-[#9aa0a6]">
-              {expanded ? "点击收起恢复近 7 天视图" : "点击原地展开全部已完成任务，可再次收起"}
+              {expanded ? t("collapseHint") : t("expandHint")}
             </span>
           </button>
         ) : null}
@@ -610,6 +626,9 @@ export function SpaceKanban({
   expandFilter,
 }: SpaceKanbanProps) {
   const router = useRouter();
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
+  const tKanban = useTranslations("kanban");
   const isDesktop = useIsDesktop();
 
   const [local, setLocal] = useState<LocalBoard>(() => toLocalBoard(board));
@@ -689,14 +708,14 @@ export function SpaceKanban({
 
       if (errors) {
         setLocal((current) => moveCard(current, cardId, originalStatus));
-        message.error(firstError(errors));
+        message.error(firstError(errors, tErrors("operationFailed")));
         return;
       }
 
       router.refresh();
     } catch {
       setLocal((current) => moveCard(current, cardId, originalStatus));
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     }
   }
 
@@ -733,7 +752,7 @@ export function SpaceKanban({
       );
 
       if (!result.ok) {
-        message.error("加载失败，请重试");
+        message.error(tKanban("loadFailed"));
         return;
       }
 
@@ -748,7 +767,7 @@ export function SpaceKanban({
       setLocal((current) => ({ ...current, doneOlder: older }));
       setExpanded(true);
     } catch {
-      message.error("加载失败，请重试");
+      message.error(tKanban("loadFailed"));
     } finally {
       setLoadingOlder(false);
     }

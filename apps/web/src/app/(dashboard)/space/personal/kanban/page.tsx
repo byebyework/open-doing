@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { requireUser } from "@/features/auth/session";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
@@ -7,7 +8,7 @@ import { PersonalKanbanNewTaskButton } from "@/features/kanban/components/Person
 import { getPersonalSpaceBoard } from "@/features/kanban/service";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
-import { todayInShanghai, weekdayLabel } from "@/lib/today";
+import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
 export const metadata: Metadata = {
   title: "Kanban · Open Doing",
@@ -23,6 +24,8 @@ export const metadata: Metadata = {
 export default async function PersonalKanbanPage(
   props: PageProps<"/space/personal/kanban">,
 ) {
+  const t = await getTranslations("kanban");
+  const tDate = await getTranslations("date");
   const user = await requireUser();
   const today = todayInShanghai();
   const { project: projectParam } = await props.searchParams;
@@ -51,7 +54,7 @@ export default async function PersonalKanbanPage(
 
   // 「N 个任务」= 当前筛选下的全部卡片（含窗口外已完成，doneTotal 已按筛选计算）。
   const total = board.todo.length + board.inProgress.length + board.doneTotal;
-  const projectName = activeProject?.name ?? "全部项目";
+  const projectName = activeProject?.name ?? t("allProjects");
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
@@ -61,7 +64,7 @@ export default async function PersonalKanbanPage(
             Kanban
           </h1>
           <p className="mt-1.5 text-[14px] text-[#5f6368]">
-            个人项目的任务全景：全部个人任务跨项目聚合，拖拽卡片即可切换状态。
+            {t("personalSubtitle")}
           </p>
         </div>
         <div className="flex flex-none items-center gap-2">
@@ -77,8 +80,11 @@ export default async function PersonalKanbanPage(
         basePath={moduleHref("personal", "kanban")}
         projects={projects}
         activeProjectSlug={activeProject?.slug}
-        caption={`当前筛选：${projectName} · ${total} 个任务`}
-        todayCaption={`基准日期 ${today}（${weekdayLabel(today)}）`}
+        caption={t("captionPersonal", { project: projectName, count: total })}
+        todayCaption={t("todayCaption", {
+          date: today,
+          weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
+        })}
       />
 
       <div className="mt-5">

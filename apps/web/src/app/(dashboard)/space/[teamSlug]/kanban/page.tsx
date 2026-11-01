@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { Button } from "antd";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -11,7 +12,7 @@ import { listTeamProjects } from "@/features/projects/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
 import { moduleHref, teamProjectNewHref, teamTaskHref } from "@/lib/routes";
-import { todayInShanghai, weekdayLabel } from "@/lib/today";
+import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
 export async function generateMetadata(
   props: PageProps<"/space/[teamSlug]/kanban">,
@@ -48,6 +49,8 @@ export default async function TeamKanbanPage(
     ? assigneeParam[0]
     : assigneeParam;
 
+  const t = await getTranslations("kanban");
+  const tDate = await getTranslations("date");
   const user = await requireUser();
 
   // 团队不存在或非成员一律 404，不泄露存在性。
@@ -94,7 +97,7 @@ export default async function TeamKanbanPage(
   // 「N 个未完成任务」= todo + in_progress（对照原型
   // docs/prototypes/space-kanban-team.html 的 filterbar 文案，不含 done）。
   const incompleteTotal = board.todo.length + board.inProgress.length;
-  const projectName = activeProject?.name ?? "全部项目";
+  const projectName = activeProject?.name ?? t("allProjects");
   // 新建项目入口与 /space/{teamSlug}/projects/new 的权限门槛保持一致：
   // 成员点击会直接 404，因此只对 owner / admin 渲染。
   const canManageProjects = can(membership.role, "team:manage_projects");
@@ -107,14 +110,14 @@ export default async function TeamKanbanPage(
             Kanban
           </h1>
           <p className="mt-1.5 text-[14px] text-[#5f6368]">
-            团队全部任务的状态全景：按项目筛选，拖拽卡片切换状态；未指派任务在这里认领。
+            {t("teamSubtitle")}
           </p>
         </div>
         {canManageProjects ? (
           <div className="flex flex-none items-center gap-2">
             {/* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */}
             <Link href={teamProjectNewHref(team.slug)}>
-              <Button>＋ 新建项目</Button>
+              <Button>{t("newProjectButton")}</Button>
             </Link>
           </div>
         ) : null}
@@ -126,8 +129,14 @@ export default async function TeamKanbanPage(
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         unassignedOnly={unassignedOnly}
-        caption={`当前筛选：${projectName} · ${incompleteTotal} 个未完成任务`}
-        todayCaption={`基准日期 ${today}（${weekdayLabel(today)}）`}
+        caption={t("captionTeam", {
+          project: projectName,
+          count: incompleteTotal,
+        })}
+        todayCaption={t("todayCaption", {
+          date: today,
+          weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
+        })}
       />
 
       <div className="mt-5">

@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Segmented, Select } from "antd";
 import { useRouter } from "next/navigation";
 
@@ -42,6 +43,8 @@ export function SpaceKanbanFilterBar({
   todayCaption,
 }: SpaceKanbanFilterBarProps) {
   const router = useRouter();
+  const t = useTranslations("kanban");
+  const tTasks = useTranslations("tasks");
 
   /** 把筛选状态写回 URL；空筛选回到无 query 的干净地址。 */
   function pushFilter(projectSlug?: string, onlyUnassigned = false) {
@@ -59,13 +62,13 @@ export function SpaceKanbanFilterBar({
   return (
     <div className="mt-5 flex min-w-0 flex-wrap items-center gap-2.5">
       <Select
-        aria-label="按项目筛选"
+        aria-label={t("filterByProject")}
         value={activeProjectSlug ?? ""}
         onChange={(value: string) => {
           pushFilter(value || undefined, unassignedOnly);
         }}
         options={[
-          { value: "", label: "全部项目" },
+          { value: "", label: t("allProjects") },
           ...projects.map((project) => ({
             value: project.slug,
             label: project.name,
@@ -76,10 +79,10 @@ export function SpaceKanbanFilterBar({
 
       {variant === "team" ? (
         <Segmented<"all" | "unassigned">
-          aria-label="指派筛选"
+          aria-label={t("filterByAssignee")}
           options={[
-            { label: "全部任务", value: "all" },
-            { label: "未指派", value: "unassigned" },
+            { label: t("allTasks"), value: "all" },
+            { label: tTasks("unassigned"), value: "unassigned" },
           ]}
           value={unassignedOnly ? "unassigned" : "all"}
           onChange={(value) => {

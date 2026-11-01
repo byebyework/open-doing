@@ -11,6 +11,7 @@ import type { MyTaskListItem } from "@/features/dashboard/my-tasks/service";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
 import { moduleHref } from "@/lib/routes";
+import { WEEKDAY_KEYS, weekdayIndex } from "@/lib/today";
 
 /** TodayTaskList 入参。 */
 export interface TodayTaskListProps {
@@ -25,16 +26,6 @@ export interface TodayTaskListProps {
   /** 全量今天到期数（不封顶，来自 getMyTaskStats）。 */
   todayCount: number;
 }
-
-const WEEKDAY_KEYS = [
-  "weekdaySun",
-  "weekdayMon",
-  "weekdayTue",
-  "weekdayWed",
-  "weekdayThu",
-  "weekdayFri",
-  "weekdaySat",
-] as const;
 
 /** 将 `YYYY-MM-DD` 显示为原型同款 `MM-DD`。 */
 function shortDate(date: string): string {
@@ -51,20 +42,9 @@ function daysBetween(later: string, earlier: string): number {
   return Math.round((toUtc(later) - toUtc(earlier)) / 86_400_000);
 }
 
-/** 卡片头日期部件：「今天 · 10 月 21 日 周三」。星期 key 由消息文件按语言翻译。 */
-function headerDateParts(today: string): {
-  month: number;
-  day: number;
-  weekdayKey: (typeof WEEKDAY_KEYS)[number];
-} {
-  const [year, month, day] = today.split("-").map(Number);
-  return {
-    month,
-    day,
-    weekdayKey: WEEKDAY_KEYS[
-      new Date(Date.UTC(year!, month! - 1, day!)).getUTCDay()
-    ],
-  };
+/** 卡片头日期的星期消息 key：「今天 · 10 月 21 日 周三」。 */
+function headerWeekdayKey(today: string): (typeof WEEKDAY_KEYS)[number] {
+  return WEEKDAY_KEYS[weekdayIndex(today)];
 }
 
 /** 来源标签：团队任务品牌紫浅底 / 个人任务薄荷浅底（原型 tag 配色）。 */
@@ -103,6 +83,7 @@ function DueLabel({
   today: string;
 }) {
   const t = useTranslations("dashboard");
+  const tDate = useTranslations("date");
   if (!dueDate) return null;
 
   if (dueDate < today) {
@@ -121,7 +102,7 @@ function DueLabel({
       className="whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
       title={dueDate}
     >
-      {t("dueTodayLabel")}
+      {tDate("dueToday")}
     </span>
   );
 }
@@ -143,7 +124,8 @@ export function TodayTaskList({
 }: TodayTaskListProps) {
   const router = useRouter();
   const t = useTranslations("dashboard");
-  const header = headerDateParts(today);
+  const tDate = useTranslations("date");
+  const weekdayKey = headerWeekdayKey(today);
   const [syncedTasks, setSyncedTasks] = useState(tasks);
   const [doneIds, setDoneIds] = useState<ReadonlySet<string>>(
     () => new Set<string>(),
@@ -205,9 +187,9 @@ export function TodayTaskList({
       <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 pb-2 pt-4 min-[861px]:px-5">
         <h2 className="text-[15px] font-bold text-[#0e1318]">
           {t("todayHeader", {
-            month: header.month,
-            day: header.day,
-            weekday: t(header.weekdayKey),
+            month: Number(today.slice(5, 7)),
+            day: Number(today.slice(8, 10)),
+            weekday: tDate(weekdayKey),
           })}
         </h2>
         <span

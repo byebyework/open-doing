@@ -1,5 +1,6 @@
 "use client";
 
+import { useTranslations } from "next-intl";
 import { Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,12 +17,13 @@ export function PersonalKanbanNewTaskButton({
   defaultProjectId?: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("tasks");
   const [open, setOpen] = useState(false);
 
   return (
     <>
       <Button type="primary" onClick={() => setOpen(true)}>
-        ＋ 新建任务
+        {t("newTaskButton")}
       </Button>
 
       <NewTaskModal
