@@ -75,7 +75,8 @@
     "weekdayFri": "周五",
     "weekdaySat": "周六",
     "dueToday": "今天到期",
-    "dueTomorrow": "明天到期"
+    "dueTomorrow": "明天到期",
+    "todayCaption": "基准日期 {date}（{weekday}）"
   },
   "auth": {
     "signIn": "登录",
@@ -503,7 +504,6 @@
     "allTasks": "全部任务",
     "captionPersonal": "当前筛选：{project} · {count} 个任务",
     "captionTeam": "当前筛选：{project} · {count} 个未完成任务",
-    "todayCaption": "基准日期 {date}（{weekday}）",
     "colTodo": "待办",
     "colInProgress": "进行中",
     "colDone": "已完成",
@@ -524,7 +524,28 @@
     "personalFallback": "个人"
   },
   "calendar": {
-    "calendar": "日历"
+    "calendar": "日历",
+    "personalSubtitle": "个人项目的任务日历:按截止日期看本月分布,右侧是本周清单与本月临期提醒。",
+    "teamSubtitle": "团队任务日历:按截止日期看本月分布,右侧是本周清单与本月临期提醒。成员可见全部任务。",
+    "noDueLink": "{count} 项任务没有截止日期 →",
+    "viewInDashboard": "(在 Dashboard 查看)",
+    "teamHint": "任务也会按截止日期出现在日历上",
+    "monthTitle": "{year} 年 {month} 月",
+    "prevMonth": "上个月",
+    "nextMonth": "下个月",
+    "cellOverflow": "还有 {count} 项",
+    "metaOverdue": "已逾期 {days} 天",
+    "metaDaysLeft": "还有 {days} 天",
+    "upcomingLine": "{date} · 还有 {days} 天",
+    "thisWeek": "本周任务",
+    "weekRange": "{start} 周一 ~ {end} 周日 · {count} 项",
+    "weekEmpty": "本周没有要截止的任务",
+    "countItems": "{count} 项",
+    "upcomingTitle": "本月即将到期",
+    "upcomingHint": "本周之后 · 本月以内",
+    "upcomingEmpty": "本月暂无即将到期的任务",
+    "collapse": "收起",
+    "upcomingMore": "查看本月其余 {count} 项 →"
   },
   "analysis": {
     "analysis": "分析"

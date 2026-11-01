@@ -81,7 +81,7 @@ export default async function PersonalKanbanPage(
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         caption={t("captionPersonal", { project: projectName, count: total })}
-        todayCaption={t("todayCaption", {
+        todayCaption={tDate("todayCaption", {
           date: today,
           weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
         })}

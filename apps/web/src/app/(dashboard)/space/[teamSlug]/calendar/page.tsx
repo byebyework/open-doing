@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/features/auth/session";
@@ -40,6 +41,7 @@ export default async function TeamCalendarPage(
   const { teamSlug } = await props.params;
   const { month: monthParam } = await props.searchParams;
 
+  const t = await getTranslations("calendar");
   const user = await requireUser();
 
   // 团队不存在或非成员一律 404，不泄露存在性。
@@ -77,7 +79,7 @@ export default async function TeamCalendarPage(
           Calendar
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
-          团队任务日历:按截止日期看本月分布,右侧是本周清单与本月临期提醒。成员可见全部任务。
+          {t("teamSubtitle")}
         </p>
       </header>
 

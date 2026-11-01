@@ -75,7 +75,8 @@
     "weekdayFri": "Fri",
     "weekdaySat": "Sat",
     "dueToday": "Due today",
-    "dueTomorrow": "Due tomorrow"
+    "dueTomorrow": "Due tomorrow",
+    "todayCaption": "Reference date {date} ({weekday})"
   },
   "auth": {
     "signIn": "Sign in",
@@ -503,7 +504,6 @@
     "allTasks": "All tasks",
     "captionPersonal": "Current filter: {project} · {count} tasks",
     "captionTeam": "Current filter: {project} · {count} unfinished tasks",
-    "todayCaption": "Reference date {date} ({weekday})",
     "colTodo": "To do",
     "colInProgress": "In progress",
     "colDone": "Done",
@@ -524,7 +524,28 @@
     "personalFallback": "Personal"
   },
   "calendar": {
-    "calendar": "Calendar"
+    "calendar": "Calendar",
+    "personalSubtitle": "Your personal task calendar: this month by due date, with this week's list and upcoming deadlines on the right.",
+    "teamSubtitle": "The team task calendar: this month by due date, with this week's list and upcoming deadlines on the right. Members see all tasks.",
+    "noDueLink": "{count} tasks without a due date →",
+    "viewInDashboard": "(see Dashboard)",
+    "teamHint": "Tasks also appear on the calendar by due date",
+    "monthTitle": "{month}/{year}",
+    "prevMonth": "Previous month",
+    "nextMonth": "Next month",
+    "cellOverflow": "{count} more",
+    "metaOverdue": "{days} days overdue",
+    "metaDaysLeft": "{days} days left",
+    "upcomingLine": "{date} · in {days} days",
+    "thisWeek": "This week",
+    "weekRange": "Mon {start} – Sun {end} · {count} items",
+    "weekEmpty": "Nothing due this week",
+    "countItems": "{count} items",
+    "upcomingTitle": "Due later this month",
+    "upcomingHint": "After this week · within this month",
+    "upcomingEmpty": "Nothing due later this month",
+    "collapse": "Collapse",
+    "upcomingMore": "Show {count} more this month →"
   },
   "analysis": {
     "analysis": "Analysis"

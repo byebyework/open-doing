@@ -133,7 +133,7 @@ export default async function TeamKanbanPage(
           project: projectName,
           count: incompleteTotal,
         })}
-        todayCaption={t("todayCaption", {
+        todayCaption={tDate("todayCaption", {
           date: today,
           weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
         })}

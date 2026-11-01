@@ -3,9 +3,6 @@ import { addDays } from "@open-doing/types";
 /** 个人空间统一使用的时区。 */
 const PERSONAL_TIME_ZONE = "Asia/Shanghai";
 
-/** 周日 → 周六（`Date#getUTCDay` 的索引顺序）。 */
-const WEEKDAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", "周六"];
-
 /**
  * 返回 Asia/Shanghai 时区下的「今天」，格式 `YYYY-MM-DD`。
  *
@@ -52,10 +49,6 @@ export const WEEKDAY_KEYS = [
  *
  * 与 `getWeekStart` 同口径：把日历日按 UTC 毫秒解析，不依赖系统时区。
  */
-export function weekdayLabel(today: string): string {
-  return WEEKDAY_LABELS[weekdayIndex(today)]!;
-}
-
 export function weekdayIndex(today: string): number {
   const [year, month, day] = today.split("-").map(Number);
 

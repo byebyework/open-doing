@@ -1,17 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { daysBetween, getMonthEnd, getMonthGrid, weekdayLabel } from "./today";
-
-describe("weekdayLabel", () => {
-  it.each([
-    ["2026-10-21", "周三"],
-    ["2026-10-25", "周日"],
-    ["2026-10-26", "周一"],
-    ["2026-10-31", "周六"],
-  ])("%s → %s", (date, label) => {
-    expect(weekdayLabel(date)).toBe(label);
-  });
-});
+import { daysBetween, getMonthEnd, getMonthGrid } from "./today";
 
 describe("getMonthGrid", () => {
   it("2026-10 → 2026-09-28 ~ 2026-11-08（10-01 是周四，6 周网格）", () => {

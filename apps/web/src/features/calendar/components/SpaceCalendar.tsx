@@ -2,17 +2,20 @@
 
 import { addDays } from "@open-doing/types";
 import { Calendar } from "antd";
+import enUSCalendar from "antd/es/calendar/locale/en_US";
 import zhCNCalendar from "antd/es/calendar/locale/zh_CN";
+import { useLocale, useTranslations } from "next-intl";
 import dayjs, { type Dayjs } from "dayjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import {
+  WEEKDAY_KEYS,
   daysBetween,
   getMonthGrid,
   getWeekStart,
-  weekdayLabel,
+  weekdayIndex,
 } from "@/lib/today";
 
 import type { CalendarTaskItem, SpaceCalendarData } from "../service";
@@ -40,7 +43,7 @@ export interface SpaceCalendarProps {
  * `locale` prop 覆盖 `lang.shortWeekDays`；数组沿用 dayjs 的「周日=0」顺序，
  * rc-picker 会按周一为首日自动旋转。
  */
-const CALENDAR_LOCALE = {
+const ZH_CALENDAR_LOCALE = {
   ...zhCNCalendar,
   lang: {
     ...zhCNCalendar.lang,
@@ -123,32 +126,44 @@ function toneOf(item: CalendarTaskItem, today: string): Tone {
  * - 个人：done「已完成」/ 逾期 / 今天显示项目名 / 未来倒计时；
  * - 团队：done「已完成」/ 逾期 / 未来倒计时（今天无 meta）。
  */
+/** 本周清单右侧 meta 描述符：文案 key 由 `WeekItem` 渲染期翻译。 */
+type WeekMeta =
+  | { kind: "done"; className: string }
+  | { kind: "overdue"; days: number; className: string }
+  | { kind: "project"; text: string; className: string }
+  | { kind: "daysLeft"; days: number; className: string };
+
 function weekMeta(
   item: CalendarTaskItem,
   today: string,
   variant: "personal" | "team",
-): { text: string; className: string } | null {
+): WeekMeta | null {
   if (item.done) {
-    return { text: "已完成", className: "text-[#9aa0a6]" };
+    return { kind: "done", className: "text-[#9aa0a6]" };
   }
 
   const diff = daysBetween(today, item.dueDate);
 
   if (diff < 0) {
-    return { text: `已逾期 ${-diff} 天`, className: "text-[#ff5757]" };
+    return { kind: "overdue", days: -diff, className: "text-[#ff5757]" };
   }
 
   if (diff === 0) {
     // 原型：个人版今天组显示项目名作为 meta；团队版无 meta。
     if (variant === "personal" && item.projectName) {
-      return { text: item.projectName, className: "text-[#9aa0a6]" };
+      return {
+        kind: "project",
+        text: item.projectName,
+        className: "text-[#9aa0a6]",
+      };
     }
 
     return null;
   }
 
   return {
-    text: `还有 ${diff} 天`,
+    kind: "daysLeft",
+    days: diff,
     className: diff <= 3 ? "text-[#b35400]" : "text-[#9aa0a6]",
   };
 }
@@ -185,19 +200,23 @@ function AssigneeBadge({
 
 /** 未指派 grid chip 描边 tag（颜色继承 chip 文字色，对照 `.tag-un`）。 */
 function ChipUnassignedTag() {
+  const tTasks = useTranslations("tasks");
+
   return (
     <span className="shrink-0 whitespace-nowrap rounded-full border border-current px-1 text-[9.5px] leading-[1.5]">
-      未指派
+      {tTasks("unassigned")}
     </span>
   );
 }
 
 /** 侧栏未指派 tag：蓝底信息色 + 前置圆点（对照 `.tag.tag-info`）。 */
 function SidebarUnassignedTag() {
+  const tTasks = useTranslations("tasks");
+
   return (
     <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[rgba(13,153,255,0.1)] px-1.5 py-px text-[9.5px] font-medium text-[#0d99ff]">
       <span className="h-1.5 w-1.5 rounded-full bg-current" />
-      未指派
+      {tTasks("unassigned")}
     </span>
   );
 }
@@ -280,6 +299,8 @@ function CalendarDayCell({
   month: string;
   taskHrefs: Record<string, string>;
 }) {
+  const tDate = useTranslations("date");
+  const tCalendar = useTranslations("calendar");
   const dateKey = date.format("YYYY-MM-DD");
   const isToday = dateKey === today;
   const isOut = date.format("YYYY-MM") !== month;
@@ -315,7 +336,7 @@ function CalendarDayCell({
           </span>
           {isToday ? (
             <span className="text-[10.5px] font-semibold text-[#7d2ae8]">
-              今天
+              {tDate("today")}
             </span>
           ) : null}
         </div>
@@ -334,7 +355,7 @@ function CalendarDayCell({
 
         {overflow > 0 ? (
           <span className="mt-1 pl-0.5 text-[11px] text-[#7d2ae8]">
-            还有 {overflow} 项
+            {tCalendar("cellOverflow", { count: overflow })}
           </span>
         ) : null}
       </div>
@@ -354,6 +375,8 @@ function WeekItem({
   today: string;
   href?: string;
 }) {
+  const tCalendar = useTranslations("calendar");
+  const tStatus = useTranslations("status");
   const tone = toneOf(item, today);
   const meta = weekMeta(item, today, variant);
   const titleClassName = `min-w-0 flex-1 truncate ${
@@ -385,7 +408,13 @@ function WeekItem({
         <span
           className={`ml-auto shrink-0 whitespace-nowrap text-[11px] ${meta.className}`}
         >
-          {meta.text}
+          {meta.kind === "done"
+            ? tStatus("completed")
+            : meta.kind === "overdue"
+              ? tCalendar("metaOverdue", { days: meta.days })
+              : meta.kind === "daysLeft"
+                ? tCalendar("metaDaysLeft", { days: meta.days })
+                : meta.text}
         </span>
       ) : null}
     </div>
@@ -404,6 +433,8 @@ function UpcomingItem({
   today: string;
   href?: string;
 }) {
+  const tCalendar = useTranslations("calendar");
+
   return (
     <div className="flex items-center gap-1.5 py-[3px] text-[12.5px] text-[#0e1318]">
       <span
@@ -422,7 +453,10 @@ function UpcomingItem({
       )}
 
       <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] text-[#9aa0a6]">
-        {shortDate(item.dueDate)} · 还有 {daysBetween(today, item.dueDate)} 天
+        {tCalendar("upcomingLine", {
+          date: shortDate(item.dueDate),
+          days: daysBetween(today, item.dueDate),
+        })}
       </span>
     </div>
   );
@@ -447,6 +481,10 @@ export function SpaceCalendar({
   noDueHref,
 }: SpaceCalendarProps) {
   const router = useRouter();
+  const locale = useLocale();
+  const tDate = useTranslations("date");
+  const tCalendar = useTranslations("calendar");
+  const tTasks = useTranslations("tasks");
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
 
   /** 月网格按 dueDate 索引（`data.items` 已覆 42 天窗口）。 */
@@ -523,29 +561,32 @@ export function SpaceCalendar({
                   href={noDueHref}
                   className="font-medium text-[#7d2ae8] hover:underline"
                 >
-                  {data.noDueCount} 项任务没有截止日期 →
+                  {tCalendar("noDueLink", { count: data.noDueCount })}
                 </Link>
               ) : (
                 <span className="font-medium text-[#7d2ae8]">
-                  {data.noDueCount} 项任务没有截止日期 →
+                  {tCalendar("noDueLink", { count: data.noDueCount })}
                 </span>
               )}
-              (在 Dashboard 查看)
+              {tCalendar("viewInDashboard")}
             </span>
           ) : null
         ) : (
           <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#5f6368]">
             <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(13,153,255,0.1)] px-2 py-0.5 text-[11px] font-medium text-[#0d99ff]">
               <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              未指派
+              {tTasks("unassigned")}
             </span>
-            任务也会按截止日期出现在日历上
+            {tCalendar("teamHint")}
           </span>
         )}
 
         <span className="flex-1" />
         <span className="text-[12px] text-[#9aa0a6]">
-          基准日期 {today}（{weekdayLabel(today)}）
+          {tDate("todayCaption", {
+            date: today,
+            weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
+          })}
         </span>
       </div>
 
@@ -555,11 +596,14 @@ export function SpaceCalendar({
           {/* 月历标题行：网格卡片之外（原型 .cal-header）。 */}
           <div className="mb-3 flex items-center gap-2">
             <span className="min-w-[110px] text-[16px] font-bold text-[#0e1318]">
-              {calendarValue.year()} 年 {calendarValue.month() + 1} 月
+              {tCalendar("monthTitle", {
+                year: calendarValue.year(),
+                month: calendarValue.month() + 1,
+              })}
             </span>
             <button
               type="button"
-              aria-label="上个月"
+              aria-label={tCalendar("prevMonth")}
               className={navButtonClassName}
               onClick={() => {
                 pushMonth(calendarValue.subtract(1, "month"));
@@ -569,7 +613,7 @@ export function SpaceCalendar({
             </button>
             <button
               type="button"
-              aria-label="下个月"
+              aria-label={tCalendar("nextMonth")}
               className={navButtonClassName}
               onClick={() => {
                 pushMonth(calendarValue.add(1, "month"));
@@ -579,13 +623,13 @@ export function SpaceCalendar({
             </button>
             <button
               type="button"
-              aria-label="今天"
+              aria-label={tDate("today")}
               className={`${navButtonClassName} border-[#7d2ae8] text-[#7d2ae8] hover:border-[#7d2ae8] hover:text-[#7d2ae8]`}
               onClick={() => {
                 router.push(basePath);
               }}
             >
-              今天
+              {tDate("today")}
             </button>
           </div>
 
@@ -594,7 +638,7 @@ export function SpaceCalendar({
             <Calendar
               fullscreen
               value={calendarValue}
-              locale={CALENDAR_LOCALE}
+              locale={locale === "zh" ? ZH_CALENDAR_LOCALE : enUSCalendar}
               styles={{ body: { padding: 0 } }}
               classNames={{
                 // panel 自带顶部分隔线与卡片边框重复，去掉；表头照原型灰底。
@@ -628,15 +672,20 @@ export function SpaceCalendar({
         <aside className="flex w-full flex-col gap-3 min-[861px]:w-[320px] min-[861px]:flex-none">
           {/* 本周任务 */}
           <section className="rounded-xl border border-[#e1e3e6] bg-white p-3">
-            <h3 className="text-[13px] font-bold text-[#0e1318]">本周任务</h3>
+            <h3 className="text-[13px] font-bold text-[#0e1318]">
+              {tCalendar("thisWeek")}
+            </h3>
             <div className="mb-2 text-[11.5px] text-[#9aa0a6]">
-              {shortDate(weekStart)} 周一 ~ {shortDate(weekEnd)} 周日 ·{" "}
-              {data.weekItems.length} 项
+              {tCalendar("weekRange", {
+                start: shortDate(weekStart),
+                end: shortDate(weekEnd),
+                count: data.weekItems.length,
+              })}
             </div>
 
             {weekGroups.length === 0 ? (
               <p className="py-2 text-[12px] text-[#9aa0a6]">
-                本周没有要截止的任务
+                {tCalendar("weekEmpty")}
               </p>
             ) : (
               weekGroups.map((group, index) => {
@@ -655,15 +704,20 @@ export function SpaceCalendar({
                       {isToday ? (
                         <>
                           <b className="font-semibold text-[#7d2ae8]">
-                            今天 · {weekdayLabel(today)} {shortDate(today)}
+                            {tDate("today")} ·{" "}
+                            {tDate(WEEKDAY_KEYS[weekdayIndex(today)])}{" "}
+                            {shortDate(today)}
                           </b>
                           <span className="rounded-full bg-[rgba(155,135,245,0.14)] px-1.5 py-px text-[10px] text-[#7d2ae8]">
-                            {group.items.length} 项
+                            {tCalendar("countItems", {
+                              count: group.items.length,
+                            })}
                           </span>
                         </>
                       ) : (
                         <span>
-                          {weekdayLabel(group.date)} {shortDate(group.date)}
+                          {tDate(WEEKDAY_KEYS[weekdayIndex(group.date)])}{" "}
+                          {shortDate(group.date)}
                         </span>
                       )}
                     </div>
@@ -686,15 +740,15 @@ export function SpaceCalendar({
           {/* 本月即将到期 */}
           <section className="rounded-xl border border-[#e1e3e6] bg-white p-3">
             <h3 className="text-[13px] font-bold text-[#0e1318]">
-              本月即将到期
+              {tCalendar("upcomingTitle")}
             </h3>
             <div className="mb-2 text-[11.5px] text-[#9aa0a6]">
-              本周之后 · 本月以内
+              {tCalendar("upcomingHint")}
             </div>
 
             {data.monthUpcoming.length === 0 ? (
               <p className="py-2 text-[12px] text-[#9aa0a6]">
-                本月暂无即将到期的任务
+                {tCalendar("upcomingEmpty")}
               </p>
             ) : (
               <>
@@ -718,8 +772,8 @@ export function SpaceCalendar({
                       }}
                     >
                       {upcomingExpanded
-                        ? "收起"
-                        : `查看本月其余 ${upcomingRest} 项 →`}
+                        ? tCalendar("collapse")
+                        : tCalendar("upcomingMore", { count: upcomingRest })}
                     </button>
                   </div>
                 ) : null}
