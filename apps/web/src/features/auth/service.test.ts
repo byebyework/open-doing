@@ -197,7 +197,11 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     ).catch((caught: unknown) => caught);
 
     expect(error).toBeInstanceOf(AuthError);
-    expect(error).toMatchObject({ code: "VALIDATION", field: "newPassword" });
+    expect(error).toMatchObject({
+      code: "VALIDATION",
+      field: "newPassword",
+      message: "新密码至少 8 位",
+    });
   });
 
   it("改密全链路：改密后新密码可登录，旧密码登录失败", async () => {

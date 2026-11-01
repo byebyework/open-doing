@@ -219,9 +219,7 @@ export async function changePassword(
 ): Promise<true> {
   const newPassword = normalizePassword(input?.newPassword);
 
-  if (!newPassword) {
-    throw new AuthError("VALIDATION", "请输入新密码", "newPassword");
-  }
+  // 空密码（长度 0）同样落入该分支：两处共用同一锁定文案。
   if (newPassword.length < PASSWORD_MIN_LENGTH) {
     throw new AuthError(
       "VALIDATION",
