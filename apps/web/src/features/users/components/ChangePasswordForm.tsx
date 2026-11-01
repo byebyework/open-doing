@@ -101,6 +101,7 @@ export function ChangePasswordForm() {
           rules={[{ required: true, message: t("oldPasswordRequired") }]}
         >
           <Input.Password
+            data-testid="settings-old-password-input"
             placeholder={t("oldPasswordPlaceholder")}
             autoComplete="current-password"
           />
@@ -114,7 +115,7 @@ export function ChangePasswordForm() {
             { min: PASSWORD_MIN_LENGTH, message: t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }) },
           ]}
         >
-          <Input.Password placeholder={t("newPasswordPlaceholder", { min: PASSWORD_MIN_LENGTH })} autoComplete="new-password" />
+          <Input.Password data-testid="settings-new-password-input" placeholder={t("newPasswordPlaceholder", { min: PASSWORD_MIN_LENGTH })} autoComplete="new-password" />
         </Form.Item>
 
         <Form.Item
@@ -134,13 +135,14 @@ export function ChangePasswordForm() {
           ]}
         >
           <Input.Password
+            data-testid="settings-confirm-password-input"
             placeholder={t("confirmPasswordPlaceholder")}
             autoComplete="new-password"
           />
         </Form.Item>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="primary" htmlType="submit" loading={submitting}>
+          <Button type="primary" htmlType="submit" loading={submitting} data-testid="settings-update-password-button">
             {t("updatePassword")}
           </Button>
           <span className="text-[12px] text-[#9aa0a6]">

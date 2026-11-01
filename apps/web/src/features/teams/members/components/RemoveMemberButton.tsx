@@ -56,7 +56,7 @@ export function RemoveMemberButton({
 
   return (
     <>
-      <Button type="text" danger size="small" onClick={() => setOpen(true)}>
+      <Button type="text" danger size="small" data-testid="member-remove-button" onClick={() => setOpen(true)}>
         {t("remove")}
       </Button>
 
@@ -67,6 +67,7 @@ export function RemoveMemberButton({
         confirmText={t("remove")}
         danger
         loading={submitting}
+        okButtonProps={{ "data-testid": "member-remove-confirm-button" }}
         onConfirm={handleConfirm}
         onCancel={() => setOpen(false)}
       />

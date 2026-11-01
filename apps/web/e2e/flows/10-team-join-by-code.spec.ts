@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
 
 /**
@@ -14,11 +15,11 @@ import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
 async function createTeam(page: Page, teamName: string): Promise<string> {
   await page.goto("/teams/new");
   await expect(
-    page.getByRole("heading", { name: "创建团队", level: 1 }),
+    page.getByTestId(TEST_IDS.teams.createTeamHeading),
   ).toBeVisible();
 
-  await page.getByLabel("团队名称").fill(teamName);
-  await page.getByRole("button", { name: "创建团队" }).click();
+  await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+  await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
   await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
     timeout: 30_000,
   });
@@ -30,19 +31,11 @@ async function createTeam(page: Page, teamName: string): Promise<string> {
   return slug;
 }
 
-/** 团队设置页「凭码加入」区块。 */
-function joinCodeSection(page: Page) {
-  return page
-    .locator("section")
-    .filter({ has: page.getByRole("heading", { name: "凭码加入", exact: true }) });
-}
-
-/** 从「凭码加入」区块读取 8 位加入码（Typography.Text 带复制按钮，文本仍只有码）。 */
+/** 从「凭码加入」区块读取 8 位加入码（复制按钮不影响文本内容）。 */
 async function readJoinCode(page: Page): Promise<string> {
-  const section = joinCodeSection(page);
-  await expect(section).toBeVisible();
-
-  const code = (await section.locator("span.font-mono").innerText()).trim();
+  const code = (
+    await page.getByTestId(TEST_IDS.teams.joinCodeValue).innerText()
+  ).trim();
   expect(code).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
   return code;
 }
@@ -51,7 +44,7 @@ async function readJoinCode(page: Page): Promise<string> {
 async function openJoinPageFromSwitcher(page: Page): Promise<void> {
   await page
     .locator("aside")
-    .getByRole("button", { name: /个人空间/ })
+    .getByTestId(TEST_IDS.shell.spaceSwitcherTrigger)
     .click();
   await page.getByRole("menuitem", { name: "凭码加入" }).click();
   await expect(page).toHaveURL(/\/teams\/join$/, { timeout: 30_000 });
@@ -59,8 +52,8 @@ async function openJoinPageFromSwitcher(page: Page): Promise<void> {
 
 /** 填写加入码并提交申请。 */
 async function submitJoinCode(page: Page, code: string): Promise<void> {
-  await page.getByLabel("团队加入码").fill(code);
-  await page.getByRole("button", { name: "提交申请" }).click();
+  await page.getByTestId(TEST_IDS.teams.joinCodeInput).fill(code);
+  await page.getByTestId(TEST_IDS.teams.joinSubmitButton).click();
 }
 
 test.describe("flow 10: 凭码加入团队", () => {
@@ -77,11 +70,11 @@ test.describe("flow 10: 凭码加入团队", () => {
     const teamSlug = await createTeam(page, teamName);
 
     const code = await readJoinCode(page);
-    const section = joinCodeSection(page);
     await expect(
-      section.getByText("已开启：成员可凭码申请加入"),
-    ).toBeVisible();
-    await expect(section.getByRole("switch")).toBeChecked();
+      page.getByTestId(TEST_IDS.teams.joinCodeSwitch),
+    ).toBeChecked();
+    // 开关状态说明文案是被测行为（默认开启凭码加入）。
+    await expect(page.getByText("已开启：成员可凭码申请加入")).toBeVisible();
 
     // B：独立上下文注册。
     const guestContext = await browser.newContext();
@@ -124,6 +117,7 @@ test.describe("flow 10: 凭码加入团队", () => {
       ).toBeVisible();
       await expect(page.getByText(guestName, { exact: true })).toBeVisible();
 
+      // 审批按钮 aria-label 携带申请人名（数据驱动定位）。
       await page
         .getByRole("button", { name: `拒绝 ${guestName} 的加入申请` })
         .click();
@@ -131,7 +125,6 @@ test.describe("flow 10: 凭码加入团队", () => {
       await expect(
         declineDialog.getByText("拒绝加入申请", { exact: true }),
       ).toBeVisible();
-      // antd 自动在两个汉字间插入空格（「拒 绝」）。
       await declineDialog
         .getByRole("button", { name: /^拒\s*绝$/ })
         .click();
@@ -182,7 +175,7 @@ test.describe("flow 10: 凭码加入团队", () => {
       ).toBeVisible();
 
       // B：通知中心出现批准结果通知（轻量，不断言全部类型）。
-      const bell = guestPage.getByRole("button", { name: /^通知/ });
+      const bell = guestPage.getByTestId(TEST_IDS.shell.notificationBellButton);
       await expect(bell).toHaveAccessibleName(/条未读/);
       await bell.click();
       const approvedBody = `${ownerName} 通过了你加入「${teamName}」的申请`;
@@ -193,7 +186,7 @@ test.describe("flow 10: 凭码加入团队", () => {
       // B：侧栏空间切换器出现团队，进入团队 Dashboard。
       await guestPage
         .locator("aside")
-        .getByRole("button", { name: /个人空间/ })
+        .getByTestId(TEST_IDS.shell.spaceSwitcherTrigger)
         .click();
       const teamItem = guestPage.getByRole("menuitem", { name: teamName });
       await expect(teamItem).toBeVisible();
@@ -223,12 +216,9 @@ test.describe("flow 10: 凭码加入团队", () => {
     const code = await readJoinCode(page);
 
     // A：关闭「允许凭码加入」开关。
-    const section = joinCodeSection(page);
-    await section.getByRole("switch").click();
+    await page.getByTestId(TEST_IDS.teams.joinCodeSwitch).click();
     await expect(page.getByText("已关闭凭码加入")).toBeVisible();
-    await expect(
-      section.getByText("已关闭：成员无法凭码加入"),
-    ).toBeVisible();
+    await expect(page.getByText("已关闭：成员无法凭码加入")).toBeVisible();
 
     const guestContext = await browser.newContext();
     const guestPage = await guestContext.newPage();

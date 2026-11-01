@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import {
   E2E_PASSWORD,
   createPersonalProject,
@@ -50,10 +51,10 @@ test.describe("flow 9: 个人空间设置", () => {
 
     // 两个提醒开关默认全开（迁移列 DEFAULT true）。
     await expect(
-      page.getByRole("switch", { name: "临期提醒" }),
+      page.getByTestId(TEST_IDS.settings.dueSoonSwitch),
     ).toHaveAttribute("aria-checked", "true");
     await expect(
-      page.getByRole("switch", { name: "逾期提醒" }),
+      page.getByTestId(TEST_IDS.settings.overdueSwitch),
     ).toHaveAttribute("aria-checked", "true");
   });
 
@@ -66,17 +67,17 @@ test.describe("flow 9: 个人空间设置", () => {
     await registerUser(page, username);
     await page.goto("/space/personal/settings");
 
-    const oldPasswordInput = page.getByLabel("旧密码", { exact: true });
-    const newPasswordInput = page.getByLabel("新密码", { exact: true });
-    const confirmPasswordInput = page.getByLabel("确认新密码", {
-      exact: true,
-    });
+    const oldPasswordInput = page.getByTestId(TEST_IDS.settings.oldPasswordInput);
+    const newPasswordInput = page.getByTestId(TEST_IDS.settings.newPasswordInput);
+    const confirmPasswordInput = page.getByTestId(
+      TEST_IDS.settings.confirmPasswordInput,
+    );
 
     // ① 旧密码错误：错误落在旧密码 Form.Item 内，不落表单级 alert。
     await oldPasswordInput.fill("definitely-wrong-password");
     await newPasswordInput.fill(newPassword);
     await confirmPasswordInput.fill(newPassword);
-    await page.getByRole("button", { name: "更新密码" }).click();
+    await page.getByTestId(TEST_IDS.settings.updatePasswordButton).click();
 
     // 以包含「旧密码」输入框的 Form.Item 为作用域，而不是页面级文本——
     // 否则错误即便错误地落到 errors.form 也仍会通过。
@@ -84,13 +85,14 @@ test.describe("flow 9: 个人空间设置", () => {
       .locator(".ant-form-item")
       .filter({ has: oldPasswordInput });
     await expect(oldPasswordItem).toHaveCount(1);
+    // 「旧密码不正确」是恒定错误文案本身，属被测行为。
     await expect(oldPasswordItem.getByText("旧密码不正确")).toBeVisible();
     // 反向钉住：表单级错误 Alert 不应出现。
     await expect(page.locator(".ant-alert-error")).toHaveCount(0);
 
     // ② 旧密码正确：toast「密码已更新」，且仍停留在设置页（保持登录）。
     await oldPasswordInput.fill(E2E_PASSWORD);
-    await page.getByRole("button", { name: "更新密码" }).click();
+    await page.getByTestId(TEST_IDS.settings.updatePasswordButton).click();
     await expect(page.getByText("密码已更新")).toBeVisible();
     await expect(page).toHaveURL(/\/space\/personal\/settings$/);
     await expect(
@@ -98,22 +100,20 @@ test.describe("flow 9: 个人空间设置", () => {
     ).toBeVisible();
 
     // ③ 登出（顶栏用户菜单）。
-    await page
-      .getByRole("button", { name: /打开用户菜单/ })
-      .click();
+    await page.getByTestId(TEST_IDS.shell.userMenuButton).click();
     await page.getByRole("menuitem", { name: "退出登录" }).click();
     await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
 
     // ④ 旧密码登录失败：恒定文案「用户名或密码错误」（表单级 alert）。
-    await page.getByLabel("用户名").fill(username);
-    await page.getByLabel("密码", { exact: true }).fill(E2E_PASSWORD);
-    await page.getByRole("button", { name: /登\s*录/ }).click();
+    await page.getByTestId(TEST_IDS.auth.usernameInput).fill(username);
+    await page.getByTestId(TEST_IDS.auth.passwordInput).fill(E2E_PASSWORD);
+    await page.getByTestId(TEST_IDS.auth.submitButton).click();
     await expect(page.getByText("用户名或密码错误")).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
 
     // ⑤ 新密码登录成功。
-    await page.getByLabel("密码", { exact: true }).fill(newPassword);
-    await page.getByRole("button", { name: /登\s*录/ }).click();
+    await page.getByTestId(TEST_IDS.auth.passwordInput).fill(newPassword);
+    await page.getByTestId(TEST_IDS.auth.submitButton).click();
     await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
       timeout: 30_000,
     });
@@ -123,7 +123,7 @@ test.describe("flow 9: 个人空间设置", () => {
     await registerUser(page, uniqueUsername("e2e_st3"));
     await page.goto("/space/personal/settings");
 
-    const dueSoonSwitch = page.getByRole("switch", { name: "临期提醒" });
+    const dueSoonSwitch = page.getByTestId(TEST_IDS.settings.dueSoonSwitch);
     await expect(dueSoonSwitch).toHaveAttribute("aria-checked", "true");
 
     // 等 Server Action 的 POST 真正完成，避免刷新早于落库。
@@ -140,11 +140,11 @@ test.describe("flow 9: 个人空间设置", () => {
     // 刷新后从 RSC 重新取数，仍是关闭状态（已持久化）。
     await page.reload();
     await expect(
-      page.getByRole("switch", { name: "临期提醒" }),
+      page.getByTestId(TEST_IDS.settings.dueSoonSwitch),
     ).toHaveAttribute("aria-checked", "false");
     // 另一个开关不受影响。
     await expect(
-      page.getByRole("switch", { name: "逾期提醒" }),
+      page.getByTestId(TEST_IDS.settings.overdueSwitch),
     ).toHaveAttribute("aria-checked", "true");
   });
 
@@ -182,7 +182,7 @@ async function expectProjectOrder(
   page: Page,
   names: readonly string[],
 ): Promise<void> {
-  const trigger = page.getByLabel("按项目筛选");
+  const trigger = page.getByTestId(TEST_IDS.kanban.projectFilter);
   await trigger.click();
 
   const options = page.locator(".ant-select-item-option");

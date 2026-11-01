@@ -72,7 +72,7 @@ export function TeamProjectHeader({
         }}
       />
 
-      <Button type="primary" onClick={() => setNewTaskOpen(true)}>
+      <Button type="primary" data-testid="new-task-button" onClick={() => setNewTaskOpen(true)}>
         {t("newTaskButton")}
       </Button>
 

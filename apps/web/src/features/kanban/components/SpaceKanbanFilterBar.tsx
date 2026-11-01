@@ -62,6 +62,7 @@ export function SpaceKanbanFilterBar({
   return (
     <div className="mt-5 flex min-w-0 flex-wrap items-center gap-2.5">
       <Select
+        data-testid="kanban-project-filter"
         aria-label={t("filterByProject")}
         value={activeProjectSlug ?? ""}
         onChange={(value: string) => {
@@ -79,6 +80,7 @@ export function SpaceKanbanFilterBar({
 
       {variant === "team" ? (
         <Segmented<"all" | "unassigned">
+          data-testid="kanban-assignee-filter"
           aria-label={t("filterByAssignee")}
           options={[
             { label: t("allTasks"), value: "all" },

@@ -95,6 +95,7 @@ export function JoinCodeSettings({
         <span className="text-[13px] text-[#5f6368]">{t("joinCodeLabel")}</span>
         <Typography.Text
           copyable
+          data-testid="join-code-value"
           className="font-mono text-[16px] font-semibold tracking-[0.12em] text-[#0e1318]"
         >
           {joinCode}
@@ -109,7 +110,7 @@ export function JoinCodeSettings({
       </div>
 
       <label className="flex cursor-pointer items-center gap-2.5">
-        <Switch checked={enabled} loading={toggling} onChange={handleToggle} />
+        <Switch data-testid="join-code-switch" checked={enabled} loading={toggling} onChange={handleToggle} />
         <span className="text-[13px] text-[#5f6368]">
           {enabled ? t("joinCodeEnabledOn") : t("joinCodeEnabledOff")}
         </span>

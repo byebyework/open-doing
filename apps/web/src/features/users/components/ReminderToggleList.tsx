@@ -75,6 +75,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
           </div>
         </div>
         <Switch
+          data-testid="settings-due-soon-switch"
           checked={current.dueSoonReminderEnabled}
           loading={saving === "dueSoonReminderEnabled"}
           disabled={saving !== null && saving !== "dueSoonReminderEnabled"}
@@ -95,6 +96,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
           </div>
         </div>
         <Switch
+          data-testid="settings-overdue-switch"
           checked={current.overdueReminderEnabled}
           loading={saving === "overdueReminderEnabled"}
           disabled={saving !== null && saving !== "overdueReminderEnabled"}

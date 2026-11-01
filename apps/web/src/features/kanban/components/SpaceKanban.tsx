@@ -36,6 +36,13 @@ import type {
 } from "../service";
 import { useIsDesktop } from "./useIsDesktop";
 
+/** 列状态 -> e2e data-testid（与列文案无关）。 */
+const KANBAN_COLUMN_TESTIDS: Record<TaskStatus, string> = {
+  todo: "space-kanban-column-todo",
+  in_progress: "space-kanban-column-in-progress",
+  done: "space-kanban-column-done",
+};
+
 /** 空间看板入参（个人 / 团队共用，团队专有字段可选）。 */
 export interface SpaceKanbanProps {
   variant: "personal" | "team";
@@ -281,6 +288,7 @@ function SpaceStatusButtons({
         return (
           <Button
             key={status}
+            data-testid={`task-status-button-${status}`}
             size="small"
             type={current ? "primary" : "default"}
             disabled={!editable || current || pending !== null}
@@ -461,6 +469,7 @@ function SpaceKanbanColumn({
   return (
     <section
       ref={setNodeRef}
+      data-testid={KANBAN_COLUMN_TESTIDS[status]}
       aria-label={t(STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver

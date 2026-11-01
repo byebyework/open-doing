@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { TEST_IDS } from "./utils/testids";
 import {
   E2E_PASSWORD,
   createPersonalProject,
@@ -203,9 +204,9 @@ const data = {
 /** 用共享账号 A 登录（每个用例独立 context，状态不会串联）。 */
 async function loginSharedAccount(page: Page): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("用户名").fill(ACCOUNT_A.username);
-  await page.getByLabel("密码", { exact: true }).fill(ACCOUNT_A.password);
-  await page.getByRole("button", { name: /登\s*录/ }).click();
+  await page.getByTestId(TEST_IDS.auth.usernameInput).fill(ACCOUNT_A.username);
+  await page.getByTestId(TEST_IDS.auth.passwordInput).fill(ACCOUNT_A.password);
+  await page.getByTestId(TEST_IDS.auth.submitButton).click();
   await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
     timeout: 30_000,
   });
@@ -290,8 +291,8 @@ test.describe("375px 无横向溢出", () => {
 
         // A：团队 → 团队项目 → 团队任务。
         await pageA.goto("/teams/new");
-        await pageA.getByLabel("团队名称").fill(data.teamName);
-        await pageA.getByRole("button", { name: "创建团队" }).click();
+        await pageA.getByTestId(TEST_IDS.teams.teamNameInput).fill(data.teamName);
+        await pageA.getByTestId(TEST_IDS.teams.createTeamButton).click();
         await expect(pageA).toHaveURL(/\/space\/[^/]+\/settings$/, {
           timeout: 30_000,
         });
@@ -300,8 +301,8 @@ test.describe("375px 无横向溢出", () => {
         data.teamPath = `/space/${encodeURIComponent(teamSlug)}`;
 
         await pageA.goto(`${data.teamPath}/projects/new`);
-        await pageA.getByLabel("项目名称").fill(data.teamProjectName);
-        await pageA.getByRole("button", { name: "创建项目" }).click();
+        await pageA.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(data.teamProjectName);
+        await pageA.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
         // 只等 URL 会误判：点击前地址已经是 `/projects/new`，同样匹配
         // `/projects/[slug]`。必须等新项目页的标题出现，再记录真实路径。
         await expect(
@@ -313,16 +314,12 @@ test.describe("375px 无横向溢出", () => {
         data.teamProjectPath = pathOf(pageA);
         expect(data.teamProjectPath).not.toMatch(/\/projects\/new$/);
 
-        // 空项目页的页头与空状态各有一个「＋ 新建任务」，页头在 DOM 中更靠前。
-        await pageA
-          .getByRole("button", { name: "＋ 新建任务", exact: true })
-          .first()
-          .click();
+        await pageA.getByTestId(TEST_IDS.tasks.newTaskButton).click();
         const teamTaskDialog = pageA.getByRole("dialog");
         await expect(teamTaskDialog).toBeVisible();
         await pageA.waitForTimeout(500);
-        await teamTaskDialog.getByLabel("标题").fill(data.teamTaskTitle);
-        await teamTaskDialog.getByRole("button", { name: "创建任务" }).click();
+        await teamTaskDialog.getByTestId(TEST_IDS.tasks.titleInput).fill(data.teamTaskTitle);
+        await teamTaskDialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
         await expect(teamTaskDialog).toBeHidden();
 
         await pageA
@@ -346,7 +343,7 @@ test.describe("375px 无横向溢出", () => {
         await registerUser(pageB, ACCOUNT_B.username, ACCOUNT_B.password);
         await pageB.goto("/invites");
         const uidB = (
-          await pageB.locator("span.font-mono").first().innerText()
+          await pageB.getByTestId(TEST_IDS.teams.accountUid).innerText()
         ).trim();
         expect(uidB).toMatch(/^doing_[a-z0-9]+$/);
 
@@ -359,20 +356,20 @@ test.describe("375px 无横向溢出", () => {
           await loginSharedAccount(pageA2);
           await pageA2.goto(`${data.teamPath}/settings`);
           await pageA2
-            .getByLabel("对方 UID")
+            .getByTestId(TEST_IDS.teams.inviteUidInput)
             .fill(uidB.replace(/^doing_/, ""));
-          await pageA2.getByRole("button", { name: "发送邀请" }).click();
-          await expect(pageA2.getByText("已发出 · 待处理（1）")).toBeVisible({
-            timeout: 30_000,
-          });
+          await pageA2.getByTestId(TEST_IDS.teams.inviteSendButton).click();
+          await expect(
+            pageA2.getByTestId(TEST_IDS.teams.invitePendingHeading),
+          ).toContainText("1");
         } finally {
           await contextA2.close();
         }
 
         // B 建团队并邀请 A：让 A 的 /invites 有待处理卡片。
         await pageB.goto("/teams/new");
-        await pageB.getByLabel("团队名称").fill(uniqueLabel("E2E inviter team"));
-        await pageB.getByRole("button", { name: "创建团队" }).click();
+        await pageB.getByTestId(TEST_IDS.teams.teamNameInput).fill(uniqueLabel("E2E inviter team"));
+        await pageB.getByTestId(TEST_IDS.teams.createTeamButton).click();
         await expect(pageB).toHaveURL(/\/space\/[^/]+\/settings$/, {
           timeout: 30_000,
         });
@@ -387,18 +384,18 @@ test.describe("375px 无横向溢出", () => {
           await loginSharedAccount(pageA3);
           await pageA3.goto("/invites");
           uidA = (
-            await pageA3.locator("span.font-mono").first().innerText()
+            await pageA3.getByTestId(TEST_IDS.teams.accountUid).innerText()
           ).trim();
         } finally {
           await contextA3.close();
         }
         expect(uidA).toMatch(/^doing_[a-z0-9]+$/);
 
-        await pageB.getByLabel("对方 UID").fill(uidA.replace(/^doing_/, ""));
-        await pageB.getByRole("button", { name: "发送邀请" }).click();
-        await expect(pageB.getByText("已发出 · 待处理（1）")).toBeVisible({
-          timeout: 30_000,
-        });
+        await pageB.getByTestId(TEST_IDS.teams.inviteUidInput).fill(uidA.replace(/^doing_/, ""));
+        await pageB.getByTestId(TEST_IDS.teams.inviteSendButton).click();
+        await expect(
+          pageB.getByTestId(TEST_IDS.teams.invitePendingHeading),
+        ).toContainText("1");
       } finally {
         await contextB.close();
       }
@@ -496,7 +493,7 @@ test.describe("375px 无横向溢出", () => {
         page,
       ) => {
         await expect(
-          page.locator('section[aria-label="未开始"]'),
+          page.getByTestId(TEST_IDS.kanban.columnTodo),
         ).toBeVisible();
         await expect(
           page.getByText(data.personalTaskTitle, { exact: true }),
@@ -517,7 +514,7 @@ test.describe("375px 无横向溢出", () => {
         // A 收到 B 的邀请：待处理卡片（含接受 / 拒绝按钮）必须真实渲染。
         await expect(page.getByText("待处理（1）")).toBeVisible();
         await expect(
-          page.getByRole("button", { name: /^接\s*受$/ }),
+          page.getByTestId(TEST_IDS.teams.inviteAcceptButton),
         ).toBeVisible();
       },
       "/teams/new": async (page) => {
@@ -567,7 +564,7 @@ test.describe("375px 无横向溢出", () => {
         page,
       ) => {
         await expect(
-          page.locator('section[aria-label="未开始"]'),
+          page.getByTestId(TEST_IDS.kanban.columnTodo),
         ).toBeVisible();
         await expect(
           page.getByText(data.teamTaskTitle, { exact: true }),

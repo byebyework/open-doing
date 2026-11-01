@@ -103,6 +103,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
         >
           <button
             type="button"
+            data-testid="user-menu-button"
             aria-label={t("currentUserAria", { name: user.username })}
             className="cursor-pointer rounded-full border-0 bg-transparent p-0"
           >

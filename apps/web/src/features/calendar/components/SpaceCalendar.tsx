@@ -603,6 +603,7 @@ export function SpaceCalendar({
             </span>
             <button
               type="button"
+              data-testid="calendar-prev-month"
               aria-label={tCalendar("prevMonth")}
               className={navButtonClassName}
               onClick={() => {
@@ -613,6 +614,7 @@ export function SpaceCalendar({
             </button>
             <button
               type="button"
+              data-testid="calendar-next-month"
               aria-label={tCalendar("nextMonth")}
               className={navButtonClassName}
               onClick={() => {
@@ -623,6 +625,7 @@ export function SpaceCalendar({
             </button>
             <button
               type="button"
+              data-testid="calendar-today"
               aria-label={tDate("today")}
               className={`${navButtonClassName} border-[#7d2ae8] text-[#7d2ae8] hover:border-[#7d2ae8] hover:text-[#7d2ae8]`}
               onClick={() => {
@@ -671,7 +674,7 @@ export function SpaceCalendar({
         {/* ===== 右：侧栏 ===== */}
         <aside className="flex w-full flex-col gap-3 min-[861px]:w-[320px] min-[861px]:flex-none">
           {/* 本周任务 */}
-          <section className="rounded-xl border border-[#e1e3e6] bg-white p-3">
+          <section data-testid="calendar-week-card" className="rounded-xl border border-[#e1e3e6] bg-white p-3">
             <h3 className="text-[13px] font-bold text-[#0e1318]">
               {tCalendar("thisWeek")}
             </h3>

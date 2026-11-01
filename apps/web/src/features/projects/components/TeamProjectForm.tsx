@@ -118,7 +118,7 @@ export function TeamProjectForm({
           { max: 50, message: t("nameTooLong", { max: 50 }) },
         ]}
       >
-        <Input placeholder={t("namePlaceholder")} maxLength={50} autoFocus />
+        <Input data-testid="team-project-name-input" placeholder={t("namePlaceholder")} maxLength={50} autoFocus />
       </Form.Item>
 
       <Form.Item
@@ -130,7 +130,7 @@ export function TeamProjectForm({
       </Form.Item>
 
       <div className="flex gap-2">
-        <Button type="primary" htmlType="submit" loading={submitting}>
+        <Button type="primary" htmlType="submit" loading={submitting} data-testid="team-project-submit-button">
           {isEdit ? tCommon("save") : t("submitCreate")}
         </Button>
         {onCancel ? <Button onClick={onCancel}>{tCommon("cancel")}</Button> : null}

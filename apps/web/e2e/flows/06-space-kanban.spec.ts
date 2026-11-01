@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import postgres from "postgres";
 
 import { E2E_DATABASE_URL, assertE2EDatabaseUrl } from "../utils/env";
+import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
   createPersonalTask,
@@ -50,11 +51,15 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await page.goto("/space/personal/kanban");
 
     // 三列（待办 / 进行中 / 已完成）都是真实 section。
-    for (const label of ["待办", "进行中", "已完成"]) {
-      await expect(page.locator(`section[aria-label="${label}"]`)).toBeVisible();
+    for (const column of [
+      TEST_IDS.kanban.spaceColumnTodo,
+      TEST_IDS.kanban.spaceColumnInProgress,
+      TEST_IDS.kanban.spaceColumnDone,
+    ]) {
+      await expect(page.getByTestId(column)).toBeVisible();
     }
 
-    const todo = page.locator('section[aria-label="待办"]');
+    const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
     await expect(todo.getByText(taskA, { exact: true })).toBeVisible();
     await expect(todo.getByText(taskB, { exact: true })).toBeVisible();
 
@@ -69,6 +74,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
         exact: true,
       }),
     ).toBeVisible();
+    // 「当前筛选：…」是计数 + 项目名混合文案，计数是被测行为。
     await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
 
     // 深链接：直接带 ?project= 进入，只保留该项目；刷新后仍是同一视图。
@@ -101,8 +107,8 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await registerUser(page, ownerName);
 
     await page.goto("/teams/new");
-    await page.getByLabel("团队名称").fill(teamName);
-    await page.getByRole("button", { name: "创建团队" }).click();
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
     await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
@@ -116,17 +122,13 @@ test.describe("flow 6: 空间级 Kanban", () => {
     const guestPage = await guestContext.newPage();
 
     async function createTeamTask(title: string, assignee?: string) {
-      // 空项目会在页头与空状态各渲染一个入口；页头按钮在 DOM 中更靠前。
-      await page
-        .getByRole("button", { name: "＋ 新建任务", exact: true })
-        .first()
-        .click();
+      await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
       // 等弹窗 afterOpenChange 的 resetFields 完成后再填写。
       await page.waitForTimeout(500);
-      await dialog.getByLabel("标题").fill(title);
+      await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(title);
       if (assignee) {
         // antd Select 的可见选项没有 role="option"（虚拟列表只在隐藏的
         // a11y 列表里渲染 option），改为点击可见选项项。
@@ -138,7 +140,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
         // 指派是否正确由后续「移除成员 → 未指派筛选」断言兜底（该卡若仍
         // 归 owner，移除 guest 后不会出现在未指派视图里）。
       }
-      await dialog.getByRole("button", { name: "创建任务" }).click();
+      await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
       await expect(dialog).toBeHidden();
       await expect(
@@ -151,24 +153,24 @@ test.describe("flow 6: 空间级 Kanban", () => {
       await registerUser(guestPage, guestName);
       await guestPage.goto("/invites");
       const uid = (
-        await guestPage
-          .locator("span.font-mono", { hasText: /^doing_/ })
-          .first()
-          .innerText()
+        await guestPage.getByTestId(TEST_IDS.teams.accountUid).innerText()
       ).trim();
 
-      await page.getByLabel("对方 UID").fill(uid.replace(/^doing_/, ""));
-      await page.getByRole("button", { name: "发送邀请" }).click();
-      await expect(page.getByText("已发出 · 待处理（1）")).toBeVisible();
+      await page.getByTestId(TEST_IDS.teams.inviteUidInput).fill(uid.replace(/^doing_/, ""));
+      await page.getByTestId(TEST_IDS.teams.inviteSendButton).click();
+      await expect(
+        page.getByTestId(TEST_IDS.teams.invitePendingHeading),
+      ).toContainText("1");
 
       await guestPage.goto("/invites");
-      await guestPage.getByRole("button", { name: /^接\s*受$/ }).click();
+      await guestPage.getByTestId(TEST_IDS.teams.inviteAcceptButton).click();
+      // 接受成功 → 待处理清零（空态文案是被测行为）。
       await expect(guestPage.getByText("没有待处理的邀请。")).toBeVisible();
 
       // 新建团队项目，并建两张卡：一张归 owner，一张指派给 guest。
       await page.goto(`/space/${teamSlug}/projects/new`);
-      await page.getByLabel("项目名称").fill(projectName);
-      await page.getByRole("button", { name: "创建项目" }).click();
+      await page.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
+      await page.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
       await expect(
         page.getByRole("heading", { name: projectName, level: 1 }),
       ).toBeVisible({ timeout: 30_000 });
@@ -180,13 +182,12 @@ test.describe("flow 6: 空间级 Kanban", () => {
       // 能产出未指派任务的真实路径（新建弹窗的责任人只能选团队成员）。
       await page.goto(`/space/${teamSlug}/settings`);
       const guestRow = page.getByRole("row", { name: new RegExp(guestName) });
-      await guestRow.getByRole("button", { name: "移除", exact: true }).click();
+      await guestRow.getByTestId(TEST_IDS.teams.memberRemoveButton).click();
 
       const confirmDialog = page.getByRole("dialog");
       await expect(confirmDialog).toBeVisible();
-      // antd 会在确认按钮的两个汉字间插入空格（「移 除」）。
       await confirmDialog
-        .getByRole("button", { name: /^移\s*除$/ })
+        .getByTestId(TEST_IDS.teams.memberRemoveConfirmButton)
         .click();
       await expect(page.getByText("已移除成员")).toBeVisible();
     } finally {
@@ -195,7 +196,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
 
     // 团队看板：默认「全部任务」= 两张卡；被移除成员的任务显示未指派 tag。
     await page.goto(`/space/${teamSlug}/kanban`);
-    const todo = page.locator('section[aria-label="待办"]');
+    const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
     await expect(page.getByText("当前筛选：全部项目 · 2 个未完成任务")).toBeVisible();
     await expect(todo.getByText(ownerTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
@@ -206,7 +207,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     ).toBeVisible();
 
     // 切「未指派」：只剩被置空的那张卡，URL 写入契约参数。
-    const filterBar = page.locator('[aria-label="指派筛选"]');
+    const filterBar = page.getByTestId(TEST_IDS.kanban.assigneeFilter);
     await filterBar.getByText("未指派", { exact: true }).click();
     await expect(page).toHaveURL(
       new RegExp(`/space/${teamSlug}/kanban\\?assignee=unassigned$`),
@@ -243,21 +244,25 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto("/space/personal/kanban");
 
-    const todo = page.locator('section[aria-label="待办"]');
-    const inProgress = page.locator('section[aria-label="进行中"]');
-    const done = page.locator('section[aria-label="已完成"]');
+    const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
+    const inProgress = page.getByTestId(TEST_IDS.kanban.spaceColumnInProgress);
+    const done = page.getByTestId(TEST_IDS.kanban.spaceColumnDone);
 
     await expect(todo.getByText(taskTitle, { exact: true })).toBeVisible();
 
     // 待办 → 进行中（按钮位于卡片内，跟随 router.refresh 重渲染）。
-    await todo.getByRole("button", { name: "进行中", exact: true }).click();
+    await todo
+      .getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress"))
+      .click();
     await expect(
       inProgress.getByText(taskTitle, { exact: true }),
     ).toBeVisible();
     await expect(todo.getByText("暂无任务")).toBeVisible();
 
     // 进行中 → 已完成。
-    await inProgress.getByRole("button", { name: "已完成", exact: true }).click();
+    await inProgress
+      .getByTestId(TEST_IDS.tasks.cardStatusButton("done"))
+      .click();
     await expect(done.getByText(taskTitle, { exact: true })).toBeVisible();
     await expect(inProgress.getByText("暂无任务")).toBeVisible();
 
@@ -267,6 +272,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await page.reload();
 
     await expect(done.getByText(taskTitle, { exact: true })).toHaveCount(0);
+    // 「查看更早 N 项」为计数文案，计数是被测行为。
     const expander = done.getByRole("button", {
       name: /查看更早 1 项已完成/,
     });

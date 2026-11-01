@@ -16,20 +16,47 @@ export const TEST_IDS = {
     newPersonalProjectButton: "new-personal-project-button",
     projectNameInput: "personal-project-name-input",
     projectSubmitButton: "personal-project-submit-button",
+    teamProjectNameInput: "team-project-name-input",
+    teamProjectSubmitButton: "team-project-submit-button",
   },
   tasks: {
     newTaskButton: "new-task-button",
     titleInput: "task-title-input",
     dueDateInput: "task-due-date-input",
     createSubmitButton: "task-create-submit-button",
+    statusToggle: "task-status-toggle",
     subtaskHeading: "subtask-heading",
     subtaskInput: "subtask-input",
     subtaskAddButton: "subtask-add-button",
+    cardStatusButton: (status: "todo" | "in_progress" | "done") =>
+      `task-status-button-${status}`,
   },
   kanban: {
     columnTodo: "kanban-column-todo",
     columnInProgress: "kanban-column-in-progress",
     columnDone: "kanban-column-done",
+    spaceColumnTodo: "space-kanban-column-todo",
+    spaceColumnInProgress: "space-kanban-column-in-progress",
+    spaceColumnDone: "space-kanban-column-done",
+    projectFilter: "kanban-project-filter",
+    assigneeFilter: "kanban-assignee-filter",
+  },
+  calendar: {
+    prevMonth: "calendar-prev-month",
+    nextMonth: "calendar-next-month",
+    today: "calendar-today",
+    weekCard: "calendar-week-card",
+  },
+  analysis: {
+    range: (value: 7 | 30 | 90) => `analysis-range-${value}`,
+  },
+  settings: {
+    oldPasswordInput: "settings-old-password-input",
+    newPasswordInput: "settings-new-password-input",
+    confirmPasswordInput: "settings-confirm-password-input",
+    updatePasswordButton: "settings-update-password-button",
+    dueSoonSwitch: "settings-due-soon-switch",
+    overdueSwitch: "settings-overdue-switch",
   },
   teams: {
     createTeamHeading: "create-team-heading",
@@ -42,6 +69,12 @@ export const TEST_IDS = {
     inviteDeclineButton: "invite-decline-button",
     invitesEmpty: "invites-empty",
     accountUid: "account-uid",
+    memberRemoveButton: "member-remove-button",
+    memberRemoveConfirmButton: "member-remove-confirm-button",
+    joinCodeValue: "join-code-value",
+    joinCodeSwitch: "join-code-switch",
+    joinCodeInput: "join-code-input",
+    joinSubmitButton: "join-submit-button",
   },
   teamDanger: {
     dissolveTeamButton: "dissolve-team-button",
@@ -51,6 +84,7 @@ export const TEST_IDS = {
   shell: {
     spaceSwitcherTrigger: "space-switcher-trigger",
     notificationBellButton: "notification-bell-button",
+    userMenuButton: "user-menu-button",
   },
   misc: {
     notFoundMessage: "not-found-message",

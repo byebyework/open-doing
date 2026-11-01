@@ -47,6 +47,7 @@ export function AnalysisRangeSelector({
           <button
             key={option.value}
             type="button"
+            data-testid={`analysis-range-${option.value}`}
             aria-pressed={active}
             onClick={() => router.push(`${basePath}?range=${option.value}`)}
             className={`cursor-pointer rounded-md px-3.5 py-[5px] text-[13px] font-semibold transition-colors ${

@@ -73,6 +73,7 @@ export function JoinByCodeForm() {
           extra={t("joinCodeHint")}
         >
           <Input
+            data-testid="join-code-input"
             size="large"
             placeholder={t("joinCodePlaceholder")}
             spellCheck={false}
@@ -81,7 +82,7 @@ export function JoinByCodeForm() {
           />
         </Form.Item>
 
-        <Button type="primary" size="large" htmlType="submit" loading={submitting}>
+        <Button type="primary" size="large" htmlType="submit" loading={submitting} data-testid="join-submit-button">
           {t("submitRequest")}
         </Button>
       </Form>

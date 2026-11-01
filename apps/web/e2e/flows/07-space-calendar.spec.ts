@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
   createPersonalTask,
@@ -75,16 +76,15 @@ test.describe("flow 7: 空间级 Calendar", () => {
 
     // 详情页把任务标记完成（个人任务恒有编辑权）。
     await openPersonalTask(page, taskTitle);
-    await page.getByRole("button", { name: "标记为已完成" }).click();
-    await expect(
-      page.getByRole("button", { name: "标记为未完成" }),
-    ).toBeVisible();
+    await page.getByTestId(TEST_IDS.tasks.statusToggle).click();
+    // 标记成功后按钮切换为「标记为未完成」（文案是被测行为）。
+    await expect(page.getByTestId(TEST_IDS.tasks.statusToggle)).toHaveText(
+      "标记为未完成",
+    );
 
     await page.goto("/space/personal/calendar");
 
-    const weekCard = page
-      .locator("section")
-      .filter({ has: page.getByRole("heading", { name: "本周任务" }) });
+    const weekCard = page.getByTestId(TEST_IDS.calendar.weekCard);
     await expect(
       weekCard.getByText(`今天 · ${weekdayLabel(today)} ${today.slice(5)}`),
     ).toBeVisible();
@@ -149,7 +149,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
     await expect(page.getByText(taskTitle, { exact: true })).toHaveCount(0);
 
     // 「下个月」按当前月翻到任务月，chip 回来。
-    await page.getByRole("button", { name: "下个月" }).click();
+    await page.getByTestId(TEST_IDS.calendar.nextMonth).click();
     await expect(page).toHaveURL(
       new RegExp(`/space/personal/calendar\\?month=${taskMonth}$`),
     );
@@ -161,7 +161,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
     ).toBeVisible();
 
     // 「今天」按钮回到无参数的本月地址。
-    await page.getByRole("button", { name: "今天", exact: true }).click();
+    await page.getByTestId(TEST_IDS.calendar.today).click();
     await expect(page).toHaveURL(/\/space\/personal\/calendar$/);
     await expect(
       page.getByText(monthHeading(currentMonth), { exact: true }),
@@ -178,6 +178,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
 
     await page.goto("/space/personal/calendar");
 
+    // 「N 项任务没有截止日期」为计数文案，计数是被测行为。
     const noDueLink = page.getByRole("link", {
       name: /1 项任务没有截止日期/,
     });
@@ -203,8 +204,8 @@ test.describe("flow 7: 空间级 Calendar", () => {
     await registerUser(page, ownerName);
 
     await page.goto("/teams/new");
-    await page.getByLabel("团队名称").fill(teamName);
-    await page.getByRole("button", { name: "创建团队" }).click();
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
     await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
@@ -222,24 +223,23 @@ test.describe("flow 7: 空间级 Calendar", () => {
       await registerUser(guestPage, guestName);
       await guestPage.goto("/invites");
       const uid = (
-        await guestPage
-          .locator("span.font-mono", { hasText: /^doing_/ })
-          .first()
-          .innerText()
+        await guestPage.getByTestId(TEST_IDS.teams.accountUid).innerText()
       ).trim();
 
-      await page.getByLabel("对方 UID").fill(uid.replace(/^doing_/, ""));
-      await page.getByRole("button", { name: "发送邀请" }).click();
-      await expect(page.getByText("已发出 · 待处理（1）")).toBeVisible();
+      await page.getByTestId(TEST_IDS.teams.inviteUidInput).fill(uid.replace(/^doing_/, ""));
+      await page.getByTestId(TEST_IDS.teams.inviteSendButton).click();
+      await expect(
+        page.getByTestId(TEST_IDS.teams.invitePendingHeading),
+      ).toContainText("1");
 
       await guestPage.goto("/invites");
-      await guestPage.getByRole("button", { name: /^接\s*受$/ }).click();
+      await guestPage.getByTestId(TEST_IDS.teams.inviteAcceptButton).click();
       await expect(guestPage.getByText("没有待处理的邀请。")).toBeVisible();
 
       // 新建团队项目，建两张同一天截止的任务：一张归 owner，一张归 guest。
       await page.goto(`/space/${teamSlug}/projects/new`);
-      await page.getByLabel("项目名称").fill(projectName);
-      await page.getByRole("button", { name: "创建项目" }).click();
+      await page.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
+      await page.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
       await expect(
         page.getByRole("heading", { name: projectName, level: 1 }),
       ).toBeVisible({ timeout: 30_000 });
@@ -254,12 +254,12 @@ test.describe("flow 7: 空间级 Calendar", () => {
       // 移除 guest：其负责的任务按既有语义置空为「未指派」。
       await page.goto(`/space/${teamSlug}/settings`);
       const guestRow = page.getByRole("row", { name: new RegExp(guestName) });
-      await guestRow.getByRole("button", { name: "移除", exact: true }).click();
+      await guestRow.getByTestId(TEST_IDS.teams.memberRemoveButton).click();
 
       const confirmDialog = page.getByRole("dialog");
       await expect(confirmDialog).toBeVisible();
       await confirmDialog
-        .getByRole("button", { name: /^移\s*除$/ })
+        .getByTestId(TEST_IDS.teams.memberRemoveConfirmButton)
         .click();
       await expect(page.getByText("已移除成员")).toBeVisible();
     } finally {
@@ -295,8 +295,8 @@ test.describe("flow 7: 空间级 Calendar", () => {
 
     await registerUser(page, ownerName);
     await page.goto("/teams/new");
-    await page.getByLabel("团队名称").fill(teamName);
-    await page.getByRole("button", { name: "创建团队" }).click();
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
     await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
@@ -316,7 +316,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
       );
       expect(response?.status()).toBe(404);
       await expect(
-        outsiderPage.getByText("抱歉，你访问的页面不存在。"),
+        outsiderPage.getByTestId(TEST_IDS.misc.notFoundMessage),
       ).toBeVisible();
     } finally {
       await outsiderContext.close();
@@ -358,17 +358,14 @@ async function createTeamTask(
   page: Page,
   input: { title: string; dueDate: string; assignee?: string },
 ): Promise<void> {
-  await page
-    .getByRole("button", { name: "＋ 新建任务", exact: true })
-    .first()
-    .click();
+  await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   // 等弹窗 afterOpenChange 的 resetFields 完成后再填写。
   await page.waitForTimeout(500);
-  await dialog.getByLabel("标题").fill(input.title);
-  await dialog.getByLabel("截止日期").fill(input.dueDate);
+  await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(input.title);
+  await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);
 
   if (input.assignee) {
     // antd Select 的可见选项没有 role="option"，点击可见选项项。
@@ -379,7 +376,7 @@ async function createTeamTask(
       .click();
   }
 
-  await dialog.getByRole("button", { name: "创建任务" }).click();
+  await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
   await expect(

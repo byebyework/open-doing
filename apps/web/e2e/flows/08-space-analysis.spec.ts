@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
   createPersonalTask,
@@ -87,13 +88,13 @@ test.describe("flow 8: 空间级 Analysis", () => {
 
     // 默认「近 30 天」高亮，另两个不高亮；趋势说明同步为 30 天 / 按日。
     await expect(
-      page.getByRole("button", { name: "近 30 天" }),
+      page.getByTestId(TEST_IDS.analysis.range(30)),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(
-      page.getByRole("button", { name: "近 7 天" }),
+      page.getByTestId(TEST_IDS.analysis.range(7)),
     ).toHaveAttribute("aria-pressed", "false");
     await expect(
-      page.getByRole("button", { name: "近 90 天" }),
+      page.getByTestId(TEST_IDS.analysis.range(90)),
     ).toHaveAttribute("aria-pressed", "false");
     await expect(
       page.getByText(/近 30 天 · 按日 · 共完成 0 项/),
@@ -122,11 +123,11 @@ test.describe("flow 8: 空间级 Analysis", () => {
     const statsRow = statCard(page, "进行中").locator("..");
     const statsBefore = await statsRow.textContent();
 
-    await page.getByRole("button", { name: "近 7 天" }).click();
+    await page.getByTestId(TEST_IDS.analysis.range(7)).click();
 
     await expect(page).toHaveURL(/\/space\/personal\/analysis\?range=7$/);
     await expect(
-      page.getByRole("button", { name: "近 7 天" }),
+      page.getByTestId(TEST_IDS.analysis.range(7)),
     ).toHaveAttribute("aria-pressed", "true");
 
     // 趋势区块确实按新范围重取（说明文案 30 天 → 7 天）。
@@ -153,10 +154,10 @@ test.describe("flow 8: 空间级 Analysis", () => {
       page.getByRole("heading", { name: "Analysis", level: 1 }),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "近 30 天" }),
+      page.getByTestId(TEST_IDS.analysis.range(30)),
     ).toHaveAttribute("aria-pressed", "true");
     await expect(
-      page.getByRole("button", { name: "近 7 天" }),
+      page.getByTestId(TEST_IDS.analysis.range(7)),
     ).toHaveAttribute("aria-pressed", "false");
     await expect(
       page.getByText(/近 30 天 · 按日 · 共完成 0 项/),
@@ -177,8 +178,8 @@ test.describe("flow 8: 空间级 Analysis", () => {
     // 团队项目：一张昨天截止的任务稍后置为已完成（计入本周完成 / 吞吐 /
     // 项目健康度），一张未来截止的任务置为进行中（计入成员负载）。
     await page.goto(`/space/${teamSlug}/projects/new`);
-    await page.getByLabel("项目名称").fill(projectName);
-    await page.getByRole("button", { name: "创建项目" }).click();
+    await page.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
+    await page.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
     await expect(
       page.getByRole("heading", { name: projectName, level: 1 }),
     ).toBeVisible({ timeout: 30_000 });
@@ -196,17 +197,17 @@ test.describe("flow 8: 空间级 Analysis", () => {
     await page.setViewportSize({ width: 375, height: 812 });
     await page.goto(`/space/${teamSlug}/kanban`);
 
-    const todo = page.locator('section[aria-label="待办"]');
-    const inProgress = page.locator('section[aria-label="进行中"]');
-    const done = page.locator('section[aria-label="已完成"]');
+    const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
+    const inProgress = page.getByTestId(TEST_IDS.kanban.spaceColumnInProgress);
+    const done = page.getByTestId(TEST_IDS.kanban.spaceColumnDone);
     await expect(todo.getByText(doneTaskTitle, { exact: true })).toBeVisible();
     await expect(
       todo.getByText(activeTaskTitle, { exact: true }),
     ).toBeVisible();
 
-    await cardButton(page, doneTaskTitle, "已完成").click();
+    await cardStatusButton(page, doneTaskTitle, "done").click();
     await expect(done.getByText(doneTaskTitle, { exact: true })).toBeVisible();
-    await cardButton(page, activeTaskTitle, "进行中").click();
+    await cardStatusButton(page, activeTaskTitle, "in_progress").click();
     await expect(
       inProgress.getByText(activeTaskTitle, { exact: true }),
     ).toBeVisible();
@@ -276,7 +277,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
       );
       expect(response?.status()).toBe(404);
       await expect(
-        outsiderPage.getByText("抱歉，你访问的页面不存在。"),
+        outsiderPage.getByTestId(TEST_IDS.misc.notFoundMessage),
       ).toBeVisible();
     } finally {
       await outsiderContext.close();
@@ -300,16 +301,23 @@ function sectionByHeading(page: Page, title: string) {
   return page.getByRole("heading", { name: title, level: 2 }).locator("../..");
 }
 
-/** 窄屏看板卡片内的状态按钮：先按卡片 aria-label 定位，再进到卡片根节点。 */
-function cardButton(page: Page, cardTitle: string, buttonName: string) {
+/**
+ * 窄屏看板卡片内的状态按钮：先按卡片 aria-label（任务标题）定位卡片，
+ * 再进到卡片根节点找对应状态按钮（testid 与文案无关）。
+ */
+function cardStatusButton(
+  page: Page,
+  cardTitle: string,
+  status: "todo" | "in_progress" | "done",
+) {
   return page
     .getByLabel(cardTitle, { exact: true })
     .locator("..")
-    .getByRole("button", { name: buttonName, exact: true });
+    .getByTestId(TEST_IDS.tasks.cardStatusButton(status));
 }
 
 /**
- * 在团队项目页经「＋ 新建任务」弹窗创建任务。
+ * 在团队项目页经「新建任务」弹窗创建任务。
  *
  * 沿 flow 6 的团队建任务路径；弹窗的截止日期是原生 date input，可直接
  * `fill("YYYY-MM-DD")`（个人任务 helper 同款）。
@@ -318,21 +326,17 @@ async function createTeamTask(
   page: Page,
   input: { title: string; dueDate?: string },
 ): Promise<void> {
-  // 空项目会在页头与空状态各渲染一个入口；页头按钮在 DOM 中更靠前。
-  await page
-    .getByRole("button", { name: "＋ 新建任务", exact: true })
-    .first()
-    .click();
+  await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   // 等弹窗 afterOpenChange 的 resetFields 完成后再填写。
   await page.waitForTimeout(500);
-  await dialog.getByLabel("标题").fill(input.title);
+  await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(input.title);
   if (input.dueDate) {
-    await dialog.getByLabel("截止日期").fill(input.dueDate);
+    await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);
   }
-  await dialog.getByRole("button", { name: "创建任务" }).click();
+  await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
   await expect(
@@ -372,8 +376,8 @@ function shiftDate(date: string, days: number): string {
  */
 async function createTeam(page: Page, teamName: string): Promise<string> {
   await page.goto("/teams/new");
-  await page.getByLabel("团队名称").fill(teamName);
-  await page.getByRole("button", { name: "创建团队" }).click();
+  await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+  await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
   await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
     timeout: 30_000,
   });

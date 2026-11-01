@@ -626,6 +626,7 @@ export function TaskDetailView({
             {permissions.canEdit ? (
               <Button
                 block
+                data-testid="task-status-toggle"
                 loading={statusPending === nextStatus}
                 disabled={statusPending !== null}
                 onClick={() => {

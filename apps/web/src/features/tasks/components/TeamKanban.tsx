@@ -241,6 +241,13 @@ function TeamKanbanColumn({
   return (
     <section
       ref={setNodeRef}
+      data-testid={
+        status === "todo"
+          ? "kanban-column-todo"
+          : status === "in_progress"
+            ? "kanban-column-in-progress"
+            : "kanban-column-done"
+      }
       aria-label={tStatus(TEAM_TASK_STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver
