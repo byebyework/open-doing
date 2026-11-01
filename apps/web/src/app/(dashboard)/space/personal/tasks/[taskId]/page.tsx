@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { requireUser } from "@/features/auth/session";
 import { personalProjectHref, spaceDashboardHref } from "@/lib/routes";
@@ -23,6 +24,7 @@ export default async function PersonalTaskDetailPage({
   const { taskId } = await params;
 
   const user = await requireUser();
+  const t = await getTranslations("tasks");
   const task = await getPersonalTaskDetail(user.id, taskId);
 
   if (!task) notFound();
@@ -41,7 +43,7 @@ export default async function PersonalTaskDetailPage({
     <TaskDetailClient
       task={{ ...task, creatorName: user.username }}
       backHref={backHref}
-      backLabel={task.projectId ? "← 返回项目" : "← 返回我的任务"}
+      backLabel={task.projectId ? t("backToProject") : t("backToMyTasks")}
       currentUserId={user.id}
     />
   );

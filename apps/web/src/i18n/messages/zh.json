@@ -47,7 +47,8 @@
     "confirm": "确认",
     "networkError": "网络异常，请稍后重试",
     "progress": "进度 {percent}%",
-    "edit": "编辑"
+    "edit": "编辑",
+    "breadcrumb": "面包屑"
   },
   "errors": {
     "notLoggedIn": "请先登录",
@@ -143,7 +144,8 @@
     "dashboard": "Dashboard",
     "kanban": "Kanban",
     "calendar": "Calendar",
-    "analysis": "Analysis"
+    "analysis": "Analysis",
+    "openNavAria": "打开导航"
   },
   "tasks": {
     "title": "标题",
@@ -387,7 +389,23 @@
     "irreversible": "此操作不可撤销",
     "dissolveWarning": "「{team}」下全部项目、任务、评论与通知将被永久删除。",
     "typeTeamName": "请输入团队名称以确认",
-    "confirmDissolve": "确认解散"
+    "confirmDissolve": "确认解散",
+    "settingsHeading": "团队设置",
+    "settingsSubtitle": "管理团队信息与成员。",
+    "teamInfoTitle": "团队信息",
+    "createdAtLine": "创建于 {date}",
+    "inviteMembersTitle": "邀请成员",
+    "inviteMembersHint": "输入对方 UID 即可邀请，对方登录后处理。",
+    "sentPendingHeading": "已发出 · 待处理（{count}）",
+    "pendingTag": "待处理",
+    "sentAtLine": "{time} 发出",
+    "joinCodeSectionHint": "成员凭此码申请加入，由管理员审批；关闭后无法凭码加入。",
+    "joinRequestsHeading": "加入申请（{count}）",
+    "membersHeading": "成员（{count}）",
+    "dangerZoneTitle": "危险操作",
+    "leaveTeamDesc": "退出后你负责的任务将变为未指派，由管理员重新分配。",
+    "transferTeamDesc": "转让后受让人成为所有者，你将变为管理员；团队内容不受影响。",
+    "dissolveTeamDesc": "仅所有者可操作；将永久删除团队下全部项目、任务、评论与通知。"
   },
   "personal": {
     "space": "个人空间",
@@ -428,7 +446,12 @@
     "namePlaceholder": "例如：官网改版",
     "descriptionLabel": "描述",
     "descriptionPlaceholder": "补充项目背景、目标…",
-    "submitCreate": "创建项目"
+    "submitCreate": "创建项目",
+    "newProjectTitle": "新建项目",
+    "newProjectHint": "团队项目对全体成员可见；任务可指派给团队内任何人。",
+    "boardDragHint": "拖动卡片即可改变任务状态（手动切换）",
+    "teamProjectMeta": "{tasks} 个任务 · {members} 位成员参与",
+    "personalProjectMeta": "个人项目 · 仅自己可见 · {tasks} 个任务"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -600,7 +623,12 @@
     "zombieEmpty": "暂无僵尸任务。",
     "lastUpdatedLine": "最后更新 {date}，已停留 {days} 天",
     "stalledBadge": "停留 {days} 天",
-    "zombieFooter": "处理或关闭这些任务 · 前往 Kanban →"
+    "zombieFooter": "处理或关闭这些任务 · 前往 Kanban →",
+    "chartToday": "今天 {label}",
+    "chartDoneValue": "完成 {value}",
+    "chartCreatedValue": "新增 {value}",
+    "chartUnchanged": "无变化",
+    "chartEmpty": "无完成"
   },
   "notifications": {
     "notifications": "通知",

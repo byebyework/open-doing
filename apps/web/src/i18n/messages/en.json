@@ -47,7 +47,8 @@
     "confirm": "Confirm",
     "networkError": "Network error, please try again later",
     "progress": "Progress {percent}%",
-    "edit": "Edit"
+    "edit": "Edit",
+    "breadcrumb": "Breadcrumb"
   },
   "errors": {
     "notLoggedIn": "Please sign in first",
@@ -143,7 +144,8 @@
     "dashboard": "Dashboard",
     "kanban": "Kanban",
     "calendar": "Calendar",
-    "analysis": "Analysis"
+    "analysis": "Analysis",
+    "openNavAria": "Open navigation"
   },
   "tasks": {
     "title": "Title",
@@ -387,7 +389,23 @@
     "irreversible": "This action cannot be undone",
     "dissolveWarning": "All projects, tasks, comments and notifications under “{team}” will be permanently deleted.",
     "typeTeamName": "Type the team name to confirm",
-    "confirmDissolve": "Dissolve"
+    "confirmDissolve": "Dissolve",
+    "settingsHeading": "Team settings",
+    "settingsSubtitle": "Manage team information and members.",
+    "teamInfoTitle": "Team information",
+    "createdAtLine": "Created {date}",
+    "inviteMembersTitle": "Invite members",
+    "inviteMembersHint": "Enter the member's UID to invite them; they handle it after signing in.",
+    "sentPendingHeading": "Sent · pending ({count})",
+    "pendingTag": "Pending",
+    "sentAtLine": "sent {time}",
+    "joinCodeSectionHint": "Members use this code to request to join; admins approve. Joining by code is unavailable while it is off.",
+    "joinRequestsHeading": "Join requests ({count})",
+    "membersHeading": "Members ({count})",
+    "dangerZoneTitle": "Danger zone",
+    "leaveTeamDesc": "After you leave, tasks assigned to you become unassigned for an admin to reassign.",
+    "transferTeamDesc": "After the transfer the grantee becomes the owner and you become an admin; team content is unaffected.",
+    "dissolveTeamDesc": "Owner only; permanently deletes all projects, tasks, comments and notifications in the team."
   },
   "personal": {
     "space": "Personal space",
@@ -428,7 +446,12 @@
     "namePlaceholder": "e.g. Website revamp",
     "descriptionLabel": "Description",
     "descriptionPlaceholder": "Add background and goals…",
-    "submitCreate": "Create project"
+    "submitCreate": "Create project",
+    "newProjectTitle": "New project",
+    "newProjectHint": "Team projects are visible to every member; tasks can be assigned to anyone in the team.",
+    "boardDragHint": "Drag a card to another column to change its status (manual switching)",
+    "teamProjectMeta": "{tasks} tasks · {members} participants",
+    "personalProjectMeta": "Personal project · visible only to you · {tasks} tasks"
   },
   "dashboard": {
     "title": "Dashboard",
@@ -600,7 +623,12 @@
     "zombieEmpty": "No stale tasks.",
     "lastUpdatedLine": "Last updated {date}, stalled for {days} days",
     "stalledBadge": "{days} days stalled",
-    "zombieFooter": "Triage or close these tasks · Go to Kanban →"
+    "zombieFooter": "Triage or close these tasks · Go to Kanban →",
+    "chartToday": "Today {label}",
+    "chartDoneValue": "{value} completed",
+    "chartCreatedValue": "{value} created",
+    "chartUnchanged": "No change",
+    "chartEmpty": "No completions"
   },
   "notifications": {
     "notifications": "Notifications",

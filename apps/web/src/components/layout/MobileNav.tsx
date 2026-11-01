@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Drawer } from "antd";
+import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
@@ -41,6 +42,7 @@ function MenuIcon() {
  * 沿用项目既有的「渲染期同步 props → state」写法，避免 effect 中 setState。
  */
 export function MobileNav({ data }: MobileNavProps) {
+  const t = useTranslations("nav");
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [syncedPathname, setSyncedPathname] = useState(pathname);
@@ -58,7 +60,7 @@ export function MobileNav({ data }: MobileNavProps) {
     <>
       <Button
         type="text"
-        aria-label="打开导航"
+        aria-label={t("openNavAria")}
         aria-expanded={open}
         className="min-[861px]:hidden"
         onClick={() => setOpen(true)}

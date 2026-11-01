@@ -1,3 +1,5 @@
+import { getTranslations } from "next-intl/server";
+
 import type { TrendBucket } from "../buckets";
 
 /**
@@ -50,15 +52,20 @@ export interface TrendChartProps {
  * - 每系列峰值（并列取最后一根）与末桶直接标数；
  * - x 轴每 5 桶标一个标签，并始终标出末桶。
  */
-export function TrendChart({
+export async function TrendChart({
   buckets,
   series,
   unit = 36,
   yMax,
   formatValue,
-  emptyLabel = "无完成",
+  emptyLabel,
   todayIndex,
 }: TrendChartProps) {
+  // 悬停说明的文案在组件内取词；emptyLabel 仍可由调用方覆盖（如「无」）。
+  const t = await getTranslations("analysis");
+  const resolvedEmpty = emptyLabel ?? t("chartEmpty");
+  const valueLabel = (tone: TrendSeries["tone"], value: number) =>
+    tone === "teal" ? t("chartCreatedValue", { value }) : t("chartDoneValue", { value });
   const allValues = series.flatMap((item) => item.values);
   const maxValue = allValues.length > 0 ? Math.max(...allValues) : 0;
   const resolvedYMax = Math.max(yMax ?? maxValue, 0);
@@ -122,12 +129,14 @@ export function TrendChart({
                 key={`${bucket.start}-${bucket.label}-${bucketIndex}`}
                 title={columnTitle(
                   bucketIndex === todayIndex
-                    ? `今天 ${bucket.label}`
+                    ? t("chartToday", { label: bucket.label })
                     : bucket.label,
                   series,
                   bucketIndex,
                   formatValue,
-                  emptyLabel,
+                  resolvedEmpty,
+                  valueLabel,
+                  t("chartUnchanged"),
                 )}
                 className="flex h-full min-w-0 flex-1 items-end justify-center gap-[2px]"
               >
@@ -203,35 +212,33 @@ function lastPeakIndex(values: number[]): number {
   return peak;
 }
 
-/** 柱列的原生悬停说明：单系列「MM-DD · 完成 N」，双系列「· 新增 N / 完成 N」。 */
+/**
+ * 柱列的原生悬停说明：单系列「MM-DD · 完成 N」，双系列「· 新增 N / 完成 N」。
+ * 数值与「无变化」文案由调用方按当前语言传入。
+ */
 function columnTitle(
   label: string,
   series: TrendSeries[],
   index: number,
   formatValue: TrendChartProps["formatValue"],
   emptyLabel: string,
+  valueLabel: (tone: TrendSeries["tone"], value: number) => string,
+  unchangedLabel: string,
 ): string {
   if (series.length === 1) {
     const value = series[0]?.values[index] ?? 0;
     const text =
-      value === 0
-        ? emptyLabel
-        : formatValue
-          ? formatValue(value)
-          : `完成 ${value}`;
+      value === 0 ? emptyLabel : formatValue ? formatValue(value) : valueLabel("primary", value);
     return `${label} · ${text}`;
   }
 
   const parts = series.flatMap((item) => {
     const value = item.values[index] ?? 0;
     if (value <= 0) return [];
-    const name = item.tone === "teal" ? "新增" : "完成";
-    return [`${name} ${value}`];
+    return [valueLabel(item.tone, value)];
   });
 
-  return parts.length > 0
-    ? `${label} · ${parts.join(" / ")}`
-    : `${label} · 无变化`;
+  return parts.length > 0 ? `${label} · ${parts.join(" / ")}` : `${label} · ${unchangedLabel}`;
 }
 
 /** 横向条列表的一行。 */

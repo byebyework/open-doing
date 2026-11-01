@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { getTranslations } from "next-intl/server";
 
 import { requireUser } from "@/features/auth/session";
 import {
@@ -37,6 +38,8 @@ export default async function TeamProjectPage({
 }: TeamProjectPageProps) {
   const { teamSlug, projectSlug } = await params;
   const { view: viewParam } = await searchParams;
+  const t = await getTranslations("projects");
+  const tCommon = await getTranslations("common");
   const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
   const view: TeamProjectView = requestedView === "board" ? "board" : "list";
 
@@ -70,7 +73,7 @@ export default async function TeamProjectPage({
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <nav
-        aria-label="面包屑"
+        aria-label={tCommon("breadcrumb")}
         className="flex min-w-0 items-center gap-2 text-[13px] text-[#9aa0a6]"
       >
         <span className="shrink-0">{team.name}</span>
@@ -87,8 +90,8 @@ export default async function TeamProjectPage({
           </h1>
           <p className="mt-1.5 text-[13.5px] text-[#5f6368]">
             {view === "board"
-              ? "拖动卡片即可改变任务状态（手动切换）"
-              : `${tasks.length} 个任务 · ${participantCount} 位成员参与`}
+              ? t("boardDragHint")
+              : t("teamProjectMeta", { tasks: tasks.length, members: participantCount })}
           </p>
         </div>
 

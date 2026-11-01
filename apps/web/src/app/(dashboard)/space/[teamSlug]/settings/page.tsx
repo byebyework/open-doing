@@ -37,6 +37,7 @@ export default async function TeamSettingsPage(
 ) {
   const { teamSlug } = await props.params;
   const user = await requireUser();
+  const t = await getTranslations("teams");
 
   // 团队不存在或非成员一律 404，不泄露存在性。
   const team = await getTeamBySlug(teamSlug);
@@ -66,16 +67,16 @@ export default async function TeamSettingsPage(
   return (
     <div className="mx-auto w-full max-w-[820px] py-8 min-[861px]:py-10">
       <div className="mb-1 text-[13px] text-[#9aa0a6]">
-        {team.name} <span className="mx-1">/</span> 团队设置
+        {team.name} <span className="mx-1">/</span> {t("settingsHeading")}
       </div>
-      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[#0e1318]">团队设置</h1>
-      <p className="mb-8 mt-1.5 text-[14px] text-[#5f6368]">管理团队信息与成员。</p>
+      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[#0e1318]">{t("settingsHeading")}</h1>
+      <p className="mb-8 mt-1.5 text-[14px] text-[#5f6368]">{t("settingsSubtitle")}</p>
 
       {canManage ? (
         <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">团队信息</h2>
+          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">{t("teamInfoTitle")}</h2>
           <p className="mb-4 text-[13px] text-[#9aa0a6]">
-            创建于 {dayjs(team.createdAt).format("YYYY-MM-DD")}
+            {t("createdAtLine", { date: dayjs(team.createdAt).format("YYYY-MM-DD") })}
           </p>
 
           <RenameTeamForm teamId={team.id} name={team.name} />
@@ -84,14 +85,14 @@ export default async function TeamSettingsPage(
 
       {canManage ? (
         <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">邀请成员</h2>
-          <p className="mb-4 text-[13px] text-[#5f6368]">输入对方 UID 即可邀请，对方登录后处理。</p>
+          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">{t("inviteMembersTitle")}</h2>
+          <p className="mb-4 text-[13px] text-[#5f6368]">{t("inviteMembersHint")}</p>
 
           <InviteMemberForm teamId={team.id} />
 
           <div className="mt-5">
             <div className="mb-2 text-[13px] font-semibold text-[#0e1318]">
-              已发出 · 待处理（{pendingSent.length}）
+              {t("sentPendingHeading", { count: pendingSent.length })}
             </div>
             {pendingSent.map(({ invite, invitee }) => (
               // 窄屏（375px）允许换行：标签 / 头像 / 用户名 / UID / 时间 / 撤销
@@ -101,13 +102,13 @@ export default async function TeamSettingsPage(
                 className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#eceef0] py-2.5 first:border-t-0"
               >
                 <Tag style={{ color: "#6d4fd4", background: "rgba(155, 135, 245, 0.14)", border: "none", borderRadius: 999 }}>
-                  待处理
+                  {t("pendingTag")}
                 </Tag>
                 <UserAvatar username={invitee.username} />
                 <span className="text-[13px] font-medium text-[#0e1318]">{invitee.username}</span>
                 <span className="font-mono text-[12px] text-[#9aa0a6]">{invitee.uid}</span>
                 <span className="ml-auto text-[12px] text-[#9aa0a6]">
-                  {dayjs(invite.createdAt).format("MM-DD HH:mm")} 发出
+                  {t("sentAtLine", { time: dayjs(invite.createdAt).format("MM-DD HH:mm") })}
                 </span>
                 <RescindInviteButton inviteId={invite.id} teamId={team.id} />
               </div>
@@ -118,10 +119,8 @@ export default async function TeamSettingsPage(
 
       {canManage && joinSettings ? (
         <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">凭码加入</h2>
-          <p className="mb-4 text-[13px] text-[#5f6368]">
-            成员凭此码申请加入，由管理员审批；关闭后无法凭码加入。
-          </p>
+          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">{t("joinByCode")}</h2>
+          <p className="mb-4 text-[13px] text-[#5f6368]">{t("joinCodeSectionHint")}</p>
 
           <JoinCodeSettings
             teamId={team.id}
@@ -134,7 +133,7 @@ export default async function TeamSettingsPage(
       {canManage ? (
         <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
           <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">
-            加入申请（{joinRequests.length}）
+            {t("joinRequestsHeading", { count: joinRequests.length })}
           </h2>
 
           <JoinRequestList teamId={team.id} requests={joinRequests} />
@@ -142,7 +141,7 @@ export default async function TeamSettingsPage(
       ) : null}
 
       <section className="rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-        <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">成员（{members.length}）</h2>
+        <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">{t("membersHeading", { count: members.length })}</h2>
         <MemberList
           members={members}
           teamSlug={team.slug}
@@ -152,14 +151,14 @@ export default async function TeamSettingsPage(
       </section>
 
       <section className="mt-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-        <h2 className="mb-2 text-[15px] font-bold text-[#ff5757]">危险操作</h2>
+        <h2 className="mb-2 text-[15px] font-bold text-[#ff5757]">{t("dangerZoneTitle")}</h2>
 
         {canLeave ? (
           <div className="flex items-center gap-4 py-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[#0e1318]">退出团队</div>
+              <div className="text-[14px] font-semibold text-[#0e1318]">{t("leaveTeam")}</div>
               <div className="mt-1 text-[13px] text-[#5f6368]">
-                退出后你负责的任务将变为未指派，由管理员重新分配。
+                {t("leaveTeamDesc")}
               </div>
             </div>
             <div className="flex-none">
@@ -171,9 +170,9 @@ export default async function TeamSettingsPage(
         {canTransfer ? (
           <div className={canLeave ? "flex items-center gap-4 border-t border-[#e1e3e6] py-3" : "flex items-center gap-4 py-3"}>
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[#0e1318]">转让团队</div>
+              <div className="text-[14px] font-semibold text-[#0e1318]">{t("transferTeam")}</div>
               <div className="mt-1 text-[13px] text-[#5f6368]">
-                转让后受让人成为所有者，你将变为管理员；团队内容不受影响。
+                {t("transferTeamDesc")}
               </div>
             </div>
             <div className="flex-none">
@@ -185,9 +184,9 @@ export default async function TeamSettingsPage(
         {canDissolve ? (
           <div className="flex items-center gap-4 border-t border-[#e1e3e6] py-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[#0e1318]">解散团队</div>
+              <div className="text-[14px] font-semibold text-[#0e1318]">{t("dissolveTeam")}</div>
               <div className="mt-1 text-[13px] text-[#5f6368]">
-                仅所有者可操作；将永久删除团队下全部项目、任务、评论与通知。
+                {t("dissolveTeamDesc")}
               </div>
             </div>
             <div className="flex-none">
