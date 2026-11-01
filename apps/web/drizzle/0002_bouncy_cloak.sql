@@ -1,0 +1,2 @@
+ALTER TABLE "users" ADD COLUMN "due_soon_reminder_enabled" boolean DEFAULT true NOT NULL;--> statement-breakpoint
+ALTER TABLE "users" ADD COLUMN "overdue_reminder_enabled" boolean DEFAULT true NOT NULL;

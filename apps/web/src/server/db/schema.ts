@@ -42,6 +42,9 @@ export const users = pgTable("users", {
   uid: text("uid").notNull().unique(),
   username: text("username").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  // 个人设置：临期 / 逾期提醒开关，默认开启；存量用户由 DEFAULT 回填。
+  dueSoonReminderEnabled: boolean("due_soon_reminder_enabled").notNull().default(true),
+  overdueReminderEnabled: boolean("overdue_reminder_enabled").notNull().default(true),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

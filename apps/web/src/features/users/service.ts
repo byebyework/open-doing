@@ -73,3 +73,65 @@ export async function usernameExists(
     .limit(1);
   return Boolean(row);
 }
+
+/** 个人设置：提醒开关领域模型（可跨边界传递）。 */
+export interface ReminderPrefs {
+  dueSoonReminderEnabled: boolean;
+  overdueReminderEnabled: boolean;
+}
+
+/** 只取提醒开关两列，避免把密码哈希等字段带出。 */
+const reminderPrefsColumns = {
+  dueSoonReminderEnabled: users.dueSoonReminderEnabled,
+  overdueReminderEnabled: users.overdueReminderEnabled,
+} as const;
+
+/** 读取用户提醒偏好；用户不存在时抛错（个人设置在会话内必然对应真实用户）。 */
+export async function getReminderPrefs(
+  userId: string,
+  client: DbClient = db,
+): Promise<ReminderPrefs> {
+  const [row] = await client
+    .select(reminderPrefsColumns)
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!row) throw new Error("user not found");
+  return row;
+}
+
+/**
+ * 部分更新提醒偏好：只写显式传入的键，未传的列保持库中原值；
+ * 返回更新后的全量偏好。用户不存在时抛错。
+ */
+export async function updateReminderPrefs(
+  input: {
+    userId: string;
+    dueSoonReminderEnabled?: boolean;
+    overdueReminderEnabled?: boolean;
+  },
+  client: DbClient = db,
+): Promise<ReminderPrefs> {
+  const patch: Partial<ReminderPrefs> = {};
+  if (input.dueSoonReminderEnabled !== undefined) {
+    patch.dueSoonReminderEnabled = input.dueSoonReminderEnabled;
+  }
+  if (input.overdueReminderEnabled !== undefined) {
+    patch.overdueReminderEnabled = input.overdueReminderEnabled;
+  }
+
+  // 没有任何键需要更新：不执行空 SET，直接返回当前值（仍校验用户存在）。
+  if (Object.keys(patch).length === 0) {
+    return getReminderPrefs(input.userId, client);
+  }
+
+  const [row] = await client
+    .update(users)
+    .set(patch)
+    .where(eq(users.id, input.userId))
+    .returning(reminderPrefsColumns);
+
+  if (!row) throw new Error("user not found");
+  return row;
+}
