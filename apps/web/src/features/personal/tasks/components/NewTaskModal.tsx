@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Form, Input, Modal, Select, message } from "antd";
+import { App, Alert, Form, Input, Modal, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -45,6 +45,7 @@ export function NewTaskModal({
   onSuccess,
   onCancel,
 }: NewTaskModalProps) {
+  const { message } = App.useApp();
   const t = useTranslations("tasks");
   const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();

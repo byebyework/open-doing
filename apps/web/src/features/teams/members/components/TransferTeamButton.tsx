@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Select, message } from "antd";
+import { App, Button, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -29,6 +29,7 @@ export interface TransferTeamButtonProps {
  * 团队内容不迁移，设置页刷新后按新角色渲染。
  */
 export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

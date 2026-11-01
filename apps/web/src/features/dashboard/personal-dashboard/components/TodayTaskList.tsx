@@ -1,6 +1,6 @@
 "use client";
 
-import { Checkbox, message } from "antd";
+import { App, Checkbox } from "antd";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -122,6 +122,7 @@ export function TodayTaskList({
   overdueCount,
   todayCount,
 }: TodayTaskListProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("dashboard");
   const tDate = useTranslations("date");

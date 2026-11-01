@@ -1,7 +1,7 @@
 "use client";
 
 import type { Project } from "@open-doing/types";
-import { Alert, Button, Form, Input, message } from "antd";
+import { App, Alert, Button, Form, Input } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -151,6 +151,7 @@ export function TeamProjectCreatePanel({
   teamId: string;
   teamSlug: string;
 }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("projects");
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { message } from "antd";
+import { App } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
@@ -66,6 +66,7 @@ export function TaskDetailClient({
   backLabel,
   currentUserId,
 }: TaskDetailClientProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");

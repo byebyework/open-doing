@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Form, Input, Modal, message } from "antd";
+import { App, Alert, Form, Input, Modal } from "antd";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -46,6 +46,7 @@ export function PersonalProjectFormModal({
   onSuccess,
   onCancel,
 }: PersonalProjectFormModalProps) {
+  const { message } = App.useApp();
   const t = useTranslations("personal");
   const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();

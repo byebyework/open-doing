@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Form, Input, message } from "antd";
+import { App, Alert, Button, Form, Input } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -21,6 +21,7 @@ interface JoinValues {
  * 错误按字段落回输入框 / 表单顶部，成功后重置输入并引导到邀请页查看进度。
  */
 export function JoinByCodeForm() {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

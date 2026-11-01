@@ -1,6 +1,6 @@
 "use client";
 
-import { message, Switch } from "antd";
+import { App, Switch } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -23,6 +23,7 @@ export interface ReminderToggleListProps {
  * 建立在新对象身份上，保证刷新后的服务端值与本地 state 一致。
  */
 export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
+  const { message } = App.useApp();
   const t = useTranslations("settings");
   const router = useRouter();
   const [current, setCurrent] = useState(prefs);

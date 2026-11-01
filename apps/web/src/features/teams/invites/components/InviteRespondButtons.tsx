@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import { respondToInviteAction } from "../actions";
  * action 返回的 form 错误，而不是报错页。
  */
 export function InviteRespondButtons({ inviteId }: { inviteId: string }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

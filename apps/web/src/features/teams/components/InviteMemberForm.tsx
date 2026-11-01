@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Form, Input, message } from "antd";
+import { App, Alert, Button, Form, Input } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -18,6 +18,7 @@ interface InviteValues {
  * 校验与错误文案（「UID 无效」等）在 server action。
  */
 export function InviteMemberForm({ teamId }: { teamId: string }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message, Switch, Typography } from "antd";
+import { App, Button, Switch, Typography } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -28,6 +28,7 @@ export function JoinCodeSettings({
   joinCode,
   joinCodeEnabled,
 }: JoinCodeSettingsProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

@@ -14,7 +14,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, Select, message } from "antd";
+import { App, Button, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -67,6 +67,7 @@ function TeamTaskStatusButtons({
   editable: boolean;
   onChanged: () => void;
 }) {
+  const { message } = App.useApp();
   const tStatus = useTranslations("status");
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -320,6 +321,7 @@ export function TeamKanban({
   role,
   actorId,
 }: TeamKanbanProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");

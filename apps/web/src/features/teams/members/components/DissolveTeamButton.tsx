@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Input, message } from "antd";
+import { App, Alert, Button, Input } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -17,6 +17,7 @@ import { dissolveTeamAction } from "../actions";
  * 被级联删除，因此离开已不存在的团队页。
  */
 export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; teamName: string }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

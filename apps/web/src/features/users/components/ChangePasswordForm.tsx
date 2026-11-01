@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Form, Input, message } from "antd";
+import { App, Alert, Button, Form, Input } from "antd";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -21,6 +21,7 @@ interface ChangePasswordValues {
  * 表单级错误显示在顶部。修改成功后不登出（无状态会话保持不变）。
  */
 export function ChangePasswordForm() {
+  const { message } = App.useApp();
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
   const [form] = Form.useForm<ChangePasswordValues>();

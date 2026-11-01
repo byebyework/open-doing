@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -14,6 +14,7 @@ import { rescindInviteAction } from "../invites/actions";
  * 成功后刷新服务端数据更新待处理列表。
  */
 export function RescindInviteButton({ inviteId, teamId }: { inviteId: string; teamId: string }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

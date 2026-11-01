@@ -1,6 +1,6 @@
 "use client";
 
-import { Select, message } from "antd";
+import { App, Select } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
@@ -28,6 +28,7 @@ const LANGUAGE_OPTIONS = [
  * （用户可能在看不懂当前界面语言时需要找到这个入口）。
  */
 export function LanguageSetting({ language }: LanguageSettingProps) {
+  const { message } = App.useApp();
   const t = useTranslations("settings");
   const router = useRouter();
   const [current, setCurrent] = useState<AppLocale>(language);

@@ -1,6 +1,6 @@
 "use client";
 
-import { Alert, Button, Form, Input, message } from "antd";
+import { App, Alert, Button, Form, Input } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -17,6 +17,7 @@ interface RenameTeamValues {
  * slug 不随改名变化；校验与权限在 server action 端再校验。
  */
 export function RenameTeamForm({ teamId, name }: { teamId: string; name: string }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

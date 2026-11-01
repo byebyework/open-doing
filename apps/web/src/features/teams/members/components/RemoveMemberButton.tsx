@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -27,6 +27,7 @@ export function RemoveMemberButton({
   targetUserId,
   targetUsername,
 }: RemoveMemberButtonProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

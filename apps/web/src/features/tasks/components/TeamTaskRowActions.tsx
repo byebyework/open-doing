@@ -1,7 +1,7 @@
 "use client";
 
 import type { TaskStatus } from "@open-doing/types";
-import { Button, Dropdown, message, type MenuProps } from "antd";
+import { App, Button, Dropdown, type MenuProps } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -65,6 +65,7 @@ export function TeamTaskRowActions({
   detailHref,
   onChanged,
 }: TeamTaskRowActionsProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");

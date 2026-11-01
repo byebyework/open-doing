@@ -15,7 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
-import { Button, Tag, message } from "antd";
+import { App, Button, Tag } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -248,6 +248,7 @@ function SpaceStatusButtons({
   editable: boolean;
   onChanged: () => void;
 }) {
+  const { message } = App.useApp();
   const t = useTranslations("kanban");
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -634,6 +635,7 @@ export function SpaceKanban({
   taskHrefs,
   expandFilter,
 }: SpaceKanbanProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");

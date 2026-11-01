@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -16,6 +16,7 @@ import { leaveTeamAction } from "../actions";
  * 退出后任务保留、assignee 置空；成功后跳转个人空间首页（原团队页已无权访问）。
  */
 export function LeaveTeamButton({ teamSlug }: { teamSlug: string }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

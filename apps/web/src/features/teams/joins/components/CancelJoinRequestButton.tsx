@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -22,6 +22,7 @@ export function CancelJoinRequestButton({
   requestId: string;
   teamName: string;
 }) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");

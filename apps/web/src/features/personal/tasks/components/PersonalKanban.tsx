@@ -14,7 +14,7 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -233,6 +233,7 @@ export function PersonalKanban({
   projectId,
   projects,
 }: PersonalKanbanProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");

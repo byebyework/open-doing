@@ -1,7 +1,7 @@
 "use client";
 
 import type { Subtask, Task, TaskStatus } from "@open-doing/types";
-import { Button, Dropdown, Segmented, message, type MenuProps } from "antd";
+import { App, Button, Dropdown, Segmented, type MenuProps } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -43,6 +43,7 @@ function firstError(errors: Record<string, string>, fallback: string): string {
 
 /** 行内状态切换的共享逻辑（列表下拉与看板移动端按钮共用）。 */
 function useStatusChange(task: ProjectTask, onChanged: () => void) {
+  const { message } = App.useApp();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
   const [pending, setPending] = useState<TaskStatus | null>(null);
@@ -85,6 +86,7 @@ export interface TaskRowActionsProps {
  * 原型表格没有操作列，因此入口收在任务标题右侧，不额外占一列。
  */
 export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");

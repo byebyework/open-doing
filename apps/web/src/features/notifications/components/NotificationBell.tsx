@@ -1,16 +1,7 @@
 "use client";
 
 import type { NotificationType } from "@open-doing/types";
-import {
-  Badge,
-  Button,
-  Empty,
-  Popover,
-  Typography,
-  message,
-  theme,
-  type GlobalToken,
-} from "antd";
+import { App, Badge, Button, Empty, Popover, Typography, theme, type GlobalToken,  } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
 import { useMessages, useTranslations } from "next-intl";
@@ -216,6 +207,7 @@ function NotificationTypeIcon({ type }: { type: NotificationType }) {
  * 已知偏差：原型底部的「查看全部通知」链接在 v1 没有独立通知页，按计划省略。
  */
 export function NotificationBell() {
+  const { message } = App.useApp();
   const router = useRouter();
   const { token } = theme.useToken();
   const t = useTranslations("notifications");

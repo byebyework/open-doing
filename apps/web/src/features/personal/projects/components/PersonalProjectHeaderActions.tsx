@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message } from "antd";
+import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -24,6 +24,7 @@ export interface PersonalProjectHeaderActionsProps {
 export function PersonalProjectHeaderActions({
   project,
 }: PersonalProjectHeaderActionsProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("personal");
   const tCommon = useTranslations("common");

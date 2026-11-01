@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, message, Tag } from "antd";
+import { App, Button, Tag } from "antd";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -39,6 +39,7 @@ export interface JoinRequestListProps {
  * 一条申请在提交中，其余按钮禁用，避免重复/并发提交。
  */
 export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
+  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
