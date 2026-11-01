@@ -99,6 +99,23 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
     expect(second.slug).toBe("growth-squad-2");
   });
 
+  it("保留字 personal：团队名 Personal 落到 personal-2，不占用空间保留 slug", async () => {
+    const owner = await createUser(db, "alice");
+
+    const team = await createTeam({ name: "Personal" }, owner.id, db);
+
+    expect(team.slug).not.toBe("personal");
+    expect(team.slug).toBe("personal-2");
+  });
+
+  it("普通团队名不受保留字影响：slug 仍为名称推导结果", async () => {
+    const owner = await createUser(db, "alice");
+
+    const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
+
+    expect(team.slug).toBe("growth-squad");
+  });
+
   it("纯中文团队名：slug 回退为 team 并处理重名", async () => {
     const owner = await createUser(db, "alice");
 

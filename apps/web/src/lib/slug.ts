@@ -1,3 +1,11 @@
+/**
+ * 统一空间路由 `/space/{spaceRef}` 中保留给非团队空间的 spaceRef。
+ *
+ * `personal` 是个人空间的固定 spaceRef（M2 统一空间路由树约定）；
+ * 团队 slug 生成时必须跳过这些值，避免团队空间与个人空间路径冲突。
+ */
+export const RESERVED_SPACE_SLUGS: readonly string[] = ["personal"];
+
 /** 团队 slug 片段的最大长度。 */
 const SLUG_MAX_LENGTH = 40;
 

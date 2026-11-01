@@ -2,7 +2,7 @@ import { asc, eq, like } from "drizzle-orm";
 import type { Team, TeamMembership } from "@open-doing/types";
 
 import { generateJoinCode } from "@/lib/join-code";
-import { slugWithCounter, slugifyName } from "@/lib/slug";
+import { RESERVED_SPACE_SLUGS, slugWithCounter, slugifyName } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
 import { teamMemberships, teams, users } from "@/server/db/schema";
@@ -75,7 +75,8 @@ function validateName(name: unknown): string {
  * 在给定 client 内为 base slug 找一个空闲计数后缀。
  *
  * 先按 `like(base + '%')` 扫描已有 slug 取空闲计数，再由外层
- * 唯一约束 23505 重试兜底并发竞态。
+ * 唯一约束 23505 重试兜底并发竞态。`RESERVED_SPACE_SLUGS`
+ * （如 `personal`）视同已占用，团队不会占用空间路由保留字。
  */
 async function nextFreeSlug(base: string, client: DbClient): Promise<string> {
   const rows = await client
@@ -86,7 +87,9 @@ async function nextFreeSlug(base: string, client: DbClient): Promise<string> {
   const taken = new Set(rows.map((row) => row.slug));
   for (let n = 1; n <= MAX_SLUG_SCAN; n += 1) {
     const candidate = slugWithCounter(base, n);
-    if (!taken.has(candidate)) return candidate;
+    if (!taken.has(candidate) && !RESERVED_SPACE_SLUGS.includes(candidate)) {
+      return candidate;
+    }
   }
 
   throw new TeamError("SLUG_FAILED", "团队地址生成失败，请稍后重试", "form");
