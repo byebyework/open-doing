@@ -2,6 +2,7 @@ import type { User } from "@open-doing/types";
 import { SignJWT, jwtVerify } from "jose";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { cache } from "react";
 
 import { getUserById } from "@/features/users/service";
 
@@ -101,13 +102,16 @@ export async function clearSession(): Promise<void> {
   });
 }
 
-/** 当前登录用户；未登录或用户已被删除返回 null。 */
-export async function getCurrentUser(): Promise<User | null> {
+/**
+ * 当前登录用户；未登录或用户已被删除返回 null。
+ * 按请求缓存：同一请求内 requireUser / i18n locale 解析等多次调用只查一次库。
+ */
+export const getCurrentUser = cache(async (): Promise<User | null> => {
   const userId = await getSessionUserId();
   if (!userId) return null;
 
   return getUserById(userId);
-}
+});
 
 /** 受保护页面/布局使用：未登录重定向到 /login。 */
 export async function requireUser(): Promise<User> {

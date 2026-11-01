@@ -104,6 +104,23 @@ export async function getReminderPrefs(
 }
 
 /**
+ * 读取用户界面语言（仅单列，不查整行）。
+ * i18n 请求解析使用：领域 User（packages/types）不含 language，
+ * 故不通过 toUser 映射，单独提供轻量查询。用户不存在返回 null。
+ */
+export async function getUserLanguage(
+  userId: string,
+  client: DbClient = db,
+): Promise<AppLocale | null> {
+  const [row] = await client
+    .select({ language: users.language })
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+  return (row?.language as AppLocale | undefined) ?? null;
+}
+
+/**
  * 更新用户界面语言并返回持久化值（账号级偏好，语言切换 Server Action 使用）。
  * 调用方（action 层）负责先做合法性校验；用户不存在时抛 DomainError。
  */
