@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, Form, Input, Modal, Select, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { createTeamTaskAction } from "../actions";
@@ -59,6 +60,8 @@ export function NewTeamTaskModal({
   onSuccess,
   onCancel,
 }: NewTeamTaskModalProps) {
+  const t = useTranslations("tasks");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -111,10 +114,10 @@ export function NewTeamTaskModal({
         return;
       }
 
-      message.success("任务已创建");
+      message.success(t("taskCreated"));
       onSuccess();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -123,9 +126,9 @@ export function NewTeamTaskModal({
   return (
     <Modal
       open={open}
-      title="新建任务"
-      okText="创建任务"
-      cancelText="取消"
+      title={t("newTaskTitle")}
+      okText={t("okCreateTask")}
+      cancelText={tCommon("cancel")}
       confirmLoading={submitting}
       onOk={() => form.submit()}
       onCancel={onCancel}
@@ -158,20 +161,20 @@ export function NewTeamTaskModal({
         disabled={submitting}
       >
         <Form.Item
-          label="标题"
+          label={t("title")}
           name="title"
           rules={[
-            { required: true, whitespace: true, message: "请输入任务标题" },
-            { max: 200, message: "任务标题不能超过 200 个字符" },
+            { required: true, whitespace: true, message: t("titleRequired") },
+            { max: 200, message: t("titleTooLong", { max: 200 }) },
           ]}
         >
-          <Input placeholder="任务要做什么？" maxLength={200} autoFocus />
+          <Input placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
         </Form.Item>
 
         <Form.Item
-          label="所属项目"
+          label={t("projectLabel")}
           name="projectId"
-          rules={[{ required: true, message: "请选择所属项目" }]}
+          rules={[{ required: true, message: t("projectRequired") }]}
         >
           <Select
             options={projects.map((project) => ({
@@ -182,27 +185,27 @@ export function NewTeamTaskModal({
         </Form.Item>
 
         <Form.Item
-          label="责任人"
+          label={t("assigneeLabel")}
           name="assigneeId"
-          help="可指派给团队内任意成员"
+          help={t("assigneeHelp")}
         >
           <Select
             options={members.map((member) => ({
               value: member.id,
               label:
                 member.id === defaultAssigneeId
-                  ? `${member.name}（我）`
+                  ? t("memberSelf", { name: member.name })
                   : member.name,
             }))}
           />
         </Form.Item>
 
-        <Form.Item label="截止日期" name="dueDate">
+        <Form.Item label={t("dueDateLabel")} name="dueDate">
           <Input type="date" style={{ maxWidth: 220 }} />
         </Form.Item>
 
-        <Form.Item label="描述" name="description">
-          <Input.TextArea rows={4} placeholder="补充背景、验收标准…" />
+        <Form.Item label={t("descriptionLabel")} name="description">
+          <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} />
         </Form.Item>
       </Form>
     </Modal>

@@ -3,6 +3,7 @@
 import type { TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import { Button, Pagination, Select } from "antd";
+import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
@@ -18,7 +19,7 @@ import { teamTaskHref } from "@/lib/routes";
 import type { TeamTaskRow } from "../service";
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
 import {
-  TEAM_TASK_STATUS_LABEL,
+  TEAM_TASK_STATUS_KEYS,
   TEAM_TASK_STATUS_ORDER,
   TeamTaskRowActions,
 } from "./TeamTaskRowActions";
@@ -34,20 +35,6 @@ type SortKey = "dueDate" | "status" | "createdAt";
 
 /** 每页条数（原型 9 行密度）。 */
 const PAGE_SIZE = 9;
-
-const STATUS_OPTIONS: { value: StatusFilter; label: string }[] = [
-  { value: "all", label: "状态：全部" },
-  ...TEAM_TASK_STATUS_ORDER.map((status) => ({
-    value: status,
-    label: TEAM_TASK_STATUS_LABEL[status],
-  })),
-];
-
-const SORT_OPTIONS: { value: SortKey; label: string }[] = [
-  { value: "dueDate", label: "排序：按截止日期" },
-  { value: "status", label: "按状态" },
-  { value: "createdAt", label: "按创建时间" },
-];
 
 /** 无截止日期的任务排在最后。 */
 const NO_DUE_DATE = "9999-12-31";
@@ -117,6 +104,8 @@ export function TeamProjectTaskTable({
   projectSlug,
 }: TeamProjectTaskTableProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
   const [sort, setSort] = useState<SortKey>("dueDate");
@@ -124,12 +113,12 @@ export function TeamProjectTaskTable({
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   const assigneeOptions = [
-    { value: "all" as AssigneeFilter, label: "责任人：全部" },
+    { value: "all" as AssigneeFilter, label: t("filterAllAssignee") },
     ...members.map((member) => ({
       value: member.id as AssigneeFilter,
       label: member.name,
     })),
-    { value: "unassigned" as AssigneeFilter, label: "未指派" },
+    { value: "unassigned" as AssigneeFilter, label: t("unassigned") },
   ];
 
   const assigneeNames = useMemo(() => {
@@ -175,18 +164,24 @@ export function TeamProjectTaskTable({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select<StatusFilter>
           size="small"
-          aria-label="按状态筛选"
+          aria-label={t("filterByStatusAria")}
           value={statusFilter}
           onChange={(value) => {
             setStatusFilter(value);
             resetPage();
           }}
-          options={STATUS_OPTIONS}
+          options={[
+            { value: "all", label: t("filterAllStatus") },
+            ...TEAM_TASK_STATUS_ORDER.map((status) => ({
+              value: status,
+              label: tStatus(TEAM_TASK_STATUS_KEYS[status]),
+            })),
+          ]}
           style={{ width: 120 }}
         />
         <Select<AssigneeFilter>
           size="small"
-          aria-label="按责任人筛选"
+          aria-label={t("filterByAssigneeAria")}
           value={assigneeFilter}
           onChange={(value) => {
             setAssigneeFilter(value);
@@ -197,34 +192,38 @@ export function TeamProjectTaskTable({
         />
         <Select<SortKey>
           size="small"
-          aria-label="排序方式"
+          aria-label={t("sortByAria")}
           value={sort}
           onChange={(value) => {
             setSort(value);
             resetPage();
           }}
-          options={SORT_OPTIONS}
+          options={[
+            { value: "dueDate", label: t("sortDueDate") },
+            { value: "status", label: t("sortStatus") },
+            { value: "createdAt", label: t("sortCreatedAt") },
+          ]}
           style={{ width: 150 }}
         />
         <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
-          共 {visibleTasks.length} 条
+          {t("totalCount", { count: visibleTasks.length })}
         </span>
       </div>
 
       <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white px-4 py-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:px-5">
         {isEmptyProject ? (
           <EmptyState
-            title="暂无任务"
-            description="创建第一个任务，开始跟踪团队进展。"
+            title={t("emptyTasksTitle")}
+            description={t("emptyTasksTeamHint")}
             action={
               <Button type="primary" onClick={() => setNewTaskOpen(true)}>
-                ＋ 新建任务
+                {t("newTaskButton")}
               </Button>
             }
           />
         ) : visibleTasks.length === 0 ? (
           <p className="py-10 text-center text-[13px] text-[#9aa0a6]">
-            没有符合筛选条件的任务
+            {t("filteredEmpty")}
           </p>
         ) : (
           // 窄屏：表格在卡片内横向滚动，页面本身不横向溢出。
@@ -232,7 +231,13 @@ export function TeamProjectTaskTable({
             <table className="w-full min-w-[860px] border-collapse text-left text-[13.5px]">
               <thead>
                 <tr>
-                  {["任务", "状态", "责任人", "进度", "截止日期"].map(
+                  {[
+                    t("colTask"),
+                    t("statusLabel"),
+                    t("assigneeLabel"),
+                    t("colProgress"),
+                    t("dueDateLabel"),
+                  ].map(
                     (label) => (
                       <th
                         key={label}
@@ -305,7 +310,7 @@ export function TeamProjectTaskTable({
                           </span>
                         ) : (
                           <span className="text-[12.5px] text-[#9aa0a6]">
-                            未指派
+                            {t("unassigned")}
                           </span>
                         )}
                       </td>
@@ -321,13 +326,16 @@ export function TeamProjectTaskTable({
                               <ProgressBar value={progress} />
                             </div>
                             <span className="text-[12px] text-[#9aa0a6]">
-                              {completedCount}/{task.subtasks.length} 子任务 ·{" "}
-                              {Math.round(progress * 100)}%
+                              {t("tableSubtasksProgress", {
+                                completed: completedCount,
+                                total: task.subtasks.length,
+                                percent: Math.round(progress * 100),
+                              })}
                             </span>
                           </div>
                         ) : (
                           <span className="text-[12px] text-[#9aa0a6]">
-                            无子任务，按状态计 {Math.round(progress * 100)}%
+                            {t("noSubtasksProgress", { percent: Math.round(progress * 100) })}
                           </span>
                         )}
                       </td>

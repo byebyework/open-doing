@@ -1,6 +1,7 @@
 "use client";
 
 import { message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
 import { TaskDetailView } from "@/components/ui/task-detail/TaskDetailView";
@@ -21,9 +22,9 @@ import {
   updateTeamTaskAction,
 } from "../actions";
 
-/** Server Action 失败时取第一条可展示文案。 */
-function firstError(errors: Record<string, string>): string {
-  return errors.form ?? Object.values(errors)[0] ?? "操作失败，请稍后重试";
+/** Server Action 失败时取第一条可展示文案（兜底文案由调用方按语言传入）。 */
+function firstError(errors: Record<string, string>, fallback: string): string {
+  return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
 /**
@@ -39,25 +40,6 @@ class DetailActionError extends Error {
   }
 }
 
-/** 执行 Server Action：失败统一 `message.error`，并向调用方抛出。 */
-async function runAction<T>(
-  operation: () => Promise<ActionResult<T>>,
-): Promise<void> {
-  let result: ActionResult<T>;
-
-  try {
-    result = await operation();
-  } catch {
-    message.error("网络异常，请稍后重试");
-    throw new DetailActionError("网络异常，请稍后重试");
-  }
-
-  if (!result.ok) {
-    const text = firstError(result.errors);
-    message.error(text);
-    throw new DetailActionError(text);
-  }
-}
 
 /** 团队任务详情页 client 包装件入参。 */
 export interface TeamTaskDetailClientProps {
@@ -90,6 +72,28 @@ export function TeamTaskDetailClient({
   assigneeOptions,
 }: TeamTaskDetailClientProps) {
   const router = useRouter();
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
+
+  /** 执行 Server Action：失败统一 `message.error`，并向调用方抛出。 */
+  async function runAction<T>(
+    operation: () => Promise<ActionResult<T>>,
+  ): Promise<void> {
+    let result: ActionResult<T>;
+
+    try {
+      result = await operation();
+    } catch {
+      message.error(tCommon("networkError"));
+      throw new DetailActionError(tCommon("networkError"));
+    }
+
+    if (!result.ok) {
+      const text = firstError(result.errors, tErrors("operationFailed"));
+      message.error(text);
+      throw new DetailActionError(text);
+    }
+  }
 
   const onAction: TaskDetailViewActions = {
     toggleSubtask: async (subtaskId, completed) => {

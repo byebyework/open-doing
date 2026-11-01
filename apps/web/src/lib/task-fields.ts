@@ -40,11 +40,17 @@ export function validateTaskTitle(
     label === "任务" ? TASK_TITLE_MAX_LENGTH : SUBTASK_TITLE_MAX_LENGTH;
   const title = typeof value === "string" ? value.trim() : "";
 
+  const taskKey = label === "任务";
   if (!title) {
-    throw new DomainError(`请输入${label}标题`, "title");
+    throw new DomainError(`请输入${label}标题`, "title", {
+      key: taskKey ? "titleRequired" : "subtaskTitleRequired",
+    });
   }
   if (title.length > max) {
-    throw new DomainError(`${label}标题不能超过 ${max} 个字符`, "title");
+    throw new DomainError(`${label}标题不能超过 ${max} 个字符`, "title", {
+      key: taskKey ? "titleTooLong" : "subtaskTitleTooLong",
+      params: { max },
+    });
   }
 
   return title;
@@ -65,13 +71,13 @@ export function normalizeTaskDescription(value: unknown): string | null {
 export function validateTaskDueDate(value: unknown): string | null {
   if (value === undefined || value === null) return null;
   if (typeof value !== "string") {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate");
+    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
   }
 
   const dueDate = value.trim();
   if (!dueDate) return null;
   if (!DUE_DATE_PATTERN.test(dueDate)) {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate");
+    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
   }
 
   const [year, month, day] = dueDate.split("-").map(Number);
@@ -82,7 +88,7 @@ export function validateTaskDueDate(value: unknown): string | null {
     parsed.getUTCDate() === day;
 
   if (!isRealDate) {
-    throw new DomainError("截止日期不是有效日期", "dueDate");
+    throw new DomainError("截止日期不是有效日期", "dueDate", { key: "dueDateInvalid" });
   }
 
   return dueDate;
@@ -94,7 +100,7 @@ export function validateTaskStatus(value: unknown): TaskStatus {
     return value as TaskStatus;
   }
 
-  throw new DomainError("任务状态不合法", "status");
+  throw new DomainError("任务状态不合法", "status", { key: "statusInvalid" });
 }
 
 /** 评论内容去空白后校验 1–2000 字。 */
@@ -102,12 +108,13 @@ export function validateCommentContent(value: unknown): string {
   const content = typeof value === "string" ? value.trim() : "";
 
   if (!content) {
-    throw new DomainError("请输入评论内容", "content");
+    throw new DomainError("请输入评论内容", "content", { key: "commentRequired" });
   }
   if (content.length > COMMENT_MAX_LENGTH) {
     throw new DomainError(
       `评论不能超过 ${COMMENT_MAX_LENGTH} 个字符`,
       "content",
+      { key: "commentTooLong", params: { max: COMMENT_MAX_LENGTH } },
     );
   }
 

@@ -1,7 +1,9 @@
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
 
+import zh from "@/i18n/messages/zh.json";
 import type { TeamRole } from "@/features/teams/permissions";
 
 import type { TeamTaskRow } from "../service";
@@ -37,20 +39,25 @@ function makeTask(overrides: Partial<TeamTaskRow> = {}): TeamTaskRow {
  */
 function render(role: TeamRole, task: TeamTaskRow): string {
   return renderToStaticMarkup(
-    createElement(TeamKanban, {
-      teamId: "55555555-5555-5555-5555-555555555555",
-      teamSlug: "smoke-squad",
-      tasks: [task],
-      members: [
-        { id: ASSIGNEE_ID, name: "member_smoke" },
-        { id: OWNER_ID, name: "owner_smoke" },
-      ],
-      today: "2026-10-23",
-      projectId: "22222222-2222-2222-2222-222222222222",
-      projects: [{ id: "22222222-2222-2222-2222-222222222222", name: "官网改版" }],
-      role,
-      actorId: OWNER_ID,
-      projectSlug: "project",
+    createElement(NextIntlClientProvider, {
+      locale: "zh",
+      messages: zh,
+      now: new Date("2026-10-23T00:00:00.000Z"),
+      children: createElement(TeamKanban, {
+        teamId: "55555555-5555-5555-5555-555555555555",
+        teamSlug: "smoke-squad",
+        tasks: [task],
+        members: [
+          { id: ASSIGNEE_ID, name: "member_smoke" },
+          { id: OWNER_ID, name: "owner_smoke" },
+        ],
+        today: "2026-10-23",
+        projectId: "22222222-2222-2222-2222-222222222222",
+        projects: [{ id: "22222222-2222-2222-2222-222222222222", name: "官网改版" }],
+        role,
+        actorId: OWNER_ID,
+        projectSlug: "project",
+      }),
     }),
   );
 }

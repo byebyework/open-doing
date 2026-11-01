@@ -104,12 +104,12 @@ async function requireMember(
   client: DbClient,
 ): Promise<TeamRole> {
   if (!isUuid(teamId) || !isUuid(actorId)) {
-    throw new DomainError("团队不存在或无权访问");
+    throw new DomainError("团队不存在或无权访问", undefined, { key: "teamNotFound" });
   }
 
   const membership = await getMembership(teamId, actorId, client);
   if (!membership) {
-    throw new DomainError("团队不存在或无权访问");
+    throw new DomainError("团队不存在或无权访问", undefined, { key: "teamNotFound" });
   }
 
   return membership.role;
@@ -150,7 +150,7 @@ async function requireTeamTask(
   const found = await findTeamTaskRow(teamId, taskId, client);
 
   if (!found) {
-    throw new DomainError("任务不存在或无权访问");
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 
   return { task: found.task, projectId: found.projectId, role };
@@ -163,12 +163,12 @@ async function requireAssignableMember(
   client: DbClient,
 ): Promise<void> {
   if (!isUuid(userId)) {
-    throw new DomainError("只能指派给团队内成员", "assigneeId");
+    throw new DomainError("只能指派给团队内成员", "assigneeId", { key: "assigneeNotMember" });
   }
 
   const membership = await getMembership(teamId, userId, client);
   if (!membership) {
-    throw new DomainError("只能指派给团队内成员", "assigneeId");
+    throw new DomainError("只能指派给团队内成员", "assigneeId", { key: "assigneeNotMember" });
   }
 }
 
@@ -197,7 +197,7 @@ async function requireTeamProject(
   client: DbClient,
 ): Promise<void> {
   if (!isUuid(projectId)) {
-    throw new DomainError("项目不存在或无权访问", "projectId");
+    throw new DomainError("项目不存在或无权访问", "projectId", { key: "projectNotFound" });
   }
 
   const [row] = await client
@@ -207,7 +207,7 @@ async function requireTeamProject(
     .limit(1);
 
   if (!row) {
-    throw new DomainError("项目不存在或无权访问", "projectId");
+    throw new DomainError("项目不存在或无权访问", "projectId", { key: "projectNotFound" });
   }
 }
 
@@ -255,7 +255,7 @@ export async function createTeamTask(
       .returning();
 
     if (!row) {
-      throw new DomainError("任务创建失败，请稍后重试");
+      throw new DomainError("任务创建失败，请稍后重试", undefined, { key: "taskCreateFailed" });
     }
 
     if (assigneeId !== actorId) {
@@ -385,7 +385,7 @@ export async function updateTeamTask(
       .returning();
 
     if (!row) {
-      throw new DomainError("任务不存在或无权访问");
+      throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
     }
 
     if (nextAssigneeId !== undefined && nextAssigneeId !== actorId) {
@@ -440,7 +440,7 @@ export async function deleteTeamTask(
     .returning({ id: tasks.id });
 
   if (!row) {
-    throw new DomainError("任务不存在或无权访问");
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 }
 
@@ -466,7 +466,7 @@ export async function addTeamSubtask(
     .returning();
 
   if (!row) {
-    throw new DomainError("子任务创建失败，请稍后重试");
+    throw new DomainError("子任务创建失败，请稍后重试", undefined, { key: "subtaskCreateFailed" });
   }
 
   return toSubtask(row);
@@ -492,7 +492,7 @@ export async function removeTeamSubtask(
   });
 
   if (!isUuid(subtaskId)) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
   const [row] = await client
@@ -501,7 +501,7 @@ export async function removeTeamSubtask(
     .returning({ id: subtasks.id });
 
   if (!row) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 }
 
@@ -530,7 +530,7 @@ export async function toggleTeamSubtask(
   });
 
   if (!isUuid(subtaskId)) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
   const [row] = await client
@@ -543,7 +543,7 @@ export async function toggleTeamSubtask(
     .returning();
 
   if (!row) {
-    throw new DomainError("子任务不存在或无权访问");
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
   return toSubtask(row);
@@ -558,7 +558,7 @@ export async function addTeamComment(
   const existing = await requireTeamTask(teamId, taskId, actorId, client);
 
   if (!canComment(existing.role)) {
-    throw new DomainError("团队不存在或无权访问");
+    throw new DomainError("团队不存在或无权访问", undefined, { key: "teamNotFound" });
   }
 
   const content = validateCommentContent(input?.content);
@@ -571,7 +571,7 @@ export async function addTeamComment(
       .returning();
 
     if (!row) {
-      throw new DomainError("评论创建失败，请稍后重试");
+      throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
     }
 
     if (assigneeId !== null && assigneeId !== actorId) {
@@ -603,7 +603,7 @@ export async function deleteTeamComment(
   await requireTeamTask(teamId, taskId, actorId, client);
 
   if (!isUuid(commentId)) {
-    throw new DomainError("评论不存在或无权删除");
+    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 
   const [row] = await client
@@ -618,7 +618,7 @@ export async function deleteTeamComment(
     .returning({ id: comments.id });
 
   if (!row) {
-    throw new DomainError("评论不存在或无权删除");
+    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 }
 

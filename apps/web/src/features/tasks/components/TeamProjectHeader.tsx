@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Segmented } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -47,6 +48,7 @@ export function TeamProjectHeader({
   redirectTo,
 }: TeamProjectHeaderProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   return (
@@ -61,8 +63,8 @@ export function TeamProjectHeader({
 
       <Segmented<TeamProjectView>
         options={[
-          { label: "列表", value: "list" },
-          { label: "看板", value: "board" },
+          { label: t("viewList"), value: "list" },
+          { label: t("viewBoard"), value: "board" },
         ]}
         value={view}
         onChange={(nextView) => {
@@ -71,7 +73,7 @@ export function TeamProjectHeader({
       />
 
       <Button type="primary" onClick={() => setNewTaskOpen(true)}>
-        ＋ 新建任务
+        {t("newTaskButton")}
       </Button>
 
       <NewTeamTaskModal

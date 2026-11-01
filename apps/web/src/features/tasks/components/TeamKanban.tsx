@@ -15,6 +15,7 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Button, Select, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
@@ -29,7 +30,7 @@ import { canEditTask } from "../permissions";
 import type { TeamTaskRow } from "../service";
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
 import {
-  TEAM_TASK_STATUS_LABEL,
+  TEAM_TASK_STATUS_KEYS,
   TEAM_TASK_STATUS_ORDER,
   firstActionError,
 } from "./TeamTaskRowActions";
@@ -66,6 +67,9 @@ function TeamTaskStatusButtons({
   editable: boolean;
   onChanged: () => void;
 }) {
+  const tStatus = useTranslations("status");
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
   const [pending, setPending] = useState<TaskStatus | null>(null);
 
   async function change(status: TaskStatus) {
@@ -76,13 +80,13 @@ function TeamTaskStatusButtons({
       const result = await updateTeamTaskAction(task.id, { teamId, status });
 
       if (!result.ok) {
-        message.error(firstActionError(result.errors));
+        message.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -104,7 +108,7 @@ function TeamTaskStatusButtons({
               void change(status);
             }}
           >
-            {TEAM_TASK_STATUS_LABEL[status]}
+            {tStatus(TEAM_TASK_STATUS_KEYS[status])}
           </Button>
         );
       })}
@@ -130,6 +134,7 @@ function TeamKanbanCard({
   editable: boolean;
   onChanged: () => void;
 }) {
+  const t = useTranslations("tasks");
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: task.id, disabled: !draggable });
 
@@ -178,7 +183,7 @@ function TeamKanbanCard({
               <span className="truncate">{assigneeName}</span>
             </span>
           ) : (
-            <span className="text-[12.5px] text-[#9aa0a6]">未指派</span>
+            <span className="text-[12.5px] text-[#9aa0a6]">{t("unassigned")}</span>
           )}
 
           <span className="ml-auto">
@@ -229,12 +234,14 @@ function TeamKanbanColumn({
   onNewTask: () => void;
   onChanged: () => void;
 }) {
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
   const { setNodeRef, isOver } = useDroppable({ id: status });
 
   return (
     <section
       ref={setNodeRef}
-      aria-label={TEAM_TASK_STATUS_LABEL[status]}
+      aria-label={tStatus(TEAM_TASK_STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver
           ? "bg-[#eef0fc] outline outline-2 outline-dashed outline-offset-[-4px] outline-[#7d2ae8]"
@@ -243,7 +250,7 @@ function TeamKanbanColumn({
     >
       <header className="flex items-center gap-2 px-2 pb-3 pt-1">
         <span className="text-[13.5px] font-bold text-[#0e1318]">
-          {TEAM_TASK_STATUS_LABEL[status]}
+          {tStatus(TEAM_TASK_STATUS_KEYS[status])}
         </span>
         <span className="rounded-full bg-[#e8eaed] px-2 py-0.5 text-[11px] font-bold text-[#5f6368]">
           {tasks.length}
@@ -253,7 +260,7 @@ function TeamKanbanColumn({
             type="text"
             size="small"
             className="ml-auto"
-            aria-label="新建任务"
+            aria-label={t("newTaskAria")}
             onClick={onNewTask}
           >
             ＋
@@ -264,7 +271,7 @@ function TeamKanbanColumn({
       <div className="flex flex-col gap-2">
         {tasks.length === 0 ? (
           <p className="rounded-lg border border-dashed border-[#e1e3e6] px-3 py-4 text-center text-[12.5px] text-[#9aa0a6]">
-            暂无任务
+            {t("emptyTasksTitle")}
           </p>
         ) : (
           tasks.map((task) => (
@@ -307,6 +314,10 @@ export function TeamKanban({
   actorId,
 }: TeamKanbanProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
+  const tErrors = useTranslations("errors");
+  const tCommon = useTranslations("common");
   const isDesktop = useIsDesktop();
   const [items, setItems] = useState<TeamTaskRow[]>(tasks);
   const [syncedTasks, setSyncedTasks] = useState<TeamTaskRow[]>(tasks);
@@ -398,7 +409,7 @@ export function TeamKanban({
             item.id === taskId ? { ...item, status: previousStatus } : item,
           ),
         );
-        message.error(firstActionError(result.errors));
+        message.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
@@ -409,17 +420,17 @@ export function TeamKanban({
           item.id === taskId ? { ...item, status: previousStatus } : item,
         ),
       );
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     }
   }
 
   const assigneeOptions = [
-    { value: "all" as AssigneeFilter, label: "责任人：全部" },
+    { value: "all" as AssigneeFilter, label: t("filterAllAssignee") },
     ...members.map((member) => ({
       value: member.id as AssigneeFilter,
       label: member.name,
     })),
-    { value: "unassigned" as AssigneeFilter, label: "未指派" },
+    { value: "unassigned" as AssigneeFilter, label: t("unassigned") },
   ];
 
   return (
@@ -427,28 +438,28 @@ export function TeamKanban({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <Select<StatusFilter>
           size="small"
-          aria-label="按状态筛选"
+          aria-label={t("filterByStatusAria")}
           value={statusFilter}
           onChange={setStatusFilter}
           options={[
-            { value: "all", label: "状态：全部" },
+            { value: "all", label: t("filterAllStatus") },
             ...TEAM_TASK_STATUS_ORDER.map((status) => ({
               value: status,
-              label: TEAM_TASK_STATUS_LABEL[status],
+              label: tStatus(TEAM_TASK_STATUS_KEYS[status]),
             })),
           ]}
           style={{ width: 120 }}
         />
         <Select<AssigneeFilter>
           size="small"
-          aria-label="按责任人筛选"
+          aria-label={t("filterByAssigneeAria")}
           value={assigneeFilter}
           onChange={setAssigneeFilter}
           options={assigneeOptions}
           style={{ width: 130 }}
         />
         <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
-          共 {filtered.length} 条
+          {t("totalCount", { count: filtered.length })}
         </span>
       </div>
 

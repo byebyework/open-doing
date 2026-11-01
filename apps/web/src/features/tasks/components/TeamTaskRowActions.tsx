@@ -2,6 +2,7 @@
 
 import type { TaskStatus } from "@open-doing/types";
 import { Button, Dropdown, message, type MenuProps } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -19,16 +20,22 @@ export const TEAM_TASK_STATUS_ORDER: readonly TaskStatus[] = [
   "done",
 ];
 
-/** 状态的中文文案。 */
-export const TEAM_TASK_STATUS_LABEL: Record<TaskStatus, string> = {
-  todo: "未开始",
-  in_progress: "进行中",
-  done: "已完成",
+/** 状态 -> `status` 命名空间文案 key（渲染处用 tStatus 翻译）。 */
+export const TEAM_TASK_STATUS_KEYS: Record<
+  TaskStatus,
+  "notStarted" | "inProgress" | "completed"
+> = {
+  todo: "notStarted",
+  in_progress: "inProgress",
+  done: "completed",
 };
 
-/** Server Action 失败时取第一条可展示文案。 */
-export function firstActionError(errors: Record<string, string>): string {
-  return errors.form ?? Object.values(errors)[0] ?? "操作失败，请稍后重试";
+/** Server Action 失败时取第一条可展示文案（兜底文案由调用方按语言传入）。 */
+export function firstActionError(
+  errors: Record<string, string>,
+  fallback: string,
+): string {
+  return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
 /** 行内操作入参。 */
@@ -59,6 +66,10 @@ export function TeamTaskRowActions({
   onChanged,
 }: TeamTaskRowActionsProps) {
   const router = useRouter();
+  const t = useTranslations("tasks");
+  const tStatus = useTranslations("status");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
   const [pending, setPending] = useState<TaskStatus | null>(null);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -70,13 +81,13 @@ export function TeamTaskRowActions({
   const items: MenuProps["items"] = [
     ...TEAM_TASK_STATUS_ORDER.map((status) => ({
       key: `status:${status}`,
-      label: `标记为${TEAM_TASK_STATUS_LABEL[status]}`,
+      label: t("markAs", { status: tStatus(TEAM_TASK_STATUS_KEYS[status]) }),
       disabled: !editable || status === task.status,
     })),
     { type: "divider" as const },
-    { key: "edit", label: "编辑" },
+    { key: "edit", label: tCommon("edit") },
     ...(deletable
-      ? [{ key: "delete", label: "删除", danger: true }]
+      ? [{ key: "delete", label: tCommon("delete"), danger: true }]
       : []),
   ];
 
@@ -88,13 +99,13 @@ export function TeamTaskRowActions({
       const result = await updateTeamTaskAction(task.id, { teamId, status });
 
       if (!result.ok) {
-        message.error(firstActionError(result.errors));
+        message.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -121,15 +132,15 @@ export function TeamTaskRowActions({
       const result = await deleteTeamTaskAction({ teamId, taskId: task.id });
 
       if (!result.ok) {
-        message.error(firstActionError(result.errors));
+        message.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
-      message.success("任务已删除");
+      message.success(t("taskDeleted"));
       setDeleteOpen(false);
       onChanged();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -146,7 +157,7 @@ export function TeamTaskRowActions({
         <Button
           type="text"
           size="small"
-          aria-label={`任务「${task.title}」的操作`}
+          aria-label={t("rowActionsAria", { title: task.title })}
           className="shrink-0"
           style={{ color: "#9aa0a6" }}
         >
@@ -166,9 +177,9 @@ export function TeamTaskRowActions({
 
       <ConfirmModal
         open={deleteOpen}
-        title="删除任务"
-        content={`删除后不可恢复，确定删除「${task.title}」吗？`}
-        confirmText="删除"
+        title={t("deleteTask")}
+        content={t("deleteRowConfirm", { title: task.title })}
+        confirmText={tCommon("delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}
