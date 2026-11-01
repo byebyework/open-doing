@@ -183,7 +183,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
       name: /1 项任务没有截止日期/,
     });
     await expect(noDueLink).toBeVisible();
-    await expect(page.getByText("(在 Dashboard 查看)")).toBeVisible();
+    await expect(page.getByText("(在仪表盘查看)")).toBeVisible();
 
     await noDueLink.click();
     await expect(page).toHaveURL(/\/space\/personal\/dashboard$/);
@@ -325,7 +325,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
     // 对照组：owner 能正常打开同一地址。
     await page.goto(`/space/${teamSlug}/calendar`);
     await expect(
-      page.getByRole("heading", { name: "Calendar", level: 1 }),
+      page.getByRole("heading", { name: "日历", level: 1 }),
     ).toBeVisible();
   });
 });

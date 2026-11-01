@@ -470,7 +470,7 @@ test.describe("375px 无横向溢出", () => {
     const readyByRoute: Record<string, (page: Page) => Promise<void>> = {
       "/space/personal/dashboard": async (page) => {
         await expect(
-          page.getByRole("heading", { name: "Dashboard", level: 1 }),
+          page.getByRole("heading", { name: "仪表盘", level: 1 }),
         ).toBeVisible();
         // 统计卡与「今天」列表都是 v1.1 新 Dashboard 的骨架。
         await expect(page.getByText("本周已完成", { exact: true })).toBeVisible();
@@ -524,7 +524,7 @@ test.describe("375px 无横向溢出", () => {
       },
       "/space/[teamSlug]/dashboard（团队 Dashboard）": async (page) => {
         await expect(
-          page.getByRole("heading", { name: "Dashboard", level: 1 }),
+          page.getByRole("heading", { name: "仪表盘", level: 1 }),
         ).toBeVisible();
         await expect(
           page.getByRole("heading", { name: "项目健康度", level: 2 }),

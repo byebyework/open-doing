@@ -49,7 +49,7 @@ test.describe("flow 2: 团队邀请", () => {
       { timeout: 30_000 },
     );
     await expect(
-      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+      page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
 
     // 回到设置页继续发起邀请。
@@ -98,7 +98,7 @@ test.describe("flow 2: 团队邀请", () => {
         { timeout: 30_000 },
       );
       await expect(
-        guestPage.getByRole("heading", { name: "Dashboard", level: 1 }),
+        guestPage.getByRole("heading", { name: "仪表盘", level: 1 }),
       ).toBeVisible();
     } finally {
       await guestContext.close();

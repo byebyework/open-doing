@@ -20,13 +20,14 @@ export async function generateMetadata(
   const { teamSlug } = await props.params;
   const user = await requireUser();
   const t = await getTranslations("meta");
+  const tNav = await getTranslations("nav");
 
   // 非成员不通过标题泄露团队名（页面本身也会 404）。
   const team = await getTeamBySlug(teamSlug);
   const membership = team ? await getMembership(team.id, user.id) : null;
   if (!team || !membership) return { title: t("kanbanTitle") };
 
-  return { title: t("teamModuleTitle", { team: team.name, module: "Kanban" }) };
+  return { title: t("teamModuleTitle", { team: team.name, module: await tNav("kanban") }) };
 }
 
 /**
@@ -52,6 +53,7 @@ export default async function TeamKanbanPage(
 
   const t = await getTranslations("kanban");
   const tDate = await getTranslations("date");
+  const tNav = await getTranslations("nav");
   const user = await requireUser();
 
   // 团队不存在或非成员一律 404，不泄露存在性。
@@ -108,7 +110,7 @@ export default async function TeamKanbanPage(
       <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
         <div className="min-w-0">
           <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-            Kanban
+            {tNav("kanban")}
           </h1>
           <p className="mt-1.5 text-[14px] text-[#5f6368]">
             {t("teamSubtitle")}

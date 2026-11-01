@@ -26,13 +26,14 @@ export async function generateMetadata(
   const { teamSlug } = await props.params;
   const user = await requireUser();
   const t = await getTranslations("meta");
+  const tNav = await getTranslations("nav");
 
   // 非成员不通过标题泄露团队名（页面本身也会 404）。
   const team = await getTeamBySlug(teamSlug);
   const membership = team ? await getMembership(team.id, user.id) : null;
   if (!team || !membership) return { title: t("dashboardTitle") };
 
-  return { title: t("teamModuleTitle", { team: team.name, module: "Dashboard" }) };
+  return { title: t("teamModuleTitle", { team: team.name, module: await tNav("dashboard") }) };
 }
 
 /**
@@ -55,6 +56,7 @@ export default async function TeamDashboardPage(
   if (!team || !membership) notFound();
 
   const t = await getTranslations("dashboard");
+  const tNav = await getTranslations("nav");
   const today = todayInShanghai();
   const overview = await getTeamOverview({
     teamId: team.id,
@@ -66,7 +68,7 @@ export default async function TeamDashboardPage(
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
       <header className="min-w-0">
         <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-          Dashboard
+          {tNav("dashboard")}
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
           {t("teamSubtitle")}

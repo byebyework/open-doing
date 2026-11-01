@@ -63,7 +63,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
     await page.goto("/space/personal/analysis");
 
     await expect(
-      page.getByRole("heading", { name: "Analysis", level: 1 }),
+      page.getByRole("heading", { name: "分析", level: 1 }),
     ).toBeVisible();
 
     // 统计行四张卡；新账号无任务，数值为 0 / —（按时率分母为 0）。
@@ -151,7 +151,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
 
     // 不 500、不报错：静默回退默认范围。
     await expect(
-      page.getByRole("heading", { name: "Analysis", level: 1 }),
+      page.getByRole("heading", { name: "分析", level: 1 }),
     ).toBeVisible();
     await expect(
       page.getByTestId(TEST_IDS.analysis.range(30)),
@@ -217,7 +217,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
     await page.goto(`/space/${teamSlug}/analysis`);
 
     await expect(
-      page.getByRole("heading", { name: "Analysis", level: 1 }),
+      page.getByRole("heading", { name: "分析", level: 1 }),
     ).toBeVisible();
     for (const title of TEAM_SECTION_TITLES) {
       await expect(
@@ -286,7 +286,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
     // 对照组：owner（团队成员）能正常打开同一地址。
     await page.goto(`/space/${teamSlug}/analysis`);
     await expect(
-      page.getByRole("heading", { name: "Analysis", level: 1 }),
+      page.getByRole("heading", { name: "分析", level: 1 }),
     ).toBeVisible();
   });
 });

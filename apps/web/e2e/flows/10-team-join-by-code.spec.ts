@@ -196,7 +196,7 @@ test.describe("flow 10: 凭码加入团队", () => {
         { timeout: 30_000 },
       );
       await expect(
-        guestPage.getByRole("heading", { name: "Dashboard", level: 1 }),
+        guestPage.getByRole("heading", { name: "仪表盘", level: 1 }),
       ).toBeVisible();
     } finally {
       await guestContext.close();

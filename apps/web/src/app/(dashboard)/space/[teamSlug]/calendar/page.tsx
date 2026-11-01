@@ -17,13 +17,14 @@ export async function generateMetadata(
   const { teamSlug } = await props.params;
   const user = await requireUser();
   const t = await getTranslations("meta");
+  const tNav = await getTranslations("nav");
 
   // 非成员不通过标题泄露团队名（页面本身也会 404）。
   const team = await getTeamBySlug(teamSlug);
   const membership = team ? await getMembership(team.id, user.id) : null;
   if (!team || !membership) return { title: t("calendarTitle") };
 
-  return { title: t("teamModuleTitle", { team: team.name, module: "Calendar" }) };
+  return { title: t("teamModuleTitle", { team: team.name, module: await tNav("calendar") }) };
 }
 
 /** `?month=YYYY-MM` 合法格式（月份段 01–12）；其余一律回退当前月。 */
@@ -43,6 +44,7 @@ export default async function TeamCalendarPage(
   const { month: monthParam } = await props.searchParams;
 
   const t = await getTranslations("calendar");
+  const tNav = await getTranslations("nav");
   const user = await requireUser();
 
   // 团队不存在或非成员一律 404，不泄露存在性。
@@ -77,7 +79,7 @@ export default async function TeamCalendarPage(
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <header className="min-w-0">
         <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-          Calendar
+          {tNav("calendar")}
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
           {t("teamSubtitle")}

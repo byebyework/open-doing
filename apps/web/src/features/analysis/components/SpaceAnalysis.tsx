@@ -57,12 +57,13 @@ async function PageHeader({
   basePath: string;
 }) {
   const t = await getTranslations("analysis");
+  const tNav = await getTranslations("nav");
 
   return (
     <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
       <div className="min-w-0">
         <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-          Analysis
+          {tNav("analysis")}
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
           {variant === "personal" ? t("personalSubtitle") : t("teamSubtitle")}

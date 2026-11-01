@@ -40,6 +40,7 @@ function daysBetween(later: string, earlier: string): number {
  */
 export default async function PersonalDashboardPage() {
   const t = await getTranslations("dashboard");
+  const tNav = await getTranslations("nav");
   const user = await requireUser();
   const today = todayInShanghai();
   const weekStart = getWeekStart(today);
@@ -69,7 +70,7 @@ export default async function PersonalDashboardPage() {
       <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
         <div className="min-w-0">
           <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-            Dashboard
+            {tNav("dashboard")}
           </h1>
           <p className="mt-1.5 text-[14px] text-[#5f6368]">
             {t("personalSubtitle")}

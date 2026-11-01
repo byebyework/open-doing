@@ -37,7 +37,7 @@ export async function registerUser(
     timeout: 30_000,
   });
   await expect(
-    page.getByRole("heading", { name: "Dashboard", level: 1 }),
+    page.getByRole("heading", { name: "仪表盘", level: 1 }),
   ).toBeVisible();
 }
 

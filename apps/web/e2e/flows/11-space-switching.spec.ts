@@ -86,7 +86,7 @@ test.describe("flow 11: 空间切换", () => {
       { timeout: 30_000 },
     );
     await expect(
-      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+      page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
     await expect(switcherTrigger(page)).toHaveText(teamName);
 
@@ -97,7 +97,7 @@ test.describe("flow 11: 空间切换", () => {
       timeout: 30_000,
     });
     await expect(
-      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+      page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
     await expect(switcherTrigger(page)).toHaveText(/个人空间/);
 
@@ -124,7 +124,7 @@ test.describe("flow 11: 空间切换", () => {
     const response = await page.goto("/space/personal/dashboard");
     expect(response?.status()).toBe(200);
     await expect(
-      page.getByRole("heading", { name: "Dashboard", level: 1 }),
+      page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
     await expect(switcherTrigger(page)).toHaveText(/个人空间/);
 
@@ -158,10 +158,10 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
       drawer.getByRole("button", { name: /个人空间/ }),
     ).toBeVisible();
     for (const label of [
-      "Dashboard",
-      "Kanban",
-      "Calendar",
-      "Analysis",
+      "仪表盘",
+      "看板",
+      "日历",
+      "分析",
       "设置",
     ]) {
       await expect(
@@ -173,12 +173,12 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     ).toBeVisible();
 
     // 经 Drawer 内 Kanban 跳转 → URL 与页面真实渲染；路由变化自动收起 Drawer。
-    await drawer.getByRole("link", { name: "Kanban", exact: true }).click();
+    await drawer.getByRole("link", { name: "看板", exact: true }).click();
     await expect(page).toHaveURL(/\/space\/personal\/kanban$/, {
       timeout: 30_000,
     });
     await expect(
-      page.getByRole("heading", { name: "Kanban", level: 1 }),
+      page.getByRole("heading", { name: "看板", level: 1 }),
     ).toBeVisible();
     await expect(drawer).toBeHidden();
 

@@ -26,6 +26,7 @@ export default async function PersonalCalendarPage(
   props: PageProps<"/space/personal/calendar">,
 ) {
   const t = await getTranslations("calendar");
+  const tNav = await getTranslations("nav");
   const user = await requireUser();
   const today = todayInShanghai();
   const { month: monthParam } = await props.searchParams;
@@ -47,7 +48,7 @@ export default async function PersonalCalendarPage(
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <header className="min-w-0">
         <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-          Calendar
+          {tNav("calendar")}
         </h1>
         <p className="mt-1.5 text-[14px] text-[#5f6368]">
           {t("personalSubtitle")}
