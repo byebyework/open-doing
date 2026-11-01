@@ -603,7 +603,24 @@
     "zombieFooter": "Triage or close these tasks · Go to Kanban →"
   },
   "notifications": {
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "bellTitle": "Notifications",
+    "markAllRead": "Mark all read",
+    "empty": "No notifications",
+    "ariaLabel": "Notifications",
+    "ariaLabelUnread": "Notifications, {count} unread",
+    "notFound": "Notification not found or already removed",
+    "unknownTask": "unknown task",
+    "unknownTeam": "unknown team",
+    "invite": "invited you to join team \"{team}\"",
+    "joinRequested": "requested to join team \"{team}\"",
+    "joinApproved": "approved your request to join \"{team}\"",
+    "joinDeclined": "declined your request to join \"{team}\"",
+    "assigned": "assigned \"{task}\" to you",
+    "dueSoon": "\"{task}\" (assigned to you) is due today/tomorrow",
+    "overdue": "\"{task}\" (assigned to you) is <b>overdue</b>",
+    "commented": "commented on \"{task}\"",
+    "changedByAdmin": "updated \"{task}\" (assigned to you)"
   },
   "notFound": {
     "title": "404",

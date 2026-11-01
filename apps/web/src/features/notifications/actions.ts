@@ -32,7 +32,7 @@ export async function markNotificationReadAction(
 
     const marked = await markNotificationRead({ userId: user.id, notificationId });
     if (!marked) {
-      return failure("通知不存在或已被删除");
+      return (await standardFailuresForRequest()).custom("notifications.notFound");
     }
 
     const unreadCount = await getUnreadNotificationCount(user.id);

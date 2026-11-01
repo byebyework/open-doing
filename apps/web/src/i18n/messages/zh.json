@@ -603,7 +603,24 @@
     "zombieFooter": "处理或关闭这些任务 · 前往 Kanban →"
   },
   "notifications": {
-    "notifications": "通知"
+    "notifications": "通知",
+    "bellTitle": "通知",
+    "markAllRead": "全部已读",
+    "empty": "暂无通知",
+    "ariaLabel": "通知",
+    "ariaLabelUnread": "通知，{count} 条未读",
+    "notFound": "通知不存在或已被删除",
+    "unknownTask": "未知任务",
+    "unknownTeam": "未知团队",
+    "invite": "邀请你加入团队「{team}」",
+    "joinRequested": "申请加入团队「{team}」",
+    "joinApproved": "通过了你加入「{team}」的申请",
+    "joinDeclined": "拒绝了你加入「{team}」的申请",
+    "assigned": "把「{task}」指派给你",
+    "dueSoon": "你负责的「{task}」今日/明日到期",
+    "overdue": "你负责的「{task}」<b>已逾期</b>",
+    "commented": "评论了「{task}」",
+    "changedByAdmin": "更新了你负责的「{task}」"
   },
   "notFound": {
     "title": "404",

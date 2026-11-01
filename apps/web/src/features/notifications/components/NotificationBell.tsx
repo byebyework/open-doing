@@ -12,18 +12,19 @@ import {
   type GlobalToken,
 } from "antd";
 import dayjs from "dayjs";
-import "dayjs/locale/zh-cn";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { useMessages, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+
+import { createTranslator } from "@/i18n/translate";
 
 import { markAllNotificationsReadAction, markNotificationReadAction } from "../actions";
 import type { NotificationListItem } from "../queries";
 import { formatNotificationBody } from "./notification-format";
 
-// 客户端组件内显式注册相对时间插件与中文 locale（服务端 Providers 同样设置，幂等）。
+// 相对时间插件全局注册一次；dayjs locale 由根 Providers 按当前语言统一设置。
 dayjs.extend(relativeTime);
-dayjs.locale("zh-cn");
 
 /** 轮询间隔：30 秒。 */
 const POLL_INTERVAL_MS = 30_000;
@@ -217,6 +218,12 @@ function NotificationTypeIcon({ type }: { type: NotificationType }) {
 export function NotificationBell() {
   const router = useRouter();
   const { token } = theme.useToken();
+  const t = useTranslations("notifications");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
+  // formatNotificationBody 需要 TranslateFn 口径的取词函数（key 为 string），
+  // 用同一份 messages 的 notifications 子树构造，与 next-intl 运行时同源。
+  const tCopy = createTranslator(useMessages().notifications);
   const [items, setItems] = useState<NotificationListItem[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pollingStopped, setPollingStopped] = useState(false);
@@ -295,7 +302,7 @@ export function NotificationBell() {
     try {
       const result = await markAllNotificationsReadAction();
       if (!result.ok) {
-        message.error(result.errors.form ?? "操作失败，请稍后重试");
+        message.error(result.errors.form ?? tErrors("operationFailed"));
         return;
       }
 
@@ -304,7 +311,7 @@ export function NotificationBell() {
         previous.map((item) => (item.read ? item : { ...item, read: true })),
       );
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setMarkingAll(false);
     }
@@ -345,7 +352,7 @@ export function NotificationBell() {
           borderBottom: `1px solid ${token.colorBorderSecondary}`,
         }}
       >
-        <span style={{ fontSize: 14, fontWeight: 700, color: token.colorText }}>通知</span>
+        <span style={{ fontSize: 14, fontWeight: 700, color: token.colorText }}>{t("bellTitle")}</span>
         <Button
           type="text"
           size="small"
@@ -355,7 +362,7 @@ export function NotificationBell() {
             void handleMarkAllRead();
           }}
         >
-          全部已读
+          {t("markAllRead")}
         </Button>
       </div>
 
@@ -363,12 +370,12 @@ export function NotificationBell() {
         {items.length === 0 ? (
           <Empty
             image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description="暂无通知"
+            description={t("empty")}
             style={{ margin: "24px 0" }}
           />
         ) : (
           items.map((item) => {
-            const body = formatNotificationBody(item);
+            const body = formatNotificationBody(item, tCopy);
             const colors = typeColors(item.type, token);
 
             return (
@@ -450,9 +457,7 @@ export function NotificationBell() {
       <Button
         type="text"
         shape="circle"
-        aria-label={
-          unreadCount > 0 ? `通知，${unreadCount} 条未读` : "通知"
-        }
+        aria-label={unreadCount > 0 ? t("ariaLabelUnread", { count: unreadCount }) : t("ariaLabel")}
         icon={
           <Badge count={unreadCount} size="small" offset={[2, -2]}>
             <BellIcon />
