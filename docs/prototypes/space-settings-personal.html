@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>个人空间 设置 · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* ===== M6 个人设置 ===== */
+    .settings-stack { display: flex; flex-direction: column; gap: var(--space-5); max-width: 760px; }
+
+    .field-row { display: flex; align-items: center; gap: var(--space-4); padding: 13px 0; }
+    .field-row + .field-row { border-top: 1px solid var(--color-border); }
+    .field-label { width: 88px; flex: none; font-size: 13.5px; font-weight: 600; }
+    .field-input {
+      flex: 1; max-width: 300px; height: 36px; padding: 0 12px;
+      border: 1px solid var(--color-border); border-radius: 8px;
+      font-size: 13.5px; color: var(--color-text-primary); background: var(--color-bg);
+      outline: none; transition: border-color .15s, box-shadow .15s;
+    }
+    .field-input::placeholder { color: var(--color-text-muted); }
+    .field-input:focus { border-color: var(--color-primary); box-shadow: 0 0 0 3px var(--color-primary-bg); }
+
+    .form-foot { display: flex; align-items: center; gap: var(--space-3); margin-top: var(--space-4); }
+    .form-hint { font-size: 12px; color: var(--color-text-muted); }
+
+    /* 开关行 */
+    .switch-row { display: flex; align-items: center; gap: var(--space-4); padding: 15px 0; }
+    .switch-row + .switch-row { border-top: 1px solid var(--color-border); }
+    .switch-meta { flex: 1; line-height: 1.45; }
+    .switch-meta .name { font-size: 13.5px; font-weight: 600; }
+    .switch-meta .sub { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
+
+    .switch { position: relative; width: 40px; height: 22px; flex: none; border-radius: 11px; background: var(--color-border-strong); transition: background .18s; cursor: pointer; border: none; padding: 0; }
+    .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(10,12,16,.18); transition: transform .18s; }
+    .switch.on { background: var(--color-primary); }
+    .switch.on::after { transform: translateX(18px); }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏 ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <div class="popover-wrap switcher-wrap">
+        <button class="team-switcher" type="button" data-popover-trigger="space-menu">
+          <span class="dot"></span>
+          <span class="name">个人空间</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="popover switcher-menu" id="space-menu">
+          <div class="menu-label">个人</div>
+          <a class="menu-item active" href="space-dashboard-personal.html">
+            <span class="m-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="m-name">个人空间</span>
+            <span class="check">✓</span>
+          </a>
+          <div class="menu-label">我的团队</div>
+          <a class="menu-item" href="space-dashboard-team.html">
+            <span class="m-dot" style="background:var(--accent-lavender);"></span>
+            <span class="m-name">增长突击队</span>
+          </a>
+          <div class="menu-divider"></div>
+          <button class="menu-item ghost" type="button">＋ 创建团队</button>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-group-label">个人空间</div>
+        <a class="nav-item" href="space-dashboard-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item" href="space-kanban-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="8" rx="1"/></svg>
+          Kanban
+        </a>
+        <a class="nav-item" href="space-calendar-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a class="nav-item" href="space-analysis-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          Analysis
+        </a>
+        <a class="nav-item active" href="space-settings-personal.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.15.35.23.72.23 1.09"/></svg>
+          设置
+        </a>
+
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          待处理邀请
+          <span class="count-badge">2</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">个人空间 <span class="sep">/</span> <strong>设置</strong></div>
+        <div class="topbar-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          搜索任务… <kbd>⌘K</kbd>
+        </div>
+        <button class="icon-btn" aria-label="通知">
+          <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+          <span class="notif-dot">5</span>
+        </button>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">设置</h1>
+            <div class="sub">账户安全与个人偏好——改动即时生效，只影响你自己的空间视图。</div>
+          </div>
+        </div>
+
+        <div class="settings-stack anim-in">
+          <!-- ① 账户安全 -->
+          <section class="card">
+            <div class="card-header">
+              <h2 class="h3">账户安全</h2>
+              <span class="text-caption" style="margin-left:auto;">定期更换密码有助于保护账号安全。</span>
+            </div>
+            <form onsubmit="return false">
+              <div class="field-row">
+                <label class="field-label" for="old-pw">旧密码</label>
+                <input class="field-input" id="old-pw" type="password" placeholder="输入当前密码" autocomplete="current-password" />
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="new-pw">新密码</label>
+                <input class="field-input" id="new-pw" type="password" placeholder="至少 8 位" autocomplete="new-password" />
+              </div>
+              <div class="field-row">
+                <label class="field-label" for="confirm-pw">确认新密码</label>
+                <input class="field-input" id="confirm-pw" type="password" placeholder="再次输入新密码" autocomplete="new-password" />
+              </div>
+              <div class="form-foot">
+                <button class="btn btn-primary" type="submit">更新密码</button>
+                <span class="form-hint">更新后保持登录状态；下次登录请使用新密码。</span>
+              </div>
+            </form>
+          </section>
+
+          <!-- ② 任务提醒 -->
+          <section class="card">
+            <div class="card-header">
+              <h2 class="h3">任务提醒</h2>
+              <span class="text-caption" style="margin-left:auto;">评论、指派、邀请等协作通知不受影响</span>
+            </div>
+            <p class="text-caption" style="margin:-8px 0 4px;">控制由系统每日扫描产生的到期提醒。</p>
+            <div class="switch-row">
+              <div class="switch-meta">
+                <div class="name">临期提醒</div>
+                <div class="sub">任务截止前，提醒你还有即将到期的事。</div>
+              </div>
+              <button class="switch on" type="button" role="switch" aria-checked="true" aria-label="临期提醒"></button>
+            </div>
+            <div class="switch-row">
+              <div class="switch-meta">
+                <div class="name">逾期提醒</div>
+                <div class="sub">任务已过截止日仍未完成时，每日提醒一次。</div>
+              </div>
+              <button class="switch on" type="button" role="switch" aria-checked="true" aria-label="逾期提醒"></button>
+            </div>
+            <div class="callout info" style="margin-top:var(--space-4); font-size:12.5px;">
+              <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span>关闭后不再产生新的提醒通知；已经生成的通知仍会保留在通知中心。</span>
+            </div>
+          </section>
+
+          <!-- ③ 项目排序 -->
+          <section class="card">
+            <div class="card-header">
+              <h2 class="h3">项目排序</h2>
+              <span class="text-caption" style="margin-left:auto;">无需手动维护</span>
+            </div>
+            <p class="text-caption" style="margin:-8px 0 4px;">个人空间的项目列表按最近活动排序。</p>
+            <div class="switch-row">
+              <div class="switch-meta">
+                <div class="name">按最近活动</div>
+                <div class="sub">最近有任务动态的项目排在最前——正在推进的项目永远触手可及。</div>
+              </div>
+              <span class="tag tag-info">当前规则</span>
+            </div>
+            <div class="callout info" style="margin-top:var(--space-4); font-size:12.5px;">
+              <svg class="ico" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 8v4M12 16h.01"/></svg>
+              <span>排序应用于侧边栏空间切换器与个人 Dashboard 的项目列表。</span>
+            </div>
+          </section>
+        </div>
+      </main>
+    </div>
+  </div>
+</body>
+</html>
