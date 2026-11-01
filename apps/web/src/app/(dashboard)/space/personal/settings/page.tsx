@@ -27,7 +27,7 @@ function SettingsCardHeader({
       <h2 className="flex-1 text-[16px] font-semibold text-[#0e1318]">
         {title}
       </h2>
-      <span className="text-right text-[12px] text-[#9aa0a6]">{caption}</span>
+      <span className="text-right text-[12px] text-[color:var(--color-text-muted)]">{caption}</span>
     </div>
   );
 }
@@ -69,7 +69,7 @@ export default async function PersonalSettingsPage() {
             title="任务提醒"
             caption="评论、指派、邀请等协作通知不受影响"
           />
-          <p className="-mt-2 mb-1 text-[12px] text-[#9aa0a6]">
+          <p className="-mt-2 mb-1 text-[12px] text-[color:var(--color-text-muted)]">
             控制由系统每日扫描产生的到期提醒。
           </p>
 
@@ -85,7 +85,7 @@ export default async function PersonalSettingsPage() {
 
         <section className={CARD_CLASS}>
           <SettingsCardHeader title="项目排序" caption="无需手动维护" />
-          <p className="-mt-2 mb-1 text-[12px] text-[#9aa0a6]">
+          <p className="-mt-2 mb-1 text-[12px] text-[color:var(--color-text-muted)]">
             个人空间的项目列表按最近活动排序。
           </p>
 
@@ -94,7 +94,7 @@ export default async function PersonalSettingsPage() {
               <div className="text-[13.5px] font-semibold text-[#0e1318]">
                 按最近活动
               </div>
-              <div className="mt-0.5 text-[12px] text-[#9aa0a6]">
+              <div className="mt-0.5 text-[12px] text-[color:var(--color-text-muted)]">
                 最近有任务动态的项目排在最前——正在推进的项目永远触手可及。
               </div>
             </div>

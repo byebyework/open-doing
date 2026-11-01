@@ -2,6 +2,7 @@
  * Tailwind CSS 4：只引入 theme 与 utilities，关闭 preflight（base 层），
  * 避免重置样式污染 antd 组件。
  */
+@import "./tokens.css";
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
@@ -18,8 +19,8 @@
 /* 全局基础样式：取值自设计令牌（docs/prototypes/assets/design-tokens.css） */
 body {
   margin: 0;
-  background: var(--surface-subtle, #f4f5f7);
-  color: var(--ink-900, #0e1318);
+  background: var(--surface-subtle);
+  color: var(--ink-900);
   font-family: "Canva Sans", "YS Text", system-ui, -apple-system, "PingFang SC",
     "Microsoft YaHei", sans-serif;
 }
