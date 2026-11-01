@@ -22,7 +22,7 @@ export function NewPersonalProjectButton() {
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{t("newProjectButton")}</Button>
+      <Button data-testid="new-personal-project-button" onClick={() => setOpen(true)}>{t("newProjectButton")}</Button>
 
       <PersonalProjectFormModal
         open={open}

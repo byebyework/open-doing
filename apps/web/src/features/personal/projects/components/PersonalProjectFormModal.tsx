@@ -114,6 +114,7 @@ export function PersonalProjectFormModal({
       okText={mode === "create" ? t("okCreate") : tCommon("save")}
       cancelText={tCommon("cancel")}
       confirmLoading={submitting}
+      okButtonProps={{ "data-testid": "personal-project-submit-button" }}
       onOk={() => form.submit()}
       onCancel={onCancel}
       afterOpenChange={handleOpenChange}
@@ -152,6 +153,7 @@ export function PersonalProjectFormModal({
           ]}
         >
           <Input
+            data-testid="personal-project-name-input"
             placeholder={t("namePlaceholder")}
             maxLength={50}
             autoFocus

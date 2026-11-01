@@ -426,7 +426,7 @@ export function TaskDetailView({
             <ProgressBar value={progress} />
           </div>
 
-          <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
+          <h2 data-testid="subtask-heading" className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
             {t("subtasksProgress", { completed, total })}
           </h2>
           {/* 子任务与状态同属编辑权：只读态下复选框禁用、增删入口隐藏。 */}

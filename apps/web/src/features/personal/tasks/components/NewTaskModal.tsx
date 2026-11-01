@@ -110,6 +110,7 @@ export function NewTaskModal({
       okText={t("okCreateTask")}
       cancelText={tCommon("cancel")}
       confirmLoading={submitting}
+      okButtonProps={{ "data-testid": "task-create-submit-button" }}
       onOk={() => form.submit()}
       onCancel={onCancel}
       afterOpenChange={handleOpenChange}
@@ -147,7 +148,7 @@ export function NewTaskModal({
             { max: 200, message: t("titleTooLong", { max: 200 }) },
           ]}
         >
-          <Input placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
+          <Input data-testid="task-title-input" placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
         </Form.Item>
 
         <Form.Item label={t("spaceProjectLabel")} name="projectId">
@@ -163,7 +164,7 @@ export function NewTaskModal({
         </Form.Item>
 
         <Form.Item label={t("dueDateLabel")} name="dueDate">
-          <Input type="date" style={{ maxWidth: 220 }} />
+          <Input data-testid="task-due-date-input" type="date" style={{ maxWidth: 220 }} />
         </Form.Item>
 
         <Form.Item label={t("descriptionLabel")} name="description">

@@ -128,6 +128,7 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
     >
       <button
         type="button"
+        data-testid="space-switcher-trigger"
         className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[#e1e3e6] bg-white px-2.5 py-2 text-left text-[13px] transition-colors hover:border-[#c7cdd3] hover:bg-[#f4f5f7]"
       >
         <span className="h-2 w-2 shrink-0 rounded-full bg-[#7d2ae8]" />

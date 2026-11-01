@@ -76,14 +76,16 @@ export default async function InvitesPage() {
 
       <div className="mb-6 rounded-lg border border-[#e1e3e6] bg-[rgba(125,42,232,0.06)] p-3.5 text-[13px] text-[#5f6368]">
         <strong className="text-[#0e1318]">{t("uidPrivacyStrong")}</strong>
-        {t("uidPrivacyYour")} <span className="font-mono">{user.uid}</span>。
+        {t("uidPrivacyYour")} <span className="font-mono" data-testid="account-uid">{user.uid}</span>。
       </div>
 
       {received.length === 0 ? (
-        <EmptyState
-          title={t("noInvites")}
-          description={t("noInvitesHint")}
-        />
+        <div data-testid="invites-empty">
+          <EmptyState
+            title={t("noInvites")}
+            description={t("noInvitesHint")}
+          />
+        </div>
       ) : (
         <>
           <h2 className="mb-3 text-[15px] font-bold text-[#0e1318]">{t("pendingCount", { count: pending.length })}</h2>

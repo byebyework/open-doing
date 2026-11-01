@@ -1,7 +1,7 @@
 "use client";
 
 import { Modal } from "antd";
-import type { ReactNode } from "react";
+import type { ComponentProps, ReactNode } from "react";
 import { useTranslations } from "next-intl";
 
 /** ConfirmModal 入参。 */
@@ -18,6 +18,8 @@ export interface ConfirmModalProps {
   danger?: boolean;
   /** 确认按钮加载态（异步提交中）。 */
   loading?: boolean;
+  /** 透传给确认按钮的附加 props（e2e data-testid 等）。 */
+  okButtonProps?: ComponentProps<typeof Modal>["okButtonProps"];
   /** 点击确认。 */
   onConfirm: () => void;
   /** 点击取消或关闭。 */
@@ -36,6 +38,7 @@ export function ConfirmModal({
   confirmText,
   danger = false,
   loading = false,
+  okButtonProps,
   onConfirm,
   onCancel,
 }: ConfirmModalProps) {
@@ -49,7 +52,7 @@ export function ConfirmModal({
       okText={okText}
       cancelText={t("cancel")}
       confirmLoading={loading}
-      okButtonProps={{ danger }}
+      okButtonProps={{ danger, ...okButtonProps }}
       onOk={onConfirm}
       onCancel={onCancel}
     >

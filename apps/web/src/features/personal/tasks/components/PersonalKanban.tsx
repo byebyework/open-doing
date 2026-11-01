@@ -141,6 +141,13 @@ function KanbanCard({
   );
 }
 
+/** 列状态 -> e2e data-testid（与列文案无关）。 */
+const KANBAN_COLUMN_TESTIDS: Record<TaskStatus, string> = {
+  todo: "kanban-column-todo",
+  in_progress: "kanban-column-in-progress",
+  done: "kanban-column-done",
+};
+
 /** 看板单列（同时是拖放目标）。 */
 function KanbanColumn({
   status,
@@ -164,6 +171,7 @@ function KanbanColumn({
   return (
     <section
       ref={setNodeRef}
+      data-testid={KANBAN_COLUMN_TESTIDS[status]}
       aria-label={tStatus(TASK_STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver

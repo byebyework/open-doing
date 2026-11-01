@@ -63,10 +63,10 @@ export function CreateTeamForm() {
           name="name"
           rules={[{ required: true, message: t("nameRequired") }]}
         >
-          <Input size="large" placeholder={t("namePlaceholder")} maxLength={30} autoFocus />
+          <Input data-testid="team-name-input" size="large" placeholder={t("namePlaceholder")} maxLength={30} autoFocus />
         </Form.Item>
 
-        <Button type="primary" htmlType="submit" size="large" block loading={submitting}>
+        <Button type="primary" htmlType="submit" size="large" block loading={submitting} data-testid="create-team-button">
           {t("createTitle")}
         </Button>
       </Form>

@@ -16,7 +16,9 @@ export default function NotFound() {
       <Result
         status="404"
         title={t("title")}
-        subTitle={t("message")}
+        subTitle={
+          <span data-testid="not-found-message">{t("message")}</span>
+        }
         extra={
           <Button type="primary" href="/">
             {t("backHome")}

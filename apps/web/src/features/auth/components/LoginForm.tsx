@@ -104,6 +104,7 @@ export function LoginForm() {
           <Input
             size="large"
             placeholder={t("usernamePlaceholder")}
+            data-testid="auth-username-input"
             autoComplete="username"
             autoFocus
           />
@@ -117,6 +118,7 @@ export function LoginForm() {
           <Input.Password
             size="large"
             placeholder={t("passwordPlaceholder")}
+            data-testid="auth-password-input"
             autoComplete="current-password"
           />
         </Form.Item>
@@ -131,6 +133,7 @@ export function LoginForm() {
           size="large"
           block
           loading={submitting}
+          data-testid="auth-submit-button"
           style={{
             background: "linear-gradient(135deg,#7d2ae8 0%,#00c4cc 100%)",
             border: "none",

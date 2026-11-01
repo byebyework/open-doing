@@ -58,7 +58,7 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
 
   return (
     <>
-      <Button danger onClick={handleOpen}>
+      <Button danger data-testid="dissolve-team-button" onClick={handleOpen}>
         {t("dissolveTeam")}
       </Button>
 
@@ -79,6 +79,7 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
             </label>
             <Input
               id="dissolve-team-name"
+              data-testid="dissolve-confirm-input"
               value={typedName}
               placeholder={teamName}
               onChange={(event) => setTypedName(event.target.value)}
@@ -88,6 +89,7 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
         confirmText={t("confirmDissolve")}
         danger
         loading={submitting}
+        okButtonProps={{ "data-testid": "dissolve-confirm-button" }}
         onConfirm={handleConfirm}
         onCancel={() => setOpen(false)}
       />

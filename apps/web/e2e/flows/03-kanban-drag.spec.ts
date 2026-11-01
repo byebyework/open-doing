@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
   createPersonalTask,
@@ -32,9 +33,10 @@ test.describe("flow 3: 看板拖拽", () => {
     // 直接用 ?view=board 进入看板，避免依赖 Segmented 的内部 DOM 结构。
     await page.goto(`${projectPath}?view=board`);
 
-    const todoColumn = page.locator('section[aria-label="未开始"]');
-    const inProgressColumn = page.locator('section[aria-label="进行中"]');
+    const todoColumn = page.getByTestId(TEST_IDS.kanban.columnTodo);
+    const inProgressColumn = page.getByTestId(TEST_IDS.kanban.columnInProgress);
 
+    // 卡片以任务标题作为 aria-label（数据驱动定位，与文案无关）。
     const card = todoColumn.getByLabel(taskTitle);
     await expect(card).toBeVisible();
     await expect(inProgressColumn).toBeVisible();
@@ -69,11 +71,11 @@ test.describe("flow 3: 看板拖拽", () => {
       await page.reload();
       await expect(
         page
-          .locator('section[aria-label="进行中"]')
+          .getByTestId(TEST_IDS.kanban.columnInProgress)
           .getByText(taskTitle, { exact: true }),
       ).toBeVisible();
       await expect(
-        page.locator('section[aria-label="未开始"]').getByText(taskTitle, {
+        page.getByTestId(TEST_IDS.kanban.columnTodo).getByText(taskTitle, {
           exact: true,
         }),
       ).toHaveCount(0);

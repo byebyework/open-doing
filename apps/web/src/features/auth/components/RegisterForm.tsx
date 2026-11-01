@@ -130,6 +130,7 @@ export function RegisterForm() {
           <Input
             size="large"
             placeholder={t("usernameRegisterPlaceholder")}
+            data-testid="auth-username-input"
             autoComplete="username"
             autoFocus
           />
@@ -149,6 +150,7 @@ export function RegisterForm() {
           <Input.Password
             size="large"
             placeholder={t("passwordRegisterPlaceholder")}
+            data-testid="auth-password-input"
             autoComplete="new-password"
           />
         </Form.Item>
@@ -172,6 +174,7 @@ export function RegisterForm() {
           <Input.Password
             size="large"
             placeholder={t("confirmPasswordPlaceholder")}
+            data-testid="auth-password-confirm-input"
             autoComplete="new-password"
           />
         </Form.Item>
@@ -191,6 +194,7 @@ export function RegisterForm() {
           size="large"
           block
           loading={submitting}
+          data-testid="auth-submit-button"
           style={{
             background: "linear-gradient(135deg,#7d2ae8 0%,#00c4cc 100%)",
             border: "none",

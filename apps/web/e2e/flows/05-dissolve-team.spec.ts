@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
 
 /**
@@ -14,8 +15,8 @@ test.describe("flow 5: 解散团队", () => {
 
     await registerUser(page, username);
     await page.goto("/teams/new");
-    await page.getByLabel("团队名称").fill(teamName);
-    await page.getByRole("button", { name: "创建团队" }).click();
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
     await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
@@ -26,11 +27,13 @@ test.describe("flow 5: 解散团队", () => {
     expect(teamSlug).not.toBe("");
 
     // 二次确认：先点「解散团队」，再在弹窗中输入团队名称并确认。
-    await page.getByRole("button", { name: "解散团队", exact: true }).click();
+    await page.getByTestId(TEST_IDS.teamDanger.dissolveTeamButton).click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByLabel("请输入团队名称以确认").fill(teamName);
-    await dialog.getByRole("button", { name: "确认解散" }).click();
+    await dialog
+      .getByTestId(TEST_IDS.teamDanger.dissolveConfirmInput)
+      .fill(teamName);
+    await dialog.getByTestId(TEST_IDS.teamDanger.dissolveConfirmButton).click();
 
     await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
       timeout: 30_000,
@@ -40,7 +43,7 @@ test.describe("flow 5: 解散团队", () => {
     const response = await page.goto(`/space/${teamSlug}/dashboard`);
     expect(response?.status()).toBe(404);
     await expect(
-      page.getByText("抱歉，你访问的页面不存在。"),
+      page.getByTestId(TEST_IDS.misc.notFoundMessage),
     ).toBeVisible();
 
     // 侧栏不再出现该团队入口。v1.1 团队名只在空间切换器下拉里渲染，
@@ -48,7 +51,7 @@ test.describe("flow 5: 解散团队", () => {
     await page.goto("/space/personal/dashboard");
     await page
       .locator("aside")
-      .getByRole("button", { name: /个人空间/ })
+      .getByTestId(TEST_IDS.shell.spaceSwitcherTrigger)
       .click();
     await expect(page.getByRole("menuitem", { name: teamName })).toHaveCount(0);
   });

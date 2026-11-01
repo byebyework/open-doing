@@ -67,10 +67,10 @@ export function InviteMemberForm({ teamId }: { teamId: string }) {
           rules={[{ required: true, message: t("uidRequired") }]}
           extra={t("uidExtra")}
         >
-          <Input prefix="doing_" placeholder={t("uidPlaceholder")} maxLength={6} autoFocus />
+          <Input data-testid="invite-uid-input" prefix="doing_" placeholder={t("uidPlaceholder")} maxLength={6} autoFocus />
         </Form.Item>
 
-        <Button type="primary" htmlType="submit" loading={submitting}>
+        <Button type="primary" htmlType="submit" loading={submitting} data-testid="invite-send-button">
           {t("sendInvite")}
         </Button>
       </Form>

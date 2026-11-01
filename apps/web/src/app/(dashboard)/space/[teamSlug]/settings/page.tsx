@@ -91,7 +91,7 @@ export default async function TeamSettingsPage(
           <InviteMemberForm teamId={team.id} />
 
           <div className="mt-5">
-            <div className="mb-2 text-[13px] font-semibold text-[#0e1318]">
+            <div data-testid="invite-pending-heading" className="mb-2 text-[13px] font-semibold text-[#0e1318]">
               {t("sentPendingHeading", { count: pendingSent.length })}
             </div>
             {pendingSent.map(({ invite, invitee }) => (

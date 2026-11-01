@@ -457,6 +457,7 @@ export function NotificationBell() {
       <Button
         type="text"
         shape="circle"
+        data-testid="notification-bell-button"
         aria-label={unreadCount > 0 ? t("ariaLabelUnread", { count: unreadCount }) : t("ariaLabel")}
         icon={
           <Badge count={unreadCount} size="small" offset={[2, -2]}>

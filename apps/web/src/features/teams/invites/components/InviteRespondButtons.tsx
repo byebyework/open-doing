@@ -41,10 +41,10 @@ export function InviteRespondButtons({ inviteId }: { inviteId: string }) {
 
   return (
     <span className="flex shrink-0 items-center gap-2">
-      <Button type="primary" size="small" loading={submitting === "accept"} onClick={() => handleRespond(true)}>
+      <Button type="primary" size="small" data-testid="invite-accept-button" loading={submitting === "accept"} onClick={() => handleRespond(true)}>
         {t("accept")}
       </Button>
-      <Button size="small" loading={submitting === "decline"} onClick={() => handleRespond(false)}>
+      <Button size="small" data-testid="invite-decline-button" loading={submitting === "decline"} onClick={() => handleRespond(false)}>
         {t("decline")}
       </Button>
     </span>

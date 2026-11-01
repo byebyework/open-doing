@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
   createPersonalTask,
@@ -31,25 +32,24 @@ test.describe("flow 1: 个人项目与子任务", () => {
     await createPersonalTask(page, { title: taskTitle });
     await openPersonalTask(page, taskTitle);
 
-    await page.getByPlaceholder("＋ 添加子任务").fill(subtaskTitle);
-    // antd 会在两个汉字之间自动插入空格（「添 加」），用正则匹配两种形态。
-    await page.getByRole("button", { name: /^添\s*加$/ }).click();
+    await page.getByTestId(TEST_IDS.tasks.subtaskInput).fill(subtaskTitle);
+    await page.getByTestId(TEST_IDS.tasks.subtaskAddButton).click();
 
     const checkbox = page.getByRole("checkbox", { name: subtaskTitle });
     await expect(checkbox).toBeVisible();
     await checkbox.check();
     await expect(checkbox).toBeChecked();
 
-    // 刷新后仍为已完成：验证子任务勾选已持久化。
+    // 刷新后仍为已完成：验证子任务勾选已持久化（标题里的 1/1 计数同步断言）。
     // 用 toPass 重试整段刷新，避免在 Server Action 落库前读取到旧的乐观状态。
     await expect(async () => {
       await page.reload();
       await expect(
         page.getByRole("checkbox", { name: subtaskTitle }),
       ).toBeChecked();
-      await expect(
-        page.getByRole("heading", { name: "子任务 · 1/1" }),
-      ).toBeVisible();
+      await expect(page.getByTestId(TEST_IDS.tasks.subtaskHeading)).toContainText(
+        "1/1",
+      );
     }).toPass();
   });
 });

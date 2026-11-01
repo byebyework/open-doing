@@ -19,7 +19,7 @@ export default async function CreateTeamPage() {
 
   return (
     <div className="mx-auto w-full max-w-[520px] py-10">
-      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
+      <h1 data-testid="create-team-heading" className="text-[22px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
         {t("createTitle")}
       </h1>
       <p className="mb-8 mt-1.5 text-[14px] text-[#5f6368]">{t("createSubtitle")}</p>

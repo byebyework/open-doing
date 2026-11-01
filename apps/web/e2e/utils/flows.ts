@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { expect, type Page } from "@playwright/test";
 
+import { TEST_IDS } from "./testids";
+
 /** 五条流共用的测试密码（满足 8 位下限）。 */
 export const E2E_PASSWORD = "e2e-password-123";
 
@@ -26,10 +28,10 @@ export async function registerUser(
   password: string = E2E_PASSWORD,
 ): Promise<void> {
   await page.goto("/register");
-  await page.getByLabel("用户名").fill(username);
-  await page.getByLabel("密码", { exact: true }).fill(password);
-  await page.getByLabel("确认密码").fill(password);
-  await page.getByRole("button", { name: /注\s*册/ }).click();
+  await page.getByTestId(TEST_IDS.auth.usernameInput).fill(username);
+  await page.getByTestId(TEST_IDS.auth.passwordInput).fill(password);
+  await page.getByTestId(TEST_IDS.auth.passwordConfirmInput).fill(password);
+  await page.getByTestId(TEST_IDS.auth.submitButton).click();
 
   await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
     timeout: 30_000,
@@ -46,9 +48,9 @@ export async function loginUser(
   password: string = E2E_PASSWORD,
 ): Promise<void> {
   await page.goto("/login");
-  await page.getByLabel("用户名").fill(username);
-  await page.getByLabel("密码", { exact: true }).fill(password);
-  await page.getByRole("button", { name: /登\s*录/ }).click();
+  await page.getByTestId(TEST_IDS.auth.usernameInput).fill(username);
+  await page.getByTestId(TEST_IDS.auth.passwordInput).fill(password);
+  await page.getByTestId(TEST_IDS.auth.submitButton).click();
 
   await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
     timeout: 30_000,
@@ -72,7 +74,7 @@ export function personalProjectSlug(projectName: string): string {
 }
 
 /**
- * 在个人空间创建项目（Dashboard 页头「＋ 新建个人项目」→ 弹窗）。
+ * 在个人空间创建项目（Dashboard 页头「新建个人项目」→ 弹窗）。
  *
  * 必须从 `/space/personal/dashboard` 调用——新 IA 只在页头提供该入口。
  */
@@ -80,17 +82,19 @@ export async function createPersonalProject(
   page: Page,
   projectName: string,
 ): Promise<void> {
-  await page.getByRole("button", { name: "＋ 新建个人项目" }).click();
+  await page.getByTestId(TEST_IDS.projects.newPersonalProjectButton).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   // 弹窗的 afterOpenChange 会在开启动画结束后 resetFields；等它完成再填写，
   // 否则刚填入的值会被重置（Ant Design 关闭后卸载表单的行为）。
   await page.waitForTimeout(500);
-  await dialog.getByLabel("项目名称").fill(projectName);
-  await dialog.getByRole("button", { name: "创建项目" }).click();
+  await dialog
+    .getByTestId(TEST_IDS.projects.projectNameInput)
+    .fill(projectName);
+  await dialog.getByTestId(TEST_IDS.projects.projectSubmitButton).click();
 
-  // 新 IA 不再把项目挂到侧栏，只能以成功 toast 确认创建完成。
+  // 新 IA 不再把项目挂到侧栏，只能以成功 toast 确认创建完成（文案本身是被测行为）。
   await expect(page.getByText("项目已创建")).toBeVisible();
   await expect(dialog).toBeHidden();
 }
@@ -117,22 +121,17 @@ export async function createPersonalTask(
   page: Page,
   input: { title: string; dueDate?: string },
 ): Promise<void> {
-  // 空项目会在页头和空状态各渲染一个「＋ 新建任务」，两者打开同一个弹窗；
-  // 页头按钮在 DOM 中更靠前。
-  await page
-    .getByRole("button", { name: "＋ 新建任务", exact: true })
-    .first()
-    .click();
+  await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   // 同上：等 afterOpenChange 的 resetFields 执行完再填写。
   await page.waitForTimeout(500);
-  await dialog.getByLabel("标题").fill(input.title);
+  await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(input.title);
   if (input.dueDate) {
-    await dialog.getByLabel("截止日期").fill(input.dueDate);
+    await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);
   }
-  await dialog.getByRole("button", { name: "创建任务" }).click();
+  await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
   await expect(

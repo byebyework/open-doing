@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
 import { E2E_CRON_SECRET } from "../utils/env";
+import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
   createPersonalTask,
@@ -56,9 +57,9 @@ test.describe("flow 4: cron 到期提醒", () => {
       overdue: 0,
     });
 
-    // 铃铛角标与通知文案（task_due_soon 的展示文案）。
+    // 铃铛角标与通知文案（task_due_soon 的展示文案——文案与未读计数均是被测行为）。
     await page.goto("/space/personal/dashboard");
-    const bell = page.getByRole("button", { name: /^通知/ });
+    const bell = page.getByTestId(TEST_IDS.shell.notificationBellButton);
     await expect(bell).toHaveAccessibleName(/1 条未读/);
     await bell.click();
 
@@ -77,12 +78,12 @@ test.describe("flow 4: cron 到期提醒", () => {
     });
 
     await page.reload();
-    await page.getByRole("button", { name: /^通知/ }).click();
+    await page.getByTestId(TEST_IDS.shell.notificationBellButton).click();
     await expect(
       page.getByRole("button").filter({ hasText: notificationBody }),
     ).toHaveCount(1);
     await expect(
-      page.getByRole("button", { name: /^通知/ }),
+      page.getByTestId(TEST_IDS.shell.notificationBellButton),
     ).toHaveAccessibleName(/1 条未读/);
   });
 });

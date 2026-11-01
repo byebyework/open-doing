@@ -129,6 +129,7 @@ export function SubtaskList({
         <div className="mt-2 flex items-center gap-2">
           <Input
             value={draft}
+            data-testid="subtask-input"
             placeholder={t("subtaskPlaceholder")}
             aria-label={t("subtaskAria")}
             maxLength={200}
@@ -139,6 +140,7 @@ export function SubtaskList({
             }}
           />
           <Button
+            data-testid="subtask-add-button"
             onClick={() => {
               void handleAdd();
             }}

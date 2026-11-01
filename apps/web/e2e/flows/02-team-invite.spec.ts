@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { TEST_IDS } from "../utils/testids";
 import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
 
 /**
@@ -27,11 +28,11 @@ test.describe("flow 2: 团队邀请", () => {
     const newTeamResponse = await page.goto("/teams/new");
     expect(newTeamResponse?.status()).toBe(200);
     await expect(
-      page.getByRole("heading", { name: "创建团队", level: 1 }),
+      page.getByTestId(TEST_IDS.teams.createTeamHeading),
     ).toBeVisible();
 
-    await page.getByLabel("团队名称").fill(teamName);
-    await page.getByRole("button", { name: "创建团队" }).click();
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
     await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
       timeout: 30_000,
     });
@@ -62,30 +63,32 @@ test.describe("flow 2: 团队邀请", () => {
       await registerUser(guestPage, guestName);
       await guestPage.goto("/invites");
 
-      const uidText = await guestPage
-        .locator("span.font-mono", { hasText: /^doing_/ })
-        .first()
-        .innerText();
-      const uid = uidText.trim();
+      const uid = (
+        await guestPage.getByTestId(TEST_IDS.teams.accountUid).innerText()
+      ).trim();
       expect(uid).toMatch(/^doing_[a-z0-9]+$/);
 
       // A：输入 UID 后缀发起邀请。
-      await page.getByLabel("对方 UID").fill(uid.replace(/^doing_/, ""));
-      await page.getByRole("button", { name: "发送邀请" }).click();
+      await page.getByTestId(TEST_IDS.teams.inviteUidInput).fill(uid.replace(/^doing_/, ""));
+      await page.getByTestId(TEST_IDS.teams.inviteSendButton).click();
 
-      await expect(page.getByText("已发出 · 待处理（1）")).toBeVisible();
+      // 「已发出 · 待处理（1）」为计数断言：标题由 testid 定位，数量是被测行为。
+      await expect(
+        page.getByTestId(TEST_IDS.teams.invitePendingHeading),
+      ).toContainText("1");
       await expect(page.getByText(guestName, { exact: true })).toBeVisible();
 
       // B：刷新邀请页并接受。
       await guestPage.goto("/invites");
-      // antd 自动在两个汉字间插入空格（「接 受」）。
-      await guestPage.getByRole("button", { name: /^接\s*受$/ }).click();
+      await guestPage.getByTestId(TEST_IDS.teams.inviteAcceptButton).click();
+      // 接受后邀请进入「已处理」分区，待处理分区变空：
+      // 空态文案是被测行为（接受成功 → 待处理清零）。
       await expect(guestPage.getByText("没有待处理的邀请。")).toBeVisible();
 
       // B：侧栏空间切换器出现团队，选中后进入团队 Dashboard。
       const switcher = guestPage
         .locator("aside")
-        .getByRole("button", { name: /个人空间/ });
+        .getByTestId(TEST_IDS.shell.spaceSwitcherTrigger);
       await switcher.click();
       const teamItem = guestPage.getByRole("menuitem", { name: teamName });
       await expect(teamItem).toBeVisible();
