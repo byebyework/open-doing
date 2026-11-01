@@ -19,7 +19,8 @@ import {
  *    （统计卡恒为当前快照，range 只作用于趋势区块）；用一张 10 天前到期
  *    的未完成任务让「当前逾期」= 1，证明统计行没有随 range 重过滤；
  * 3. 非法 `?range=abc` 宽容回退「近 30 天」（沿 M4 month 同款语义）；
- * 4. 团队成员访问团队分析页，吞吐 / 成员负载分布 / 项目健康度 / 僵尸任务可见；
+ * 4. 团队成员访问团队分析页：经 UI 建团队 + 项目 + 任务后，统计行
+ *    「本周完成」≥1、吞吐出现非零柱、项目健康度与成员负载分布有真实行；
  * 5. 非成员访问团队分析页 404（不泄露团队存在性）。
  *
  * 僵尸任务只断言区块标题与空态：造一张 `in_progress` 且超过 14 天未更新的
@@ -162,12 +163,56 @@ test.describe("flow 8: 空间级 Analysis", () => {
     ).toBeVisible();
   });
 
-  test("团队成员访问团队分析页，四个区块标题可见", async ({ page }) => {
+  test("团队成员访问团队分析页，四区块在真实数据上渲染", async ({ page }) => {
+    const ownerName = uniqueUsername("e2e_an4");
     const teamName = uniqueLabel("E2E an team");
+    const projectName = uniqueLabel("E2E an project");
+    const doneTaskTitle = uniqueLabel("E2E an done task");
+    const activeTaskTitle = uniqueLabel("E2E an active task");
+    const today = shanghaiToday();
 
-    await registerUser(page, uniqueUsername("e2e_an4"));
+    await registerUser(page, ownerName);
     const teamSlug = await createTeam(page, teamName);
 
+    // 团队项目：一张昨天截止的任务稍后置为已完成（计入本周完成 / 吞吐 /
+    // 项目健康度），一张未来截止的任务置为进行中（计入成员负载）。
+    await page.goto(`/space/${teamSlug}/projects/new`);
+    await page.getByLabel("项目名称").fill(projectName);
+    await page.getByRole("button", { name: "创建项目" }).click();
+    await expect(
+      page.getByRole("heading", { name: projectName, level: 1 }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await createTeamTask(page, {
+      title: doneTaskTitle,
+      dueDate: shiftDate(today, -1),
+    });
+    await createTeamTask(page, {
+      title: activeTaskTitle,
+      dueDate: shiftDate(today, 3),
+    });
+
+    // 窄屏卡内状态按钮（flow 6 同款路径，不用不稳定的 dnd 拖拽）。
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto(`/space/${teamSlug}/kanban`);
+
+    const todo = page.locator('section[aria-label="待办"]');
+    const inProgress = page.locator('section[aria-label="进行中"]');
+    const done = page.locator('section[aria-label="已完成"]');
+    await expect(todo.getByText(doneTaskTitle, { exact: true })).toBeVisible();
+    await expect(
+      todo.getByText(activeTaskTitle, { exact: true }),
+    ).toBeVisible();
+
+    await cardButton(page, doneTaskTitle, "已完成").click();
+    await expect(done.getByText(doneTaskTitle, { exact: true })).toBeVisible();
+    await cardButton(page, activeTaskTitle, "进行中").click();
+    await expect(
+      inProgress.getByText(activeTaskTitle, { exact: true }),
+    ).toBeVisible();
+
+    // 回到桌面视口，与分析页其它团队用例保持一致。
+    await page.setViewportSize({ width: 1280, height: 720 });
     await page.goto(`/space/${teamSlug}/analysis`);
 
     await expect(
@@ -179,7 +224,37 @@ test.describe("flow 8: 空间级 Analysis", () => {
       ).toBeVisible();
     }
 
-    // 新团队没有进行中且 14 天未更新的任务：僵尸任务区块为空态。
+    // 统计行：「本周完成」计数来自今天完成的那张任务。
+    await expectStatValue(page, "本周完成", "1");
+    // 昨天截止的任务已完成，未来截止的任务未到期：没有逾期。
+    await expectStatValue(page, "当前逾期", "0");
+
+    // 吞吐：今天所在桶非零（柱高 > 0 时才会带「完成 1」的悬停文案）。
+    const throughput = sectionByHeading(page, "吞吐");
+    await expect(
+      throughput.getByText("近 30 天 · 按日 · 共完成 1 项"),
+    ).toBeVisible();
+    await expect(throughput.getByTitle(/今天 .* · 完成 1/)).toBeVisible();
+
+    // 项目健康度：该项目行出现，进度条按任务数分母渲染（1/2 完成 + 进行中）。
+    const health = sectionByHeading(page, "项目健康度");
+    await expect(health.getByText(projectName, { exact: true })).toBeVisible();
+    await expect(health.getByText("2 个任务 · 1 已完成")).toBeVisible();
+    await expect(health.getByText("75%", { exact: true })).toBeVisible();
+    // 进度条填充（块级 span）宽度 > 0：证明进度不是空条。
+    const progressFill = health.locator("span.h-full.rounded-full");
+    await expect(progressFill).toBeVisible();
+    await expect
+      .poll(async () => (await progressFill.boundingBox())?.width ?? 0)
+      .toBeGreaterThan(0);
+
+    // 成员负载分布：owner 行显示进行中计数（1 张进行中任务）。
+    const memberLoad = sectionByHeading(page, "成员负载分布");
+    await expect(
+      memberLoad.getByTitle(`${ownerName} · 进行中 1 项`),
+    ).toBeVisible();
+
+    // 没有进行中且 14 天未更新的任务：僵尸任务区块为空态。
     // （老 `updated_at` 无法经 UI 低成本构造，不为其造专用 fixture。）
     await expect(page.getByText("暂无僵尸任务。")).toBeVisible();
   });
@@ -218,6 +293,51 @@ test.describe("flow 8: 空间级 Analysis", () => {
 /** 统计卡根节点：以卡内唯一的 label 文本锚定卡片容器。 */
 function statCard(page: Page, label: string) {
   return page.getByText(label, { exact: true }).locator("..");
+}
+
+/** 区块容器：h2 标题的父级卡头再上一级即 `<section>`。 */
+function sectionByHeading(page: Page, title: string) {
+  return page.getByRole("heading", { name: title, level: 2 }).locator("../..");
+}
+
+/** 窄屏看板卡片内的状态按钮：先按卡片 aria-label 定位，再进到卡片根节点。 */
+function cardButton(page: Page, cardTitle: string, buttonName: string) {
+  return page
+    .getByLabel(cardTitle, { exact: true })
+    .locator("..")
+    .getByRole("button", { name: buttonName, exact: true });
+}
+
+/**
+ * 在团队项目页经「＋ 新建任务」弹窗创建任务。
+ *
+ * 沿 flow 6 的团队建任务路径；弹窗的截止日期是原生 date input，可直接
+ * `fill("YYYY-MM-DD")`（个人任务 helper 同款）。
+ */
+async function createTeamTask(
+  page: Page,
+  input: { title: string; dueDate?: string },
+): Promise<void> {
+  // 空项目会在页头与空状态各渲染一个入口；页头按钮在 DOM 中更靠前。
+  await page
+    .getByRole("button", { name: "＋ 新建任务", exact: true })
+    .first()
+    .click();
+
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  // 等弹窗 afterOpenChange 的 resetFields 完成后再填写。
+  await page.waitForTimeout(500);
+  await dialog.getByLabel("标题").fill(input.title);
+  if (input.dueDate) {
+    await dialog.getByLabel("截止日期").fill(input.dueDate);
+  }
+  await dialog.getByRole("button", { name: "创建任务" }).click();
+
+  await expect(dialog).toBeHidden();
+  await expect(
+    page.getByRole("link", { name: input.title, exact: true }),
+  ).toBeVisible();
 }
 
 /**
