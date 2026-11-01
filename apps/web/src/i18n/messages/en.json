@@ -40,5 +40,69 @@
     "languageChanged": "Language updated",
     "langZh": "简体中文",
     "langEn": "English"
+  },
+  "common": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "confirm": "Confirm"
+  },
+  "errors": {
+    "notLoggedIn": "Please sign in first",
+    "forbidden": "You do not have permission to perform this action",
+    "operationFailed": "Operation failed, please try again later",
+    "invalidLanguage": "Unsupported language"
+  },
+  "status": {
+    "notStarted": "Not started",
+    "inProgress": "In progress",
+    "completed": "Completed",
+    "overdue": "Overdue"
+  },
+  "date": {
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "overdue": "Overdue"
+  },
+  "auth": {
+    "signIn": "Sign in",
+    "signUp": "Sign up"
+  },
+  "nav": {
+    "space": "Space"
+  },
+  "tasks": {
+    "title": "Title"
+  },
+  "teams": {
+    "team": "Team"
+  },
+  "personal": {
+    "space": "Personal space"
+  },
+  "projects": {
+    "project": "Project"
+  },
+  "dashboard": {
+    "title": "Dashboard"
+  },
+  "kanban": {
+    "kanban": "Kanban"
+  },
+  "calendar": {
+    "calendar": "Calendar"
+  },
+  "analysis": {
+    "analysis": "Analysis"
+  },
+  "notifications": {
+    "notifications": "Notifications"
+  },
+  "notFound": {
+    "title": "Page not found"
+  },
+  "meta": {
+    "appTitle": "Open Doing",
+    "appDescription": "Open Doing task and project management platform"
   }
 }

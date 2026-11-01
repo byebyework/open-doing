@@ -40,5 +40,69 @@
     "languageChanged": "语言已切换",
     "langZh": "简体中文",
     "langEn": "English"
+  },
+  "common": {
+    "save": "保存",
+    "cancel": "取消",
+    "delete": "删除",
+    "confirm": "确认"
+  },
+  "errors": {
+    "notLoggedIn": "请先登录",
+    "forbidden": "没有权限执行该操作",
+    "operationFailed": "操作失败，请稍后重试",
+    "invalidLanguage": "暂不支持的语言"
+  },
+  "status": {
+    "notStarted": "未开始",
+    "inProgress": "进行中",
+    "completed": "已完成",
+    "overdue": "已逾期"
+  },
+  "date": {
+    "today": "今天",
+    "tomorrow": "明天",
+    "overdue": "已逾期"
+  },
+  "auth": {
+    "signIn": "登录",
+    "signUp": "注册"
+  },
+  "nav": {
+    "space": "空间"
+  },
+  "tasks": {
+    "title": "标题"
+  },
+  "teams": {
+    "team": "团队"
+  },
+  "personal": {
+    "space": "个人空间"
+  },
+  "projects": {
+    "project": "项目"
+  },
+  "dashboard": {
+    "title": "Dashboard"
+  },
+  "kanban": {
+    "kanban": "看板"
+  },
+  "calendar": {
+    "calendar": "日历"
+  },
+  "analysis": {
+    "analysis": "分析"
+  },
+  "notifications": {
+    "notifications": "通知"
+  },
+  "notFound": {
+    "title": "页面不存在"
+  },
+  "meta": {
+    "appTitle": "Open Doing",
+    "appDescription": "Open Doing 任务与项目管理平台"
   }
 }
