@@ -2,6 +2,7 @@
 
 import type { Project } from "@open-doing/types";
 import { Alert, Button, Form, Input, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -44,6 +45,8 @@ export function TeamProjectForm({
   onSuccess,
   onCancel,
 }: TeamProjectFormProps) {
+  const t = useTranslations("projects");
+  const tCommon = useTranslations("common");
   const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -85,7 +88,7 @@ export function TeamProjectForm({
 
       onSuccess(result.data);
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -108,29 +111,29 @@ export function TeamProjectForm({
       ) : null}
 
       <Form.Item
-        label="项目名称"
+        label={t("nameLabel")}
         name="name"
         rules={[
-          { required: true, whitespace: true, message: "请输入项目名称" },
-          { max: 50, message: "项目名称不能超过 50 个字符" },
+          { required: true, whitespace: true, message: t("nameRequired") },
+          { max: 50, message: t("nameTooLong", { max: 50 }) },
         ]}
       >
-        <Input placeholder="例如：官网改版" maxLength={50} autoFocus />
+        <Input placeholder={t("namePlaceholder")} maxLength={50} autoFocus />
       </Form.Item>
 
       <Form.Item
-        label="描述"
+        label={t("descriptionLabel")}
         name="description"
-        rules={[{ max: 500, message: "描述不能超过 500 个字符" }]}
+        rules={[{ max: 500, message: t("descriptionTooLong", { max: 500 }) }]}
       >
-        <Input.TextArea rows={4} placeholder="补充项目背景、目标…" maxLength={500} />
+        <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} maxLength={500} />
       </Form.Item>
 
       <div className="flex gap-2">
         <Button type="primary" htmlType="submit" loading={submitting}>
-          {isEdit ? "保存" : "创建项目"}
+          {isEdit ? tCommon("save") : t("submitCreate")}
         </Button>
-        {onCancel ? <Button onClick={onCancel}>取消</Button> : null}
+        {onCancel ? <Button onClick={onCancel}>{tCommon("cancel")}</Button> : null}
       </div>
     </Form>
   );
@@ -149,12 +152,13 @@ export function TeamProjectCreatePanel({
   teamSlug: string;
 }) {
   const router = useRouter();
+  const t = useTranslations("projects");
 
   return (
     <TeamProjectForm
       teamId={teamId}
       onSuccess={(project) => {
-        message.success("项目已创建");
+        message.success(t("projectCreated"));
         router.push(teamProjectHref(teamSlug, project.slug));
         router.refresh();
       }}

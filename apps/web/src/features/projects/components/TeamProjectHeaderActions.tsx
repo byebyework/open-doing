@@ -1,6 +1,7 @@
 "use client";
 
 import { Button, Modal, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -28,6 +29,8 @@ export function TeamProjectHeaderActions({
   redirectTo,
 }: TeamProjectHeaderActionsProps) {
   const router = useRouter();
+  const t = useTranslations("projects");
+  const tCommon = useTranslations("common");
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -42,16 +45,16 @@ export function TeamProjectHeaderActions({
       });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? "删除失败，请稍后重试");
+        message.error(result.errors.form ?? t("deleteFailed"));
         return;
       }
 
-      message.success("项目已删除");
+      message.success(t("projectDeleted"));
       setDeleteOpen(false);
       router.push(redirectTo);
       router.refresh();
     } catch {
-      message.error("网络异常，请稍后重试");
+      message.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -59,14 +62,14 @@ export function TeamProjectHeaderActions({
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Button onClick={() => setEditOpen(true)}>编辑</Button>
+      <Button onClick={() => setEditOpen(true)}>{tCommon("edit")}</Button>
       <Button danger onClick={() => setDeleteOpen(true)}>
-        删除
+        {tCommon("delete")}
       </Button>
 
       <Modal
         open={editOpen}
-        title="编辑项目"
+        title={t("editProject")}
         footer={null}
         onCancel={() => setEditOpen(false)}
         destroyOnHidden
@@ -77,7 +80,7 @@ export function TeamProjectHeaderActions({
           project={project}
           onCancel={() => setEditOpen(false)}
           onSuccess={() => {
-            message.success("已保存");
+            message.success(t("saved"));
             setEditOpen(false);
             router.refresh();
           }}
@@ -86,9 +89,9 @@ export function TeamProjectHeaderActions({
 
       <ConfirmModal
         open={deleteOpen}
-        title="删除项目"
-        content="删除后项目下的任务、子任务与评论一并删除，且不可恢复。确定删除吗？"
-        confirmText="删除"
+        title={t("deleteProject")}
+        content={t("deleteConfirm")}
+        confirmText={tCommon("delete")}
         danger
         loading={deleting}
         onConfirm={handleDelete}

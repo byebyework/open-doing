@@ -399,7 +399,23 @@
     "deleteConfirm": "Tasks in the project will be deleted too and cannot be recovered. Delete “{name}”?"
   },
   "projects": {
-    "project": "Project"
+    "project": "Project",
+    "nameRequired": "Enter a project name",
+    "nameTooLong": "Project name cannot exceed {max} characters",
+    "descriptionTooLong": "Description cannot exceed {max} characters",
+    "projectNotFound": "The project does not exist or you do not have access",
+    "deleteFailed": "Failed to delete. Please try again later.",
+    "projectDeleted": "Project deleted",
+    "projectCreated": "Project created",
+    "saved": "Saved",
+    "editProject": "Edit project",
+    "deleteProject": "Delete project",
+    "deleteConfirm": "Tasks, subtasks and comments under this project will be deleted too and cannot be recovered. Delete this project?",
+    "nameLabel": "Project name",
+    "namePlaceholder": "e.g. Website revamp",
+    "descriptionLabel": "Description",
+    "descriptionPlaceholder": "Add background and goals…",
+    "submitCreate": "Create project"
   },
   "dashboard": {
     "title": "Dashboard"

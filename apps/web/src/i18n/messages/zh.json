@@ -399,7 +399,23 @@
     "deleteConfirm": "删除后项目内任务一并删除，且不可恢复。确定删除「{name}」吗？"
   },
   "projects": {
-    "project": "项目"
+    "project": "项目",
+    "nameRequired": "请输入项目名称",
+    "nameTooLong": "项目名称不能超过 {max} 个字符",
+    "descriptionTooLong": "描述不能超过 {max} 个字符",
+    "projectNotFound": "项目不存在或无权访问",
+    "deleteFailed": "删除失败，请稍后重试",
+    "projectDeleted": "项目已删除",
+    "projectCreated": "项目已创建",
+    "saved": "已保存",
+    "editProject": "编辑项目",
+    "deleteProject": "删除项目",
+    "deleteConfirm": "删除后项目下的任务、子任务与评论一并删除，且不可恢复。确定删除吗？",
+    "nameLabel": "项目名称",
+    "namePlaceholder": "例如：官网改版",
+    "descriptionLabel": "描述",
+    "descriptionPlaceholder": "补充项目背景、目标…",
+    "submitCreate": "创建项目"
   },
   "dashboard": {
     "title": "Dashboard"

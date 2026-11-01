@@ -19,6 +19,17 @@ type Failure = Extract<ActionResult<never>, { ok: false }>;
 /** 领域错误 -> 字段错误；未知错误只返回通用提示，避免泄露内部信息。 */
 async function toFailure(error: unknown): Promise<Failure> {
   if (error instanceof DomainError) {
+    // 项目领域文案在 projects 命名空间；无 i18n 通道时回退 message（zh 兜底）。
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field ?? "form"]: failures
+            .custom(`projects.${error.i18n.key}`, error.i18n.params).errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field ?? "form"]: error.message } };
   }
   if (error instanceof TeamPermissionError) {
