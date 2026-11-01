@@ -2,7 +2,7 @@
 
 import { Select, message } from "antd";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
 
 import type { AppLocale } from "@/i18n/config";
@@ -32,6 +32,8 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
   const router = useRouter();
   const [current, setCurrent] = useState<AppLocale>(language);
   const [synced, setSynced] = useState(language);
+  // 待弹 toast 的目标语言（ref：等 refresh 送达新语言后由 effect 消费）。
+  const pendingToast = useRef<AppLocale | null>(null);
   const [pending, startTransition] = useTransition();
 
   // 渲染期同步 props → state：action 成功后 refresh 带来新的服务端语言。
@@ -40,6 +42,16 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
     setCurrent(language);
   }
 
+  // 成功 toast 延迟到 refresh 把新 locale 的消息包送达后再弹：
+  // 切换瞬间 `t` 仍绑定旧语言消息（切英文却弹中文提示观感即 bug），
+  // 这里等 `language` prop 变成目标语言后，t() 才以新语言解析文案。
+  useEffect(() => {
+    if (pendingToast.current !== null && pendingToast.current === language) {
+      pendingToast.current = null;
+      message.success(t("languageChanged"));
+    }
+  }, [language, t]);
+
   function handleChange(next: AppLocale) {
     const previous = current;
     setCurrent(next);
@@ -47,11 +59,12 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
       try {
         const result = await updateLanguageAction({ language: next });
         if (!result.ok) {
+          // 失败时界面没有切换语言，用当前（旧）语言的错误提示是正确的。
           message.error(t("saveFailed"));
           setCurrent(previous);
           return;
         }
-        message.success(t("languageChanged"));
+        pendingToast.current = next;
         router.refresh();
       } catch {
         message.error(t("saveFailed"));
@@ -71,6 +84,7 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
         </div>
       </div>
       <Select<AppLocale>
+        data-testid="language-select"
         value={current}
         options={[...LANGUAGE_OPTIONS]}
         loading={pending}

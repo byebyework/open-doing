@@ -55,6 +55,7 @@ export const TEST_IDS = {
     newPasswordInput: "settings-new-password-input",
     confirmPasswordInput: "settings-confirm-password-input",
     updatePasswordButton: "settings-update-password-button",
+    languageSelect: "language-select",
     dueSoonSwitch: "settings-due-soon-switch",
     overdueSwitch: "settings-overdue-switch",
   },
