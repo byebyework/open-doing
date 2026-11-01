@@ -71,6 +71,16 @@ pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # 单
 - 主题唯一入口 `apps/web/src/app/theme.ts`(antd ThemeConfig);根布局 `providers.tsx` 用 `AntdRegistry` + `ConfigProvider locale={zhCN}` 包裹,**不得再自建 ConfigProvider**。
 - 设计令牌源自 `docs/prototypes/assets/design-tokens.css`(品牌紫 `#7d2ae8`、渐变 `#7d2ae8→#00c4cc`);运行时副本是 `apps/web/src/app/tokens.css`(由 `globals.css` 引入),变量名与取值须与原型保持 1:1,改令牌时两处同步。新 UI 对照 `docs/prototypes/` 同名页面实现。
 
+### 国际化(i18n,v1.1 起强制)
+
+- 全站文案走 next-intl(无 URL locale 前缀):消息包在 `apps/web/src/i18n/messages/{zh,en}.json`,请求级 locale 解析见 `apps/web/src/i18n/server.ts`。
+- **所有用户可见文案必须进消息包,禁止硬编码**:`src/i18n/cjk-guard.test.ts` 强制扫描 `src` 与 `e2e`(剥注释后含 CJK 即失败并列出 file:line);非文案中文需在测试内白名单逐条给理由。
+- **新功能(组件/表单/错误/通知)交付时必须同时提供 zh 与 en 条目**:`src/i18n/messages-parity.test.ts` 强制两包 key 结构一致。
+- 服务端错误文案:service 层 `throw new <X>Error(zh 兜底, field, { key, params })`,action 层的 `toFailure` 经 `standardFailuresForRequest()`(内部按请求 locale 取 translator)用 `failures.custom("<领域ns>.<key>", params)` 翻译到 `field ?? "form"`(`lib/domain-failure.ts` 提供可注入 translator 的纯函数变体 `domainFailureWith`)。领域错误 key 放对应领域命名空间,通用失败(403/限流等)放 `errors` 命名空间。构造参数里的中文只是兜底,不得直接展示。
+- 通知模板正文带 `<b>` 粗体标记,由 `features/notifications/components/notification-format.ts` 的 `parseBoldSegments` 解析为分段渲染;改模板时 zh/en 同步。
+- 语言偏好:登录态以 `users.language` 为唯一权威(多设备切换即时生效),未登录读 cookie `od_locale`,皆无回落 zh;切换入口只在个人设置页(`users/actions.ts` 的 `updateLanguageAction` 同时写 DB 与 cookie)。
+- antd / dayjs locale 与 `html lang` 由根 Providers 与根布局按请求 locale 统一切换(`LOCALE_HTML_LANG`);语言切换的成功 toast 等 client 侧文案在 RSC refresh 送达新消息包后再渲染。
+
 ### 日期口径
 
 「今天」统一按 Asia/Shanghai 计算(`apps/web/src/lib/today.ts` 与通知 cron 同口径)。RSC 把 `today` 作为 prop 传给 client 组件做逾期/临期判定,保证服务端/客户端渲染一致;不要在组件里用本地时区取当前日期。`due_date` 是 Postgres `date` 类型。

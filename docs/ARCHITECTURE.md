@@ -330,6 +330,18 @@ sessions（v1 不建：使用 jose 无状态签名 cookie，见 §3）
 - 客户端组件限定为：看板拖拽、表单交互、通知轮询、视图切换。
 - 数据库连接放在 `server/db.ts`，单例，避免开发热重载产生多连接。
 
+### 10.1 请求级 locale 解析链路（i18n，v1.1）
+
+每请求的界面语言按以下优先级解析（`src/i18n/server.ts` 的 `getRequestLocale`，React `cache` 每请求去重）：
+
+1. **登录态：`users.language` 为唯一权威**——查会话用户带出的语言字段，多设备切换下一请求立即生效；
+2. **未登录：cookie `od_locale`**（`normalizeLocale` 校验，非法值回落 zh）；
+3. **皆无：回落 `zh`**。
+
+解析结果同时驱动三处同步：next-intl 消息包（`getRequestConfig` 按 locale 动态 import）、antd 与 dayjs 的 locale（根 Providers）、`<html lang>`（根布局，`LOCALE_HTML_LANG` 映射 zh→`zh-CN`、en→`en-US`）。任何一处漏切都会表现为 hydration error 或日期组件语言混杂（e2e flow 12 冒烟兜底）。
+
+Server Action 里的错误翻译经 `standardFailuresForRequest()`（内部按请求 locale 取 translator），用 `failures.custom("<领域ns>.<key>", params)` 翻译领域错误到 `field ?? "form"`；`lib/domain-failure.ts` 提供可注入 translator 的纯函数变体 `domainFailureWith`，便于单测。约定细节（cjk-guard / messages-parity 两条强制测试、通知 `<b>` 模板解析）见仓库根 `AGENTS.md` 的「国际化」小节。
+
 ## 11. 配置与环境
 
 `apps/web` 需要的环境变量（`.env.local`，不入库）：
