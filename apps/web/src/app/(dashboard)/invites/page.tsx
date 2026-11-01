@@ -13,9 +13,11 @@ import { CancelJoinRequestButton } from "@/features/teams/joins/components/Cance
 import { listMyJoinRequests } from "@/features/teams/joins/service";
 import { joinTeamHref } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "待处理邀请 · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("invitesTitle") };
+}
 
 /** 邀请结果 tag key（已处理分区）。 */
 const RESULT_KEYS = {

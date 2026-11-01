@@ -14,9 +14,11 @@ import { TodayTaskList } from "@/features/dashboard/personal-dashboard/component
 import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
 import { todayInShanghai } from "@/lib/today";
 
-export const metadata: Metadata = {
-  title: "Dashboard · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("dashboardTitle") };
+}
 
 /** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
 function daysBetween(later: string, earlier: string): number {

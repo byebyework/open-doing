@@ -16,13 +16,14 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { teamSlug } = await props.params;
   const user = await requireUser();
+  const t = await getTranslations("meta");
 
   // 非成员不通过标题泄露团队名（页面本身也会 404）。
   const team = await getTeamBySlug(teamSlug);
   const membership = team ? await getMembership(team.id, user.id) : null;
-  if (!team || !membership) return { title: "Calendar · Open Doing" };
+  if (!team || !membership) return { title: t("calendarTitle") };
 
-  return { title: `${team.name} Calendar · Open Doing` };
+  return { title: t("teamModuleTitle", { team: team.name, module: "Calendar" }) };
 }
 
 /** `?month=YYYY-MM` 合法格式（月份段 01–12）；其余一律回退当前月。 */

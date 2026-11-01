@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { parseAnalysisRange } from "@/features/analysis/buckets";
 import { SpaceAnalysis } from "@/features/analysis/components/SpaceAnalysis";
@@ -7,9 +8,11 @@ import { requireUser } from "@/features/auth/session";
 import { moduleHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
-export const metadata: Metadata = {
-  title: "Analysis · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("analysisTitle") };
+}
 
 /**
  * 个人空间 Analysis（M5）。

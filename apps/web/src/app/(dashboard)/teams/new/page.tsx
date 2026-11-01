@@ -6,9 +6,11 @@ import { requireUser } from "@/features/auth/session";
 import { CreateTeamForm } from "@/features/teams/components/CreateTeamForm";
 import { joinTeamHref } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "创建团队 · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("createTeamTitle") };
+}
 
 /** 创建团队页：成功后创建者自动成为 owner 并跳转团队设置。 */
 export default async function CreateTeamPage() {

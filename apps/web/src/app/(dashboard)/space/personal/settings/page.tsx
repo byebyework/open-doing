@@ -8,9 +8,11 @@ import { LanguageSetting } from "@/features/users/components/LanguageSetting";
 import { ReminderToggleList } from "@/features/users/components/ReminderToggleList";
 import { getReminderPrefs, getUserLanguage } from "@/features/users/service";
 
-export const metadata: Metadata = {
-  title: "设置 · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("settingsTitle") };
+}
 
 /** 卡片外壳：与团队设置页保持一致的描边、圆角与阴影。 */
 const CARD_CLASS =

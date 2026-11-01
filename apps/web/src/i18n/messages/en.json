@@ -629,6 +629,18 @@
   },
   "meta": {
     "appTitle": "Open Doing",
-    "appDescription": "Open Doing task and project management platform"
+    "appDescription": "Open Doing task and project management platform",
+    "loginTitle": "Sign in · Open Doing",
+    "registerTitle": "Sign up · Open Doing",
+    "joinTeamTitle": "Join a team by code · Open Doing",
+    "createTeamTitle": "Create a team · Open Doing",
+    "invitesTitle": "Pending invites · Open Doing",
+    "settingsTitle": "Settings · Open Doing",
+    "teamSettingsTitle": "Team settings · Open Doing",
+    "dashboardTitle": "Dashboard · Open Doing",
+    "kanbanTitle": "Kanban · Open Doing",
+    "calendarTitle": "Calendar · Open Doing",
+    "analysisTitle": "Analysis · Open Doing",
+    "teamModuleTitle": "{team} {module} · Open Doing"
   }
 }

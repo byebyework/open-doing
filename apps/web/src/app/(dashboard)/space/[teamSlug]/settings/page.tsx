@@ -1,5 +1,6 @@
 import { Tag } from "antd";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import dayjs from "dayjs";
 
@@ -19,9 +20,11 @@ import { JoinCodeSettings } from "@/features/teams/joins/components/JoinCodeSett
 import { JoinRequestList } from "@/features/teams/joins/components/JoinRequestList";
 import { getTeamJoinSettings, listTeamJoinRequests } from "@/features/teams/joins/service";
 
-export const metadata: Metadata = {
-  title: "团队设置 · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("teamSettingsTitle") };
+}
 
 /**
  * 团队设置页（T 轨道骨架）。

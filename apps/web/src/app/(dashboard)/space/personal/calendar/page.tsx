@@ -7,9 +7,11 @@ import { getPersonalSpaceCalendar } from "@/features/calendar/service";
 import { moduleHref, personalTaskHref, spaceDashboardHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
-export const metadata: Metadata = {
-  title: "Calendar · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("calendarTitle") };
+}
 
 /** `?month=YYYY-MM` 合法格式（月份段 01–12）；其余一律回退当前月。 */
 const MONTH_PATTERN = /^\d{4}-(0[1-9]|1[0-2])$/;

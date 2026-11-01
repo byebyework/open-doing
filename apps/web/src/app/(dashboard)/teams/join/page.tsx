@@ -6,9 +6,11 @@ import { requireUser } from "@/features/auth/session";
 import { JoinByCodeForm } from "@/features/teams/joins/components/JoinByCodeForm";
 import { createTeamHref } from "@/lib/routes";
 
-export const metadata: Metadata = {
-  title: "凭码加入团队 · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("joinTeamTitle") };
+}
 
 /**
  * 凭码加入页：输入团队加入码发起申请，由 owner/admin 审批。

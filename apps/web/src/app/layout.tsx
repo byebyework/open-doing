@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { NextIntlClientProvider } from "next-intl";
+import { getTranslations } from "next-intl/server";
 
 import { LOCALE_HTML_LANG } from "@/i18n/config";
 import { getRequestLocale } from "@/i18n/server";
@@ -8,10 +9,11 @@ import { getRequestLocale } from "@/i18n/server";
 import { Providers } from "./providers";
 import "./globals.css";
 
-export const metadata: Metadata = {
-  title: "Open Doing",
-  description: "Open Doing 任务与项目管理平台",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("appTitle"), description: t("appDescription") };
+}
 
 export default async function RootLayout({
   children,

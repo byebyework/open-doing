@@ -10,9 +10,11 @@ import { listPersonalProjects } from "@/features/personal/projects/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
-export const metadata: Metadata = {
-  title: "Kanban · Open Doing",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations("meta");
+
+  return { title: t("kanbanTitle") };
+}
 
 /**
  * 个人空间 Kanban（v1.1 M2）。

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { parseAnalysisRange } from "@/features/analysis/buckets";
@@ -15,13 +16,14 @@ export async function generateMetadata(
 ): Promise<Metadata> {
   const { teamSlug } = await props.params;
   const user = await requireUser();
+  const t = await getTranslations("meta");
 
   // 非成员不通过标题泄露团队名（页面本身也会 404）。
   const team = await getTeamBySlug(teamSlug);
   const membership = team ? await getMembership(team.id, user.id) : null;
-  if (!team || !membership) return { title: "Analysis · Open Doing" };
+  if (!team || !membership) return { title: t("analysisTitle") };
 
-  return { title: `${team.name} Analysis · Open Doing` };
+  return { title: t("teamModuleTitle", { team: team.name, module: "Analysis" }) };
 }
 
 /**
