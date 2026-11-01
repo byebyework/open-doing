@@ -115,7 +115,7 @@ export default async function PersonalSettingsPage() {
           <Alert
             type="info"
             showIcon
-            title="排序应用于侧边栏空间切换器与个人 Dashboard 的项目列表。"
+            title="排序应用于个人 Kanban、项目详情页与任务详情页的项目列表。"
             className="mt-4"
           />
         </section>
