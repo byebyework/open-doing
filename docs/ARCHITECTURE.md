@@ -79,7 +79,11 @@ features/
 ├── teams/      团队、成员关系、邀请、角色与权限判定
 ├── projects/   项目 CRUD
 ├── tasks/      任务、子任务、评论、看板状态流转
+├── kanban/     空间级 Kanban：跨项目聚合、筛选与 done 收敛
 ├── calendar/   空间级 Calendar：按截止日期聚合月网格与本周 / 本月临期清单
+├── analysis/   空间级 Analysis：完成趋势 / 吞吐 / 成员负载 / 项目健康度
+├── personal/   个人空间：个人项目、Dashboard 与个人设置
+├── dashboard/  团队 Dashboard：健康度、重要节点与成员负载
 └── notifications/ 通知、已读、到期扫描
 ```
 
@@ -94,7 +98,7 @@ features/
 - **客户端边界**：antd 的交互组件（useMessage、Modal、Table 交互等）只能在 Client Component 中使用。页面保持 RSC 取数，把 antd 交互部分下沉为 `"use client"` 组件，通过 props 传可序列化数据。
 - **根布局**：用 `AntdRegistry` 包裹应用做 SSR 样式收集；`ConfigProvider` 注入 `zh_CN`（同步设置 dayjs 中文 locale），主题统一在一个 `theme.ts` 中配置 Token（v1 亮色，品牌色后续在此一处调整）。
 - 样式冲突排查原则：优先用 antd Token 和组件属性，Tailwind 不覆盖 antd 组件内部样式；确需深度定制时用 antd 的 token/className 钩子，不用全局选择器硬改。
-- 看板拖拽的卡片基于 antd 基础元素实现，拖拽库实现阶段选型。
+- 看板拖拽用 `@dnd-kit/core` + `@dnd-kit/sortable` 实现（卡片本身仍基于 antd 基础元素与设计令牌样式）。
 
 ## 5. 路由结构
 
@@ -116,6 +120,8 @@ app/
 │       │   ├── dashboard/page.tsx   # 个人 Dashboard：统计卡 +「今天」列表（≤20）
 │       │   ├── kanban/page.tsx      # 个人空间 Kanban：跨项目聚合 + ?project 筛选
 │       │   ├── calendar/page.tsx    # 个人空间 Calendar：月视图 + 本周 / 本月清单（?month）
+│       │   ├── analysis/page.tsx    # 个人空间 Analysis：趋势 / 积压 / 按时率 / 项目对比（?range）
+│       │   ├── settings/page.tsx    # 个人设置：改密、提醒开关、项目排序说明
 │       │   ├── projects/[projectSlug]/
 │       │   │   └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
 │       │   └── tasks/[taskId]/page.tsx # 个人任务详情（含个人项目内任务）
@@ -123,21 +129,20 @@ app/
 │       │   ├── dashboard/page.tsx   # 团队 Dashboard：健康度 + 重要节点 + 成员负载
 │       │   ├── kanban/page.tsx      # 团队空间 Kanban：跨项目聚合 + ?project / ?assignee 筛选
 │       │   ├── calendar/page.tsx    # 团队空间 Calendar：团队全部任务（含未指派）+ ?month
-│       │   ├── settings/page.tsx    # 团队设置（静态段优先于 [module] 占位页）
-│       │   ├── projects/
-│       │   │   ├── new/page.tsx
-│       │   │   └── [projectSlug]/
-│       │   │       ├── page.tsx      # 团队项目页（列表/看板双视图）
-│       │   │       └── tasks/[taskId]/ # 团队任务详情
-│       │   └── [module]/page.tsx    # 模块占位页（analysis；个人 settings 被 settings 静态段遮蔽，链接 404）
+│       │   ├── analysis/page.tsx    # 团队空间 Analysis：吞吐 / 成员负载 / 健康度 / 僵尸任务（?range）
+│       │   ├── settings/page.tsx    # 团队设置：成员、邀请、凭码加入与审批、项目、团队管理
+│       │   └── projects/
+│       │       ├── new/page.tsx
+│       │       └── [projectSlug]/
+│       │           ├── page.tsx      # 团队项目页（列表/看板双视图）
+│       │           └── tasks/[taskId]/ # 团队任务详情
 └── api/
     └── cron/
         └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
 ```
 
-- 个人空间的 `analysis` 由团队空间的 `space/[teamSlug]/[module]/page.tsx` 同一文件承接（URL 中该段实际取值为 `personal`）；`kanban` / `calendar` 两个空间均已有真实页面（见 §5.3 / §5.4）。个人 `settings` 不由占位页承接：静态 `settings` 段优先于 `[module]`，`personal` 被当作团队 slug → notFound，个人空间 settings 链接当前 404（M6 范围）。
-- 动态段名约束：Next 要求同一位置的动态段名唯一，团队空间已占用 `[teamSlug]`，因此占位页沿用该段名，URL 语义仍是 `spaceRef`（`personal` 或团队 slug）。
-- `personal` 为保留 spaceRef：团队 slug 生成需避开 `personal`（当前无 guard，排期 X1）。
+- 五个模块在两个空间均为真实页面（`dashboard` / `kanban` / `calendar` / `analysis` / `settings`）；M5 已退役原 `space/[teamSlug]/[module]` 占位页，站内无遗留占位路由。个人与团队页共用领域组件，按 `spaceType` / variant 区分（见 §5.3–§5.5）。
+- `personal` 为保留 spaceRef：团队 slug 生成把 `personal` 视为已占用（X1 guard，`lib/slug.ts` 的 `RESERVED_SPACE_SLUGS`），团队名 "Personal" 落 `personal-2`，个人空间路由不受影响。
 - 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
 - 个人任务与团队任务复用同一任务详情组件，差异通过 `spaceType` 与权限上下文处理。
 - 所有 `(dashboard)` 路由在服务端统一做登录校验（重定向到 `/login`）；权限不足返回 403 页面，而不是仅靠隐藏按钮。
@@ -208,6 +213,19 @@ URL query 契约（月份进 URL，RSC 按 query 服务端取数）：
 - 团队 chip 前缀为负责人头像（首字 + 按 `assigneeId` 哈希的定色盘底色）或「未指派」描边 tag；个人版 chip 不带负责人。
 - 只读：chip / 侧栏条目按 `taskHrefs`（RSC 构造）渲染为详情链接，点空白格无行为；不做拖拽改期。窄屏（<861px）侧栏整体堆到月历下方。
 - 权限：团队页在 RSC 内先做成员资格校验再取数，非成员 `notFound()`；个人页数据范围恒为本人。
+
+### 5.5 空间级 Analysis（v1.1 M5）
+
+两个空间一套组件（`features/analysis/`，`SpaceAnalysis` 以 `variant` 区分个人 / 团队），只读自绘图表（不引入图表库）：
+
+| 路由 | 内容 |
+|---|---|
+| `/space/personal/analysis` | 统计卡（进行中 / 本月完成 / 当前逾期 / 按时率）+ 完成趋势、新增 vs 完成、未来截止分布、项目对比 |
+| `/space/{teamSlug}/analysis` | 统计卡 + 吞吐、成员负载分布、项目健康度、僵尸任务（`in_progress` 且 14 天未动，最多 10 条），非成员 404 |
+
+- `?range=7|30|90` 决定趋势窗口，缺失 / 非法 / 数组参数**静默回退 30**（与 M4 `month` 同款宽容语义）；7 / 30 天按日分桶、90 天按自然周分桶。切换由 client 组件写回 URL，RSC 重新取数；统计卡是当前快照，不随 range 变化。
+- 按时率固定近 30 天窗口（与页头 range 解耦的快照口径）；完成日 = `updated_at`、创建日 = `created_at`（无历史快照表，删除任务后趋势无法重建，属已知边界）；成员负载为当前快照，不做历史回看。
+- 个人范围谓词恒为「指派给我的任务」（个人任务 + 指派给自己的团队任务），与 Dashboard 同口径；团队复用 `getTeamOverview` 裁剪负载与健康度。
 
 ## 6. 数据模型
 
@@ -299,7 +317,7 @@ sessions（v1 不建：使用 jose 无状态签名 cookie，见 §3）
 ## 9. 通知
 
 - 通知由领域动作**同步产生**（邀请、指派、评论、管理员改动），与业务修改在同一事务内写入，避免丢失。
-- 临期/逾期由 `GET/POST /api/cron/due-scan` 扫描产生（扫描范围含个人空间任务——对本人的自我提醒；个人项目不产生指派、评论、改动类通知）：
+- 临期/逾期由 `POST /api/cron/due-scan` 扫描产生（扫描范围含个人空间任务——对本人的自我提醒；个人项目不产生指派、评论、改动类通知）：
   - 用环境变量中的 cron 密钥（如 `Authorization: Bearer` 或自定义头）校验；
   - 幂等：同一任务同一类型在到期窗口内只产生一条（按 `(user_id, task_id, type)` 加去重约束或写入前检查）；
   - 扫描后任务转已完成不再产生新通知（已产生的历史通知保留）。
@@ -342,7 +360,9 @@ CRON_SECRET=...
 | 个人/团队项目页（列表 + 看板双视图）与任务详情 | ✅ 已迁入 `/space/{spaceRef}/projects/...`、`/space/personal/tasks/{id}` |
 | 空间级 Kanban `/space/{spaceRef}/kanban` | ✅ v1.1 M3：三列跨项目聚合、`?project=` / `?assignee=` 筛选（见 §5.3）、拖拽改状态、done 7 天收敛 + 原地展开 |
 | 空间级 Calendar `/space/{spaceRef}/calendar` | ✅ v1.1 M4：月网格 + 本周清单 + 本月即将到期，`?month=` 翻月（见 §5.4）；只读 |
-| 空间级 Analysis / 个人设置 | 🟡 占位页 `/space/{spaceRef}/{module}`，待 M5–M6 |
+| 空间级 Analysis `/space/{spaceRef}/analysis` | ✅ v1.1 M5：个人 5 区块 / 团队 4 区块，`?range=7\|30\|90`（见 §5.5）；只读自绘图表 |
+| 空间级设置 `/space/{spaceRef}/settings` | ✅ v1.1 M6：个人设置为改密码 + 提醒开关 + 项目排序说明；团队设置沿用 v1（成员、邀请、凭码加入、项目与团队管理） |
+| 设计令牌 `tokens.css` | ✅ X1：与原型 `design-tokens.css` 变量名/取值 1:1，经 `globals.css` 全局解析；品牌字体未加载（无授权来源，回退栈保留） |
 | cron 到期扫描（`CRON_SECRET` 鉴权、幂等） | ✅ 已完成 |
 
 ## 13. 建议的实施顺序（概要）

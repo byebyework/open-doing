@@ -4,13 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-Open Doing:个人 + 团队任务与项目管理系统(v1)。单体 Next.js 16(App Router,React 19,Turbopack)+ PostgreSQL 17 + Drizzle ORM + antd v6 + Tailwind CSS 4。全站中文(`zh_CN` locale),页面默认 RSC,写操作走 Server Actions。
+Open Doing:个人 + 团队任务与项目管理系统(v1.1)。单体 Next.js 16(App Router,React 19,Turbopack)+ PostgreSQL 17 + Drizzle ORM + antd v6 + Tailwind CSS 4。全站中文(`zh_CN` locale),页面默认 RSC,写操作走 Server Actions。登录后按空间组织:个人空间与各团队空间共用 Dashboard / Kanban / Calendar / Analysis / 设置五模块导航,路由统一为 `/space/{spaceRef}/{module}`(`spaceRef` = `personal` 或团队 slug)。
 
 权威文档(改代码前先读对应部分):
 - `docs/2026-10-21-open-doing-v1-design.md` — 产品"是什么、为什么"
 - `docs/ARCHITECTURE.md` — "怎么搭"
-- `docs/prototypes/` — HTML 原型,是 UI 视觉与文案的对照基准
+- `docs/prototypes/` — HTML 原型,是 UI 视觉与文案的对照基准(本轮冻结,不随实现改动)
 - `docs/V1_TASKS.md` — 任务板;代码注释中的 F-5 / P-5 / N-2 等编号指向此文件,其中冻结契约(如 `AppShell`、`(dashboard)/layout.tsx` 的导入关系)不得修改
+- `docs/V1.1_TASKS.md` — v1.1 任务板与各模块「实现记录」,S/M/X 编号指向此文件
 
 `apps/web/AGENTS.md`:Next.js 16 相对训练数据有破坏性变更,写 Next 相关代码前先读 `apps/web/node_modules/next/dist/docs/` 中的相关指南,留意废弃通告。
 
@@ -48,7 +49,7 @@ pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # 单
 
 ### features 领域模块(`apps/web/src/features/`)
 
-按领域自包含:auth / users / teams / projects / tasks / notifications / personal / dashboard。每个领域:
+按领域自包含:auth / users / teams / projects / tasks / kanban / calendar / analysis / notifications / personal / dashboard。每个领域:
 - `actions.ts` — Server Actions:入参校验 → 权限校验 → 调 service → 返回 `ActionResult<T>`(`{ ok: true, data }` 或 `{ ok: false, errors: { form?, <field>?: string } }`)。字段错误由客户端表单映射回对应 `Form.Item`。
 - `service.ts` — 数据访问与业务规则(如"member 不能改他人任务"),不散落在页面里。
 - `components/` — 领域组件;跨领域通用件放 `src/components/ui`。
@@ -68,7 +69,7 @@ pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # 单
 
 - 组件以 antd v6 为准,不自己造;Tailwind 只做布局/间距/微调。`globals.css` **关闭了 preflight**(只引 theme + utilities,手工保留 box-sizing)——不要加回样式重置,不要用全局选择器覆盖 antd 内部样式。
 - 主题唯一入口 `apps/web/src/app/theme.ts`(antd ThemeConfig);根布局 `providers.tsx` 用 `AntdRegistry` + `ConfigProvider locale={zhCN}` 包裹,**不得再自建 ConfigProvider**。
-- 设计令牌源自 `docs/prototypes/assets/design-tokens.css`(品牌紫 `#7d2ae8`、渐变 `#7d2ae8→#00c4cc`);新 UI 对照 `docs/prototypes/` 同名页面实现。
+- 设计令牌源自 `docs/prototypes/assets/design-tokens.css`(品牌紫 `#7d2ae8`、渐变 `#7d2ae8→#00c4cc`);运行时副本是 `apps/web/src/app/tokens.css`(由 `globals.css` 引入),变量名与取值须与原型保持 1:1,改令牌时两处同步。新 UI 对照 `docs/prototypes/` 同名页面实现。
 
 ### 日期口径
 

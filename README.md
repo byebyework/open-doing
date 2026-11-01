@@ -2,6 +2,18 @@
 
 项目任务进度管理系统。解决三个问题：个人任务理不清、团队进度不同步、上级看不到工作情况。
 
+## 功能概览
+
+登录后按**空间**组织：个人空间与各团队空间共用同一套五个模块的导航（`/space/{personal|团队 slug}/{module}`）。
+
+- **Dashboard**：个人看「今天该干嘛」（统计卡 + 今天/逾期任务）；团队看项目健康度、重要节点与成员负载。
+- **Kanban**：跨项目聚合的三列看板（待办 / 进行中 / 已完成），支持按项目（团队空间另支持「未指派」）筛选，拖拽改状态，已完成默认收敛近 7 天。
+- **Calendar**：按月查看任务截止日期（月网格 + 本周清单 + 本月即将到期），只读。
+- **Analysis**：只读分析。个人为完成趋势、积压变化、按时率、未来截止分布与项目对比；团队为吞吐、成员负载、项目健康度与僵尸任务；支持近 7 / 30 / 90 天切换。
+- **设置**：个人空间设置含账户安全（改密码）、任务提醒开关、项目排序说明；团队设置为成员与权限、凭码加入、项目与团队管理。
+
+个人空间另有个人项目页与任务详情；团队空间另有团队项目页、任务详情、UID 邀请与凭码申请审批。
+
 ## Monorepo 结构
 
 使用 pnpm workspaces 管理：
@@ -14,10 +26,11 @@ apps/
         ├── app/            # 路由
         │   ├── (auth)/     # 登录、注册
         │   ├── (dashboard)/
-        │   │   ├── my/     # 个人空间：我的任务
-        │   │   └── teams/  # 团队 → 项目 → 任务
+        │   │   ├── space/  # 空间树：/space/{personal|团队 slug}/{module}
+        │   │   ├── invites/ # 待处理邀请与加入申请
+        │   │   └── teams/  # 创建团队、凭码加入（非空间静态页）
         │   └── api/
-        ├── features/       # 按领域组织：auth / teams / projects / tasks / notifications
+        ├── features/       # 按领域组织：auth / users / teams / projects / tasks / kanban / calendar / analysis / notifications / personal / dashboard
         ├── components/     # ui、layout
         ├── hooks/
         ├── lib/
@@ -117,7 +130,7 @@ pnpm db:seed
 | 苏晓 | `doing_5nqc04` | 成员 |
 | 高远 | `doing_6wtp77` | 成员 |
 
-- 统一密码：`seed-password`（仅用于本地开发）。推荐用 `林夏` 登录查看 `/my` 与「增长突击队」概览。
+- 统一密码：`seed-password`（仅用于本地开发）。推荐用 `林夏` 登录查看个人空间五模块（`/space/personal/{dashboard,kanban,calendar,analysis,settings}`）与「增长突击队」团队空间。
 - 数据范围：团队「增长突击队」（3 个团队项目：官网改版 / 移动端 2.0 / Q4 用户增长活动）+ 林夏的 2 个个人项目（学习成长 / 生活琐事），共 29 个任务，覆盖逾期、今天/明天临期、已完成、无截止日期，以及子任务、评论和 1 个未指派团队任务。
 - **日期以执行当天为锚**：原型基准日为 2026-10-21，原型日期 `D` 按 `今天 + (D - 2026-10-21)` 天落库，因此「今天/明天到期、已逾期」的相对状态在任何一天执行都成立。
 - **幂等（守卫式跳过）**：脚本检测到 `林夏` / `doing_x7k2m9` 已存在时，打印「已初始化」并直接退出，不写入、不覆盖任何数据；全部写入在单个事务中完成，失败自动回滚。需要重建示例数据时，先清空开发库（例如 `docker compose down -v`，**会同时清空测试库与 e2e 库，慎用**）后重跑。
@@ -129,7 +142,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-打开 http://localhost:3000：未登录会跳到 `/login`。注册（只需用户名 + 密码，无需邮箱）成功后自动登录并进入 `/my`（应用外壳 + 「我的任务」占位页）。
+打开 http://localhost:3000：未登录会跳到 `/login`。注册（只需用户名 + 密码，无需邮箱）成功后自动登录并进入 `/space/personal/dashboard`（应用外壳 + 个人空间五模块导航：Dashboard / Kanban / Calendar / Analysis / 设置）。
 
 > **排障：浏览器一直转圈 / 无法访问** —— 首先确认本机 3000 端口没有被其他进程占用，最常见的是 ssh 隧道 / VSCode Remote 转发抢占了 3000（流量被转发到远端而非本地应用，表现为一直转圈）。检查：`lsof -nP -iTCP:3000 -sTCP:LISTEN`；若监听进程是 `ssh`，断开隧道 / 关闭对应转发后重试。
 
@@ -160,7 +173,7 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 ## Playwright e2e 测试
 
-五条关键用户流（个人项目与子任务、团队 UID 邀请、看板拖拽、cron 到期提醒幂等、解散团队）位于 `apps/web/e2e/flows/`，使用真实浏览器 + Server Action + 数据库，不依赖种子数据。
+关键用户流位于 `apps/web/e2e/flows/`（11 条：个人任务与子任务、团队 UID 邀请、看板拖拽、cron 到期提醒幂等、解散团队、空间 Kanban、空间 Calendar、空间 Analysis、个人设置、凭码加入审批、空间切换与移动端 Drawer），使用真实浏览器 + Server Action + 数据库，不依赖种子数据。
 
 前置条件：
 
