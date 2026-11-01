@@ -2,6 +2,7 @@
 
 import { message, Switch } from "antd";
 import { useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { updateReminderPrefsAction } from "../actions";
@@ -22,6 +23,7 @@ export interface ReminderToggleListProps {
  * 建立在新对象身份上，保证刷新后的服务端值与本地 state 一致。
  */
 export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
+  const t = useTranslations("settings");
   const router = useRouter();
   const [current, setCurrent] = useState(prefs);
   const [synced, setSynced] = useState(prefs);
@@ -46,7 +48,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
       );
 
       if (!result.ok) {
-        message.error("设置保存失败，请稍后重试");
+        message.error(t("saveFailed"));
         setCurrent(previous);
         return;
       }
@@ -54,7 +56,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
       // 成功静默（不 toast），刷新让服务端数据与本地 state 对齐。
       router.refresh();
     } catch {
-      message.error("设置保存失败，请稍后重试");
+      message.error(t("saveFailed"));
       setCurrent(previous);
     } finally {
       setSaving(null);
@@ -66,10 +68,10 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
       <div className="flex items-center gap-4 py-[15px]">
         <div className="min-w-0 flex-1 leading-[1.45]">
           <div className="text-[13.5px] font-semibold text-[#0e1318]">
-            临期提醒
+            {t("dueSoonReminder")}
           </div>
           <div className="mt-0.5 text-[12px] text-[#9aa0a6]">
-            任务截止前，提醒你还有即将到期的事。
+            {t("dueSoonReminderDesc")}
           </div>
         </div>
         <Switch
@@ -79,17 +81,17 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
           onChange={(checked) =>
             handleToggle("dueSoonReminderEnabled", checked)
           }
-          aria-label="临期提醒"
+          aria-label={t("dueSoonReminder")}
         />
       </div>
 
       <div className="flex items-center gap-4 border-t border-[#e1e3e6] py-[15px]">
         <div className="min-w-0 flex-1 leading-[1.45]">
           <div className="text-[13.5px] font-semibold text-[#0e1318]">
-            逾期提醒
+            {t("overdueReminder")}
           </div>
           <div className="mt-0.5 text-[12px] text-[#9aa0a6]">
-            任务已过截止日仍未完成时，每日提醒一次。
+            {t("overdueReminderDesc")}
           </div>
         </div>
         <Switch
@@ -97,7 +99,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
           loading={saving === "overdueReminderEnabled"}
           disabled={saving !== null && saving !== "overdueReminderEnabled"}
           onChange={(checked) => handleToggle("overdueReminderEnabled", checked)}
-          aria-label="逾期提醒"
+          aria-label={t("overdueReminder")}
         />
       </div>
     </div>

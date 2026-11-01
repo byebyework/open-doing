@@ -1,6 +1,7 @@
 "use client";
 
 import { Alert, Button, Form, Input, message } from "antd";
+import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { changePasswordAction } from "@/features/auth/actions";
@@ -12,8 +13,6 @@ interface ChangePasswordValues {
   confirmPassword: string;
 }
 
-const PASSWORD_LENGTH_MESSAGE = `新密码至少 ${PASSWORD_MIN_LENGTH} 位`;
-
 /**
  * 修改密码表单（个人设置页客户端交互层）。
  *
@@ -22,6 +21,7 @@ const PASSWORD_LENGTH_MESSAGE = `新密码至少 ${PASSWORD_MIN_LENGTH} 位`;
  * 表单级错误显示在顶部。修改成功后不登出（无状态会话保持不变）。
  */
 export function ChangePasswordForm() {
+  const t = useTranslations("settings");
   const [form] = Form.useForm<ChangePasswordValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -65,10 +65,10 @@ export function ChangePasswordForm() {
         return;
       }
 
-      message.success("密码已更新");
+      message.success(t("passwordUpdated"));
       form.resetFields();
     } catch {
-      setFormError("网络异常，请稍后重试");
+      setFormError(t("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -95,55 +95,55 @@ export function ChangePasswordForm() {
         className="max-w-[460px]"
       >
         <Form.Item
-          label="旧密码"
+          label={t("oldPassword")}
           name="oldPassword"
-          rules={[{ required: true, message: "请输入旧密码" }]}
+          rules={[{ required: true, message: t("oldPasswordRequired") }]}
         >
           <Input.Password
-            placeholder="输入当前密码"
+            placeholder={t("oldPasswordPlaceholder")}
             autoComplete="current-password"
           />
         </Form.Item>
 
         <Form.Item
-          label="新密码"
+          label={t("newPassword")}
           name="newPassword"
           rules={[
-            { required: true, message: "请输入新密码" },
-            { min: PASSWORD_MIN_LENGTH, message: PASSWORD_LENGTH_MESSAGE },
+            { required: true, message: t("newPasswordRequired") },
+            { min: PASSWORD_MIN_LENGTH, message: t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }) },
           ]}
         >
-          <Input.Password placeholder="至少 8 位" autoComplete="new-password" />
+          <Input.Password placeholder={t("newPasswordPlaceholder", { min: PASSWORD_MIN_LENGTH })} autoComplete="new-password" />
         </Form.Item>
 
         <Form.Item
-          label="确认新密码"
+          label={t("confirmPassword")}
           name="confirmPassword"
           dependencies={["newPassword"]}
           rules={[
-            { required: true, message: "请再次输入新密码" },
+            { required: true, message: t("confirmPasswordRequired") },
             ({ getFieldValue }) => ({
               validator(_rule, value: string) {
                 if (!value || getFieldValue("newPassword") === value) {
                   return Promise.resolve();
                 }
-                return Promise.reject(new Error("两次输入的新密码不一致"));
+                return Promise.reject(new Error(t("passwordMismatch")));
               },
             }),
           ]}
         >
           <Input.Password
-            placeholder="再次输入新密码"
+            placeholder={t("confirmPasswordPlaceholder")}
             autoComplete="new-password"
           />
         </Form.Item>
 
         <div className="flex flex-wrap items-center gap-3">
           <Button type="primary" htmlType="submit" loading={submitting}>
-            更新密码
+            {t("updatePassword")}
           </Button>
           <span className="text-[12px] text-[#9aa0a6]">
-            更新后保持登录状态；下次登录请使用新密码。
+            {t("keepLoggedInHint")}
           </span>
         </div>
       </Form>

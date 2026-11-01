@@ -2,8 +2,14 @@
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
+import {
+  LOCALE_COOKIE,
+  LOCALE_COOKIE_MAX_AGE,
+  normalizeLocale,
+} from "@/i18n/config";
+import { cookies } from "next/headers";
 
-import { updateReminderPrefs, type ReminderPrefs } from "./service";
+import { updateUserLanguage, updateReminderPrefs, type ReminderPrefs } from "./service";
 
 /**
  * 更新当前会话用户的提醒开关。
@@ -37,6 +43,40 @@ export async function updateReminderPrefsAction(input: {
     return { ok: true, data: prefs };
   } catch (error) {
     console.error("[users] Server Action 执行失败", error);
+    return { ok: false, errors: { form: "设置保存失败，请稍后重试" } };
+  }
+}
+
+/**
+ * 切换当前会话用户的界面语言（账号级偏好）。
+ *
+ * DB 是唯一权威（多设备下一请求即生效）；同时写 od_locale cookie 供
+ * 未登录页与首屏渲染使用。非法语言值不触达 service。
+ */
+export async function updateLanguageAction(input: {
+  language: string;
+}): Promise<ActionResult<void>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return { ok: false, errors: { form: "请先登录" } };
+  }
+
+  const language = normalizeLocale(input?.language);
+  if (input?.language !== language) {
+    return { ok: false, errors: { form: "暂不支持的语言" } };
+  }
+
+  try {
+    await updateUserLanguage({ userId: user.id, language });
+    const cookieStore = await cookies();
+    cookieStore.set(LOCALE_COOKIE, language, {
+      path: "/",
+      maxAge: LOCALE_COOKIE_MAX_AGE,
+      sameSite: "lax",
+    });
+    return { ok: true, data: undefined };
+  } catch (error) {
+    console.error("[users] 切换语言失败", error);
     return { ok: false, errors: { form: "设置保存失败，请稍后重试" } };
   }
 }

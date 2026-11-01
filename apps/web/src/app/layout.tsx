@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { NextIntlClientProvider } from "next-intl";
 
 import { LOCALE_HTML_LANG } from "@/i18n/config";
 import { getRequestLocale } from "@/i18n/server";
@@ -22,7 +23,9 @@ export default async function RootLayout({
   return (
     <html lang={LOCALE_HTML_LANG[locale]} className="h-full antialiased">
       <body className="min-h-full flex flex-col">
-        <Providers locale={locale}>{children}</Providers>
+        <NextIntlClientProvider>
+          <Providers locale={locale}>{children}</Providers>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

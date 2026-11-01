@@ -1,10 +1,12 @@
 import { Alert, Tag } from "antd";
 import type { Metadata } from "next";
+import { getTranslations } from "next-intl/server";
 
 import { requireUser } from "@/features/auth/session";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
+import { LanguageSetting } from "@/features/users/components/LanguageSetting";
 import { ReminderToggleList } from "@/features/users/components/ReminderToggleList";
-import { getReminderPrefs } from "@/features/users/service";
+import { getReminderPrefs, getUserLanguage } from "@/features/users/service";
 
 export const metadata: Metadata = {
   title: "设置 · Open Doing",
@@ -42,23 +44,25 @@ function SettingsCardHeader({
 export default async function PersonalSettingsPage() {
   const user = await requireUser();
   const prefs = await getReminderPrefs(user.id);
+  const userLanguage = await getUserLanguage(user.id);
+  const t = await getTranslations("settings");
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[760px]">
       <header className="mb-6">
         <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
-          设置
+          {t("title")}
         </h1>
         <p className="mt-1.5 text-[13.5px] text-[#5f6368]">
-          账户安全与个人偏好——改动即时生效，只影响你自己的空间视图。
+          {t("subtitle")}
         </p>
       </header>
 
       <div className="flex flex-col gap-4">
         <section className={CARD_CLASS}>
           <SettingsCardHeader
-            title="账户安全"
-            caption="定期更换密码有助于保护账号安全。"
+            title={t("accountSecurity")}
+            caption={t("accountSecurityCaption")}
           />
 
           <ChangePasswordForm />
@@ -66,36 +70,38 @@ export default async function PersonalSettingsPage() {
 
         <section className={CARD_CLASS}>
           <SettingsCardHeader
-            title="任务提醒"
-            caption="评论、指派、邀请等协作通知不受影响"
+            title={t("reminders")}
+            caption={t("remindersCaption")}
           />
           <p className="-mt-2 mb-1 text-[12px] text-[color:var(--color-text-muted)]">
-            控制由系统每日扫描产生的到期提醒。
+            {t("remindersHint")}
           </p>
 
           <ReminderToggleList prefs={prefs} />
 
+          <LanguageSetting language={userLanguage ?? "zh"} />
+
           <Alert
             type="info"
             showIcon
-            title="关闭后不再产生新的提醒通知；已经生成的通知仍会保留在通知中心。"
+            title={t("remindersDisabledAlert")}
             className="mt-4"
           />
         </section>
 
         <section className={CARD_CLASS}>
-          <SettingsCardHeader title="项目排序" caption="无需手动维护" />
+          <SettingsCardHeader title={t("projectOrdering")} caption={t("projectOrderingCaption")} />
           <p className="-mt-2 mb-1 text-[12px] text-[color:var(--color-text-muted)]">
-            个人空间的项目列表按最近活动排序。
+            {t("projectOrderingHint")}
           </p>
 
           <div className="flex items-center gap-4 py-[15px]">
             <div className="min-w-0 flex-1 leading-[1.45]">
               <div className="text-[13.5px] font-semibold text-[#0e1318]">
-                按最近活动
+                {t("byRecentActivity")}
               </div>
               <div className="mt-0.5 text-[12px] text-[color:var(--color-text-muted)]">
-                最近有任务动态的项目排在最前——正在推进的项目永远触手可及。
+                {t("byRecentActivityDesc")}
               </div>
             </div>
             <Tag
@@ -108,14 +114,14 @@ export default async function PersonalSettingsPage() {
                 borderRadius: 999,
               }}
             >
-              当前规则
+              {t("currentRule")}
             </Tag>
           </div>
 
           <Alert
             type="info"
             showIcon
-            title="排序应用于个人 Kanban、项目详情页与任务详情页的项目列表。"
+            title={t("orderingScopeAlert")}
             className="mt-4"
           />
         </section>
