@@ -1,6 +1,8 @@
 import type { User } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 
+import { DomainError } from "@/lib/domain-error";
+import type { AppLocale } from "@/i18n/config";
 import { db, type DbClient } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 
@@ -99,6 +101,24 @@ export async function getReminderPrefs(
 
   if (!row) throw new Error("user not found");
   return row;
+}
+
+/**
+ * 更新用户界面语言并返回持久化值（账号级偏好，语言切换 Server Action 使用）。
+ * 调用方（action 层）负责先做合法性校验；用户不存在时抛 DomainError。
+ */
+export async function updateUserLanguage(
+  input: { userId: string; language: AppLocale },
+  client: DbClient = db,
+): Promise<AppLocale> {
+  const [row] = await client
+    .update(users)
+    .set({ language: input.language })
+    .where(eq(users.id, input.userId))
+    .returning({ language: users.language });
+
+  if (!row) throw new DomainError("user not found");
+  return row.language as AppLocale;
 }
 
 /**

@@ -45,6 +45,8 @@ export const users = pgTable("users", {
   // 个人设置：临期 / 逾期提醒开关，默认开启；存量用户由 DEFAULT 回填。
   dueSoonReminderEnabled: boolean("due_soon_reminder_enabled").notNull().default(true),
   overdueReminderEnabled: boolean("overdue_reminder_enabled").notNull().default(true),
+  // 个人设置：界面语言（'zh' | 'en'），默认中文；账号级偏好，登录后每请求生效。
+  language: text("language").notNull().default("zh"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 

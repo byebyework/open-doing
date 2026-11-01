@@ -22,6 +22,13 @@
       "when": 1793509646018,
       "tag": "0002_bouncy_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793530493388,
+      "tag": "0003_mighty_scalphunter",
+      "breakpoints": true
     }
   ]
 }

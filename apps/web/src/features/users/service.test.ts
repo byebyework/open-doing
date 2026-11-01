@@ -1,3 +1,4 @@
+import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { generateUid } from "@/lib/uid";
@@ -5,7 +6,9 @@ import type { DbClient } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
-import { getReminderPrefs, updateReminderPrefs } from "./service";
+import { DomainError } from "@/lib/domain-error";
+
+import { getReminderPrefs, updateUserLanguage, updateReminderPrefs } from "./service";
 
 /**
  * service 通过默认参数 `= db` 惰性消费 `@/server/db/client` 的 `db`；本用例沿用
@@ -132,5 +135,52 @@ describe.skipIf(!hasTestDatabase)("用户提醒偏好读写", () => {
     await expect(getReminderPrefs(MISSING_USER_ID, db)).rejects.toThrow(
       "user not found",
     );
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("用户界面语言读写", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    testDbRef.current = db;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("① 新建用户默认界面语言为 zh（钉迁移 DEFAULT 'zh' / NOT NULL）", async () => {
+    const user = await createUser(db, "林夏");
+
+    const [row] = await db
+      .select({ language: users.language })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    expect(row!.language).toBe("zh");
+  });
+
+  it("② updateUserLanguage 更新语言并返回持久化值", async () => {
+    const user = await createUser(db, "林夏");
+
+    await expect(
+      updateUserLanguage({ userId: user.id, language: "en" }, db),
+    ).resolves.toBe("en");
+
+    const [row] = await db
+      .select({ language: users.language })
+      .from(users)
+      .where(eq(users.id, user.id))
+      .limit(1);
+
+    expect(row!.language).toBe("en");
+  });
+
+  it("③ 用户不存在时 updateUserLanguage 抛 DomainError", async () => {
+    await expect(
+      updateUserLanguage({ userId: MISSING_USER_ID, language: "en" }, db),
+    ).rejects.toThrow(DomainError);
   });
 });
