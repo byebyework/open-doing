@@ -11,9 +11,9 @@
     .sk-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .sk-card-meta .spacer { flex: 1; }
     .sk-card-meta .subtask-count { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
-    .sk-tag-project { font-size: 11px; font-weight: 600; border-radius: var(--radius-pill); padding: 2px 8px; }
-    .sk-tag-personal { background: var(--accent-mint-bg); color: #1f9d78; }
-    .sk-tag-team { background: var(--accent-lavender-bg); color: #6d4fd4; }
+    .sk-badge-project { font-size: 11px; font-weight: 600; border-radius: var(--radius-pill); padding: 2px 8px; }
+    .sk-badge-personal { background: var(--accent-mint-bg); color: #1f9d78; }
+    .sk-badge-team { background: var(--accent-lavender-bg); color: #6d4fd4; }
     .kcol-head .count.is-error { color: var(--error); background: var(--status-overdue-bg); }
     .kcol-head .count.is-brand { color: var(--primary); background: var(--accent-lavender-bg); }
     .kcol-foot-more { border-top: 1px dashed var(--border); margin-top: var(--space-2); padding: 9px var(--space-2) 2px; font-size: 12px; color: var(--text-faint); }
@@ -173,7 +173,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">Q4 用户增长活动</span>
+                <span class="sk-badge-project sk-badge-team">Q4 用户增长活动</span>
                 <span class="spacer"></span>
                 <span class="subtask-count">子任务 0/4</span>
               </div>
@@ -186,7 +186,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">移动端 2.0</span>
+                <span class="sk-badge-project sk-badge-team">移动端 2.0</span>
                 <span class="spacer"></span>
                 <span class="subtask-count">子任务 2/6</span>
               </div>
@@ -199,7 +199,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">Q4 用户增长活动</span>
+                <span class="sk-badge-project sk-badge-team">Q4 用户增长活动</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title">落地页 A/B 实验上线</div>
@@ -211,7 +211,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">移动端 2.0</span>
+                <span class="sk-badge-project sk-badge-team">移动端 2.0</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title">性能预算基线建立</div>
@@ -223,20 +223,20 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">官网改版</span>
+                <span class="sk-badge-project sk-badge-team">官网改版</span>
                 <span class="spacer"></span>
                 <span class="subtask-count">子任务 0/3</span>
               </div>
               <div class="kc-title">新手引导文案初稿</div>
               <div class="kc-foot">
-                <span class="tag tag-info">未指派</span>
+                <span class="badge badge-info">未指派</span>
                 <span class="due text-faint">—</span>
               </div>
             </div>
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">官网改版</span>
+                <span class="sk-badge-project sk-badge-team">官网改版</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title">旧版帮助中心内容迁移</div>
@@ -258,7 +258,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">移动端 2.0</span>
+                <span class="sk-badge-project sk-badge-team">移动端 2.0</span>
                 <span class="spacer"></span>
                 <span class="subtask-count">子任务 4/9</span>
               </div>
@@ -271,7 +271,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">移动端 2.0</span>
+                <span class="sk-badge-project sk-badge-team">移动端 2.0</span>
                 <span class="spacer"></span>
                 <span class="subtask-count">子任务 3/5</span>
               </div>
@@ -284,7 +284,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">官网改版</span>
+                <span class="sk-badge-project sk-badge-team">官网改版</span>
                 <span class="spacer"></span>
                 <span class="subtask-count">子任务 3/5</span>
               </div>
@@ -297,7 +297,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">Q4 用户增长活动</span>
+                <span class="sk-badge-project sk-badge-team">Q4 用户增长活动</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title">用户访谈纪要整理</div>
@@ -309,7 +309,7 @@
 
             <div class="kanban-card" draggable="true">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">移动端 2.0</span>
+                <span class="sk-badge-project sk-badge-team">移动端 2.0</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title">深色模式适配预研</div>
@@ -331,7 +331,7 @@
 
             <div class="kanban-card" draggable="true" style="opacity:.75;">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">官网改版</span>
+                <span class="sk-badge-project sk-badge-team">官网改版</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title" style="color:var(--text-secondary);">Hero 区文案终审</div>
@@ -343,7 +343,7 @@
 
             <div class="kanban-card" draggable="true" style="opacity:.75;">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">移动端 2.0</span>
+                <span class="sk-badge-project sk-badge-team">移动端 2.0</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title" style="color:var(--text-secondary);">埋点事件字典 v1</div>
@@ -355,7 +355,7 @@
 
             <div class="kanban-card" draggable="true" style="opacity:.75;">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">官网改版</span>
+                <span class="sk-badge-project sk-badge-team">官网改版</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title" style="color:var(--text-secondary);">邀请流程回归测试</div>
@@ -367,7 +367,7 @@
 
             <div class="kanban-card" draggable="true" style="opacity:.75;">
               <div class="sk-card-meta">
-                <span class="sk-tag-project sk-tag-team">Q4 用户增长活动</span>
+                <span class="sk-badge-project sk-badge-team">Q4 用户增长活动</span>
                 <span class="spacer"></span>
               </div>
               <div class="kc-title" style="color:var(--text-secondary);">落地页性能优化</div>

@@ -395,7 +395,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
 .card-header .h3 { flex: 1; }
 .card + .card { margin-top: var(--space-4); }
 
-.tag {
+.badge {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -403,21 +403,22 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
   border-radius: var(--badge-radius);
   font-size: var(--badge-font-size);
   font-weight: 600;
+  letter-spacing: 0.04em;
   line-height: 1.5;
   white-space: nowrap;
 }
-.tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.tag.no-dot::before { display: none; }
-.tag-todo { background: var(--status-todo-bg); color: var(--status-todo); }
-.tag-progress { background: var(--status-progress-bg); color: var(--status-progress); }
-.tag-done { background: var(--status-done-bg); color: var(--status-done); }
-.tag-overdue { background: var(--status-overdue-bg); color: var(--status-overdue); }
-.tag-due-soon { background: var(--status-due-soon-bg); color: #a66b00; }
-.tag-info { background: var(--info-bg); color: var(--info); }
-.tag-lavender { background: var(--accent-lavender-bg); color: #6d4fd4; }
-.tag-neutral { background: var(--surface-inset, var(--surface-inset)); color: var(--muted-foreground); }
-.tag-role { background: var(--primary-bg); color: var(--primary); }
-.tag-role.member { background: var(--surface-inset); color: var(--muted-foreground); }
+.badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.badge.no-dot::before { display: none; }
+.badge-todo { background: var(--status-todo-bg); color: var(--status-todo); }
+.badge-progress { background: var(--status-progress-bg); color: var(--status-progress); }
+.badge-done { background: var(--status-done-bg); color: var(--status-done); }
+.badge-overdue { background: var(--status-overdue-bg); color: var(--status-overdue); }
+.badge-due-soon { background: var(--status-due-soon-bg); color: #a66b00; }
+.badge-info { background: var(--info-bg); color: var(--info); }
+.badge-lavender { background: var(--accent-lavender-bg); color: #6d4fd4; }
+.badge-neutral { background: var(--surface-inset, var(--surface-inset)); color: var(--muted-foreground); }
+.badge-role { background: var(--primary-bg); color: var(--primary); }
+.badge-role.member { background: var(--surface-inset); color: var(--muted-foreground); }
 
 .avatar {
   width: 30px;
