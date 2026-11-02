@@ -4,7 +4,7 @@
 
 - 设计语言来源：[`../design/`](../design/)（Canva 风格设计系统：紫青渐变、白色画布、12px 软圆角、柔和冷调阴影）
 - 功能依据：[2026-10-21-open-doing-v1-design.md](../2026-10-21-open-doing-v1-design.md)
-- 技术落地目标：Next.js 16 + **Ant Design v6** + Tailwind CSS 4（见 [ARCHITECTURE.md](../ARCHITECTURE.md) 4.1 节）
+- 技术落地目标：Next.js 16 + **shadcn/ui**（Radix + Tailwind CSS 4）（见 [ARCHITECTURE.md](../ARCHITECTURE.md) 4.1 节）
 
 ## 页面清单
 
@@ -36,44 +36,46 @@
 ```
 assets/
 ├── design-tokens.css   三层令牌：primitive → semantic → component
-├── prototype.css       共享组件样式（原型专用，生产由 antd + Tailwind 还原）
-└── prototype.js        最小交互：popover/弹窗、子任务进度联动、看板拖放
+├── prototype.css       共享组件样式（原型专用，生产由 shadcn/ui + Tailwind 还原）
+└── prototype.js        最小交互：popover/弹窗（Radix 语义）、子任务进度联动、看板拖放、toast
 ```
 
 ## 设计令牌摘要（完整定义见 `assets/design-tokens.css`）
 
-**品牌与语义色**
+令牌为三层结构：**primitive → semantic（shadcn 槽位）→ component**。语义层采用 shadcn/ui 的标准变量名，生产直接落 `@theme`。
+
+**primitive（品牌与中性色）**
 
 | 令牌 | 值 | 用途 |
 |---|---|---|
-| `--color-primary` | `#7d2ae8` | 主按钮、链接、选中态、进度条 |
-| `--color-primary-hover` | `#6815d4` | 主按钮悬停 |
-| `--color-brand-gradient` | `135deg #7d2ae8 → #00c4cc` | 仅品牌时刻：Logo、认证页 CTA、空状态引导 |
-| `--color-bg / surface` | `#f4f5f7 / #fff` | 应用底色 / 卡片 |
-| `--color-text` 系列 | `#0e1318 / #3c4043 / #5f6368 / #9aa0a6` | 主/次/弱/占位文本 |
-| `--color-border` | `#e1e3e6` | 卡片、表格、输入框描边 |
-| success / warning / error / info | `#00b894 / #ffb020 / #ff5757 / #0d99ff` | 完成、临期、逾期/错误、信息 |
+| `--purple-600` / `--purple-700` | `#7d2ae8` / `#6815d4` | 品牌主色 / 悬停 |
+| `--purple-100` / `--purple-16` | `#eef0fc` / `rgba(125,42,232,.16)` | 选中浅底 / focus ring |
+| `--cyan-500` | `#00c4cc` | 渐变终点色 |
+| `--ink-900 / 700 / 500 / 400` | `#0e1318 / #3c4043 / #5f6368 / #9aa0a6` | 主/次/弱/占位文本 |
+| `--surface-white / subtle / inset / cool` | `#ffffff / #f4f5f7 / #e8eaed / #eef0fc` | 卡片 / 应用底 / 凹入 / 紫浅底 |
+| `--border-default / strong` | `#e1e3e6 / #c7cdd3` | 常规描边 / 悬停描边 |
+| `--success-500 / warning-500 / error-500 / info-500` | `#00b894 / #ffb020 / #ff5757 / #0d99ff` | 完成、临期、逾期/错误、信息 |
 
-**任务状态配色**：未开始=中性灰；进行中=品牌紫（底 `#eef0fc`）；已完成=成功绿；逾期=错误红；临期=警告黄。
+**semantic（shadcn 槽位）**：`--background`=`#f4f5f7`、`--card`/`--popover`=`#fff`、`--primary`=`--purple-600`、`--muted-foreground`=`--ink-500`、`--accent`=`--surface-cool`、`--destructive`=`--error-500`、`--border`/`--input`=`#e1e3e6`、`--ring`=`--purple-600`；扩展 `--primary-hover`、`--text-secondary`、`--brand-gradient`（135deg `#7d2ae8→#00c4cc`，仅 Logo / 认证 CTA / 空状态引导）、`--success/--warning/--error/--info` 及各自 `-bg`、任务状态组 `--status-todo/progress/done/overdue/due-soon`（未开始=中性灰；进行中=品牌紫；已完成=成功绿；逾期=错误红；临期=警告黄）。
 
-**圆角 / 阴影 / 间距**：按钮与输入 8px、卡片 12px、大面板 16px、胶囊 9999px；卡片静止阴影 `0 1px 3px rgba(14,19,24,.04)`，悬停 `0 8px 24px rgba(14,19,24,.08)` + 上浮 2px；间距为 4 的倍数（4/8/12/16/24/32/48/64）。
+**圆角 / 阴影 / 间距**：`--radius` 系 8px（sm 6 / md 8 / lg 12 / xl 16 / pill 9999）；`--shadow-rest` `0 1px 3px rgba(14,19,24,.04)`、`--shadow-card-hover` `0 8px 24px rgba(14,19,24,.08)` + 上浮 2px、弹层 `--shadow-popover` / `--shadow-modal`；间距为 4 的倍数（`--space-1…8` = 4/8/12/16/24/32/48/64）。
 
-**字体**：`"Canva Sans","YS Text",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif`；字重对比 800/700/600/400，正文 14px / 1.5。
+**字体**：`--font-sans` = `"Canva Sans","YS Text",system-ui,-apple-system,"PingFang SC","Microsoft YaHei",sans-serif`；字重对比 800/700/600/400，正文 `--text-base` 14px / 1.5。
 
-### 到 antd v6 ConfigProvider 的映射（生产接入依据）
+### 到 shadcn/ui + Tailwind CSS 4 的映射（生产接入依据）
 
-| Token（antd v6） | 值 |
+| 原型令牌 | 生产落位 |
 |---|---|
-| `colorPrimary` | `#7d2ae8` |
-| `colorSuccess / colorWarning / colorError / colorInfo` | `#00b894 / #ffb020 / #ff5757 / #0d99ff` |
-| `colorBgLayout` | `#f4f5f7` |
-| `colorBorder` / `colorBorderSecondary` | `#c7cdd3` / `#e1e3e6` |
-| `borderRadius` / `borderRadiusLG` | `8` / `12` |
-| `fontFamily` | 上方字体栈 |
-| `boxShadow` / `boxShadowSecondary` | `0 1px 3px rgba(14,19,24,.04)` / `0 8px 24px rgba(14,19,24,.08)` |
-| `controlHeight` | `38`（输入/按钮高度对齐原型） |
+| 语义槽位（`--background` / `--primary` / `--ring` / `--radius` 等） | `@theme` 内同名 CSS 变量，shadcn 组件直接消费 |
+| `--purple-600` `#7d2ae8` | `--primary` + Tailwind `primary` 色阶 |
+| `--success-500 / warning-500 / error-500 / info-500` | 语义扩展变量（shadcn 标准 schema 外的扩展位） |
+| `--radius-8 / --radius-12` | `--radius` / `--radius-lg`（shadcn 圆角标度） |
+| `--input-height: 38px` | input 组件 token（`h-9` 对齐或自定义高度变量） |
+| `--shadow-rest / --shadow-card-hover` | `shadow-xs` / `shadow-md` 级别的自定义 shadow token |
+| `--brand-gradient` | 不进主题，仅 Logo 与认证 CTA（自定义 className） |
+| 任务状态 `--status-*` | 状态 Badge 的语义色 + 浅色底变体 |
 
-品牌渐变不进 antd 主题，仅用在 Logo 与认证 CTA（自定义 className）。状态 Tag 用语义色 + 浅色底的预设/自定义 token。
+动效：shadcn/Radix 组件动效通过 `data-state` 过渡对齐 `--duration-*` / `--ease-*` 档位。
 
 ## 动效规范（motion）
 
@@ -87,7 +89,7 @@ assets/
 - 看板：拖起时轻微缩小降透明度 + 1.5° 旋转，目标列虚线轮廓提示
 - 进度条宽度变化：420ms 减速，仅宽度可线性过渡
 - 全站遵循 `prefers-reduced-motion`（已在 prototype.css 中降级）
-- 生产建议：页面切换用 View Transitions 或 framer-motion 实现同口径位移+淡入；antd 组件动效通过 `motion*` token 对齐时长
+- 生产建议：页面切换用 View Transitions 或 framer-motion 实现同口径位移+淡入；shadcn/Radix 组件动效通过 `data-state` 过渡对齐时长档位
 
 ## 交互状态覆盖
 
@@ -95,8 +97,8 @@ assets/
 
 ## 还原要求（交给前端实现时）
 
-1. 先冻结本目录令牌，再映射到 antd ConfigProvider 与 Tailwind 变量；Tailwind 关闭 preflight。
-2. 页面保持 RSC 取数，antd 交互组件下沉到 `"use client"` 组件。
+1. 先冻结本目录令牌，再映射到 shadcn/ui 的 `@theme` 变量与 Tailwind 变量；Tailwind 关闭 preflight。
+2. 页面保持 RSC 取数，Radix/shadcn 交互组件下沉到 `"use client"` 组件。
 3. 不引入原型之外的配色（尤其不要暖色米/桃底）；分类点缀色只用于头像/标签等元数据。
 4. 桌面端优先，断点行为参考 prototype.css 末尾媒体查询；不以三张固定截图替代响应式。
 
