@@ -103,6 +103,59 @@
         <div>基准日期：2026-10-21（周三），「明天/逾期」均相对此日期</div>
       </div>
     </div>
+
+    <div class="card anim-in" id="state-spec" style="margin-top:var(--space-5);">
+      <div class="card-header"><h2 class="h3">状态规格演示 <span class="badge badge-lavender no-dot">shadcn 重锚 · 状态参照</span></h2></div>
+      <div class="card-content" style="display:grid;gap:var(--space-5);">
+        <div>
+          <div class="text-faint" style="font-size:13px;margin-bottom:10px;">加载态按钮：点击进入 loading（含旋转指示），2s 后还原</div>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <button class="button button-primary" type="button" data-demo-loading>保存修改</button>
+            <button class="button button-outline" type="button" data-demo-loading>加载更多</button>
+          </div>
+        </div>
+        <div>
+          <div class="text-faint" style="font-size:13px;margin-bottom:10px;">骨架屏（skeleton，1.2s 微光扫过）</div>
+          <div style="display:grid;gap:10px;max-width:420px;" aria-hidden="true">
+            <div class="skeleton" style="height:14px;width:72%;"></div>
+            <div class="skeleton" style="height:14px;width:56%;"></div>
+            <div class="skeleton" style="height:14px;width:64%;"></div>
+          </div>
+        </div>
+        <div>
+          <div class="text-faint" style="font-size:13px;margin-bottom:10px;">Toast（sonner 形态：右下角固定，4s 自动消失，单例）</div>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <button class="button button-outline" type="button" data-demo-toast="success">触发成功 Toast</button>
+            <button class="button button-outline" type="button" data-demo-toast="error">触发错误 Toast</button>
+          </div>
+        </div>
+        <div>
+          <div class="text-faint" style="font-size:13px;margin-bottom:10px;">Focus ring：用 Tab 键聚焦下方输入框（紫色 3px ring + 0.16 透明度）</div>
+          <input class="input" type="text" placeholder="Tab 到这里看 focus ring" style="max-width:420px;" />
+        </div>
+      </div>
+    </div>
   </main>
+  <script src="assets/prototype.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      // loading 按钮：点击 2s 后还原
+      document.querySelectorAll("[data-demo-loading]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          if (btn.classList.contains("button-loading")) return;
+          btn.classList.add("button-loading");
+          setTimeout(function () { btn.classList.remove("button-loading"); }, 2000);
+        });
+      });
+      // toast 触发
+      document.querySelectorAll("[data-demo-toast]").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var variant = btn.getAttribute("data-demo-toast");
+          window.toast(variant === "error" ? "保存失败，请重试" : "任务已创建", variant);
+        });
+      });
+    })();
+  </script>
 </body>
 </html>
