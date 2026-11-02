@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import type { AppLocale } from "@/i18n/config";
 
 import { antdTheme } from "./theme";
+import { Toaster } from "@/components/ui/shadcn/sonner";
 
 const ANTD_LOCALE = { zh: zhCN, en: enUS } as const;
 const DAYJS_NAME = { zh: "zh-cn", en: "en" } as const;
@@ -38,6 +39,8 @@ export function Providers({ children, locale }: ProvidersProps) {
       <ConfigProvider locale={ANTD_LOCALE[locale]} theme={antdTheme}>
         <AntApp component={false}>{children}</AntApp>
       </ConfigProvider>
+      {/* shadcn 迁移共存期:sonner 与 antd message 并存,模块迁移时逐个换用 */}
+      <Toaster />
     </AntdRegistry>
   );
 }

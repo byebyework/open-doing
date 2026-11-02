@@ -198,6 +198,76 @@
   /* 进度条 */
   --progress-height: 6px;
   --progress-radius: var(--radius-pill);
+
+  /* ------------------------------------------------------------------------
+     2026-11-02 shadcn 迁移同步块:与 docs/prototypes/assets/design-tokens.css
+     保持 1:1(变量名与取值);原型文件为视觉基准。语义槽位供 shadcn 组件经
+     globals.css 的 @theme 桥接消费。
+     ------------------------------------------------------------------------ */
+
+  /* primitive 补齐(数值圆角标度与品牌紫透明档) */
+  --purple-16: rgba(125, 42, 232, 0.16);
+  --radius-4: 4px;
+  --radius-6: 6px;
+  --radius-8: 8px;
+  --radius-12: 12px;
+  --radius-16: 16px;
+
+  /* SEMANTIC — shadcn 标准槽位 */
+  --background: var(--surface-subtle);
+  --foreground: var(--ink-900);
+  --card: var(--surface-white);
+  --card-foreground: var(--ink-900);
+  --popover: var(--surface-white);
+  --popover-foreground: var(--ink-900);
+  --primary: var(--purple-600);
+  --primary-foreground: var(--surface-white);
+  --secondary: var(--surface-subtle);
+  --secondary-foreground: var(--ink-900);
+  --muted: var(--surface-subtle);
+  --muted-foreground: var(--ink-500);
+  --accent: var(--surface-cool);
+  --accent-foreground: var(--purple-600);
+  --destructive: var(--error-500);
+  --border: var(--border-default);
+  --input: var(--border-default);
+  --ring: var(--purple-600);
+
+  /* shadcn radius 派生 */
+  --radius: var(--radius-8);
+  --radius-md: var(--radius-8);
+  --radius-lg: var(--radius-12);
+  --radius-xl: var(--radius-16);
+
+  /* 项目扩展 —— 品牌与文本 */
+  --primary-hover: var(--purple-700);
+  --primary-bg: var(--purple-08);
+  --primary-bg-hover: var(--purple-14);
+  --text-secondary: var(--ink-700);
+  --text-faint: var(--ink-400);
+  --brand-gradient: linear-gradient(135deg, #7d2ae8 0%, #00c4cc 100%);
+
+  /* 项目扩展 —— 语义色(bg 透明度对齐 docs/design) */
+  --success: var(--success-500);
+  --success-bg: rgba(0, 184, 148, 0.1);
+  --warning: var(--warning-500);
+  --warning-bg: rgba(255, 176, 32, 0.12);
+  --error: var(--error-500);
+  --error-bg: rgba(255, 87, 87, 0.1);
+  --info: var(--info-500);
+  --info-bg: rgba(13, 153, 255, 0.1);
+
+  /* 项目扩展 —— 任务状态 */
+  --status-todo: var(--ink-500);
+  --status-todo-bg: var(--surface-subtle);
+  --status-progress: var(--purple-600);
+  --status-progress-bg: var(--purple-100);
+  --status-done: var(--success-500);
+  --status-done-bg: var(--success-bg);
+  --status-overdue: var(--error-500);
+  --status-overdue-bg: var(--error-bg);
+  --status-due-soon: var(--warning-500);
+  --status-due-soon-bg: var(--warning-bg);
 }
 
 /* 可选：暗色主题预留入口（v1 只做亮色）

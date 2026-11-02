@@ -7,6 +7,37 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /*
+ * shadcn 桥接(2026-11-02 迁移):把官方组件类名(bg-primary、border-border、
+ * rounded-md 等)映射到 tokens.css 的语义槽位。变量定义与取值 1:1 来自
+ * docs/prototypes/assets/design-tokens.css;未映射的工具类不会生成,对既有页面
+ * 零影响(存量页面不用这些类名)。
+ */
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --radius-sm: var(--radius-6);
+  --radius-md: var(--radius-8);
+  --radius-lg: var(--radius-12);
+  --radius-xl: var(--radius-16);
+}
+
+/*
  * 关闭 preflight 后仍保留 border-box：
  * 原型与 antd 的尺寸计算均以 border-box 为前提，缺失会导致定宽侧栏/顶栏偏大。
  */

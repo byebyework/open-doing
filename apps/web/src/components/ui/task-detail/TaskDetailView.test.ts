@@ -41,11 +41,14 @@ function render(
   overrides: Partial<TaskDetailModel> = {},
 ): string {
   return renderToStaticMarkup(
-    createElement(NextIntlClientProvider, {
-      locale: "zh",
-      messages: zh,
-      now: new Date("2026-10-01T00:00:00.000Z"),
-      children: createElement(TaskDetailView, {
+    createElement(
+      NextIntlClientProvider,
+      {
+        locale: "zh",
+        messages: zh,
+        now: new Date("2026-10-01T00:00:00.000Z"),
+      },
+      createElement(TaskDetailView, {
         task: { ...task, ...overrides },
         space: "team",
         permissions,
@@ -61,7 +64,7 @@ function render(
         },
         currentUserId: "44444444-4444-4444-4444-444444444444",
       }),
-    }),
+    ),
   );
 }
 
