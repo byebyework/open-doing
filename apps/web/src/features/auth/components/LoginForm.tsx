@@ -1,19 +1,22 @@
 "use client";
 
-import { Alert, Button, Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
 import { spaceDashboardHref } from "@/lib/routes";
+import { applyActionErrors } from "@/lib/action-form";
 
 import { loginAction } from "../actions";
-
-interface LoginValues {
-  username: string;
-  password: string;
-}
 
 /**
  * 登录表单（客户端交互层）。
@@ -25,11 +28,27 @@ export function LoginForm() {
   const router = useRouter();
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<LoginValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleFinish(values: LoginValues) {
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z.object({
+    username: z.string().min(1, t("usernameRequired")),
+    password: z.string().min(1, t("passwordRequired")),
+  });
+  type LoginValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<LoginValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { username: "", password: "" },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
 
@@ -40,19 +59,11 @@ export function LoginForm() {
       });
 
       if (!result.ok) {
-        const fieldErrors: {
-          name: "username" | "password";
-          errors: string[];
-        }[] = [];
-
-        if (result.errors.username) {
-          fieldErrors.push({ name: "username", errors: [result.errors.username] });
-        }
-        if (result.errors.password) {
-          fieldErrors.push({ name: "password", errors: [result.errors.password] });
-        }
-        if (fieldErrors.length > 0) form.setFields(fieldErrors);
-        if (result.errors.form) setFormError(result.errors.form);
+        applyActionErrors(result.errors, {
+          setFieldError: (name, message) =>
+            setError(name as keyof LoginValues, { message }),
+          onFormError: setFormError,
+        });
         return;
       }
 
@@ -63,7 +74,7 @@ export function LoginForm() {
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
     <div>
@@ -80,70 +91,71 @@ export function LoginForm() {
       <p className="mb-7 text-[14px] text-[#5f6368]">{t("loginSubtitle")}</p>
 
       {formError ? (
-        <Alert
-          type="error"
-          showIcon
-          title={formError}
-          className="mb-5"
-          role="alert"
-        />
+        <Alert variant="destructive" role="alert" className="mb-5">
+          {formError}
+        </Alert>
       ) : null}
 
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        onFinish={handleFinish}
-        disabled={submitting}
-      >
-        <Form.Item
-          label={t("usernameLabel")}
-          name="username"
-          rules={[{ required: true, message: t("usernameRequired") }]}
-        >
+      <form onSubmit={onSubmit} noValidate>
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="login-username">{t("usernameLabel")}</Label>
           <Input
-            size="large"
+            id="login-username"
+            type="text"
+            className="h-10"
             placeholder={t("usernamePlaceholder")}
             data-testid="auth-username-input"
             autoComplete="username"
             autoFocus
+            aria-invalid={errors.username ? true : undefined}
+            aria-describedby={errors.username ? "login-username-error" : undefined}
+            disabled={submitting}
+            {...register("username")}
           />
-        </Form.Item>
+          {errors.username ? (
+            <p id="login-username-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.username.message}
+            </p>
+          ) : null}
+        </div>
 
-        <Form.Item
-          label={t("passwordLabel")}
-          name="password"
-          rules={[{ required: true, message: t("passwordRequired") }]}
-        >
-          <Input.Password
-            size="large"
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="login-password">{t("passwordLabel")}</Label>
+          <Input
+            id="login-password"
+            type="password"
+            className="h-10"
             placeholder={t("passwordPlaceholder")}
             data-testid="auth-password-input"
             autoComplete="current-password"
+            aria-invalid={errors.password ? true : undefined}
+            aria-describedby={errors.password ? "login-password-error" : undefined}
+            disabled={submitting}
+            {...register("password")}
           />
-        </Form.Item>
+          {errors.password ? (
+            <p id="login-password-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.password.message}
+            </p>
+          ) : null}
+        </div>
 
         <div className="-mt-1 mb-4 flex justify-end">
           <span className="text-[12px] text-[#9aa0a6]">{t("noPasswordRecovery")}</span>
         </div>
 
         <Button
-          type="primary"
-          htmlType="submit"
-          size="large"
-          block
-          loading={submitting}
+          type="submit"
+          variant="gradient"
+          size="lg"
+          className="w-full font-semibold"
+          disabled={submitting}
           data-testid="auth-submit-button"
-          style={{
-            background: "linear-gradient(135deg,#7d2ae8 0%,#00c4cc 100%)",
-            border: "none",
-            color: "#fff",
-            fontWeight: 600,
-          }}
         >
+          {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
           {t("signInButton")}
         </Button>
-      </Form>
+      </form>
 
       <p className="mt-5 text-center text-[13px] text-[#5f6368]">
         {t("noAccount")}{" "}

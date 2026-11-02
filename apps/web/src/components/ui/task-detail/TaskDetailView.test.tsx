@@ -1,4 +1,3 @@
-import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
 import { describe, expect, it, vi } from "vitest";
@@ -41,18 +40,16 @@ function render(
   overrides: Partial<TaskDetailModel> = {},
 ): string {
   return renderToStaticMarkup(
-    createElement(
-      NextIntlClientProvider,
-      {
-        locale: "zh",
-        messages: zh,
-        now: new Date("2026-10-01T00:00:00.000Z"),
-      },
-      createElement(TaskDetailView, {
-        task: { ...task, ...overrides },
-        space: "team",
-        permissions,
-        onAction: {
+    <NextIntlClientProvider
+      locale="zh"
+      messages={zh}
+      now={new Date("2026-10-01T00:00:00.000Z")}
+    >
+      <TaskDetailView
+        task={{ ...task, ...overrides }}
+        space="team"
+        permissions={permissions}
+        onAction={{
           toggleSubtask: async () => {},
           updateStatus: async () => {},
           updateTask: async () => {},
@@ -61,10 +58,10 @@ function render(
           deleteComment: async () => {},
           addSubtask: async () => {},
           removeSubtask: async () => {},
-        },
-        currentUserId: "44444444-4444-4444-4444-444444444444",
-      }),
-    ),
+        }}
+        currentUserId="44444444-4444-4444-4444-444444444444"
+      />
+    </NextIntlClientProvider>,
   );
 }
 

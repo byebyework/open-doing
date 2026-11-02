@@ -1,12 +1,20 @@
 "use client";
 
-import { Alert, Button, Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
 import { spaceDashboardHref } from "@/lib/routes";
+import { applyActionErrors } from "@/lib/action-form";
 
 import { registerAction } from "../actions";
 import {
@@ -14,12 +22,6 @@ import {
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
 } from "../constants";
-
-interface RegisterValues {
-  username: string;
-  password: string;
-  confirmPassword: string;
-}
 
 /**
  * 注册表单（客户端交互层）。
@@ -31,11 +33,40 @@ export function RegisterForm() {
   const router = useRouter();
   const t = useTranslations("auth");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<RegisterValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleFinish(values: RegisterValues) {
+  // zod schema 在组件内构建:文案取自 next-intl;确认密码一致用 refine 前端校验。
+  const schema = z
+    .object({
+      username: z
+        .string()
+        .min(1, t("usernameRequired"))
+        .min(USERNAME_MIN_LENGTH, t("usernameLength", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH }))
+        .max(USERNAME_MAX_LENGTH, t("usernameLength", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH })),
+      password: z
+        .string()
+        .min(1, t("passwordRequired"))
+        .min(PASSWORD_MIN_LENGTH, t("passwordMinLength", { min: PASSWORD_MIN_LENGTH })),
+      confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
+    })
+    .refine((values) => values.password === values.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("passwordMismatch"),
+    });
+  type RegisterValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<RegisterValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { username: "", password: "", confirmPassword: "" },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
 
@@ -46,19 +77,11 @@ export function RegisterForm() {
       });
 
       if (!result.ok) {
-        const fieldErrors: {
-          name: "username" | "password";
-          errors: string[];
-        }[] = [];
-
-        if (result.errors.username) {
-          fieldErrors.push({ name: "username", errors: [result.errors.username] });
-        }
-        if (result.errors.password) {
-          fieldErrors.push({ name: "password", errors: [result.errors.password] });
-        }
-        if (fieldErrors.length > 0) form.setFields(fieldErrors);
-        if (result.errors.form) setFormError(result.errors.form);
+        applyActionErrors(result.errors, {
+          setFieldError: (name, message) =>
+            setError(name as keyof RegisterValues, { message }),
+          onFormError: setFormError,
+        });
         return;
       }
 
@@ -69,7 +92,7 @@ export function RegisterForm() {
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
     <div>
@@ -86,98 +109,86 @@ export function RegisterForm() {
       <p className="mb-6 text-[14px] text-[#5f6368]">{t("registerSubtitle")}</p>
 
       {formError ? (
-        <Alert
-          type="error"
-          showIcon
-          title={formError}
-          className="mb-5"
-          role="alert"
-        />
+        <Alert variant="destructive" role="alert" className="mb-5">
+          {formError}
+        </Alert>
       ) : null}
 
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        onFinish={handleFinish}
-        disabled={submitting}
-      >
-        <Form.Item
-          label={t("usernameLabel")}
-          name="username"
-          extra={t("usernameExtra", {
-            min: USERNAME_MIN_LENGTH,
-            max: USERNAME_MAX_LENGTH,
-          })}
-          rules={[
-            { required: true, message: t("usernameRequired") },
-            {
-              min: USERNAME_MIN_LENGTH,
-              message: t("usernameLength", {
-                min: USERNAME_MIN_LENGTH,
-                max: USERNAME_MAX_LENGTH,
-              }),
-            },
-            {
-              max: USERNAME_MAX_LENGTH,
-              message: t("usernameLength", {
-                min: USERNAME_MIN_LENGTH,
-                max: USERNAME_MAX_LENGTH,
-              }),
-            },
-          ]}
-        >
+      <form onSubmit={onSubmit} noValidate>
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="register-username">{t("usernameLabel")}</Label>
           <Input
-            size="large"
+            id="register-username"
+            type="text"
+            className="h-10"
             placeholder={t("usernameRegisterPlaceholder")}
             data-testid="auth-username-input"
             autoComplete="username"
             autoFocus
+            aria-invalid={errors.username ? true : undefined}
+            aria-describedby={
+              errors.username ? "register-username-error" : "register-username-extra"
+            }
+            disabled={submitting}
+            {...register("username")}
           />
-        </Form.Item>
+          {errors.username ? (
+            <p id="register-username-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.username.message}
+            </p>
+          ) : (
+            <p id="register-username-extra" className="text-[12px] text-[#9aa0a6]">
+              {t("usernameExtra", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH })}
+            </p>
+          )}
+        </div>
 
-        <Form.Item
-          label={t("passwordLabel")}
-          name="password"
-          rules={[
-            { required: true, message: t("passwordRequired") },
-            {
-              min: PASSWORD_MIN_LENGTH,
-              message: t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }),
-            },
-          ]}
-        >
-          <Input.Password
-            size="large"
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="register-password">{t("passwordLabel")}</Label>
+          <Input
+            id="register-password"
+            type="password"
+            className="h-10"
             placeholder={t("passwordRegisterPlaceholder")}
             data-testid="auth-password-input"
             autoComplete="new-password"
+            aria-invalid={errors.password ? true : undefined}
+            aria-describedby={errors.password ? "register-password-error" : undefined}
+            disabled={submitting}
+            {...register("password")}
           />
-        </Form.Item>
+          {errors.password ? (
+            <p id="register-password-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.password.message}
+            </p>
+          ) : null}
+        </div>
 
-        <Form.Item
-          label={t("confirmPasswordLabel")}
-          name="confirmPassword"
-          dependencies={["password"]}
-          rules={[
-            { required: true, message: t("confirmPasswordRequired") },
-            ({ getFieldValue }) => ({
-              validator(_rule, value: string) {
-                if (!value || getFieldValue("password") === value) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(new Error(t("passwordMismatch")));
-              },
-            }),
-          ]}
-        >
-          <Input.Password
-            size="large"
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="register-confirm-password">{t("confirmPasswordLabel")}</Label>
+          <Input
+            id="register-confirm-password"
+            type="password"
+            className="h-10"
             placeholder={t("confirmPasswordPlaceholder")}
             data-testid="auth-password-confirm-input"
             autoComplete="new-password"
+            aria-invalid={errors.confirmPassword ? true : undefined}
+            aria-describedby={
+              errors.confirmPassword ? "register-confirm-password-error" : undefined
+            }
+            disabled={submitting}
+            {...register("confirmPassword")}
           />
-        </Form.Item>
+          {errors.confirmPassword ? (
+            <p
+              id="register-confirm-password-error"
+              className="text-[12.5px] text-[var(--error)]"
+            >
+              {errors.confirmPassword.message}
+            </p>
+          ) : null}
+        </div>
 
         <div className="mb-5 flex gap-2 rounded-lg bg-[#eaf5ff] px-4 py-3 text-[12.5px] leading-[1.5] text-[#0b6fb8]">
           <span aria-hidden="true">ℹ</span>
@@ -189,22 +200,17 @@ export function RegisterForm() {
         </div>
 
         <Button
-          type="primary"
-          htmlType="submit"
-          size="large"
-          block
-          loading={submitting}
+          type="submit"
+          variant="gradient"
+          size="lg"
+          className="w-full font-semibold"
+          disabled={submitting}
           data-testid="auth-submit-button"
-          style={{
-            background: "linear-gradient(135deg,#7d2ae8 0%,#00c4cc 100%)",
-            border: "none",
-            color: "#fff",
-            fontWeight: 600,
-          }}
         >
+          {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
           {t("signUpButton")}
         </Button>
-      </Form>
+      </form>
 
       <p className="mt-5 text-center text-[13px] text-[#5f6368]">
         {t("hasAccount")}{" "}
