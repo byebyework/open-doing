@@ -1,246 +1,241 @@
-# Open Doing 架构说明
+# Open Doing Architecture
 
-日期：2026-10-21
-配套文档：[2026-10-21-open-doing-v1-design.md](./2026-10-21-open-doing-v1-design.md)
+Companion doc: [2026-10-21-open-doing-v1-design.md](./2026-10-21-open-doing-v1-design.md)
 
-本文描述 v1 的目标架构。功能"是什么、为什么"以设计文档为准，本文只讲"怎么搭"。
+This document describes the target architecture and how the system is built. What the features are and why they exist is defined in the design document.
 
-## 1. 总览
+## 1. Overview
 
-单体 Web 应用（v1 不拆微服务）：
+A monolithic web application (no microservices):
 
-- **Next.js 16（App Router，React 19，Turbopack）** 同时承载页面、Server Actions、Route Handler。
-- **PostgreSQL** 作为唯一持久化存储，**Drizzle ORM** 负责 schema、迁移与查询。
-- 定时扫描（临期/逾期通知）通过受保护的 Route Handler + 外部 cron 触发，v1 不引入独立 worker。
-- 不发邮件、不接第三方服务；除数据库和 cron 外无外部依赖。
+- **Next.js (App Router, React, Turbopack)** hosts pages, Server Actions, and Route Handlers in one app.
+- **PostgreSQL** is the only persistent store; **Drizzle ORM** handles schema, migrations, and queries.
+- Scheduled scans (due-soon/overdue notifications) run through a protected Route Handler triggered by an external cron — no separate worker process.
+- No email sending, no third-party services; no external dependencies other than the database and cron.
 
 ```
-浏览器
-  │  HTTP（RSC 页面 / Server Action / Route Handler）
+Browser
+  │  HTTP (RSC pages / Server Actions / Route Handlers)
   ▼
-apps/web（Next.js）
-  ├── app/            路由层：页面、actions、api
-  ├── features/*/     领域模块：业务逻辑与数据访问
-  └── server/         基础设施：db、auth、会话
+apps/web (Next.js)
+  ├── app/            Routing layer: pages, actions, api
+  ├── features/*/     Domain modules: business logic and data access
+  └── server/         Infrastructure: db, auth, session
   │
   ▼
-PostgreSQL（本地开发用 Docker）
+PostgreSQL (Docker for local development)
 ```
 
-## 2. Monorepo 布局
+## 2. Monorepo Layout
 
-pnpm workspaces：
+pnpm workspaces:
 
 ```
 apps/
-└── web/                 # @open-doing/web，Next.js 应用
+└── web/                 # @open-doing/web, the Next.js app
     └── src/
-        ├── app/         # 路由（见第 5 节）
-        ├── features/    # 领域模块（见第 4 节）
-        ├── components/  # ui/ 通用组件、layout/ 框架布局
-        ├── hooks/       # 通用客户端 hooks
-        ├── lib/         # 纯工具函数
-        └── server/      # db 客户端、auth/session、定时任务入口
+        ├── app/         # routing (see §5)
+        ├── features/    # domain modules (see §4)
+        ├── components/  # ui/ shared components, layout/ frame layout
+        ├── hooks/       # generic client hooks
+        ├── lib/         # pure utility functions
+        └── server/      # db client, auth/session, cron entry points
 packages/
-└── types/               # @open-doing/types，前后端共享的领域类型与纯计算
+└── types/               # @open-doing/types, domain types and pure computation shared across the boundary
 ```
 
-- `@open-doing/types` 只放**可序列化的类型和纯函数**（如进度计算），不依赖 React、不访问数据库、不做 IO。
-- 数据库行类型（Drizzle infer）留在 web 包内；需要跨边界传递时在 features 层映射为 `@open-doing/types` 的领域模型。
-- web 通过 `workspace:*` 引用内部包；`next.config.ts` 中 `transpilePackages` 已包含 `@open-doing/types`。
-- 未来如抽出 UI 组件库或独立 API 客户端，按 `packages/ui`、`packages/api-client` 同样方式扩展。
+- `@open-doing/types` holds only **serializable types and pure functions** (e.g. progress calculation); it must not depend on React, access the database, or do IO.
+- Database row types (Drizzle infer) stay inside the web package; when data crosses the boundary, map it to the domain models of `@open-doing/types` in the features layer.
+- The web package references internal packages via `workspace:*`; `transpilePackages` in `next.config.ts` already includes `@open-doing/types`.
+- If a UI component library or a standalone API client is extracted later, extend the same way as `packages/ui` / `packages/api-client`.
 
-## 3. 技术决策
+## 3. Technology Decisions
 
-| 方面 | 选择 | 理由 |
+| Aspect | Choice | Rationale |
 |---|---|---|
-| 框架 | Next.js 16 App Router | 单应用承载页面 + 服务端逻辑；RSC 减少数据获取样板 |
-| 语言 | TypeScript（strict） | 共享类型贯穿前后端 |
-| UI 组件库 | **Ant Design v6** | 中后台场景组件齐全（表格、表单、看板可基于其拖拽能力扩展） |
-| SSR 样式 | `@ant-design/nextjs-registry` | App Router 下收集 cssinjs 样式，避免首屏闪烁 |
-| 样式工具 | **Tailwind CSS 4（关闭 preflight）** | 负责布局/间距/微调；关闭样式重置避免与 antd 冲突 |
-| 主题/语言 | ConfigProvider：`zh_CN` 语言包 + dayjs 中文 locale，亮色主题 | 统一中文化；品牌色通过 Design Token / CSS Variables 定制 |
-| 数据库 | PostgreSQL | 关系完整性、级联删除、唯一约束（用户名、UID） |
-| ORM | Drizzle | 轻量、SQL 贴近、类型推断好，迁移工具内置 |
-| 本地数据库 | Docker compose | 环境一致，零手工安装 |
-| 认证 | 用户名 + 密码；jose HS256 **无状态签名** httpOnly cookie（`od_session`，sameSite lax，30 天，payload `{ userId }`）+ `@node-rs/argon2`（Argon2id） | 不建 sessions 表：免查库校验、免会话清理任务；Argon2id 抗 GPU 破解且原生实现性能好；签名密钥来自 `SESSION_SECRET` |
-| 数据变更 | Server Actions 为主 | 与 App Router 表单/渐进增强契合 |
-| 定时任务 | 受保护 Route Handler + cron | 不引入 worker，部署简单 |
-| 包管理 | pnpm workspaces | 已定 |
+| Framework | Next.js App Router | One app for pages + server logic; RSC reduces data-fetching boilerplate |
+| Language | TypeScript (strict) | Shared types across frontend and backend |
+| UI components | **Ant Design** | Complete component set for admin-style products (tables, forms; kanban can build on its drag capabilities) |
+| SSR styles | `@ant-design/nextjs-registry` | Collects cssinjs styles under App Router, avoids first-paint flicker |
+| Styling | **Tailwind CSS (preflight disabled)** | Handles layout/spacing/fine-tuning; disabling the reset avoids conflicts with antd |
+| Theme/locale | ConfigProvider: `zh_CN` language pack + dayjs locale, light theme | Consistent localization; brand colors customized via Design Tokens / CSS Variables |
+| Database | PostgreSQL | Relational integrity, cascade deletes, unique constraints (username, UID) |
+| ORM | Drizzle | Lightweight, close to SQL, good type inference, built-in migration tooling |
+| Local database | Docker compose | Consistent environment, zero manual setup |
+| Auth | Username + password; stateless HS256 signature via jose in an httpOnly cookie (`od_session`, sameSite lax, 30 days, payload `{ userId }`) + `@node-rs/argon2` (Argon2id) | No sessions table: no DB lookup on validation, no session cleanup job; Argon2id resists GPU cracking with fast native performance; signing key from `SESSION_SECRET` |
+| Data mutations | Server Actions | Fits App Router forms / progressive enhancement |
+| Scheduled jobs | Protected Route Handler + cron | No worker process, simple deployment |
+| Package management | pnpm workspaces | Decided |
 
-## 4. 领域划分
+## 4. Domain Modules
 
-业务代码按领域组织，每个领域自包含 components / actions / 数据访问：
+Business code is organized by domain; each domain is self-contained with components / actions / data access:
 
 ```
 features/
-├── auth/       注册、登录、登出、会话
-├── users/      用户资料、按 UID 查询（邀请时用）、提醒偏好与个人设置组件
-├── teams/      团队、成员关系、邀请、角色与权限判定
-├── projects/   项目 CRUD（项目页头部操作）
-├── tasks/      任务、子任务、评论、看板状态流转
-├── kanban/     空间级 Kanban：跨项目聚合、筛选与 done 收敛
-├── calendar/   空间级 Calendar：按截止日期聚合月网格与本周 / 本月临期清单
-├── analysis/   空间级 Analysis：完成趋势 / 吞吐 / 成员负载 / 项目健康度
-├── personal/   个人空间：个人任务（看板/详情）与个人项目
-├── dashboard/  个人 Dashboard（personal-dashboard / my-tasks）与团队 Dashboard（team-dashboard / team-overview）
-└── notifications/ 通知、已读、到期扫描
+├── auth/       Register, login, logout, session
+├── users/      User profile, lookup by UID (used for invites), reminder preferences and personal settings components
+├── teams/      Teams, memberships, invites, roles and permission decisions
+├── projects/   Project CRUD (project page header actions)
+├── tasks/      Tasks, subtasks, comments, kanban status transitions
+├── kanban/     Space-level Kanban: cross-project aggregation, filters, done convergence
+├── calendar/   Space-level Calendar: month grid aggregated by due date, this-week / this-month due-soon lists
+├── analysis/   Space-level Analysis: completion trends / throughput / member load / project health
+├── personal/   Personal space: personal tasks (kanban/detail) and personal projects
+├── dashboard/  Personal Dashboard (personal-dashboard / my-tasks) and team Dashboard (team-dashboard / team-overview)
+└── notifications/ Notifications, read state, due-date scan
 ```
 
-- **actions/**：Server Action，只做入参校验、权限校验、调用领域逻辑、返回 `ActionResult`（成功或带字段错误的失败对象）。
-- **components/**：该领域专用组件；跨领域复用的基础组件放 `components/ui`。
-- 数据访问函数与业务规则（如"member 不能改他人任务"）集中在各 feature 的服务端模块中，不散落在页面里。页面（RSC）负责取数与组装，客户端组件只负责交互。
+- **actions/**: Server Actions only validate input, check permissions, call domain logic, and return `ActionResult` (success or a failure object with field errors).
+- **components/**: domain-specific components; reusable base components go in `components/ui`.
+- Data access functions and business rules (e.g. "a member cannot edit others' tasks") are centralized in each feature's server-side modules, never scattered in pages. Pages (RSC) fetch and assemble data; client components only handle interaction.
 
-### 4.1 UI 层约定（antd v6 + Tailwind 4）
+### 4.1 UI Conventions (antd + Tailwind)
 
-- **组件以 antd 为准**：表单、表格、弹窗、菜单、日期选择等直接用 antd，不自己造；`components/ui/` 只放基于 antd 的二次封装与项目通用组合组件。
-- **Tailwind 负责布局与微调**：页面骨架、间距、flex/grid 用 Tailwind 原子类；**关闭 preflight**（在 `globals.css` 中只引入 `tailwindcss/theme` 与 `tailwindcss/utilities`，跳过 base reset），避免按钮/标题等重置样式与 antd 互相污染。
-- **客户端边界**：antd 的交互组件（useMessage、Modal、Table 交互等）只能在 Client Component 中使用。页面保持 RSC 取数，把 antd 交互部分下沉为 `"use client"` 组件，通过 props 传可序列化数据。
-- **根布局**：用 `AntdRegistry` 包裹应用做 SSR 样式收集；`ConfigProvider` 注入 `zh_CN`（同步设置 dayjs 中文 locale），主题统一在一个 `theme.ts` 中配置 Token（v1 亮色，品牌色后续在此一处调整）。
-- 样式冲突排查原则：优先用 antd Token 和组件属性，Tailwind 不覆盖 antd 组件内部样式；确需深度定制时用 antd 的 token/className 钩子，不用全局选择器硬改。
-- 看板拖拽用 `@dnd-kit/core` + `@dnd-kit/sortable` 实现（卡片本身仍基于 antd 基础元素与设计令牌样式）。
+- **antd is the component baseline**: forms, tables, modals, menus, date pickers, etc. come from antd — do not build your own; `components/ui/` only contains antd-based wrappers and project-level composite components.
+- **Tailwind handles layout and fine-tuning**: page skeletons, spacing, flex/grid via Tailwind utilities; **preflight is disabled** (`globals.css` imports only `tailwindcss/theme` and `tailwindcss/utilities`, skipping the base reset) so reset styles do not pollute antd components.
+- **Client boundary**: antd interactive components (useMessage, Modal, interactive Table, etc.) may only be used in Client Components. Pages stay RSC for data fetching; antd interactions are pushed down into `"use client"` components that receive serializable data via props.
+- **Root layout**: wrap the app with `AntdRegistry` for SSR style collection; `ConfigProvider` injects `zh_CN` (with dayjs locale kept in sync); the theme is configured in one place, `theme.ts` (light theme; brand colors are adjusted here).
+- Style conflict rule: prefer antd Tokens and component props; Tailwind must not override antd component internals. For deep customization use antd token/className hooks, never global selectors.
+- Kanban drag-and-drop is implemented with `@dnd-kit/core` + `@dnd-kit/sortable` (cards themselves remain antd elements styled with design tokens).
 
-## 5. 路由结构
+## 5. Routing Structure
 
-v1.1 起统一为空间树：`/space/{spaceRef}/{module}`，`spaceRef` 取 `personal` 或团队 slug，`module` ∈ `dashboard / kanban / calendar / analysis / settings`。
+The app is unified as a space tree: `/space/{spaceRef}/{module}`, where `spaceRef` is `personal` or a team slug, and `module` ∈ `dashboard / kanban / calendar / analysis / settings`.
 
 ```
 app/
 ├── (auth)/
 │   ├── login/page.tsx
 │   └── register/page.tsx
-├── (dashboard)/                     # 登录后布局：侧边栏 + 顶栏（含通知角标）
+├── (dashboard)/                     # logged-in layout: sidebar + top bar (with notification badge)
 │   ├── page.tsx                     # `/` → /space/personal/dashboard
-│   ├── invites/page.tsx             # 待处理邀请（接受/拒绝），非空间页
+│   ├── invites/page.tsx             # pending invites (accept/decline), not a space page
 │   ├── teams/
-│   │   ├── new/page.tsx             # 创建团队，非空间静态页
-│   │   └── join/page.tsx            # 凭码加入，非空间静态页
+│   │   ├── new/page.tsx             # create team, static page
+│   │   └── join/page.tsx            # join by code, static page
 │   └── space/
 │       ├── personal/
-│       │   ├── dashboard/page.tsx   # 个人 Dashboard：统计卡 +「今天」列表（≤20）
-│       │   ├── kanban/page.tsx      # 个人空间 Kanban：跨项目聚合 + ?project 筛选
-│       │   ├── calendar/page.tsx    # 个人空间 Calendar：月视图 + 本周 / 本月清单（?month）
-│       │   ├── analysis/page.tsx    # 个人空间 Analysis：趋势 / 积压 / 按时率 / 项目对比（?range）
-│       │   ├── settings/page.tsx    # 个人设置：改密、提醒开关、项目排序说明
+│       │   ├── dashboard/page.tsx   # personal Dashboard: stat cards + "today" list (≤20)
+│       │   ├── kanban/page.tsx      # personal Kanban: cross-project aggregation + ?project filter
+│       │   ├── calendar/page.tsx    # personal Calendar: month view + this-week / this-month lists (?month)
+│       │   ├── analysis/page.tsx    # personal Analysis: trends / backlog / on-time rate / project comparison (?range)
+│       │   ├── settings/page.tsx    # personal settings: change password, reminder toggles, project ordering notes
 │       │   ├── projects/[projectSlug]/
-│       │   │   └── page.tsx         # 个人项目页（列表/看板双视图，仅本人）
-│       │   └── tasks/[taskId]/page.tsx # 个人任务详情（含个人项目内任务）
+│       │   │   └── page.tsx         # personal project page (list/kanban dual view, owner only)
+│       │   └── tasks/[taskId]/page.tsx # personal task detail (incl. tasks in personal projects)
 │       ├── [teamSlug]/
-│       │   ├── dashboard/page.tsx   # 团队 Dashboard：健康度 + 重要节点 + 成员负载
-│       │   ├── kanban/page.tsx      # 团队空间 Kanban：跨项目聚合 + ?project / ?assignee 筛选
-│       │   ├── calendar/page.tsx    # 团队空间 Calendar：团队全部任务（含未指派）+ ?month
-│       │   ├── analysis/page.tsx    # 团队空间 Analysis：吞吐 / 成员负载 / 健康度 / 僵尸任务（?range）
-│       │   ├── settings/page.tsx    # 团队设置：团队信息/改名、邀请成员、凭码加入与申请审批、成员、危险操作
+│       │   ├── dashboard/page.tsx   # team Dashboard: health + key milestones + member load
+│       │   ├── kanban/page.tsx      # team Kanban: cross-project aggregation + ?project / ?assignee filters
+│       │   ├── calendar/page.tsx    # team Calendar: all team tasks (incl. unassigned) + ?month
+│       │   ├── analysis/page.tsx    # team Analysis: throughput / member load / health / zombie tasks (?range)
+│       │   ├── settings/page.tsx    # team settings: team info/rename, invites, join-by-code and request approval, members, danger zone
 │       │   └── projects/
-│       │       ├── new/page.tsx      # 新建团队项目（编辑/删除在项目页头部操作）
+│       │       ├── new/page.tsx      # create team project (edit/delete in project page header)
 │       │       └── [projectSlug]/
-│       │           ├── page.tsx      # 团队项目页（列表/看板双视图）
-│       │           └── tasks/[taskId]/ # 团队任务详情
+│       │           ├── page.tsx      # team project page (list/kanban dual view)
+│       │           └── tasks/[taskId]/ # team task detail
 └── api/
     └── cron/
-        └── due-scan/route.ts        # 临期/逾期扫描，受密钥保护
+        └── due-scan/route.ts        # due-soon/overdue scan, secret-protected
 ```
 
-- 五个模块在两个空间均为真实页面（`dashboard` / `kanban` / `calendar` / `analysis` / `settings`）；M5 已退役原 `space/[teamSlug]/[module]` 占位页，站内无遗留占位路由。个人与团队页共用领域组件，按 `spaceType` / variant 区分（见 §5.3–§5.5）。
-- `personal` 为保留 spaceRef：团队 slug 生成把 `personal` 视为已占用（X1 guard，`lib/slug.ts` 的 `RESERVED_SPACE_SLUGS`），团队名 "Personal" 落 `personal-2`，个人空间路由不受影响。
-- 路由参数一律使用 slug（团队/项目）；任务详情用不透明内部 ID。
-- 个人任务与团队任务复用同一任务详情组件，差异通过 `spaceType` 与权限上下文处理。
-- 所有 `(dashboard)` 路由在服务端统一做登录校验（重定向到 `/login`）；权限不足返回 403 页面，而不是仅靠隐藏按钮。
+- The five modules are real pages in both space types (`dashboard` / `kanban` / `calendar` / `analysis` / `settings`). Personal and team pages share domain components, differentiated by `spaceType` / variant (see §5.2–§5.4).
+- `personal` is a reserved spaceRef: team slug generation treats `personal` as taken (`RESERVED_SPACE_SLUGS` in `lib/slug.ts`); a team named "Personal" falls back to `personal-2`, leaving personal-space routing unaffected.
+- Route parameters always use slugs (teams/projects); task details use opaque internal IDs.
+- Personal and team tasks reuse the same task detail component; differences are handled via `spaceType` and the permission context.
+- All `(dashboard)` routes perform login checks server-side (redirect to `/login`); insufficient permissions return a 403 page rather than merely hiding buttons.
 
-### 5.1 旧 URL 重定向（`apps/web/next.config.ts`，全部 307 temporary）
+### 5.1 Legacy URL redirects (`apps/web/next.config.ts`, all 307 temporary)
 
-| 旧路径 | 新路径 | 说明 |
+| Old path | New path | Notes |
 |---|---|---|
-| `/my` | `/space/personal/dashboard` | 原「我的任务」页 |
-| `/my/:path*` | `/space/personal/:path*` | 个人项目页 / 任务详情等深链 |
-| `/teams/:slug` | `/space/:slug/dashboard` | 原团队概览页 |
-| `/teams/:slug/:path*` | `/space/:slug/:path*` | 团队设置 / 项目页 / 任务详情等深链 |
+| `/my` | `/space/personal/dashboard` | Former "my tasks" page |
+| `/my/:path*` | `/space/personal/:path*` | Deep links to personal projects / task details |
+| `/teams/:slug` | `/space/:slug/dashboard` | Former team overview page |
+| `/teams/:slug/:path*` | `/space/:slug/:path*` | Deep links to team settings / project pages / task details |
 
-- 团队 slug 参数使用完整段模式 `((?!(?:new|join)(?:/|$))[^/]+)` 排除静态页：Next 16.4.2 的 path-to-regexp 不接受 `(?!new|join)` 直接作参数模式。
-- `/teams/new`、`/teams/join`、`/invites` 不是空间路由，保持自己的静态页面，不参与重定向。
+- The team slug parameter uses the full-segment pattern `((?!(?:new|join)(?:/|$))[^/]+)` to exclude static pages: Next.js path-to-regexp does not accept `(?!new|join)` directly as a parameter pattern.
+- `/teams/new`, `/teams/join`, and `/invites` are not space routes; they keep their own static pages and are not redirected.
 
-### 5.2 F-5 契约变更（2026-10-28）
+### 5.2 Navigation (AppShell / SpaceNav)
 
-v1.1 统一导航替换原 PersonalNav / TeamsNav 双槽：
+- `AppShell` props: `{ nav, mobileNav, user, children }`.
+- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (Dashboard / Kanban / Calendar / Analysis / Settings + account group), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + antd Drawer).
+- The desktop sidebar and the mobile Drawer share the same navigation tree; `(dashboard)/layout.tsx` imports are adjusted accordingly.
 
-- `AppShell` props 变为 `{ nav, mobileNav, user, children }`；
-- 新增 `SpaceNav`、`SpaceNavData`（`getSpaceNavData()` 一次取齐）、`SpaceNavMenu`（Dashboard / Kanban / Calendar / Analysis / 设置 + 账号分组）、`MobileNav`（<861px 汉堡按钮 `aria-label="打开导航"` + antd Drawer）；
-- 桌面侧栏与移动 Drawer 共用同一棵导航树，`(dashboard)/layout.tsx` 的导入关系相应调整。
+### 5.3 Space-level Kanban
 
-### 5.3 空间级 Kanban（v1.1 M3）
+One set of components for both spaces (`features/kanban/`; `SpaceKanban` distinguishes personal/team via `variant`):
 
-两个空间一套组件（`features/kanban/`，`SpaceKanban` 以 `variant` 区分个人 / 团队）：
-
-| 路由 | 数据范围 |
+| Route | Data scope |
 |---|---|
-| `/space/personal/kanban` | 本人的全部个人任务（含零散任务），跨项目聚合 |
-| `/space/{teamSlug}/kanban` | 该团队全部项目下的任务（含未指派），非成员 404 |
+| `/space/personal/kanban` | All of the user's personal tasks (incl. loose tasks), aggregated across projects |
+| `/space/{teamSlug}/kanban` | Tasks of all the team's projects (incl. unassigned); non-members get 404 |
 
-URL query 契约（筛选状态进 URL，RSC 服务端过滤三列与 done 计数）：
+URL query contract (filter state lives in the URL; the RSC filters the three columns and done count server-side):
 
-| 参数 | 空间 | 语义 |
+| Param | Space | Meaning |
 |---|---|---|
-| `project={projectSlug}` | 个人 / 团队 | 只看该项目；未知或他人项目 slug **静默忽略**（回退全部，不 500） |
-| `assignee=unassigned` | 仅团队 | 只看未指派任务；与 `project` 可叠加 |
-| 无参数 | 两个空间 | 全部任务 |
+| `project={projectSlug}` | Personal / team | Only that project; unknown or someone else's project slug is **silently ignored** (falls back to all, no 500) |
+| `assignee=unassigned` | Team only | Only unassigned tasks; can combine with `project` |
+| (none) | Both | All tasks |
 
-- 列固定为 `todo / in_progress / done`；done 列默认只收敛近 7 天（`updatedAt >= today-6`），尾部「查看更早 N 项已完成」原地展开全部，收起可逆。**展开状态不进 URL**（临时展示态）；任何成功触发 `router.refresh()` 的操作（拖拽 / 移动端状态按钮）会把展开视图重置回近 7 天。
-- 拖拽只改状态、不改项目归属；权限沿用 `canEditTask`（团队 member 不可拖他人 / 未指派卡）；<861px 拖拽关闭，改由卡内状态按钮流转。
-- 展开取数走 Server Action `getOlderDoneTasksAction`（`features/kanban/actions.ts`），个人分支 `requireUser()`、团队分支 `getCurrentUser()` + 成员资格校验；筛选参数（`projectSlug` / `unassignedOnly`）在 action 内重新解析为 id，无效 slug 同样忽略。
-- 空态文案（已定）：「这个空间还没有任务,去 Dashboard 或项目页创建第一项任务。」；当前三列始终渲染，列内空态显示「暂无任务」，空间级空态未单独接线。筛选条计数：个人「N 个任务」（三列卡片 + 窗口外 done），团队「N 个未完成任务」（todo + in_progress）。
-- 团队看板页头「＋ 新建项目」仅 owner / admin 渲染，与 `/space/{teamSlug}/projects/new` 的权限门槛一致。
-- 已知限制：展开后的「更早」done 卡没有详情链接（RSC 只为近 7 天卡片生成 `taskHrefs`；原型同样不链接）。
+- Columns are fixed: `todo / in_progress / done`; the done column converges by default to the last 7 days (`updatedAt >= today-6`), with an in-place "show N older completed" toggle that is reversible. The expanded state is **not in the URL** (ephemeral view state); any action that triggers `router.refresh()` (drag, mobile status button) resets the expanded view back to 7 days.
+- Dragging only changes status, never project ownership; permissions follow `canEditTask` (a team member cannot drag others'/unassigned cards); below 861px dragging is disabled in favor of in-card status buttons.
+- The expansion fetches via Server Action `getOlderDoneTasksAction` (`features/kanban/actions.ts`): the personal branch calls `requireUser()`, the team branch calls `getCurrentUser()` + membership check; filter params (`projectSlug` / `unassignedOnly`) are re-resolved to ids inside the action, invalid slugs ignored likewise.
+- The team kanban header's "＋ New project" renders only for owner / admin, matching the gate on `/space/{teamSlug}/projects/new`.
 
-### 5.4 空间级 Calendar（v1.1 M4）
+### 5.4 Space-level Calendar
 
-两个空间一套组件（`features/calendar/`，`SpaceCalendar` 以 `variant` 区分个人 / 团队）：
+One set of components for both spaces (`features/calendar/`; `SpaceCalendar` distinguishes via `variant`):
 
-| 路由 | 数据范围 |
+| Route | Data scope |
 |---|---|
-| `/space/personal/calendar` | 本人的全部个人任务（含零散任务），按截止日期落格 |
-| `/space/{teamSlug}/calendar` | 该团队全部项目下的任务（含未指派），非成员 404（不泄露团队存在性） |
+| `/space/personal/calendar` | All of the user's personal tasks (incl. loose tasks), placed by due date |
+| `/space/{teamSlug}/calendar` | Tasks of all the team's projects (incl. unassigned); non-members get 404 (does not leak team existence) |
 
-URL query 契约（月份进 URL，RSC 按 query 服务端取数）：
+URL query contract (month lives in the URL; the RSC fetches by query):
 
-| 参数 | 语义 |
+| Param | Meaning |
 |---|---|
-| `month={YYYY-MM}` | 月网格显示的月份；翻月由 client 组件 `router.push` 写回 |
-| 缺失 / 非法 / 数组参数 | **静默回退当前月**（`todayInShanghai().slice(0, 7)`，不 500、不报错） |
+| `month={YYYY-MM}` | Month shown in the grid; month changes are written back by a client component via `router.push` |
+| Missing / invalid / array params | **Silently fall back to the current month** (`todayInShanghai().slice(0, 7)`), no 500, no error |
 
-- 月网格固定 42 格（周一起始的 6 周，含月份前后补齐日期），单格最多 3 条 chip，溢出显示「还有 K 项」；done 按**原截止日期**落格并划线淡显；无 `due_date` 的任务不进网格；「N 项任务没有截止日期 →」计数入口（跳 Dashboard）**仅个人页有**，团队页页头为「未指派任务也会按截止日期出现在日历上」的提示行（无计数入口）。
-- 侧栏两块**锚定「今天」、不随所显示月份翻动**（Ruling：翻月只换月网格）：① 本周任务 = 今天所在自然周 `[getWeekStart(today), +6]`，按日分组、今天组置顶，**含 done**（划线留在原位）；② 本月即将到期 = `(本周结束, 今天所在月月末]` 且**排除 done**（Ruling），日期升序，默认 5 条 + 「查看本月其余 K 项」原地展开 / 收起。
-- 取数三窗口独立：`features/calendar/service.ts` 的 `getPersonalSpaceCalendar` / `getTeamSpaceCalendar` 并行查询月网格窗口、本周窗口、本月临期窗口与无截止日期计数；排序统一 `due_date asc, created_at desc`。团队行 `LEFT JOIN users` 取负责人（未指派 / 成员被移除后为 null）。
-- 团队 chip 前缀为负责人头像（首字 + 按 `assigneeId` 哈希的定色盘底色）或「未指派」描边 tag；个人版 chip 不带负责人。
-- 只读：chip / 侧栏条目按 `taskHrefs`（RSC 构造）渲染为详情链接，点空白格无行为；不做拖拽改期。窄屏（<861px）侧栏整体堆到月历下方。
-- 权限：团队页在 RSC 内先做成员资格校验再取数，非成员 `notFound()`；个人页数据范围恒为本人。
+- The month grid is fixed at 42 cells (6 weeks starting Monday, padded with adjacent-month dates), at most 3 chips per cell with "K more" overflow; done tasks are placed on their **original due date**, struck through and dimmed; tasks without `due_date` do not enter the grid; a "N tasks without due dates →" count entry (linking to Dashboard) exists **only on the personal page** — the team page header shows a hint line that unassigned tasks also appear by due date (no count entry).
+- The sidebar has two blocks **anchored to "today", independent of the displayed month** (ruling: month paging only changes the grid): ① this week's tasks = the calendar week containing today `[getWeekStart(today), +6]`, grouped by day with today's group on top, **including done** (struck through in place); ② due this month = `(end of this week, end of today's month]`, **excluding done**, ascending by date, 5 by default + an in-place expand/collapse for the remaining K.
+- Data is fetched in three independent windows: `getPersonalSpaceCalendar` / `getTeamSpaceCalendar` in `features/calendar/service.ts` query the month-grid window, this-week window, due-this-month window, and no-due-date count in parallel; sorting is uniformly `due_date asc, created_at desc`. Team rows `LEFT JOIN users` for the assignee (null when unassigned / member removed).
+- Team chips are prefixed with the assignee avatar (initial + stable color from hashing `assigneeId`) or an "unassigned" outlined tag; personal chips carry no assignee.
+- Read-only: chips / sidebar entries render as detail links via `taskHrefs` (built by the RSC); clicking empty cells does nothing; no drag-to-reschedule. On narrow screens (<861px) the sidebar stacks below the grid.
+- Permissions: the team page verifies membership in the RSC before fetching, non-members get `notFound()`; the personal page's data scope is always the current user.
 
-### 5.5 空间级 Analysis（v1.1 M5）
+### 5.5 Space-level Analysis
 
-两个空间一套组件（`features/analysis/`，`SpaceAnalysis` 以 `variant` 区分个人 / 团队），只读自绘图表（不引入图表库）：
+One set of components for both spaces (`features/analysis/`; `SpaceAnalysis` distinguishes via `variant`), read-only self-drawn charts (no chart library):
 
-| 路由 | 内容 |
+| Route | Content |
 |---|---|
-| `/space/personal/analysis` | 统计卡（进行中 / 本月完成 / 当前逾期 / 按时率）+ 完成趋势、新增 vs 完成、未来截止分布、项目对比 |
-| `/space/{teamSlug}/analysis` | 统计卡 + 吞吐、成员负载分布、项目健康度、僵尸任务（`in_progress` 且 14 天未动，最多 10 条），非成员 404 |
+| `/space/personal/analysis` | Stat cards (in progress / completed this month / currently overdue / on-time rate) + completion trend, created vs completed, upcoming due distribution, project comparison |
+| `/space/{teamSlug}/analysis` | Stat cards + throughput, member load distribution, project health, zombie tasks (`in_progress` and untouched for 14 days, max 10), non-members 404 |
 
-- `?range=7|30|90` 决定趋势窗口，缺失 / 非法 / 数组参数**静默回退 30**（与 M4 `month` 同款宽容语义）；7 / 30 天按日分桶、90 天按自然周分桶。切换由 client 组件写回 URL，RSC 重新取数；统计卡是当前快照，不随 range 变化。
-- 按时率固定近 30 天窗口（与页头 range 解耦的快照口径）；完成日 = `updated_at`、创建日 = `created_at`（无历史快照表，删除任务后趋势无法重建，属已知边界）；成员负载为当前快照，不做历史回看。
-- 个人范围谓词恒为「指派给我的任务」（个人任务 + 指派给自己的团队任务），与 Dashboard 同口径；团队复用 `getTeamOverview` 裁剪负载与健康度。
+- `?range=7|30|90` determines the trend window; missing / invalid / array params **silently fall back to 30** (same lenient semantics as the calendar's `month`); 7/30 days bucket by day, 90 days by calendar week. Switching is written back to the URL by a client component and the RSC refetches; stat cards are a current snapshot and do not change with range.
+- On-time rate uses a fixed 30-day window (decoupled from the header range); completion day = `updated_at`, creation day = `created_at` (no historical snapshot table — trends cannot be rebuilt after a task is deleted, a known boundary); member load is a current snapshot with no historical lookback.
+- The personal scope predicate is always "tasks assigned to me" (personal tasks + team tasks assigned to me), consistent with the Dashboard; the team view reuses `getTeamOverview` for load and health.
 
-## 6. 数据模型
+## 6. Data Model
 
-核心表（字段为概要，最终以 Drizzle schema 与迁移为准）：
+Core tables (fields summarized; the Drizzle schema and migrations are authoritative):
 
 ```
 users
-  id            内部主键（不暴露）
-  uid           对外标识，唯一，doing_xxxx（邀请用）
-  username      登录名/显示名，唯一
+  id            internal primary key (not exposed)
+  uid           external identifier, unique, doing_xxxx (used for invites)
+  username      login/display name, unique
   password_hash
   created_at
 
 teams
-  id, name, slug（团队内/全局唯一策略实现时定）, owner_id -> users.id, created_at
+  id, name, slug (uniqueness strategy within team/global decided at implementation), owner_id -> users.id, created_at
 
 team_memberships
   id, team_id -> teams.id, user_id -> users.id
@@ -252,99 +247,99 @@ team_invites
   id, team_id -> teams.id, invitee_id -> users.id, invited_by_id -> users.id
   status        pending | accepted | declined | rescinded
   created_at, responded_at
-  UNIQUE(team_id, invitee_id) WHERE status = 'pending'   -- 部分唯一索引
+  UNIQUE(team_id, invitee_id) WHERE status = 'pending'   -- partial unique index
 
 projects
   id, name, slug, description, created_at
-  team_id -> teams.id (nullable：个人项目)
-  owner_id -> users.id (个人项目归属人；团队项目为空)
-  CHECK((team_id IS NOT NULL) <> (owner_id IS NOT NULL))  -- 二选一
-  -- slug 唯一范围：团队项目 UNIQUE(team_id, slug)；个人项目 UNIQUE(owner_id, slug)
+  team_id -> teams.id (nullable: personal projects)
+  owner_id -> users.id (owner of personal projects; null for team projects)
+  CHECK((team_id IS NOT NULL) <> (owner_id IS NOT NULL))  -- exactly one
+  -- slug uniqueness scope: team projects UNIQUE(team_id, slug); personal projects UNIQUE(owner_id, slug)
 
 tasks
-  id, project_id -> projects.id (nullable：不属于任何项目的个人任务)
+  id, project_id -> projects.id (nullable: personal tasks not in any project)
   space_type     personal | team
   title, description
   status         todo | in_progress | done
-  assignee_id -> users.id (nullable：成员退出/被移除后未指派)
-  due_date       date（仅日期，Asia/Shanghai 语义）
+  assignee_id -> users.id (nullable: unassigned after member leaves/is removed)
+  due_date       date (date only, Asia/Shanghai semantics)
   created_by_id -> users.id
   created_at, updated_at
 
 subtasks
-  id, task_id -> tasks.id (级联删除), title, completed, created_at, completed_at
+  id, task_id -> tasks.id (cascade delete), title, completed, created_at, completed_at
 
 comments
-  id, task_id -> tasks.id (级联删除), author_id -> users.id, content, created_at
+  id, task_id -> tasks.id (cascade delete), author_id -> users.id, content, created_at
 
 notifications
   id, user_id -> users.id, type, read
-  team_id / project_id / task_id（按类型取用，可为空）
-  actor_id -> users.id（系统产生的通知为空）
+  team_id / project_id / task_id (used by type, nullable)
+  actor_id -> users.id (null for system-generated notifications)
   created_at
 
-sessions（v1 不建：使用 jose 无状态签名 cookie，见 §3）
+sessions (not created: stateless jose signed cookie, see §3)
 ```
 
-关键约束与行为：
+Key constraints and behavior:
 
-- `users.uid`、`users.username` 各建唯一索引；UID 随机生成、不可枚举。
-- 个人空间数据：`space_type = 'personal'` 的任务（`project_id` 可指向本人的个人项目，也可为空），以及 `owner_id = 本人` 的个人项目，只能由本人访问（见第 7 节）；个人项目的任务 `assignee_id` 恒为本人。
-- **级联删除**：删项目（团队项目或个人项目）→ 其下任务/子任务/评论及相关通知；解散团队 → 项目、成员关系、邀请、通知。用数据库外键 `ON DELETE CASCADE` 兜底，应用层二次确认。
-- 移除成员/退出：只删 `team_memberships`，**不删任务**，将其 `assignee_id` 置空。
-- 邀请用部分唯一索引防止对同一人生成多个 pending 邀请。
+- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable.
+- Personal-space data: tasks with `space_type = 'personal'` (`project_id` may point to the owner's personal project or be null) and personal projects with `owner_id = self` are accessible only by the owner (see §7); personal-project tasks always have `assignee_id` = the owner.
+- **Cascade deletes**: deleting a project (team or personal) → its tasks/subtasks/comments and related notifications; dissolving a team → its projects, memberships, invites, notifications. Backed by database foreign keys `ON DELETE CASCADE`, with a second confirmation in the app layer.
+- Removing a member / leaving: only deletes `team_memberships`, **not tasks**; their `assignee_id` is nulled.
+- The partial unique index prevents multiple pending invites for the same person.
 
-## 7. 权限模型（执行点）
+## 7. Permission Model (enforcement points)
 
-角色矩阵见设计文档第 5 节。架构上的执行原则：
+The role matrix is in the design document (§5). Architectural enforcement principles:
 
-1. **每个 Server Action 独立鉴权**，不信任页面是否隐藏了入口。统一在 `features/teams` 提供：
-   - `getMembership(teamId, userId)` → 角色或 null；
-   - `can(action, actor, resource)` 形式的判定（如 `canEditTask`：责任人本人或团队 owner/admin）。
-2. 数据查询带**可见性过滤**：团队任务只在"我是该团队成员"时可见；个人空间数据（个人任务、个人项目）只有本人可见。
-3. 评论权限与任务内容编辑权限分开：成员可评论，但不能改他人任务内容。
-4. 团队管理动作（建项目、邀请、移除成员、删项目、解散、转让）在 service 层再次校验 owner/admin；个人项目的创建/编辑/删除只校验 `owner_id = 当前用户`，与团队角色体系完全独立。
+1. **Every Server Action performs its own authorization** and never trusts that a page merely hides the entry point. Centralized in `features/teams`:
+   - `getMembership(teamId, userId)` → role or null;
+   - `can(action, actor, resource)`-style decisions (e.g. `canEditTask`: the assignee themselves or team owner/admin).
+2. Data queries carry **visibility filters**: team tasks are visible only when "I am a member of that team"; personal-space data (personal tasks, personal projects) is visible only to the owner.
+3. Comment permission and task-content edit permission are separate: members may comment but cannot edit others' task content.
+4. Team management actions (create project, invite, remove member, delete project, dissolve, transfer) are re-validated for owner/admin in the service layer; personal-project create/edit/delete only checks `owner_id = current user`, fully independent of the team role system.
 
-## 8. 进度聚合与截止日期
+## 8. Progress Aggregation and Due Dates
 
-纯计算逻辑放在 `@open-doing/types`，服务端只负责取数：
+Pure computation lives in `@open-doing/types`; the server only fetches data:
 
-- 任务进度：有子任务 → 完成子任务 / 子任务总数；无子任务 → 状态映射 0 / 0.5 / 1。
-- 项目进度：项目下全部任务进度的等权平均，空项目 0（团队项目与个人项目同口径）；团队进度：各团队项目进度等权平均，无项目 0，个人项目不参与。
-- 概览仪表盘的聚合在数据库侧完成（SQL 聚合任务/子任务计数），应用层套用同一套口径，避免把整表拉进内存。
-- `due_date` 使用 Postgres `date` 类型。逾期判定：`当前日期(Asia/Shanghai) > due_date 且 status != done`；临期：`due_date IN (今天, 明天) 且未完成`。会话与数据库连接统一使用东八区口径计算。
+- Task progress: with subtasks → completed subtasks / total subtasks; without → status mapping 0 / 0.5 / 1.
+- Project progress: equal-weight average of all the project's tasks, empty project 0 (same for team and personal projects); team progress: equal-weight average across the team's projects, 0 when there are none; personal projects do not participate.
+- Dashboard aggregations are computed in the database (SQL aggregation of task/subtask counts); the app layer applies the same semantics rather than pulling whole tables into memory.
+- `due_date` uses the Postgres `date` type. Overdue: `current date (Asia/Shanghai) > due_date and status != done`; due soon: `due_date IN (today, tomorrow) and not completed`. Session and database connections consistently use UTC+8 semantics.
 
-## 9. 通知
+## 9. Notifications
 
-- 通知由领域动作**同步产生**（邀请、指派、评论、管理员改动），与业务修改在同一事务内写入，避免丢失。
-- 临期/逾期由 `POST /api/cron/due-scan` 扫描产生（扫描范围含个人空间任务——对本人的自我提醒；个人项目不产生指派、评论、改动类通知）：
-  - 用环境变量中的 cron 密钥（如 `Authorization: Bearer` 或自定义头）校验；
-  - 幂等：同一任务同一类型在到期窗口内只产生一条（按 `(user_id, task_id, type)` 加去重约束或写入前检查）；
-  - 扫描后任务转已完成不再产生新通知（已产生的历史通知保留）。
-- 前端在 `(dashboard)` 布局中拉取未读数显示角标（轮询即可），通知中心支持列表与标记已读。
+- Notifications are produced **synchronously by domain actions** (invite, assign, comment, admin changes), written in the same transaction as the business change to avoid loss.
+- Due-soon/overdue notifications come from `POST /api/cron/due-scan` (the scan includes personal-space tasks — self reminders; personal projects do not produce assign/comment/change notifications):
+  - Authenticated via a cron secret from env (e.g. `Authorization: Bearer` or a custom header);
+  - Idempotent: one notification per task per type per due window (dedupe constraint on `(user_id, task_id, type)` or a pre-write check);
+  - Tasks completed after the scan produce no new notifications (historical ones are kept).
+- The frontend polls the unread count in the `(dashboard)` layout for the badge; the notification center supports the list and marking as read.
 
-## 10. 服务端渲染与数据获取约定
+## 10. Server Rendering and Data Fetching Conventions
 
-- 页面默认 RSC：直接在服务端按当前会话用户取数，不经过公开 API。
-- 写操作统一走 Server Action；Route Handler 只用于 cron（v1 不暴露公开 REST API）。
-- 客户端组件限定为：看板拖拽、表单交互、通知轮询、视图切换。
-- 数据库连接放在 `server/db.ts`，单例，避免开发热重载产生多连接。
+- Pages are RSC by default: fetch data on the server per session user, no public API.
+- Mutations go through Server Actions; Route Handlers are used only for cron (no public REST API).
+- Client components are limited to: kanban drag-and-drop, form interactions, notification polling, view switching.
+- The database connection lives in `server/db.ts` as a singleton to avoid multiple connections from dev hot reload.
 
-### 10.1 请求级 locale 解析链路（i18n，v1.1）
+### 10.1 Request-level locale resolution (i18n)
 
-每请求的界面语言按以下优先级解析（`src/i18n/server.ts` 的 `getRequestLocale`，React `cache` 每请求去重）：
+Per-request UI language resolves by the following priority (`getRequestLocale` in `src/i18n/server.ts`, deduped per request via React `cache`):
 
-1. **登录态：`users.language` 为唯一权威**——查会话用户带出的语言字段，多设备切换下一请求立即生效；
-2. **未登录：cookie `od_locale`**（`normalizeLocale` 校验，非法值回落 zh）；
-3. **皆无：回落 `zh`**。
+1. **Logged in: `users.language` is the single authority** — taken from the session user; a language switch takes effect on the next request across devices;
+2. **Anonymous: cookie `od_locale`** (validated by `normalizeLocale`, invalid values fall back to zh);
+3. **Neither: fall back to `zh`**.
 
-解析结果同时驱动三处同步：next-intl 消息包（`getRequestConfig` 按 locale 动态 import）、antd 与 dayjs 的 locale（根 Providers）、`<html lang>`（根布局，`LOCALE_HTML_LANG` 映射 zh→`zh-CN`、en→`en-US`）。任何一处漏切都会表现为 hydration error 或日期组件语言混杂（e2e flow 12 冒烟兜底）。
+The resolution drives three switches in sync: next-intl message catalog (`getRequestConfig` dynamically imports by locale), antd and dayjs locales (root Providers), and `<html lang>` (root layout, `LOCALE_HTML_LANG` maps zh→`zh-CN`, en→`en-US`). Missing any one of the three surfaces as a hydration error or mixed-language date components.
 
-Server Action 里的错误翻译经 `standardFailuresForRequest()`（内部按请求 locale 取 translator），用 `failures.custom("<领域ns>.<key>", params)` 翻译领域错误到 `field ?? "form"`；`lib/domain-failure.ts` 提供可注入 translator 的纯函数变体 `domainFailureWith`，便于单测。约定细节（cjk-guard / messages-parity 两条强制测试、通知 `<b>` 模板解析）见仓库根 `AGENTS.md` 的「国际化」小节。
+Error translation inside Server Actions goes through `standardFailuresForRequest()` (which picks a translator by request locale), using `failures.custom("<domain ns>.<key>", params)` to translate domain errors onto `field ?? "form"`; `lib/domain-failure.ts` provides the pure-function variant `domainFailureWith` with an injectable translator for unit testing. Convention details (the cjk-guard / messages-parity enforcement tests, notification `<b>` template parsing) are in the "Internationalization" section of the repo-root `AGENTS.md`.
 
-## 11. 配置与环境
+## 11. Configuration and Environment
 
-`apps/web` 需要的环境变量（`.env.local`，不入库）：
+Environment variables required by `apps/web` (`.env.local`, not committed):
 
 ```
 DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open-doing
@@ -352,41 +347,5 @@ SESSION_SECRET=...
 CRON_SECRET=...
 ```
 
-- 仓库根目录提供 `docker-compose.yml`（实现阶段添加）启动本地 PostgreSQL。
-- Drizzle 配置与迁移文件放在 web 包内（如 `src/server/db/` + `drizzle/`），`pnpm --filter @open-doing/web db:generate / db:migrate`。
-
-## 12. 当前状态 vs 目标
-
-| 部分 | 现状 |
-|---|---|
-| Monorepo、Next.js 16、Tailwind 4（preflight 已关闭）、ESLint | ✅ 已完成 |
-| antd v6 接入（registry、ConfigProvider zh_CN、亮色主题） | ✅ 已完成 |
-| `@open-doing/types` 共享类型与纯函数 | ✅ uid/username、邀请、通知、`getTaskProgress`、`isOverdue` 等已落地 |
-| PostgreSQL / Drizzle / 迁移 / 种子 | ✅ 已完成（迁移可在空库重放） |
-| 认证与会话（注册 / 登录 / `requireUser()` 守卫） | ✅ 已完成 |
-| 团队/项目/任务/通知业务代码、团队设置、邀请与凭码加入 | ✅ 已完成 |
-| 路由：统一空间树 `/space/{spaceRef}/{module}` + 旧 URL 307 重定向 | ✅ v1.1 M2（`next.config.ts`，见 §5.1） |
-| 导航：SpaceSwitcher + 五模块 SpaceNavMenu + 移动端 Drawer（<861px） | ✅ v1.1 M2（F-5 契约变更，见 §5.2） |
-| 个人 Dashboard `/space/personal/dashboard` | ✅ v1.1 M2：四张统计卡 +「今天」列表（≤20，逾期置顶，行内勾选） |
-| 团队 Dashboard `/space/[teamSlug]/dashboard` | ✅ v1.1 M2：四张统计卡 + 项目健康度 + 重要节点（前 10）+ 成员负载 |
-| 个人/团队项目页（列表 + 看板双视图）与任务详情 | ✅ 已迁入 `/space/{spaceRef}/projects/...`、`/space/personal/tasks/{id}` |
-| 空间级 Kanban `/space/{spaceRef}/kanban` | ✅ v1.1 M3：三列跨项目聚合、`?project=` / `?assignee=` 筛选（见 §5.3）、拖拽改状态、done 7 天收敛 + 原地展开 |
-| 空间级 Calendar `/space/{spaceRef}/calendar` | ✅ v1.1 M4：月网格 + 本周清单 + 本月即将到期，`?month=` 翻月（见 §5.4）；只读 |
-| 空间级 Analysis `/space/{spaceRef}/analysis` | ✅ v1.1 M5：个人 5 区块 / 团队 4 区块，`?range=7\|30\|90`（见 §5.5）；只读自绘图表 |
-| 空间级设置 `/space/{spaceRef}/settings` | ✅ v1.1 M6：个人设置为改密码 + 提醒开关 + 项目排序说明；团队设置为团队信息/改名、邀请成员、凭码加入与申请审批、成员、危险操作；项目创建/编辑/删除在 `/projects/new` 与项目页 |
-| 设计令牌 `tokens.css` | ✅ X1：与原型 `design-tokens.css` 变量名/取值 1:1，经 `globals.css` 全局解析；品牌字体未加载（无授权来源，回退栈保留） |
-| cron 到期扫描（`CRON_SECRET` 鉴权、幂等） | ✅ 已完成 |
-
-## 13. 建议的实施顺序（概要）
-
-1. 基础设施：Docker Postgres、Drizzle 接入、schema 与首个迁移、修订共享类型。
-2. UI 基座：接入 antd v6（AntdRegistry、ConfigProvider zh_CN、亮色主题）、关闭 Tailwind preflight、搭建应用整体布局。
-3. 认证：注册/登录/会话、路由守卫。
-4. 个人空间：个人项目 CRUD、任务/子任务/评论的增删改查（含不属于项目的个人任务）、个人 Dashboard（「我的任务」页已由 v1.1 M2 的 Dashboard 取代）、个人项目页、任务详情。
-5. 团队与项目：创建团队、按 UID 邀请/接受、成员与权限、团队项目 CRUD。
-6. 团队任务：指派、项目列表/看板、权限边界。
-7. 团队概览聚合页、未指派任务区。
-8. 通知中心与 cron 到期扫描。
-9. 团队设置：移除成员、退出、解散/转让；项目删除在项目页。
-
-详细计划在设计文档确认后另行编写。
+- `docker-compose.yml` at the repo root starts the local PostgreSQL.
+- Drizzle config and migration files live in the web package (`src/server/db/` + `drizzle/`), run via `pnpm --filter @open-doing/web db:generate / db:migrate`.

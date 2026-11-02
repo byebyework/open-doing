@@ -1,97 +1,141 @@
 # AGENTS.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to AI coding agents (Claude Code, CodeBuddy, etc.) when working with code in this repository.
 
-## 项目概述
+## Project Overview
 
-Open Doing:个人 + 团队任务与项目管理系统(v1.1)。单体 Next.js 16(App Router,React 19,Turbopack)+ PostgreSQL 17 + Drizzle ORM + antd v6 + Tailwind CSS 4。全站中文(`zh_CN` locale),页面默认 RSC,写操作走 Server Actions。登录后按空间组织:个人空间与各团队空间共用 Dashboard / Kanban / Calendar / Analysis / 设置五模块导航,路由统一为 `/space/{spaceRef}/{module}`(`spaceRef` = `personal` 或团队 slug)。
+Open Doing: a personal + team task and project management system. Monolithic Next.js (App Router, React, Turbopack) + PostgreSQL + Drizzle ORM + antd + Tailwind CSS. The UI is fully localized (zh/en via next-intl, no URL locale prefix). Pages are RSC by default; write operations go through Server Actions. After login, the app is organized by spaces: the personal space and each team space share the same Dashboard / Kanban / Calendar / Analysis / Settings module navigation, with routes unified as `/space/{spaceRef}/{module}` (`spaceRef` = `personal` or a team slug).
 
-权威文档(改代码前先读对应部分):
-- `docs/2026-10-21-open-doing-v1-design.md` — 产品"是什么、为什么"
-- `docs/ARCHITECTURE.md` — "怎么搭"
-- `docs/prototypes/` — HTML 原型,是 UI 视觉与文案的对照基准(本轮冻结,不随实现改动)
-- `docs/V1_TASKS.md` — 任务板;代码注释中的 F-5 / P-5 / N-2 等编号指向此文件,其中冻结契约(如 `AppShell`、`(dashboard)/layout.tsx` 的导入关系)不得修改
-- `docs/V1.1_TASKS.md` — v1.1 任务板与各模块「实现记录」,S/M/X 编号指向此文件
+Authoritative docs (read the relevant section before changing code):
 
-`apps/web/AGENTS.md`:Next.js 16 相对训练数据有破坏性变更,写 Next 相关代码前先读 `apps/web/node_modules/next/dist/docs/` 中的相关指南,留意废弃通告。
+- `docs/2026-10-21-open-doing-v1-design.md` — the product "what and why"
+- `docs/ARCHITECTURE.md` — "how it's built"
+- `docs/prototypes/` — HTML prototypes; the reference baseline for UI visuals and copy (frozen for this round; do not modify alongside implementation)
 
-## 常用命令(仓库根目录)
+Frozen contracts (e.g. `AppShell`, the import relationships in `(dashboard)/layout.tsx`) must not be modified.
+
+`apps/web/AGENTS.md`: Next.js has breaking changes relative to typical training data. Before writing Next-related code, read the relevant guides in `apps/web/node_modules/next/dist/docs/` and watch for deprecation notices.
+
+## Build and Test Commands (repo root)
 
 ```bash
-docker compose up -d --wait   # 启动 PostgreSQL(开发库 open_doing + 测试库 open_doing_test + e2e 库 open_doing_e2e)
+docker compose up -d --wait   # Start PostgreSQL (dev db open_doing + test db open_doing_test + e2e db open_doing_e2e)
 pnpm install
-cp .env.example apps/web/.env.local   # Next.js 从 apps/web 解析 env,不是仓库根
-pnpm dev                      # web 应用,http://localhost:3000
+cp .env.example apps/web/.env.local   # Next.js resolves env from apps/web, not the repo root
+pnpm dev                      # web app, http://localhost:3000
 pnpm build
-pnpm lint                     # 所有包
-pnpm typecheck                # 见下方顺序要求
-pnpm test                     # 全部 Vitest 用例
-pnpm vitest run apps/web/src/lib/slug.test.ts   # 单个测试文件
-pnpm db:generate              # 改 schema.ts 后生成迁移
+pnpm lint                     # all packages
+pnpm typecheck                # see ordering requirement below
+pnpm test                     # all Vitest tests
+pnpm vitest run apps/web/src/lib/slug.test.ts   # a single test file
+pnpm db:generate              # generate a migration after changing schema.ts
 pnpm db:migrate
-pnpm db:seed                  # 幂等示例数据(用户 林夏/doing_x7k2m9,密码 seed-password)
-pnpm --filter @open-doing/web test:e2e          # Playwright e2e(端口 3100,独立库 open_doing_e2e)
-pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # 单条 e2e 流
+pnpm db:seed                  # idempotent sample data (user 林夏/doing_x7k2m9, password seed-password)
+pnpm --filter @open-doing/web test:e2e          # Playwright e2e (port 3100, separate db open_doing_e2e)
+pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # a single e2e flow
 ```
 
-环境变量陷阱:
-- **vitest 和 drizzle-kit 不读取 `apps/web/.env.local`**,先 `set -a; source apps/web/.env.local; set +a` 再跑测试/迁移,否则数据库用例静默跳过。
-- `TEST_DATABASE_URL` 指向的库会被测试**清空**;必须与开发库 `DATABASE_URL` 指向不同的库。
-- 类型检查顺序:干净 checkout 上先 `pnpm build`(或 `pnpm --filter @open-doing/web exec next typegen`)再 `pnpm typecheck`——Next 16 的路由类型由构建生成。
-- 首次跑 e2e 前:`pnpm --filter @open-doing/web exec playwright install chromium`。
+Environment variable gotchas:
 
-## 架构
+- **vitest and drizzle-kit do NOT read `apps/web/.env.local`**. Run `set -a; source apps/web/.env.local; set +a` first (or export the vars another way) before running tests/migrations, otherwise database tests silently skip.
+- The database pointed to by `TEST_DATABASE_URL` is **wiped by tests**; it must be a different database from the dev `DATABASE_URL`.
+- Typecheck ordering: on a clean checkout, run `pnpm build` (or `pnpm --filter @open-doing/web exec next typegen`) before `pnpm typecheck` — Next.js route types are generated at build time.
+- Before running e2e for the first time: `pnpm --filter @open-doing/web exec playwright install chromium`.
 
-### Monorepo(pnpm workspaces)
+## Architecture
 
-- `apps/web`(`@open-doing/web`)— 唯一应用:页面 + Server Actions + Route Handler + DB 访问。
-- `packages/types`(`@open-doing/types`)— 前后端共享的**可序列化类型与纯函数**(如 `getTaskProgress`、`isOverdue`)。规则:不依赖 React、不访问数据库、不做 IO。Drizzle 行类型留在 web 包内,跨边界时在 features 层映射为领域模型。
+### Monorepo (pnpm workspaces)
 
-### features 领域模块(`apps/web/src/features/`)
+- `apps/web` (`@open-doing/web`) — the only app: pages + Server Actions + Route Handlers + DB access.
+- `packages/types` (`@open-doing/types`) — **serializable types and pure functions** shared between frontend and backend (e.g. `getTaskProgress`, `isOverdue`). Rules: no React dependency, no database access, no IO. Drizzle row types stay inside the web package; when crossing the boundary, map them to domain models in the features layer.
 
-按领域自包含:auth / users / teams / projects / tasks / kanban / calendar / analysis / notifications / personal / dashboard。每个领域:
-- `actions.ts` — Server Actions:入参校验 → 权限校验 → 调 service → 返回 `ActionResult<T>`(`{ ok: true, data }` 或 `{ ok: false, errors: { form?, <field>?: string } }`)。字段错误由客户端表单映射回对应 `Form.Item`。
-- `service.ts` — 数据访问与业务规则(如"member 不能改他人任务"),不散落在页面里。
-- `components/` — 领域组件;跨领域通用件放 `src/components/ui`。
+### Feature domain modules (`apps/web/src/features/`)
 
-### 服务端/客户端边界
+Self-contained by domain: auth / users / teams / projects / tasks / kanban / calendar / analysis / notifications / personal / dashboard. Each domain has:
 
-- 页面默认 RSC:服务端按会话用户取数,不经过公开 API;`(dashboard)` 路由由 `requireUser()` 统一重定向到 `/login`。
-- antd 交互组件(Modal、message、Dropdown 等)只能在 `"use client"` 组件中使用;页面把交互下沉为 client 包装件,通过 props 传可序列化数据。乐观更新的组件用"渲染期同步 props → state"模式(`if (props !== synced) { ... }`)对接 `router.refresh()`。
+- `actions.ts` — Server Actions: validate input → check permissions → call service → return `ActionResult<T>` (`{ ok: true, data }` or `{ ok: false, errors: { form?, <field>?: string } }`). Field errors are mapped back to the corresponding `Form.Item` by client forms.
+- `service.ts` — data access and business rules (e.g. "a member cannot edit others' tasks"); never scattered inside pages.
+- `components/` — domain components; cross-domain generic components go in `src/components/ui`.
 
-### 权限模型(必须遵守)
+### Server/client boundary
 
-- **每个 Server Action 独立鉴权**,不信任页面隐藏了入口;权限判定集中在 `features/teams`(`canEditTask({ role, actorId, assigneeId })` 等)与各 feature service。
-- 数据查询带可见性过滤:团队数据要求成员资格;个人空间数据(个人任务/个人项目)只有本人可见。
-- 评论权限与内容编辑权限分开;成员可评论、可看详情,但不能改他人任务。
+- Pages are RSC by default: the server fetches data per session user, without going through a public API; the `(dashboard)` routes uniformly redirect to `/login` via `requireUser()`.
+- antd interactive components (Modal, message, Dropdown, etc.) may only be used inside `"use client"` components; pages push interactions down into client wrappers and pass serializable data via props. Components with optimistic updates use the "sync props → state during render" pattern (`if (props !== synced) { ... }`) to integrate with `router.refresh()`.
 
-### UI 层约定
+### Permission model (must follow)
 
-- 组件以 antd v6 为准,不自己造;Tailwind 只做布局/间距/微调。`globals.css` **关闭了 preflight**(只引 theme + utilities,手工保留 box-sizing)——不要加回样式重置,不要用全局选择器覆盖 antd 内部样式。
-- 主题唯一入口 `apps/web/src/app/theme.ts`(antd ThemeConfig);根布局 `providers.tsx` 用 `AntdRegistry` + `ConfigProvider locale={zhCN}` 包裹,**不得再自建 ConfigProvider**。
-- 设计令牌源自 `docs/prototypes/assets/design-tokens.css`(品牌紫 `#7d2ae8`、渐变 `#7d2ae8→#00c4cc`);运行时副本是 `apps/web/src/app/tokens.css`(由 `globals.css` 引入),变量名与取值须与原型保持 1:1,改令牌时两处同步。新 UI 对照 `docs/prototypes/` 同名页面实现。
+- **Every Server Action performs its own authorization** — never trust that a page merely hides the entry point; permission decisions are centralized in `features/teams` (`canEditTask({ role, actorId, assigneeId })`, etc.) and each feature's service.
+- Data queries carry visibility filters: team data requires membership; personal-space data (personal tasks / personal projects) is visible only to the owner.
+- Comment permission and content-edit permission are separate; members may comment and view details, but cannot edit others' tasks.
 
-### 国际化(i18n,v1.1 起强制)
+### UI conventions
 
-- 全站文案走 next-intl(无 URL locale 前缀):消息包在 `apps/web/src/i18n/messages/{zh,en}.json`,请求级 locale 解析见 `apps/web/src/i18n/server.ts`。
-- **所有用户可见文案必须进消息包,禁止硬编码**:`src/i18n/cjk-guard.test.ts` 强制扫描 `src` 与 `e2e`(剥注释后含 CJK 即失败并列出 file:line);非文案中文需在测试内白名单逐条给理由。
-- **新功能(组件/表单/错误/通知)交付时必须同时提供 zh 与 en 条目**:`src/i18n/messages-parity.test.ts` 强制两包 key 结构一致。
-- 服务端错误文案:service 层 `throw new <X>Error(zh 兜底, field, { key, params })`,action 层的 `toFailure` 经 `standardFailuresForRequest()`(内部按请求 locale 取 translator)用 `failures.custom("<领域ns>.<key>", params)` 翻译到 `field ?? "form"`(`lib/domain-failure.ts` 提供可注入 translator 的纯函数变体 `domainFailureWith`)。领域错误 key 放对应领域命名空间,通用失败(403/限流等)放 `errors` 命名空间。构造参数里的中文只是兜底,不得直接展示。
-- 通知模板正文带 `<b>` 粗体标记,由 `features/notifications/components/notification-format.ts` 的 `parseBoldSegments` 解析为分段渲染;改模板时 zh/en 同步。
-- 语言偏好:登录态以 `users.language` 为唯一权威(多设备切换即时生效),未登录读 cookie `od_locale`,皆无回落 zh;切换入口只在个人设置页(`users/actions.ts` 的 `updateLanguageAction` 同时写 DB 与 cookie)。
-- antd / dayjs locale 与 `html lang` 由根 Providers 与根布局按请求 locale 统一切换(`LOCALE_HTML_LANG`);语言切换的成功 toast 等 client 侧文案在 RSC refresh 送达新消息包后再渲染。
+- Components come from antd — do not build your own; Tailwind is only for layout/spacing/fine-tuning. `globals.css` has **preflight disabled** (it imports only theme + utilities and keeps box-sizing manually) — do not add back style resets and do not override antd internals with global selectors.
+- The single theme entry point is `apps/web/src/app/theme.ts` (antd ThemeConfig); the root layout `providers.tsx` wraps everything with `AntdRegistry` + `ConfigProvider` — **do not create another ConfigProvider**.
+- Design tokens originate from `docs/prototypes/assets/design-tokens.css` (brand purple `#7d2ae8`, gradient `#7d2ae8→#00c4cc`); the runtime copy is `apps/web/src/app/tokens.css` (imported by `globals.css`). Variable names and values must stay 1:1 with the prototypes — when changing tokens, update both places. Build new UI against the same-named page in `docs/prototypes/`.
 
-### 日期口径
+### Internationalization (i18n, mandatory)
 
-「今天」统一按 Asia/Shanghai 计算(`apps/web/src/lib/today.ts` 与通知 cron 同口径)。RSC 把 `today` 作为 prop 传给 client 组件做逾期/临期判定,保证服务端/客户端渲染一致;不要在组件里用本地时区取当前日期。`due_date` 是 Postgres `date` 类型。
+- All UI copy goes through next-intl (no URL locale prefix): message catalogs live in `apps/web/src/i18n/messages/{zh,en}.json`; request-level locale resolution is in `apps/web/src/i18n/server.ts`.
+- **All user-visible copy must go into the message catalogs — hardcoding is forbidden**: `src/i18n/cjk-guard.test.ts` scans `src` and `e2e` and fails on any CJK character (after stripping comments), listing file:line. Non-copy Chinese requires a per-entry whitelist entry with a justification inside the test itself.
+- **New features (components/forms/errors/notifications) must ship both zh and en entries**: `src/i18n/messages-parity.test.ts` enforces identical key structure between the two catalogs.
+- Server-side error copy: the service layer throws `new <X>Error(zh fallback, field, { key, params })`; the action layer's `toFailure` routes through `standardFailuresForRequest()` (which picks a translator by request locale) and translates via `failures.custom("<domain ns>.<key>", params)` onto `field ?? "form"` (`lib/domain-failure.ts` also provides the pure-function variant `domainFailureWith` with an injectable translator). Domain error keys go in the corresponding domain namespace; generic failures (403, rate limiting, etc.) go in the `errors` namespace. The Chinese in constructor args is only a fallback and must never be displayed directly.
+- Notification template bodies contain `<b>` bold markers, parsed into segments by `parseBoldSegments` in `features/notifications/components/notification-format.ts`; keep zh/en in sync when changing templates.
+- Language preference: for logged-in users, `users.language` is the single source of truth (switching takes effect immediately across devices); for anonymous users, the `od_locale` cookie; both fall back to zh. The only switch UI is in personal settings (`updateLanguageAction` in `users/actions.ts` writes both DB and cookie).
+- antd / dayjs locale and `html lang` are switched per request by the root Providers and root layout (`LOCALE_HTML_LANG`); client-side copy such as the success toast after a language switch renders only after the RSC refresh delivers the new message catalog.
 
-### 数据库
+### Date semantics
 
-- Schema:`apps/web/src/server/db/schema.ts`;迁移 `apps/web/drizzle/`(可在空库重放)。slug 定位团队/项目,任务详情用不透明 ID。
-- 级联删除靠外键 `ON DELETE CASCADE` 兜底;移除成员只删 membership 并把任务的 `assignee_id` 置空,不删任务。
-- `server/db/testing.ts` 负责重放迁移 + 清测试库。
+"Today" is always computed in Asia/Shanghai (`apps/web/src/lib/today.ts`, same convention as the notification cron). RSCs pass `today` as a prop to client components for overdue/due-soon checks, guaranteeing server/client render consistency; do not use the local timezone to get the current date inside components. `due_date` is a Postgres `date` type.
 
-### 测试约定
+### Database
 
-- Vitest 在仓库根配置,**测试文件串行执行**(`fileParallelism: false`)——多个文件共用同一个测试库且会互相 TRUNCATE,不要开启并行。
-- 通知由领域动作在同一事务内同步产生;临期/逾期通知由 `POST /api/cron/due-scan`(`CRON_SECRET` 鉴权)产生,幂等设计。
+- Schema: `apps/web/src/server/db/schema.ts`; migrations in `apps/web/drizzle/` (replayable on an empty database). Slugs locate teams/projects; task details use opaque IDs.
+- Cascading deletes rely on foreign keys `ON DELETE CASCADE` as the safety net; removing a member only deletes the membership and nulls the tasks' `assignee_id` — it does not delete tasks.
+- `server/db/testing.ts` replays migrations + truncates the test database.
+
+## Code Style Guidelines
+
+- TypeScript throughout; match the surrounding style of the file you are editing.
+- Keep domain logic in feature `service.ts` files; do not leak it into pages or client components.
+- Cross-boundary data must be serializable — map Drizzle row types to domain models at the features layer.
+- Never hardcode user-visible copy (see i18n section); never fetch dates from the local timezone (see Date semantics).
+- Prefer antd components over custom-built ones; Tailwind only for layout/spacing/fine-tuning.
+
+## Testing Instructions
+
+- Unit/integration tests: Vitest, configured at the repo root. **Test files run serially** (`fileParallelism: false`) — multiple files share one test database and TRUNCATE each other; do not enable parallelism.
+- The test database (`TEST_DATABASE_URL`) is truncated between tests; it must never be the dev database.
+- e2e tests: Playwright, port 3100, against the separate `open_doing_e2e` database. Install chromium first (`pnpm --filter @open-doing/web exec playwright install chromium`).
+- Before `pnpm typecheck` on a clean checkout, generate route types via `pnpm build` or `pnpm --filter @open-doing/web exec next typegen`.
+
+## Security Considerations
+
+- **Authorize inside every Server Action independently.** Hiding a UI entry point is not access control.
+- Apply visibility filters in every query: team data requires membership; personal-space data is owner-only.
+- `POST /api/cron/due-scan` is authenticated by `CRON_SECRET` and designed to be idempotent — keep it that way.
+- Never commit real credentials. Use `.env.local` (gitignored) for local secrets; `.env.example` documents required variables.
+- Secrets such as `DATABASE_URL`, `TEST_DATABASE_URL`, and `CRON_SECRET` must never appear in code, logs, or tests.
+- Never point `TEST_DATABASE_URL` at the development database — tests wipe it.
+
+## Commit and Pull Request Guidelines
+
+Commit messages follow Conventional Commits:
+
+```
+<type>(<scope>): <subject>
+```
+
+- Common types: `feat`, `fix`, `refactor`, `test`, `docs`, `chore`. Use the scope that matches the touched domain (e.g. `feat(i18n): migrate tasks module`, `test(e2e): add english locale smoke flow`).
+- Subject: English, lowercase start, imperative mood, no trailing period; keep it to one line. Use the body for context and rationale when needed.
+- Examples from this repo: `fix(antd): provide App context and stop static message warnings`, `refactor(i18n): converge shared action fallback messages to error keys`.
+
+- When shipping a new feature, include in the same change: zh + en message catalog entries, and updated tests (including the cjk-guard / messages-parity tests).
+- Before opening a PR: run `pnpm lint`, `pnpm test`, e2e flows affected by the change, and `pnpm typecheck` (after generating route types).
+
+## Deployment Notes
+
+- The app is a single Next.js deployment (`apps/web`); PostgreSQL is the only external service.
+- Database schema changes are applied via Drizzle migrations (`pnpm db:generate` then `pnpm db:migrate`); migrations are replayable on an empty database.
+- Env vars are resolved from `apps/web` (Next.js), not the repo root — configure production env accordingly.
+- Sample/seed data (`pnpm db:seed`) is for development only; never run it against production.
