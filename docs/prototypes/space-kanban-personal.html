@@ -10,14 +10,14 @@
     /* 空间级看板专用微调(生产以 antd + Tailwind 还原) */
     .sk-card-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
     .sk-card-meta .spacer { flex: 1; }
-    .sk-card-meta .subtask-count { font-size: 11.5px; color: var(--color-text-faint); font-variant-numeric: tabular-nums; }
+    .sk-card-meta .subtask-count { font-size: 11.5px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
     .sk-tag-project { font-size: 11px; font-weight: 600; border-radius: var(--radius-pill); padding: 2px 8px; }
     .sk-tag-personal { background: var(--accent-mint-bg); color: #1f9d78; }
     .sk-tag-team { background: var(--accent-lavender-bg); color: #6d4fd4; }
-    .kcol-head .count.is-error { color: var(--color-error); background: var(--color-overdue-bg); }
-    .kcol-head .count.is-brand { color: var(--color-primary); background: var(--accent-lavender-bg); }
-    .kcol-foot-more { border-top: 1px dashed var(--color-border); margin-top: var(--space-2); padding: 9px var(--space-2) 2px; font-size: 12px; color: var(--color-text-faint); }
-    .sk-empty { border: 1px dashed var(--color-border); border-radius: var(--radius-card); padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--color-text-faint); }
+    .kcol-head .count.is-error { color: var(--error); background: var(--status-overdue-bg); }
+    .kcol-head .count.is-brand { color: var(--primary); background: var(--accent-lavender-bg); }
+    .kcol-foot-more { border-top: 1px dashed var(--border); margin-top: var(--space-2); padding: 9px var(--space-2) 2px; font-size: 12px; color: var(--text-faint); }
+    .sk-empty { border: 1px dashed var(--border); border-radius: var(--radius-12); padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--text-faint); }
   </style>
 </head>
 <body>
@@ -116,7 +116,7 @@
                 <div class="notif-body"><b>何川</b> 邀请你加入团队「效率工程部」<div class="notif-time">2 分钟前</div></div>
               </div>
               <div class="notif-item unread">
-                <span class="notif-icon" style="background:var(--color-error-bg);color:var(--color-error);">
+                <span class="notif-icon" style="background:var(--error-bg);color:var(--error);">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 </span>
                 <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">今天 09:00</div></div>
@@ -271,7 +271,7 @@
                 <span class="sk-tag-project sk-tag-personal">生活琐事</span>
                 <span class="spacer"></span>
               </div>
-              <div class="kc-title" style="color:var(--color-text-secondary);">周报与发票整理</div>
+              <div class="kc-title" style="color:var(--text-secondary);">周报与发票整理</div>
               <div class="kc-foot">
                 <span class="due text-faint">10-20 完成</span>
               </div>
@@ -282,7 +282,7 @@
                 <span class="sk-tag-project sk-tag-personal">学习成长</span>
                 <span class="spacer"></span>
               </div>
-              <div class="kc-title" style="color:var(--color-text-secondary);">《卡片笔记法》读后感</div>
+              <div class="kc-title" style="color:var(--text-secondary);">《卡片笔记法》读后感</div>
               <div class="kc-foot">
                 <span class="due text-faint">10-19 完成</span>
               </div>
@@ -293,13 +293,13 @@
                 <span class="sk-tag-project sk-tag-personal">生活琐事</span>
                 <span class="spacer"></span>
               </div>
-              <div class="kc-title" style="color:var(--color-text-secondary);">换季衣物收纳</div>
+              <div class="kc-title" style="color:var(--text-secondary);">换季衣物收纳</div>
               <div class="kc-foot">
                 <span class="due text-faint">10-18 完成</span>
               </div>
             </div>
 
-            <a class="kcol-foot-more" href="#" style="color:var(--color-primary);text-decoration:none;display:block;">查看更早 6 项已完成 →<div style="color:var(--color-text-faint);font-size:11px;margin-top:2px;">点击原地展开全部已完成任务，可再次收起</div></a>
+            <a class="kcol-foot-more" href="#" style="color:var(--primary);text-decoration:none;display:block;">查看更早 6 项已完成 →<div style="color:var(--text-faint);font-size:11px;margin-top:2px;">点击原地展开全部已完成任务，可再次收起</div></a>
           </section>
         </div>
       </main>

@@ -15,51 +15,51 @@
 
     .cal-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
     .cal-title { font-size: 16px; font-weight: 700; min-width: 110px; }
-    .cal-nav-btn { border: 1px solid var(--color-border); background: var(--color-surface); border-radius: var(--radius-sm); padding: 3px 10px; cursor: pointer; font-size: 13px; color: var(--color-text-secondary); }
-    .cal-nav-btn.is-primary { color: var(--color-primary); border-color: var(--color-primary); }
+    .cal-nav-btn { border: 1px solid var(--border); background: var(--card); border-radius: var(--radius-6); padding: 3px 10px; cursor: pointer; font-size: 13px; color: var(--text-secondary); }
+    .cal-nav-btn.is-primary { color: var(--primary); border-color: var(--primary); }
 
     /* ===== 月历网格 ===== */
-    .cal-grid { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); overflow: hidden; }
+    .cal-grid { border: 1px solid var(--border); border-radius: var(--radius-12); background: var(--card); overflow: hidden; }
     .cal-headrow, .cal-weekrow { display: grid; grid-template-columns: repeat(7, 1fr); }
-    .cal-headrow { background: var(--color-bg); border-bottom: 1px solid var(--color-border); }
-    .cal-headrow .h { padding: 7px 10px; font-size: 11px; color: var(--color-text-faint); }
-    .cal-weekrow + .cal-weekrow { border-top: 1px solid var(--color-border); }
-    .cal-cell { height: 132px; padding: 8px; border-left: 1px solid var(--color-border); overflow: hidden; }
+    .cal-headrow { background: var(--background); border-bottom: 1px solid var(--border); }
+    .cal-headrow .h { padding: 7px 10px; font-size: 11px; color: var(--text-faint); }
+    .cal-weekrow + .cal-weekrow { border-top: 1px solid var(--border); }
+    .cal-cell { height: 132px; padding: 8px; border-left: 1px solid var(--border); overflow: hidden; }
     .cal-weekrow .cal-cell:first-child { border-left: none; }
     .cal-cell.wend { background: #f7f8fa; }
-    .cal-cell.is-out { background: var(--color-bg); }
+    .cal-cell.is-out { background: var(--background); }
     .cal-cell.is-out .cal-date, .cal-cell.is-out .cal-chip, .cal-cell.is-out .cal-more { opacity: .45; }
     .cal-cell.is-today { background: #f9f4ff; }
-    .cal-date { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--color-text-secondary); font-variant-numeric: tabular-nums; }
+    .cal-date { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
     .cal-date .n { width: 20px; height: 20px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; flex-shrink: 0; }
-    .cal-cell.is-today .cal-date .n { background: var(--color-primary); color: #fff; font-weight: 700; }
-    .cal-date .today-tag { font-size: 10.5px; color: var(--color-primary); font-weight: 600; }
+    .cal-cell.is-today .cal-date .n { background: var(--primary); color: #fff; font-weight: 700; }
+    .cal-date .today-tag { font-size: 10.5px; color: var(--primary); font-weight: 600; }
 
     .cal-chip { display: flex; align-items: center; gap: 5px; width: fit-content; max-width: 100%; margin-top: 4px; font-size: 11.5px; line-height: 1.4; border-radius: 5px; padding: 2px 6px; background: #f1f3f4; color: #5f6368; }
     .cal-chip .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
-    .cal-chip.is-overdue { background: var(--color-overdue-bg); color: var(--color-error); }
+    .cal-chip.is-overdue { background: var(--status-overdue-bg); color: var(--error); }
     .cal-chip.is-today-chip { background: #fff3cd; color: #8a5800; }
     .cal-chip.is-soon { background: #ffe9d6; color: #b35400; }
     .cal-chip.is-done { background: #e3f4e8; color: #1f9d78; } .cal-chip.is-done .t { text-decoration: line-through; }
     .cal-chip .av { width: 14px; height: 14px; border-radius: 50%; font-size: 9px; color: #fff; display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; }
     .cal-chip .tag-un { font-size: 9.5px; border: 1px solid currentColor; border-radius: 999px; padding: 0 4px; flex-shrink: 0; }
-    .cal-more { margin-top: 4px; font-size: 11px; color: var(--color-primary); padding-left: 2px; }
+    .cal-more { margin-top: 4px; font-size: 11px; color: var(--primary); padding-left: 2px; }
 
-    .side-card { border: 1px solid var(--color-border); border-radius: var(--radius-card); background: var(--color-surface); padding: var(--space-3); }
+    .side-card { border: 1px solid var(--border); border-radius: var(--radius-12); background: var(--card); padding: var(--space-3); }
     .side-card h3 { font-size: 13px; font-weight: 700; margin: 0 0 2px; }
-    .side-card .hint { font-size: 11.5px; color: var(--color-text-faint); margin-bottom: 8px; }
-    .wk-day { padding: 7px 0; border-top: 1px dashed var(--color-border); }
+    .side-card .hint { font-size: 11.5px; color: var(--text-faint); margin-bottom: 8px; }
+    .wk-day { padding: 7px 0; border-top: 1px dashed var(--border); }
     .wk-day:first-of-type { border-top: none; }
-    .wk-day .d { font-size: 11.5px; color: var(--color-text-faint); margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
-    .wk-day.is-today .d b { color: var(--color-primary); }
-    .wk-day .d .pill { font-size: 10px; background: var(--accent-lavender-bg); color: var(--color-primary); border-radius: 999px; padding: 1px 7px; }
-    .side-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--color-text); padding: 3px 0; }
+    .wk-day .d { font-size: 11.5px; color: var(--text-faint); margin-bottom: 4px; display: flex; gap: 6px; align-items: center; }
+    .wk-day.is-today .d b { color: var(--primary); }
+    .wk-day .d .pill { font-size: 10px; background: var(--accent-lavender-bg); color: var(--primary); border-radius: 999px; padding: 1px 7px; }
+    .side-item { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--foreground); padding: 3px 0; }
     .side-item .dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-    .side-item.is-done { color: var(--color-text-faint); } .side-item.is-done .t { text-decoration: line-through; }
-    .side-item .meta { margin-left: auto; font-size: 11px; color: var(--color-text-faint); white-space: nowrap; }
-    .side-item .meta.is-overdue { color: var(--color-error); }
+    .side-item.is-done { color: var(--text-faint); } .side-item.is-done .t { text-decoration: line-through; }
+    .side-item .meta { margin-left: auto; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+    .side-item .meta.is-overdue { color: var(--error); }
     .side-item .meta.is-soon { color: #b35400; }
-    .side-foot { border-top: 1px dashed var(--color-border); margin-top: 8px; padding-top: 8px; font-size: 12px; color: var(--color-primary); }
+    .side-foot { border-top: 1px dashed var(--border); margin-top: 8px; padding-top: 8px; font-size: 12px; color: var(--primary); }
   </style>
 </head>
 <body>
@@ -108,7 +108,7 @@
         </div>
 
         <div class="filterbar anim-in">
-          <span class="text-caption"><a href="#" style="color:var(--color-primary);text-decoration:none;">2 项任务没有截止日期 →</a>(在 Dashboard 查看)</span>
+          <span class="text-caption"><a href="#" style="color:var(--primary);text-decoration:none;">2 项任务没有截止日期 →</a>(在 Dashboard 查看)</span>
           <div class="spacer"></div>
           <span class="text-caption">基准日期 2026-10-21(周三)</span>
         </div>
@@ -224,7 +224,7 @@
               </div>
               <div class="wk-day">
                 <div class="d">周一 10-19</div>
-                <div class="side-item"><span class="dot" style="background:var(--color-error);"></span><span class="t">21 天晨间日记打卡</span><span class="meta is-overdue">已逾期 2 天</span></div>
+                <div class="side-item"><span class="dot" style="background:var(--error);"></span><span class="t">21 天晨间日记打卡</span><span class="meta is-overdue">已逾期 2 天</span></div>
                 <div class="side-item is-done"><span class="dot" style="background:#1f9d78;"></span><span class="t">《卡片笔记法》读后感</span><span class="meta">已完成</span></div>
               </div>
               <div class="wk-day">
@@ -244,7 +244,7 @@
               <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="t">提交房租水电缴费</span><span class="meta">10-30 · 还有 9 天</span></div>
               <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="t">买 11 月火车票</span><span class="meta">10-26 · 还有 5 天</span></div>
               <div class="side-item"><span class="dot" style="background:#5f6368;"></span><span class="t">回访张阿姨</span><span class="meta">10-26 · 还有 5 天</span></div>
-              <div class="side-foot"><a href="#" style="color:var(--color-primary);text-decoration:none;">查看本月其余 1 项 →</a></div>
+              <div class="side-foot"><a href="#" style="color:var(--primary);text-decoration:none;">查看本月其余 1 项 →</a></div>
             </div>
           </aside>
         </div>
