@@ -17,6 +17,10 @@
     .sk-badge-team { background: var(--accent-lavender-bg); color: #6d4fd4; }
     .kcol-head .count.is-error { color: var(--error); background: var(--status-overdue-bg); }
     .kcol-head .count.is-brand { color: var(--primary); background: var(--accent-lavender-bg); }
+    .kb-stats { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+    button.stat.stat-action { font: inherit; text-align: left; cursor: pointer; transition: border-color .15s ease; }
+    button.stat.stat-action:hover { border-color: var(--primary); }
+    button.stat.stat-action[aria-pressed="true"] { border-color: var(--primary); box-shadow: inset 0 0 0 1px var(--primary); }
     .kcol-foot-more { border-top: 1px dashed var(--border); margin-top: var(--space-2); padding: 9px var(--space-2) 2px; font-size: 12px; color: var(--text-faint); }
     .sk-empty { border: 1px dashed var(--border); border-radius: var(--radius-12); padding: 18px 12px; text-align: center; font-size: 12.5px; color: var(--text-faint); }
   </style>
@@ -139,6 +143,39 @@
             <button class="button button-primary button-sm" type="button">
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
               新建任务
+            </button>
+          </div>
+        </div>
+
+        <!-- 统计带：统计即筛选（点击数字应用对应筛选，再点取消；生产实现为 URL searchParam）。
+             口径：排除已完成任务、基准日期为 Asia/Shanghai 的今天、已完成列按近 7 天完成口径。 -->
+        <div class="anim-in" style="margin-bottom:var(--space-4);">
+          <div class="text-caption" style="text-align:right;margin-bottom:var(--space-2);">口径：已完成按近 7 天 · 即将到期为 3 天内 · 点击数字即筛选</div>
+          <div class="stats-grid kb-stats">
+            <button class="card stat stat-action" type="button" data-filter="status:todo" aria-pressed="false">
+              <div class="label">待开始</div>
+              <div class="value">4</div>
+              <div class="delta">按截止日期排序</div>
+            </button>
+            <button class="card stat stat-action" type="button" data-filter="status:in_progress" aria-pressed="false">
+              <div class="label">进行中</div>
+              <div class="value">3</div>
+              <div class="delta">含已逾期 1</div>
+            </button>
+            <button class="card stat stat-action" type="button" data-filter="status:done" aria-pressed="false">
+              <div class="label">已完成</div>
+              <div class="value">9</div>
+              <div class="delta">近 7 天完成 3</div>
+            </button>
+            <button class="card stat stat-action" type="button" data-filter="overdue" aria-pressed="false">
+              <div class="label">已逾期</div>
+              <div class="value" style="color:var(--error);">1</div>
+              <div class="delta">21 天晨间日记打卡</div>
+            </button>
+            <button class="card stat stat-action" type="button" data-filter="due-soon" aria-pressed="false">
+              <div class="label">即将到期</div>
+              <div class="value" style="color:#a66b00;">2</div>
+              <div class="delta">10-22 至 10-24 到期</div>
             </button>
           </div>
         </div>
@@ -308,5 +345,33 @@
   </div>
 
   <script src="assets/prototype.js"></script>
+  <script>
+    // 统计即筛选(演示):点击统计卡应用对应筛选并更新「当前筛选」行,再点取消。生产实现写 URL searchParam。
+    (function () {
+      var captions = document.querySelectorAll(".filterbar .text-caption");
+      var caption = captions[0];
+      var base = "学习成长 · 8 个任务";
+      var labels = {
+        "status:todo": "只看待开始",
+        "status:in_progress": "只看进行中",
+        "status:done": "只看已完成(近 7 天)",
+        "overdue": "只看已逾期",
+        "due-soon": "只看即将到期(3 天内)"
+      };
+      var buttons = Array.prototype.slice.call(document.querySelectorAll(".stat-action[data-filter]"));
+      buttons.forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var wasPressed = btn.getAttribute("aria-pressed") === "true";
+          buttons.forEach(function (b) { b.setAttribute("aria-pressed", "false"); });
+          if (wasPressed) {
+            caption.textContent = "当前筛选:" + base;
+          } else {
+            btn.setAttribute("aria-pressed", "true");
+            caption.textContent = "当前筛选:" + labels[btn.getAttribute("data-filter")] + " · " + base;
+          }
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

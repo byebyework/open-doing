@@ -109,6 +109,7 @@ assets/
 - （无）Task 4（callout→alert）：各页 alert 的 icon 元素（如 `<span>ℹ</span>`)在旧原型中已存在，无需新增；`alert-icon` 白名单项未使用。
 - Task 6（modal→dialog）：5 个弹窗各新增右上角关闭钮 `<button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>`：my-tasks.html（新建个人项目、新建任务）、personal-project.html（新建任务）、project-list.html（新建任务）、team-settings.html（解散团队）。
 - Web Interface Guidelines 修订（2026-11-02 第二轮）：task-detail.html 新增「删除任务」确认弹窗 `#delete-task-modal`（复用 dialog/alert 模式，删除按钮改为 `data-modal-open`）；其余为属性级增补（theme-color meta、autocomplete/name、label for=、aria-label/aria-invalid），不改 DOM 结构。
+- shadcn 迁移 Plan 1 / 看板统计（2026-11-02）：space-kanban-team.html 与 space-kanban-personal.html 筛选条上方新增「统计带」——5 张可点击统计卡（待开始/进行中/已完成/已逾期/即将到期，`.card.stat.stat-action`，aria-pressed 表示已应用筛选），点击更新「当前筛选」行演示统计即筛选（生产实现为 URL searchParam）；统计口径：排除已完成、Asia/Shanghai 今天、已完成列按近 7 天口径。团队变体筛选条项目选项追加「· NN%」文本进度（与 Dashboard 健康度同源；原生 `<option>` 无法渲染进度条元素，故用文本）；个人变体无同源进度数据，按「不硬造」原则不加。列头「逾期 N」小标两页此前已存在，未改动。
 - Task 8（状态规格演示）：index.html 尾部新增「状态规格演示」卡片（loading 按钮 / skeleton / toast 触发 / focus ring 输入框），为导航页允许的新增演示内容。
 
 **验收**：2026-11-02，基准 `09b731d` — grep 契约零命中、20 页可见文案仅上述白名单差异、6 个代表页与基线并排对比像素级一致。
