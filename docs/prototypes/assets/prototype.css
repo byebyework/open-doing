@@ -323,7 +323,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
     transform var(--duration-micro) var(--ease-standard);
 }
 .button:active { transform: scale(0.98); }
-.button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--purple-20); }
+.button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--purple-16); }
 .button-sm { height: 30px; padding: 5px 12px; font-size: 13px; }
 .button-lg { height: 44px; padding: 11px 22px; font-size: 15px; }
 .button-block { width: 100%; }
@@ -514,11 +514,18 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
 .input:hover, .select:hover, .textarea:hover { border-color: var(--border-strong); }
 .input:focus, .select:focus, .textarea:focus {
   outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px var(--purple-20);
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--purple-16);
 }
 .input.has-error { border-color: var(--error); }
 .input.has-error:focus { box-shadow: 0 0 0 3px var(--error-bg); }
+/* 全局键盘焦点基线：表单控件走上方 border+ring 规格，其余交互元素走 outline */
+:where(a, button, [tabindex]):focus-visible { outline: 2px solid var(--ring); outline-offset: 2px; }
+input:focus-visible, select:focus-visible, textarea:focus-visible { outline: none; }
+/* shadcn form-item 语义（原型沿用 .form-row，本块为生产映射规格） */
+.form-item { margin-bottom: var(--space-4); }
+.form-item > label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 7px; }
+.form-item-error { font-size: 12px; color: var(--error); margin-top: 6px; display: flex; gap: 5px; align-items: center; }
 .input-group { position: relative; }
 .input-prefix {
   position: absolute;
@@ -558,7 +565,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
 .checkbox .box svg { opacity: 0; transform: scale(0.5); transition: opacity var(--duration-micro), transform var(--duration-micro); }
 .checkbox input:checked + .box { background: var(--primary); border-color: var(--primary); }
 .checkbox input:checked + .box svg { opacity: 1; transform: scale(1); }
-.checkbox input:focus-visible + .box { box-shadow: 0 0 0 3px var(--purple-20); }
+.checkbox input:focus-visible + .box { box-shadow: 0 0 0 3px var(--purple-16); }
 .checkbox input:checked ~ .label-text { color: var(--text-faint); text-decoration: line-through; }
 
 /* ==========================================================================
@@ -604,14 +611,14 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
 /* 筛选条 */
 .filterbar { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; margin-bottom: var(--space-4); }
 .filterbar .spacer { flex: 1; }
-.seg {
+.toggle-group {
   display: inline-flex;
   background: var(--surface-inset);
   border-radius: var(--radius-8);
   padding: 3px;
   gap: 2px;
 }
-.seg button {
+.toggle-group > button {
   border: none;
   background: transparent;
   padding: 5px 14px;
@@ -624,18 +631,20 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
     color var(--duration-quick) var(--ease-standard),
     box-shadow var(--duration-quick) var(--ease-standard);
 }
-.seg button.active {
-  background: var(--card);
-  color: var(--foreground);
+.toggle-group > button.active {
+  background: var(--accent);
+  color: var(--accent-foreground);
   box-shadow: var(--shadow-rest);
 }
-.filter-select {
-  height: 32px;
-  min-height: 32px;
+.select {
+  height: 36px;
+  min-height: 36px;
   padding: 4px 28px 4px 11px;
   font-size: 13px;
-  border-radius: var(--radius-8);
-  background-color: var(--card);
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235f6368' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
 }
 
 /* ==========================================================================
