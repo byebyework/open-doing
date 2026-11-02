@@ -646,6 +646,8 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   background-repeat: no-repeat;
   background-position: right 10px center;
 }
+/* 筛选行内的 select 保持内容宽度（基线 .filter-select 无 width；不设则被上方 width:100% 拉满换行） */
+.filterbar .select { width: auto; }
 
 /* ==========================================================================
    看板
