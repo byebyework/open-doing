@@ -131,4 +131,25 @@
       if (dragging) body.appendChild(dragging);
     });
   });
+
+  // Toast（sonner 形态）：单例，4s 自动消失
+  function toast(message, variant) {
+    const prev = document.querySelector(".toast");
+    if (prev) prev.remove();
+    const el = document.createElement("div");
+    el.className = "toast toast-" + (variant === "error" ? "error" : "success");
+    el.setAttribute("role", "status");
+    const icon = document.createElement("span");
+    icon.className = "toast-icon";
+    icon.setAttribute("aria-hidden", "true");
+    icon.textContent = variant === "error" ? "×" : "✓";
+    const text = document.createElement("span");
+    text.textContent = message;
+    el.appendChild(icon);
+    el.appendChild(text);
+    document.body.appendChild(el);
+    setTimeout(function () { el.remove(); }, 4000);
+    return el;
+  }
+  window.toast = toast;
 })();
