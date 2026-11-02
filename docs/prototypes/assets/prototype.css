@@ -393,6 +393,16 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
   margin-bottom: var(--space-4);
 }
 .card-header .h3 { flex: 1; }
+.card-title { font-size: var(--text-h3); font-weight: 700; line-height: 1.2; }
+.card-content { font-size: var(--text-base); color: var(--text-secondary); }
+.card-footer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+  padding-top: var(--space-4);
+  border-top: 1px solid var(--border);
+}
 .card + .card { margin-top: var(--space-4); }
 
 .badge {
@@ -868,7 +878,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
 .empty-state .h3 { margin-bottom: 6px; }
 .empty-state p { color: var(--muted-foreground); font-size: 13.5px; margin: 0 0 var(--space-4); }
 
-.callout {
+.alert {
   display: flex;
   gap: 10px;
   padding: 12px 14px;
@@ -877,9 +887,10 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
   line-height: 1.55;
   align-items: flex-start;
 }
-.callout.info { background: var(--info-bg); color: #0b6fb8; }
-.callout.warning { background: var(--warning-bg); color: #8a5b00; }
-.callout.error { background: var(--error-bg); color: #b33434; }
+.alert-info { background: var(--info-bg); color: #0b6fb8; }
+.alert-warning { background: var(--warning-bg); color: #8a5b00; }
+.alert-error { background: var(--error-bg); color: #b33434; }
+.alert-success { background: var(--success-bg); color: #007a60; }
 
 /* ==========================================================================
    认证页
