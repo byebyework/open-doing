@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
   <title>完成首页新版视觉稿 · Open Doing</title>
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/prototype.css" />
@@ -287,11 +288,30 @@
             <div style="display:flex;flex-direction:column;gap:8px;margin-top:16px;">
               <button class="button button-primary button-block" type="button">编辑任务</button>
               <button class="button button-outline button-block" type="button">标记为已完成</button>
-              <button class="button button-destructive button-block" type="button">删除任务</button>
+              <button class="button button-destructive button-block" type="button" data-modal-open="delete-task-modal">删除任务</button>
             </div>
           </div>
         </div>
       </main>
+    </div>
+  </div>
+
+  <!-- ========== 删除任务确认弹窗 ========== -->
+  <div class="dialog-overlay" id="delete-task-modal">
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="删除任务">
+      <button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>
+      <div class="dialog-header">
+        <h2 class="h2">删除任务</h2>
+        <button class="icon-button" data-modal-close aria-label="关闭">✕</button>
+      </div>
+      <div class="alert alert-error" style="margin-bottom:var(--space-4);">
+        <span aria-hidden="true">⚠</span>
+        <span>此操作不可撤销，「完成首页新版视觉稿」及其 5 个子任务、3 条评论将被永久删除。</span>
+      </div>
+      <div class="dialog-footer">
+        <button class="button button-outline" data-modal-close>取消</button>
+        <button class="button button-destructive" data-modal-close>确认删除</button>
+      </div>
     </div>
   </div>
 

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
   <title>团队设置 · Open Doing</title>
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/prototype.css" />
@@ -154,8 +155,8 @@
             <h2 class="h3">团队信息</h2>
           </div>
           <div class="form-row">
-            <label class="label">团队名称</label>
-            <input class="input" value="增长突击队" />
+            <label class="label" for="team-name">团队名称</label>
+            <input class="input" id="team-name" name="team-name" value="增长突击队" />
             <div class="hint">创建于 2026-09-30 · 团队 ID 不必显示</div>
           </div>
           <div style="display:flex;justify-content:flex-end;">
@@ -304,8 +305,8 @@
         <span>此操作不可撤销，「增长突击队」下 3 个项目、40+ 个任务将被永久删除。</span>
       </div>
       <div class="form-row" style="margin-bottom:0;">
-        <label class="label">请输入团队名称以确认</label>
-        <input class="input" placeholder="增长突击队" />
+        <label class="label" for="team-confirm-name">请输入团队名称以确认</label>
+        <input class="input" id="team-confirm-name" name="team-confirm-name" placeholder="增长突击队" />
       </div>
       <div class="dialog-footer">
         <button class="button button-outline" data-modal-close>取消</button>

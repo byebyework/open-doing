@@ -108,6 +108,7 @@ assets/
 
 - （无）Task 4（callout→alert）：各页 alert 的 icon 元素（如 `<span>ℹ</span>`)在旧原型中已存在，无需新增；`alert-icon` 白名单项未使用。
 - Task 6（modal→dialog）：5 个弹窗各新增右上角关闭钮 `<button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>`：my-tasks.html（新建个人项目、新建任务）、personal-project.html（新建任务）、project-list.html（新建任务）、team-settings.html（解散团队）。
+- Web Interface Guidelines 修订（2026-11-02 第二轮）：task-detail.html 新增「删除任务」确认弹窗 `#delete-task-modal`（复用 dialog/alert 模式，删除按钮改为 `data-modal-open`）；其余为属性级增补（theme-color meta、autocomplete/name、label for=、aria-label/aria-invalid），不改 DOM 结构。
 - Task 8（状态规格演示）：index.html 尾部新增「状态规格演示」卡片（loading 按钮 / skeleton / toast 触发 / focus ring 输入框），为导航页允许的新增演示内容。
 
 **验收**：2026-11-02，基准 `09b731d` — grep 契约零命中、20 页可见文案仅上述白名单差异、6 个代表页与基线并排对比像素级一致。

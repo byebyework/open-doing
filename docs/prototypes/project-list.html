@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
   <title>官网改版 · Open Doing</title>
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/prototype.css" />
@@ -155,13 +156,13 @@
         </div>
 
         <div class="filterbar anim-in">
-          <select class="select" style="width:120px;">
+          <select class="select" style="width:120px;" aria-label="按状态筛选">
             <option>状态：全部</option>
             <option>未开始</option>
             <option>进行中</option>
             <option>已完成</option>
           </select>
-          <select class="select" style="width:130px;">
+          <select class="select" style="width:130px;" aria-label="按责任人筛选">
             <option>责任人：全部</option>
             <option>周牧</option>
             <option>林夏</option>
@@ -170,7 +171,7 @@
             <option>高远</option>
             <option>未指派</option>
           </select>
-          <select class="select" style="width:140px;">
+          <select class="select" style="width:140px;" aria-label="排序方式">
             <option>排序：按截止日期</option>
             <option>按状态</option>
             <option>按责任人</option>
@@ -293,13 +294,13 @@
         <button class="icon-button" data-modal-close aria-label="关闭">✕</button>
       </div>
       <div class="form-row">
-        <label class="label">标题</label>
-        <input class="input" placeholder="任务要做什么？" />
+        <label class="label" for="t2-title">标题</label>
+        <input class="input" id="t2-title" name="task-title" placeholder="任务要做什么？" />
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div class="form-row">
-          <label class="label">所属空间 / 项目</label>
-          <select class="select">
+          <label class="label" for="t2-space">所属空间 / 项目</label>
+          <select class="select" id="t2-space" name="task-space">
             <option>个人空间</option>
             <option selected>增长突击队 / 官网改版</option>
             <option>增长突击队 / Q4 用户增长活动</option>
@@ -307,8 +308,8 @@
           </select>
         </div>
         <div class="form-row">
-          <label class="label">责任人</label>
-          <select class="select">
+          <label class="label" for="t2-assignee">责任人</label>
+          <select class="select" id="t2-assignee" name="task-assignee">
             <option>林夏（我）</option>
             <option>周牧</option>
             <option>陈默</option>
@@ -319,12 +320,12 @@
         </div>
       </div>
       <div class="form-row">
-        <label class="label">截止日期</label>
-        <input class="input" type="date" style="max-width:220px;" />
+        <label class="label" for="t2-due">截止日期</label>
+        <input class="input" id="t2-due" name="task-due" type="date" style="max-width:220px;" />
       </div>
       <div class="form-row">
-        <label class="label">描述</label>
-        <textarea class="textarea" placeholder="补充背景、验收标准…"></textarea>
+        <label class="label" for="t2-desc">描述</label>
+        <textarea class="textarea" id="t2-desc" name="task-desc" placeholder="补充背景、验收标准…"></textarea>
       </div>
       <div class="dialog-footer">
         <button class="button button-outline" data-modal-close>取消</button>

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
   <title>注册 · Open Doing</title>
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/prototype.css" />
@@ -35,17 +36,17 @@
         <form onsubmit="return false">
           <div class="form-row">
             <label class="label" for="username">用户名</label>
-            <input class="input" id="username" placeholder="给自己起个名字，全局唯一" />
+            <input class="input" id="username" name="username" autocomplete="username" spellcheck="false" autocapitalize="none" placeholder="给自己起个名字，全局唯一" />
             <div class="hint">4–20 位字母、数字或下划线，注册后用于登录与显示</div>
           </div>
           <div class="form-row">
             <label class="label" for="password">密码</label>
-            <input class="input" id="password" type="password" placeholder="至少 8 位" />
+            <input class="input" id="password" name="password" type="password" autocomplete="new-password" placeholder="至少 8 位" />
           </div>
           <div class="form-row">
             <label class="label" for="password2">确认密码</label>
-            <input class="input has-error" id="password2" type="password" placeholder="再次输入密码" value="1234567" />
-            <div class="error-text">⚠ 两次输入的密码不一致</div>
+            <input class="input has-error" id="password2" name="password2" type="password" autocomplete="new-password" aria-invalid="true" aria-describedby="password2-error" placeholder="再次输入密码" value="1234567" />
+            <div class="error-text" id="password2-error">⚠ 两次输入的密码不一致</div>
           </div>
 
           <div class="alert alert-info" style="margin-bottom:20px;">

@@ -3,6 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
   <title>我的任务 · Open Doing</title>
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/prototype.css" />
@@ -316,12 +317,12 @@
         <span>个人项目仅你自己可见，与团队项目相互独立；项目中的任务同样会汇总到「我的任务」。</span>
       </div>
       <div class="form-row">
-        <label class="label">项目名称</label>
-        <input class="input" placeholder="例如：学习成长、装修、求职准备" />
+        <label class="label" for="np-name">项目名称</label>
+        <input class="input" id="np-name" name="project-name" placeholder="例如：学习成长、装修、求职准备" />
       </div>
       <div class="form-row">
-        <label class="label">描述（可选）</label>
-        <textarea class="textarea" placeholder="这个项目用来归集什么事？"></textarea>
+        <label class="label" for="np-desc">描述（可选）</label>
+        <textarea class="textarea" id="np-desc" name="project-desc" placeholder="这个项目用来归集什么事？"></textarea>
       </div>
       <div class="dialog-footer">
         <button class="button button-outline" data-modal-close>取消</button>
@@ -339,13 +340,13 @@
         <button class="icon-button" data-modal-close aria-label="关闭">✕</button>
       </div>
       <div class="form-row">
-        <label class="label">标题</label>
-        <input class="input" placeholder="任务要做什么？" />
+        <label class="label" for="nt-title">标题</label>
+        <input class="input" id="nt-title" name="task-title" placeholder="任务要做什么？" />
       </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
         <div class="form-row">
-          <label class="label">所属空间 / 项目</label>
-          <select class="select">
+          <label class="label" for="nt-space">所属空间 / 项目</label>
+          <select class="select" id="nt-space" name="task-space">
             <option>个人空间 · 不属于项目</option>
             <option>个人空间 / 学习成长</option>
             <option>个人空间 / 生活琐事</option>
@@ -355,8 +356,8 @@
           </select>
         </div>
         <div class="form-row">
-          <label class="label">责任人</label>
-          <select class="select">
+          <label class="label" for="nt-assignee">责任人</label>
+          <select class="select" id="nt-assignee" name="task-assignee">
             <option>林夏（我）</option>
             <option>周牧</option>
             <option>陈默</option>
@@ -367,12 +368,12 @@
         </div>
       </div>
       <div class="form-row">
-        <label class="label">截止日期</label>
-        <input class="input" type="date" style="max-width:220px;" />
+        <label class="label" for="nt-due">截止日期</label>
+        <input class="input" id="nt-due" name="task-due" type="date" style="max-width:220px;" />
       </div>
       <div class="form-row">
-        <label class="label">描述</label>
-        <textarea class="textarea" placeholder="补充背景、验收标准…"></textarea>
+        <label class="label" for="nt-desc">描述</label>
+        <textarea class="textarea" id="nt-desc" name="task-desc" placeholder="补充背景、验收标准…"></textarea>
       </div>
       <div class="dialog-footer">
         <button class="button button-outline" data-modal-close>取消</button>
