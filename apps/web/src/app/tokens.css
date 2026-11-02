@@ -233,11 +233,13 @@
   --input: var(--border-default);
   --ring: var(--purple-600);
 
-  /* shadcn radius 派生 */
-  --radius: var(--radius-8);
-  --radius-md: var(--radius-8);
-  --radius-lg: var(--radius-12);
-  --radius-xl: var(--radius-16);
+  /*
+   * 刻意省略原型 design-tokens.css 的 shadcn radius 派生(--radius、
+   * --radius-md/lg/xl):本文件是未分层样式,:root 声明会压过 Tailwind
+   * layer(theme) 的默认值,导致存量页面的 rounded-md/lg/xl 圆角在共存期
+   * 被全局改写。shadcn 组件改用 rounded-[var(--radius-N)] 任意值取 token。
+   * (--radius-sm 是迁移前既有的语义槽位,保持原状。)
+   */
 
   /* 项目扩展 —— 品牌与文本 */
   --primary-hover: var(--purple-700);

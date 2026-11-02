@@ -8,7 +8,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const alertVariants = cva(
-  "relative w-full rounded-lg border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
+  "relative w-full rounded-[var(--radius-12)] border px-4 py-3 text-sm grid has-[>svg]:grid-cols-[calc(var(--spacing)*4)_1fr] grid-cols-[0_1fr] has-[>svg]:gap-x-3 gap-y-0.5 items-start [&>svg]:size-4 [&>svg]:translate-y-0.5 [&>svg]:text-current",
   {
     variants: {
       variant: {
@@ -31,6 +31,7 @@ const alertVariants = cva(
 function Alert({
   className,
   variant,
+  children,
   ...props
 }: React.ComponentProps<"div"> & VariantProps<typeof alertVariants>) {
   return (
@@ -39,7 +40,11 @@ function Alert({
       role="alert"
       className={cn(alertVariants({ variant }), className)}
       {...props}
-    />
+    >
+      {/* 适配:裸字符串 children 自动包进 AlertTitle(官方契约要求内容置于
+          Title/Description),否则会落入 grid-cols-[0_1fr] 的 0 宽首列逐字竖排。 */}
+      {typeof children === "string" ? <AlertTitle>{children}</AlertTitle> : children}
+    </div>
   );
 }
 

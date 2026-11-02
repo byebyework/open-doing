@@ -7,10 +7,14 @@
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /*
- * shadcn 桥接(2026-11-02 迁移):把官方组件类名(bg-primary、border-border、
- * rounded-md 等)映射到 tokens.css 的语义槽位。变量定义与取值 1:1 来自
- * docs/prototypes/assets/design-tokens.css;未映射的工具类不会生成,对既有页面
- * 零影响(存量页面不用这些类名)。
+ * shadcn 桥接(2026-11-02 迁移):把官方组件的颜色类名(bg-primary、
+ * border-border 等)映射到 tokens.css 的语义槽位。变量定义与取值 1:1 来自
+ * docs/prototypes/assets/design-tokens.css;这些颜色槽位名(bg-primary 等)
+ * 存量页面未使用,对既有页面零影响。
+ *
+ * 刻意不映射 radius 槽位:rounded-sm/md/lg/xl 是 Tailwind 默认类名,存量页面
+ * 大量使用,@theme 重定义会在共存期全局改写它们的圆角(零回归红线)。
+ * shadcn 组件内的圆角改用 rounded-[var(--radius-N)] 任意值直接取 token。
  */
 @theme inline {
   --color-background: var(--background);
@@ -31,10 +35,6 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
-  --radius-sm: var(--radius-6);
-  --radius-md: var(--radius-8);
-  --radius-lg: var(--radius-12);
-  --radius-xl: var(--radius-16);
 }
 
 /*
