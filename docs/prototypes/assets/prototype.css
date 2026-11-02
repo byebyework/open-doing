@@ -118,7 +118,7 @@ button {
   padding: 6px;
   transform-origin: top left;
 }
-.menu-label {
+.dropdown-menu-label {
   font-size: var(--text-tag);
   font-weight: 600;
   letter-spacing: 0.06em;
@@ -126,7 +126,7 @@ button {
   color: var(--text-faint);
   padding: 8px 10px 4px;
 }
-.menu-item {
+.dropdown-menu-item {
   display: flex;
   align-items: center;
   gap: 9px;
@@ -143,15 +143,15 @@ button {
   transition: background var(--duration-quick) var(--ease-standard),
     color var(--duration-quick) var(--ease-standard);
 }
-a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var(--foreground); }
-.menu-item.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
-.menu-item .m-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
-.menu-item .m-name { flex: 1; min-width: 0; }
-.menu-item .m-icon { color: var(--text-faint); display: inline-flex; flex: none; }
-.menu-item.active .m-icon { color: var(--primary); }
-.menu-item .check { margin-left: auto; color: var(--primary); font-size: 12px; }
-.menu-item.ghost { color: var(--primary); justify-content: flex-start; font-weight: 600; font-size: 13px; }
-.menu-divider { height: 1px; background: var(--border); margin: 6px 4px; }
+a.dropdown-menu-item:hover, button.dropdown-menu-item:hover { background: var(--accent); color: var(--foreground); }
+.dropdown-menu-item.active { background: var(--primary-bg); color: var(--primary); font-weight: 600; }
+.dropdown-menu-item .m-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.dropdown-menu-item .m-name { flex: 1; min-width: 0; }
+.dropdown-menu-item .m-icon { color: var(--text-faint); display: inline-flex; flex: none; }
+.dropdown-menu-item.active .m-icon { color: var(--primary); }
+.dropdown-menu-item .check { margin-left: auto; color: var(--primary); font-size: 12px; }
+.dropdown-menu-item.ghost { color: var(--primary); justify-content: flex-start; font-weight: 600; font-size: 13px; }
+.dropdown-menu-separator { height: 1px; background: var(--border); margin: 6px 4px; }
 
 .nav-group-label {
   font-size: var(--text-tag);
@@ -799,7 +799,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
 /* ==========================================================================
    弹窗 / 通知 / 空状态
    ========================================================================== */
-.modal-backdrop {
+.dialog-overlay {
   position: fixed;
   inset: 0;
   background: rgba(14, 19, 24, 0.42);
@@ -810,9 +810,10 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   padding: var(--space-5);
   animation: backdrop-in var(--duration-sheet) var(--ease-standard);
 }
-.modal-backdrop.open { display: flex; }
-.modal {
-  background: var(--card);
+.dialog-overlay.open { display: flex; }
+.dialog {
+  background: var(--popover);
+  color: var(--popover-foreground);
   border-radius: var(--radius-16);
   box-shadow: var(--shadow-modal);
   width: 520px;
@@ -820,11 +821,30 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   max-height: calc(100vh - 96px);
   overflow: auto;
   padding: var(--space-5);
-  animation: modal-in var(--duration-sheet) var(--ease-decelerate);
+  position: relative;
+  animation: dialog-in var(--duration-sheet) var(--ease-decelerate);
 }
-.modal-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
-.modal-header .h2 { flex: 1; }
-.modal-footer { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+.dialog-header { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-4); }
+.dialog-header .h2 { flex: 1; }
+.dialog-footer { display: flex; justify-content: flex-end; gap: var(--space-2); margin-top: var(--space-5); }
+.dialog-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-6);
+  color: var(--muted-foreground);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.dialog-close:hover { background: var(--muted); color: var(--foreground); }
 
 .popover-wrap { position: relative; }
 .popover {
@@ -984,7 +1004,7 @@ input:focus-visible, select:focus-visible, textarea:focus-visible { outline: non
   to { opacity: 1; transform: scale(1) translateY(0); }
 }
 @keyframes backdrop-in { from { opacity: 0; } to { opacity: 1; } }
-@keyframes modal-in {
+@keyframes dialog-in {
   from { opacity: 0; transform: translateY(14px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }

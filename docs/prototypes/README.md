@@ -105,3 +105,4 @@ assets/
 重锚以「DOM 结构不变」为默认；以下为白名单内的新增元素，逐项登记：
 
 - （无）Task 4（callout→alert）：各页 alert 的 icon 元素（如 `<span>ℹ</span>`)在旧原型中已存在，无需新增；`alert-icon` 白名单项未使用。
+- Task 6（modal→dialog）：5 个弹窗各新增右上角关闭钮 `<button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>`：my-tasks.html（新建个人项目、新建任务）、personal-project.html（新建任务）、project-list.html（新建任务）、team-settings.html（解散团队）。

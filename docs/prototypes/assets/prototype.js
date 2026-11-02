@@ -16,29 +16,55 @@
     }
   });
 
-  // 弹窗
-  function setModal(sel, open) {
+  // 弹窗（Radix Dialog 语义：Esc / 点遮罩关闭，焦点移入与还原）
+  const FOCUSABLE = 'a[href], button:not([disabled]), input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+  function setDialog(sel, open) {
     const el = typeof sel === "string" ? document.querySelector(sel) : sel;
     if (!el) return;
     el.classList.toggle("open", open);
+    if (open) {
+      el.__trigger = document.activeElement;
+      const first = el.querySelector(FOCUSABLE);
+      if (first) first.focus();
+    } else if (el.__trigger && el.__trigger.focus) {
+      el.__trigger.focus();
+      el.__trigger = null;
+    }
   }
   document.addEventListener("click", function (e) {
     const opener = e.target.closest("[data-modal-open]");
     if (opener) {
-      setModal("#" + opener.getAttribute("data-modal-open"), true);
+      setDialog("#" + opener.getAttribute("data-modal-open"), true);
       return;
     }
     const closer = e.target.closest("[data-modal-close]");
     if (closer) {
-      setModal(closer.closest(".modal-backdrop"), false);
+      setDialog(closer.closest(".dialog-overlay"), false);
       return;
     }
-    if (e.target.classList && e.target.classList.contains("modal-backdrop")) {
-      setModal(e.target, false);
+    if (e.target.classList && e.target.classList.contains("dialog-overlay")) {
+      setDialog(e.target, false);
     }
   });
   document.addEventListener("keydown", function (e) {
-    if (e.key === "Escape") document.querySelectorAll(".modal-backdrop.open").forEach((m) => m.classList.remove("open"));
+    if (e.key === "Escape") {
+      document.querySelectorAll(".dialog-overlay.open").forEach((m) => setDialog(m, false));
+      document.querySelectorAll(".popover.open").forEach((p) => p.classList.remove("open"));
+      return;
+    }
+    // dropdown：上下键在菜单项间移动焦点
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+      const menu = e.target.closest(".popover");
+      if (!menu) return;
+      const items = Array.from(menu.querySelectorAll(".dropdown-menu-item")).filter(
+        (el) => el.matches(FOCUSABLE)
+      );
+      if (!items.length) return;
+      e.preventDefault();
+      const idx = items.indexOf(document.activeElement);
+      const next = e.key === "ArrowDown" ? items[idx + 1] : items[idx - 1];
+      (next || (e.key === "ArrowDown" ? items[0] : items[items.length - 1])).focus();
+    }
   });
 
   // 分段切换（列表/看板等）—— 同页面内切换提示；真实视图是两个路由

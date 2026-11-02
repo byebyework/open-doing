@@ -23,19 +23,19 @@
           <span class="chev">▾</span>
         </button>
         <div class="popover switcher-menu" id="space-menu">
-          <div class="menu-label">个人</div>
-          <a class="menu-item" href="my-tasks.html">
+          <div class="dropdown-menu-label">个人</div>
+          <a class="dropdown-menu-item" href="my-tasks.html">
             <span class="m-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
             <span class="m-name">个人空间</span>
           </a>
-          <div class="menu-label">我的团队</div>
-          <a class="menu-item active" href="team-overview.html">
+          <div class="dropdown-menu-label">我的团队</div>
+          <a class="dropdown-menu-item active" href="team-overview.html">
             <span class="m-dot" style="background:var(--accent-lavender);"></span>
             <span class="m-name">增长突击队</span>
             <span class="check">✓</span>
           </a>
-          <div class="menu-divider"></div>
-          <button class="menu-item ghost" type="button">＋ 创建团队</button>
+          <div class="dropdown-menu-separator"></div>
+          <button class="dropdown-menu-item ghost" type="button">＋ 创建团队</button>
         </div>
       </div>
 
@@ -292,9 +292,10 @@
   </div>
 
   <!-- ========== 解散团队确认弹窗 ========== -->
-  <div class="modal-backdrop" id="disband-modal">
-    <div class="modal" role="dialog" aria-modal="true" aria-label="解散团队">
-      <div class="modal-header">
+  <div class="dialog-overlay" id="disband-modal">
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="è§£æ£å¢é">
+      <button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>
+      <div class="dialog-header">
         <h2 class="h2">解散团队</h2>
         <button class="icon-button" data-modal-close aria-label="关闭">✕</button>
       </div>
@@ -306,7 +307,7 @@
         <label class="label">请输入团队名称以确认</label>
         <input class="input" placeholder="增长突击队" />
       </div>
-      <div class="modal-footer">
+      <div class="dialog-footer">
         <button class="button button-outline" data-modal-close>取消</button>
         <button class="button button-destructive">确认解散</button>
       </div>
