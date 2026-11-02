@@ -252,7 +252,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
   padding: 0 5px;
   color: var(--muted-foreground);
 }
-.icon-btn {
+.icon-button {
   position: relative;
   width: 36px;
   height: 36px;
@@ -265,7 +265,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
   place-items: center;
   transition: background var(--duration-quick) var(--ease-standard);
 }
-.icon-btn:hover { background: var(--surface-subtle); }
+.icon-button:hover { background: var(--surface-subtle); }
 .notif-dot {
   position: absolute;
   top: 7px;
@@ -302,7 +302,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
 /* ==========================================================================
    按钮
    ========================================================================== */
-.btn {
+.button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -322,47 +322,59 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
     color var(--duration-quick) var(--ease-standard),
     transform var(--duration-micro) var(--ease-standard);
 }
-.btn:active { transform: scale(0.98); }
-.btn:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--purple-20); }
-.btn-sm { height: 30px; padding: 5px 12px; font-size: 13px; }
-.btn-lg { height: 44px; padding: 11px 22px; font-size: 15px; }
-.btn-block { width: 100%; }
+.button:active { transform: scale(0.98); }
+.button:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--purple-20); }
+.button-sm { height: 30px; padding: 5px 12px; font-size: 13px; }
+.button-lg { height: 44px; padding: 11px 22px; font-size: 15px; }
+.button-block { width: 100%; }
+.button-loading { pointer-events: none; opacity: 0.7; }
+.button-loading::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  margin-right: 2px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: var(--radius-pill);
+  animation: button-spin 0.7s linear infinite;
+}
+@keyframes button-spin { to { transform: rotate(360deg); } }
 
-.btn-primary {
+.button-primary {
   background: var(--primary);
   color: var(--primary-foreground);
   box-shadow: var(--button-shadow);
 }
-.btn-primary:hover { background: var(--primary-hover); box-shadow: var(--button-shadow-hover); color: #fff; }
+.button-primary:hover { background: var(--primary-hover); box-shadow: var(--button-shadow-hover); color: #fff; }
 
 /* 渐变主按钮：仅用于品牌时刻（登录注册 CTA、空状态引导） */
-.btn-gradient {
+.button-gradient {
   background: var(--brand-gradient);
   color: #fff;
   box-shadow: var(--button-shadow);
 }
-.btn-gradient:hover { color: #fff; box-shadow: var(--button-shadow-hover); }
+.button-gradient:hover { color: #fff; box-shadow: var(--button-shadow-hover); }
 
-.btn-default {
+.button-outline {
   background: var(--card);
   border-color: var(--border);
   color: var(--foreground);
 }
-.btn-default:hover { background: var(--muted); border-color: var(--border-strong); }
+.button-outline:hover { background: var(--muted); border-color: var(--border-strong); }
 
-.btn-text { background: transparent; color: var(--primary); padding: 6px 8px; height: auto; }
-.btn-text:hover { background: var(--primary-bg); }
-.btn-text.danger, .btn-danger { color: var(--error); }
-.btn-danger { background: var(--card); border-color: var(--border); }
-.btn-danger:hover { background: var(--error-bg); border-color: var(--error); }
-.btn[disabled] {
+.button-ghost { background: transparent; color: var(--primary); padding: 6px 8px; height: auto; }
+.button-ghost:hover { background: var(--primary-bg); }
+.button-ghost.danger, .button-destructive { color: var(--error); }
+.button-destructive { background: var(--card); border-color: var(--border); }
+.button-destructive:hover { background: var(--error-bg); border-color: var(--error); }
+.button[disabled] {
   background: var(--surface-inset);
   color: var(--text-faint);
   border-color: transparent;
   box-shadow: none;
   cursor: not-allowed;
 }
-.btn[disabled]:active { transform: none; }
+.button[disabled]:active { transform: none; }
 
 /* ==========================================================================
    卡片、标签、头像、进度条
@@ -819,7 +831,7 @@ a.menu-item:hover, button.menu-item:hover { background: var(--muted); color: var
   font-weight: 700;
   font-size: 14px;
 }
-.popover-head .btn-text { margin-left: auto; }
+.popover-head .button-ghost { margin-left: auto; }
 .notif-item {
   display: flex;
   gap: 10px;
