@@ -190,7 +190,9 @@ async function expectProjectOrder(
   const trigger = page.getByTestId(TEST_IDS.kanban.projectFilter);
   await trigger.click();
 
-  const options = page.locator(".ant-select-item-option");
+  // shadcn Select 的选项带 role="option"（迁移前 antd 虚拟列表无此 role，
+  // 旧定位用 .ant-select-item-option）。
+  const options = page.getByRole("option");
   await expect(options).toHaveCount(names.length + 1); // +「全部项目」
   await expect(options.nth(0)).toHaveText("全部项目");
 

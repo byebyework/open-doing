@@ -1,12 +1,13 @@
 "use client";
 
-import { App, Checkbox } from "antd";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import type { MyTaskListItem } from "@/features/dashboard/my-tasks/service";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
@@ -122,7 +123,6 @@ export function TodayTaskList({
   overdueCount,
   todayCount,
 }: TodayTaskListProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("dashboard");
   const tDate = useTranslations("date");
@@ -172,14 +172,14 @@ export function TodayTaskList({
 
       if (!ok) {
         restore(task.id);
-        message.error(t("updateFailed"));
+        toast.error(t("updateFailed"));
         return;
       }
 
       router.refresh();
     } catch {
       restore(task.id);
-      message.error(t("updateFailed"));
+      toast.error(t("updateFailed"));
     }
   }
 
@@ -231,7 +231,7 @@ export function TodayTaskList({
                     aria-label={t("markCompleteAria", { title: task.title })}
                     checked={done}
                     disabled={done}
-                    onChange={() => {
+                    onCheckedChange={() => {
                       void completeTask(task);
                     }}
                     className="mt-0.5 shrink-0"

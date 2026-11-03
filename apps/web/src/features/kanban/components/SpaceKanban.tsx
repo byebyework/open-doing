@@ -14,13 +14,15 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { App, Button, Tag } from "antd";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Button } from "@/components/ui/shadcn/button";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
 import { canEditTask } from "@/features/tasks/permissions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
@@ -248,7 +250,6 @@ function SpaceStatusButtons({
   editable: boolean;
   onChanged: () => void;
 }) {
-  const { message } = App.useApp();
   const t = useTranslations("kanban");
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -269,13 +270,13 @@ function SpaceStatusButtons({
       if (!result) return;
 
       if (!result.ok) {
-        message.error(firstError(result.errors, tErrors("operationFailed")));
+        toast.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -285,19 +286,22 @@ function SpaceStatusButtons({
     <div className="flex flex-wrap gap-1.5">
       {STATUS_ORDER.map((status) => {
         const current = status === card.status;
+        const loading = pending === status;
 
         return (
           <Button
             key={status}
             data-testid={`task-status-button-${status}`}
-            size="small"
-            type={current ? "primary" : "default"}
+            size="sm"
+            variant={current ? "default" : "outline"}
             disabled={!editable || current || pending !== null}
-            loading={pending === status}
             onClick={() => {
               void change(status);
             }}
           >
+            {loading ? (
+              <Loader2Icon aria-hidden className="size-3.5 animate-spin" />
+            ) : null}
             {t(STATUS_KEYS[status])}
           </Button>
         );
@@ -390,22 +394,9 @@ function SpaceKanbanCard({
                 <span className="truncate">{card.assigneeName}</span>
               </span>
             ) : (
-              <Tag
-                variant="filled"
-                style={{
-                  marginInlineEnd: 0,
-                  border: "none",
-                  borderRadius: 9999,
-                  paddingInline: 8,
-                  color: "#5f6368",
-                  background: "#e8eaed",
-                  fontSize: 11.5,
-                  fontWeight: 500,
-                  lineHeight: "20px",
-                }}
-              >
+              <span className="inline-flex flex-none items-center rounded-full bg-[#e8eaed] px-2 text-[11.5px] font-medium leading-5 text-[#5f6368]">
                 {tTasks("unassigned")}
-              </Tag>
+              </span>
             )
           ) : null}
 
@@ -635,7 +626,6 @@ export function SpaceKanban({
   taskHrefs,
   expandFilter,
 }: SpaceKanbanProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -719,14 +709,14 @@ export function SpaceKanban({
 
       if (errors) {
         setLocal((current) => moveCard(current, cardId, originalStatus));
-        message.error(firstError(errors, tErrors("operationFailed")));
+        toast.error(firstError(errors, tErrors("operationFailed")));
         return;
       }
 
       router.refresh();
     } catch {
       setLocal((current) => moveCard(current, cardId, originalStatus));
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     }
   }
 
@@ -763,7 +753,7 @@ export function SpaceKanban({
       );
 
       if (!result.ok) {
-        message.error(tKanban("loadFailed"));
+        toast.error(tKanban("loadFailed"));
         return;
       }
 
@@ -778,7 +768,7 @@ export function SpaceKanban({
       setLocal((current) => ({ ...current, doneOlder: older }));
       setExpanded(true);
     } catch {
-      message.error(tKanban("loadFailed"));
+      toast.error(tKanban("loadFailed"));
     } finally {
       setLoadingOlder(false);
     }

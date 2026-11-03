@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import { Button } from "antd";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
@@ -120,7 +120,7 @@ export default async function TeamKanbanPage(
           <div className="flex flex-none items-center gap-2">
             {/* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */}
             <Link href={teamProjectNewHref(team.slug)}>
-              <Button>{t("newProjectButton")}</Button>
+              <Button variant="outline">{t("newProjectButton")}</Button>
             </Link>
           </div>
         ) : null}

@@ -1,8 +1,16 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Segmented, Select } from "antd";
 import { useRouter } from "next/navigation";
+
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 
 /** 空间看板筛选条入参（个人 / 团队共用，团队多一个未指派筛选）。 */
 export interface SpaceKanbanFilterBarProps {
@@ -33,6 +41,9 @@ export interface SpaceKanbanFilterBarProps {
  * 契约：`?project={slug}`（两空间）、`?assignee=unassigned`（仅团队）；
  * 未设置即全部。
  */
+
+/** 「全部项目」在 Radix Select 里的哨兵值（item value 不允许空字符串）。 */
+const ALL_PROJECTS = "__all__";
 export function SpaceKanbanFilterBar({
   variant,
   basePath,
@@ -62,35 +73,43 @@ export function SpaceKanbanFilterBar({
   return (
     <div className="mt-5 flex min-w-0 flex-wrap items-center gap-2.5">
       <Select
-        data-testid="kanban-project-filter"
-        aria-label={t("filterByProject")}
-        value={activeProjectSlug ?? ""}
-        onChange={(value: string) => {
-          pushFilter(value || undefined, unassignedOnly);
+        value={activeProjectSlug ?? ALL_PROJECTS}
+        onValueChange={(value) => {
+          pushFilter(value === ALL_PROJECTS ? undefined : value, unassignedOnly);
         }}
-        options={[
-          { value: "", label: t("allProjects") },
-          ...projects.map((project) => ({
-            value: project.slug,
-            label: project.name,
-          })),
-        ]}
-        style={{ minWidth: 168 }}
-      />
+      >
+        <SelectTrigger
+          className="w-[168px]"
+          data-testid="kanban-project-filter"
+          aria-label={t("filterByProject")}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value={ALL_PROJECTS}>{t("allProjects")}</SelectItem>
+          {projects.map((project) => (
+            <SelectItem key={project.slug} value={project.slug}>
+              {project.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
 
       {variant === "team" ? (
-        <Segmented<"all" | "unassigned">
-          data-testid="kanban-assignee-filter"
-          aria-label={t("filterByAssignee")}
-          options={[
-            { label: t("allTasks"), value: "all" },
-            { label: tTasks("unassigned"), value: "unassigned" },
-          ]}
+        <Tabs
           value={unassignedOnly ? "unassigned" : "all"}
-          onChange={(value) => {
+          onValueChange={(value) => {
             pushFilter(activeProjectSlug, value === "unassigned");
           }}
-        />
+        >
+          <TabsList
+            data-testid="kanban-assignee-filter"
+            aria-label={t("filterByAssignee")}
+          >
+            <TabsTrigger value="all">{t("allTasks")}</TabsTrigger>
+            <TabsTrigger value="unassigned">{tTasks("unassigned")}</TabsTrigger>
+          </TabsList>
+        </Tabs>
       ) : null}
 
       <span className="text-[12.5px] text-[#5f6368]">{caption}</span>

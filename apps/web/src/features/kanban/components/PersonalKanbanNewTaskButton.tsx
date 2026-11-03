@@ -1,10 +1,10 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/shadcn/button";
 import { NewTaskModal } from "@/features/personal/tasks/components/NewTaskModal";
 
 /** 个人空间 Kanban 页头「新建任务」：复用个人项目的空间级新建弹窗。 */
@@ -22,9 +22,7 @@ export function PersonalKanbanNewTaskButton({
 
   return (
     <>
-      <Button type="primary" onClick={() => setOpen(true)}>
-        {t("newTaskButton")}
-      </Button>
+      <Button onClick={() => setOpen(true)}>{t("newTaskButton")}</Button>
 
       <NewTaskModal
         open={open}
