@@ -69,7 +69,7 @@ function render(role: TeamRole, task: TeamTaskRow): string {
 function statusButton(html: string, label: string): string {
   const segment = html
     .split("<button")
-    .find((part) => part.includes(`>${label}</span>`));
+    .find((part) => part.includes(`>${label}</button>`));
 
   if (!segment) throw new Error(`未渲染状态按钮：${label}`);
   return segment;
@@ -80,13 +80,15 @@ describe("TeamKanban 移动端状态按钮", () => {
     const html = render("owner", makeTask());
     const button = statusButton(html, "进行中");
 
-    expect(button).not.toContain("disabled");
+    // 钉 disabled 属性而非 /disabled/ 子串：shadcn Button 的 class 字面量
+    // 含 "disabled:*" 工具类（同 TaskDetailView.test 判例）。
+    expect(button).not.toContain('disabled=""');
   });
 
   it("member 对他人任务的状态按钮保持禁用", () => {
     const html = render("member", makeTask());
     const button = statusButton(html, "进行中");
 
-    expect(button).toContain("disabled");
+    expect(button).toContain('disabled=""');
   });
 });

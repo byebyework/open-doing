@@ -1,11 +1,18 @@
 "use client";
 
-import { App, Button, Modal } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/shadcn/dialog";
 
 import { deleteTeamProjectAction } from "../actions";
 import { TeamProjectForm } from "./TeamProjectForm";
@@ -28,7 +35,6 @@ export function TeamProjectHeaderActions({
   project,
   redirectTo,
 }: TeamProjectHeaderActionsProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
@@ -46,16 +52,16 @@ export function TeamProjectHeaderActions({
       });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("deleteFailed"));
+        toast.error(result.errors.form ?? t("deleteFailed"));
         return;
       }
 
-      message.success(t("projectDeleted"));
+      toast.success(t("projectDeleted"));
       setDeleteOpen(false);
       router.push(redirectTo);
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -63,30 +69,35 @@ export function TeamProjectHeaderActions({
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Button onClick={() => setEditOpen(true)}>{tCommon("edit")}</Button>
-      <Button danger onClick={() => setDeleteOpen(true)}>
+      <Button variant="outline" onClick={() => setEditOpen(true)}>
+        {tCommon("edit")}
+      </Button>
+      <Button
+        variant="outline"
+        className="text-destructive hover:text-destructive"
+        onClick={() => setDeleteOpen(true)}
+      >
         {tCommon("delete")}
       </Button>
 
-      <Modal
-        open={editOpen}
-        title={t("editProject")}
-        footer={null}
-        onCancel={() => setEditOpen(false)}
-        destroyOnHidden
-        width={520}
-      >
-        <TeamProjectForm
-          teamId={teamId}
-          project={project}
-          onCancel={() => setEditOpen(false)}
-          onSuccess={() => {
-            message.success(t("saved"));
-            setEditOpen(false);
-            router.refresh();
-          }}
-        />
-      </Modal>
+      {/* Radix Dialog 关闭即卸载内容，编辑表单每次打开按 project 重建。 */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>{t("editProject")}</DialogTitle>
+          </DialogHeader>
+          <TeamProjectForm
+            teamId={teamId}
+            project={project}
+            onCancel={() => setEditOpen(false)}
+            onSuccess={() => {
+              toast.success(t("saved"));
+              setEditOpen(false);
+              router.refresh();
+            }}
+          />
+        </DialogContent>
+      </Dialog>
 
       <ConfirmModal
         open={deleteOpen}

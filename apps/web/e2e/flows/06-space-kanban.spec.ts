@@ -126,15 +126,15 @@ test.describe("flow 6: 空间级 Kanban", () => {
 
       const dialog = page.getByRole("dialog");
       await expect(dialog).toBeVisible();
-      // 等弹窗 afterOpenChange 的 resetFields 完成后再填写。
+      // 等弹窗动效与初始值同步完成后再填写。
       await page.waitForTimeout(500);
       await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(title);
       if (assignee) {
-        // antd Select 的可见选项没有 role="option"（虚拟列表只在隐藏的
-        // a11y 列表里渲染 option），改为点击可见选项项。
+        // shadcn Select 的选项带 role="option"（迁移前 antd 虚拟列表无此
+        // role，旧定位用 .ant-select-item-option）。
         await dialog.getByLabel("责任人").click();
         await page
-          .locator(".ant-select-item-option")
+          .getByRole("option")
           .filter({ hasText: assignee })
           .click();
         // 指派是否正确由后续「移除成员 → 未指派筛选」断言兜底（该卡若仍

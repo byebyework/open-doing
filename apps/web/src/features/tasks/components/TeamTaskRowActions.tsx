@@ -1,13 +1,21 @@
 "use client";
 
 import type { TaskStatus } from "@open-doing/types";
-import { App, Button, Dropdown, type MenuProps } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import type { TeamRole } from "@/features/teams/permissions";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/shadcn/dropdown-menu";
 
 import { deleteTeamTaskAction, updateTeamTaskAction } from "../actions";
 import { canDeleteTask, canEditTask } from "../permissions";
@@ -65,7 +73,6 @@ export function TeamTaskRowActions({
   detailHref,
   onChanged,
 }: TeamTaskRowActionsProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");
@@ -79,19 +86,6 @@ export function TeamTaskRowActions({
   const editable = canEditTask(permission);
   const deletable = canDeleteTask(permission);
 
-  const items: MenuProps["items"] = [
-    ...TEAM_TASK_STATUS_ORDER.map((status) => ({
-      key: `status:${status}`,
-      label: t("markAs", { status: tStatus(TEAM_TASK_STATUS_KEYS[status]) }),
-      disabled: !editable || status === task.status,
-    })),
-    { type: "divider" as const },
-    { key: "edit", label: tCommon("edit") },
-    ...(deletable
-      ? [{ key: "delete", label: tCommon("delete"), danger: true }]
-      : []),
-  ];
-
   async function changeStatus(status: TaskStatus) {
     if (pending || status === task.status) return;
 
@@ -100,29 +94,15 @@ export function TeamTaskRowActions({
       const result = await updateTeamTaskAction(task.id, { teamId, status });
 
       if (!result.ok) {
-        message.error(firstActionError(result.errors, tErrors("operationFailed")));
+        toast.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setPending(null);
-    }
-  }
-
-  function handleMenuClick({ key }: { key: string }) {
-    if (key === "edit") {
-      router.push(detailHref);
-      return;
-    }
-    if (key === "delete") {
-      setDeleteOpen(true);
-      return;
-    }
-    if (key.startsWith("status:")) {
-      void changeStatus(key.slice("status:".length) as TaskStatus);
     }
   }
 
@@ -133,15 +113,15 @@ export function TeamTaskRowActions({
       const result = await deleteTeamTaskAction({ teamId, taskId: task.id });
 
       if (!result.ok) {
-        message.error(firstActionError(result.errors, tErrors("operationFailed")));
+        toast.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
-      message.success(t("taskDeleted"));
+      toast.success(t("taskDeleted"));
       setDeleteOpen(false);
       onChanged();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -149,32 +129,60 @@ export function TeamTaskRowActions({
 
   return (
     <>
-      <Dropdown
-        trigger={["click"]}
-        placement="bottomRight"
-        menu={{ items, onClick: handleMenuClick }}
-        disabled={pending !== null || deleting}
-      >
-        <Button
-          type="text"
-          size="small"
-          aria-label={t("rowActionsAria", { title: task.title })}
-          className="shrink-0"
-          style={{ color: "#9aa0a6" }}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            aria-label={t("rowActionsAria", { title: task.title })}
+            className="shrink-0 text-[#9aa0a6]"
+            disabled={pending !== null || deleting}
           >
-            <circle cx="5" cy="12" r="1.7" />
-            <circle cx="12" cy="12" r="1.7" />
-            <circle cx="19" cy="12" r="1.7" />
-          </svg>
-        </Button>
-      </Dropdown>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="12" r="1.7" />
+              <circle cx="12" cy="12" r="1.7" />
+              <circle cx="19" cy="12" r="1.7" />
+            </svg>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {TEAM_TASK_STATUS_ORDER.map((status) => (
+            <DropdownMenuItem
+              key={status}
+              disabled={!editable || status === task.status}
+              onSelect={() => {
+                void changeStatus(status);
+              }}
+            >
+              {t("markAs", { status: tStatus(TEAM_TASK_STATUS_KEYS[status]) })}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem
+            onSelect={() => {
+              router.push(detailHref);
+            }}
+          >
+            {tCommon("edit")}
+          </DropdownMenuItem>
+          {deletable ? (
+            <DropdownMenuItem
+              className="text-destructive"
+              onSelect={() => {
+                setDeleteOpen(true);
+              }}
+            >
+              {tCommon("delete")}
+            </DropdownMenuItem>
+          ) : null}
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <ConfirmModal
         open={deleteOpen}

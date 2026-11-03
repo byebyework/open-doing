@@ -1,8 +1,8 @@
 "use client";
 
-import { App } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 
 import { TaskDetailView } from "@/components/ui/task-detail/TaskDetailView";
 import type {
@@ -71,12 +71,11 @@ export function TeamTaskDetailClient({
   permissions,
   assigneeOptions,
 }: TeamTaskDetailClientProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
 
-  /** 执行 Server Action：失败统一 `message.error`，并向调用方抛出。 */
+  /** 执行 Server Action：失败统一 `toast.error`，并向调用方抛出。 */
   async function runAction<T>(
     operation: () => Promise<ActionResult<T>>,
   ): Promise<void> {
@@ -85,13 +84,13 @@ export function TeamTaskDetailClient({
     try {
       result = await operation();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
       throw new DetailActionError(tCommon("networkError"));
     }
 
     if (!result.ok) {
       const text = firstError(result.errors, tErrors("operationFailed"));
-      message.error(text);
+      toast.error(text);
       throw new DetailActionError(text);
     }
   }

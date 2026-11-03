@@ -203,6 +203,8 @@
     "filterByStatusAria": "按状态筛选",
     "filterByAssigneeAria": "按责任人筛选",
     "sortByAria": "排序方式",
+    "prevPageAria": "上一页",
+    "nextPageAria": "下一页",
     "sortDueDate": "排序：按截止日期",
     "sortStatus": "按状态",
     "sortCreatedAt": "按创建时间",

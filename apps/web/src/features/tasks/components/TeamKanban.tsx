@@ -14,10 +14,20 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { App, Button, Select } from "antd";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
+
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
 
 import { DueText } from "@/components/ui/DueText";
 import { ProgressBar } from "@/components/ui/ProgressBar";
@@ -67,7 +77,6 @@ function TeamTaskStatusButtons({
   editable: boolean;
   onChanged: () => void;
 }) {
-  const { message } = App.useApp();
   const tStatus = useTranslations("status");
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -81,13 +90,13 @@ function TeamTaskStatusButtons({
       const result = await updateTeamTaskAction(task.id, { teamId, status });
 
       if (!result.ok) {
-        message.error(firstActionError(result.errors, tErrors("operationFailed")));
+        toast.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -101,14 +110,16 @@ function TeamTaskStatusButtons({
         return (
           <Button
             key={status}
-            size="small"
-            type={current ? "primary" : "default"}
+            size="sm"
+            variant={current ? "default" : "outline"}
             disabled={!editable || current || pending !== null}
-            loading={pending === status}
             onClick={() => {
               void change(status);
             }}
           >
+            {pending === status ? (
+              <Loader2Icon aria-hidden className="size-3.5 animate-spin" />
+            ) : null}
             {tStatus(TEAM_TASK_STATUS_KEYS[status])}
           </Button>
         );
@@ -265,8 +276,8 @@ function TeamKanbanColumn({
         </span>
         {status === "todo" ? (
           <Button
-            type="text"
-            size="small"
+            variant="ghost"
+            size="sm"
             className="ml-auto"
             aria-label={t("newTaskAria")}
             onClick={onNewTask}
@@ -308,7 +319,7 @@ function TeamKanbanColumn({
  * 团队项目看板（对照 `project-board.html`）。
  *
  * 三列「未开始 / 进行中 / 已完成」；拖卡落列即乐观更新状态，失败回滚并
- * `message.error`。只有 `canEditTask` 为 true 的卡片可拖（owner/admin 全部，
+ * `toast.error`。只有 `canEditTask` 为 true 的卡片可拖（owner/admin 全部，
  * member 仅本人任务）；窄屏关闭拖拽、改由列内状态按钮完成流转。
  */
 export function TeamKanban({
@@ -321,7 +332,6 @@ export function TeamKanban({
   role,
   actorId,
 }: TeamKanbanProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");
@@ -418,7 +428,7 @@ export function TeamKanban({
             item.id === taskId ? { ...item, status: previousStatus } : item,
           ),
         );
-        message.error(firstActionError(result.errors, tErrors("operationFailed")));
+        toast.error(firstActionError(result.errors, tErrors("operationFailed")));
         return;
       }
 
@@ -429,7 +439,7 @@ export function TeamKanban({
           item.id === taskId ? { ...item, status: previousStatus } : item,
         ),
       );
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     }
   }
 
@@ -445,28 +455,37 @@ export function TeamKanban({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Select<StatusFilter>
-          size="small"
-          aria-label={t("filterByStatusAria")}
+        <Select
           value={statusFilter}
-          onChange={setStatusFilter}
-          options={[
-            { value: "all", label: t("filterAllStatus") },
-            ...TEAM_TASK_STATUS_ORDER.map((status) => ({
-              value: status,
-              label: tStatus(TEAM_TASK_STATUS_KEYS[status]),
-            })),
-          ]}
-          style={{ width: 120 }}
-        />
-        <Select<AssigneeFilter>
-          size="small"
-          aria-label={t("filterByAssigneeAria")}
+          onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+        >
+          <SelectTrigger className="w-[120px]" aria-label={t("filterByStatusAria")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAllStatus")}</SelectItem>
+            {TEAM_TASK_STATUS_ORDER.map((status) => (
+              <SelectItem key={status} value={status}>
+                {tStatus(TEAM_TASK_STATUS_KEYS[status])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={assigneeFilter}
-          onChange={setAssigneeFilter}
-          options={assigneeOptions}
-          style={{ width: 130 }}
-        />
+          onValueChange={(value) => setAssigneeFilter(value)}
+        >
+          <SelectTrigger className="w-[130px]" aria-label={t("filterByAssigneeAria")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {assigneeOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
           {t("totalCount", { count: filtered.length })}
         </span>

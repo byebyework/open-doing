@@ -1,10 +1,11 @@
 "use client";
 
-import { Button, Segmented } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
+import { Button } from "@/components/ui/shadcn/button";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { TeamProjectHeaderActions } from "@/features/projects/components/TeamProjectHeaderActions";
 
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
@@ -61,18 +62,14 @@ export function TeamProjectHeader({
         />
       ) : null}
 
-      <Segmented<TeamProjectView>
-        options={[
-          { label: t("viewList"), value: "list" },
-          { label: t("viewBoard"), value: "board" },
-        ]}
-        value={view}
-        onChange={(nextView) => {
-          router.push(`${projectPath}?view=${nextView}`);
-        }}
-      />
+      <Tabs value={view} onValueChange={(nextView) => router.push(`${projectPath}?view=${nextView}`)}>
+        <TabsList>
+          <TabsTrigger value="list">{t("viewList")}</TabsTrigger>
+          <TabsTrigger value="board">{t("viewBoard")}</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      <Button type="primary" data-testid="new-task-button" onClick={() => setNewTaskOpen(true)}>
+      <Button data-testid="new-task-button" onClick={() => setNewTaskOpen(true)}>
         {t("newTaskButton")}
       </Button>
 

@@ -1,27 +1,28 @@
 "use client";
 
 import type { Project } from "@open-doing/types";
-import { App, Alert, Button, Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 import { teamProjectHref } from "@/lib/routes";
+
+import { applyActionErrors } from "@/lib/action-form";
 
 import {
   createTeamProjectAction,
   updateTeamProjectAction,
 } from "../actions";
-
-/** 表单字段名（与 Service Action 的错误键一致）。 */
-const FIELD_KEYS = ["name", "description"] as const;
-
-type FieldKey = (typeof FIELD_KEYS)[number];
-
-interface FormValues {
-  name: string;
-  description?: string;
-}
 
 /** 团队项目表单入参：传 `project` 即编辑态，否则新建。 */
 export interface TeamProjectFormProps {
@@ -47,13 +48,36 @@ export function TeamProjectForm({
 }: TeamProjectFormProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEdit = Boolean(project);
 
-  async function handleFinish(values: FormValues) {
+  // zod schema 在组件内构建：长度文案取自 next-intl。
+  const schema = z.object({
+    name: z
+      .string()
+      .trim()
+      .min(1, t("nameRequired"))
+      .max(50, t("nameTooLong", { max: 50 })),
+    description: z.string().max(500, t("descriptionTooLong", { max: 500 })),
+  });
+  type FormValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: project?.name ?? "",
+      description: project?.description ?? "",
+    },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
 
@@ -72,17 +96,11 @@ export function TeamProjectForm({
           });
 
       if (!result.ok) {
-        const fieldErrors: { name: FieldKey; errors: string[] }[] = [];
-
-        for (const key of FIELD_KEYS) {
-          const messageText = result.errors[key];
-          if (messageText) {
-            fieldErrors.push({ name: key, errors: [messageText] });
-          }
-        }
-
-        if (fieldErrors.length > 0) form.setFields(fieldErrors);
-        if (result.errors.form) setFormError(result.errors.form);
+        applyActionErrors(result.errors, {
+          setFieldError: (name, message) =>
+            setError(name as keyof FormValues, { message }),
+          onFormError: setFormError,
+        });
         return;
       }
 
@@ -92,57 +110,75 @@ export function TeamProjectForm({
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
-    <Form
-      form={form}
-      layout="vertical"
-      requiredMark={false}
-      disabled={submitting}
-      initialValues={{
-        name: project?.name ?? "",
-        description: project?.description ?? "",
-      }}
-      onFinish={handleFinish}
-    >
+    <form onSubmit={onSubmit} noValidate>
       {formError ? (
-        <Alert type="error" showIcon title={formError} className="mb-4" role="alert" />
+        <Alert variant="destructive" role="alert" className="mb-4">
+          {formError}
+        </Alert>
       ) : null}
 
-      <Form.Item
-        label={t("nameLabel")}
-        name="name"
-        rules={[
-          { required: true, whitespace: true, message: t("nameRequired") },
-          { max: 50, message: t("nameTooLong", { max: 50 }) },
-        ]}
-      >
-        <Input data-testid="team-project-name-input" placeholder={t("namePlaceholder")} maxLength={50} autoFocus />
-      </Form.Item>
+      <div className="mb-4 flex flex-col gap-2">
+        <Label htmlFor="team-project-name">{t("nameLabel")}</Label>
+        <Input
+          id="team-project-name"
+          type="text"
+          data-testid="team-project-name-input"
+          placeholder={t("namePlaceholder")}
+          maxLength={50}
+          autoFocus
+          aria-invalid={errors.name ? true : undefined}
+          aria-describedby={errors.name ? "team-project-name-error" : undefined}
+          disabled={submitting}
+          {...register("name")}
+        />
+        {errors.name ? (
+          <p id="team-project-name-error" className="text-[12.5px] text-[var(--error)]">
+            {errors.name.message}
+          </p>
+        ) : null}
+      </div>
 
-      <Form.Item
-        label={t("descriptionLabel")}
-        name="description"
-        rules={[{ max: 500, message: t("descriptionTooLong", { max: 500 }) }]}
-      >
-        <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} maxLength={500} />
-      </Form.Item>
+      <div className="mb-4 flex flex-col gap-2">
+        <Label htmlFor="team-project-description">{t("descriptionLabel")}</Label>
+        <Textarea
+          id="team-project-description"
+          rows={4}
+          placeholder={t("descriptionPlaceholder")}
+          maxLength={500}
+          aria-invalid={errors.description ? true : undefined}
+          aria-describedby={
+            errors.description ? "team-project-description-error" : undefined
+          }
+          disabled={submitting}
+          {...register("description")}
+        />
+        {errors.description ? (
+          <p id="team-project-description-error" className="text-[12.5px] text-[var(--error)]">
+            {errors.description.message}
+          </p>
+        ) : null}
+      </div>
 
       <div className="flex gap-2">
-        <Button type="primary" htmlType="submit" loading={submitting} data-testid="team-project-submit-button">
+        <Button type="submit" disabled={submitting} data-testid="team-project-submit-button">
+          {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
           {isEdit ? tCommon("save") : t("submitCreate")}
         </Button>
-        {onCancel ? <Button onClick={onCancel}>{tCommon("cancel")}</Button> : null}
+        {onCancel ? (
+          <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
+            {tCommon("cancel")}
+          </Button>
+        ) : null}
       </div>
-    </Form>
+    </form>
   );
 }
 
 /**
  * 「新建项目」页的 client 包装件：成功后跳到新项目页。
- *
- * 项目页在 J-3 落地；此前跳转目标暂为 404（轨道内已知的过渡态）。
  */
 export function TeamProjectCreatePanel({
   teamId,
@@ -151,7 +187,6 @@ export function TeamProjectCreatePanel({
   teamId: string;
   teamSlug: string;
 }) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("projects");
 
@@ -159,7 +194,7 @@ export function TeamProjectCreatePanel({
     <TeamProjectForm
       teamId={teamId}
       onSuccess={(project) => {
-        message.success(t("projectCreated"));
+        toast.success(t("projectCreated"));
         router.push(teamProjectHref(teamSlug, project.slug));
         router.refresh();
       }}

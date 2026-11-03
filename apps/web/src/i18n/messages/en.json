@@ -203,6 +203,8 @@
     "filterByStatusAria": "Filter by status",
     "filterByAssigneeAria": "Filter by assignee",
     "sortByAria": "Sort order",
+    "prevPageAria": "Previous page",
+    "nextPageAria": "Next page",
     "sortDueDate": "Sort: by due date",
     "sortStatus": "By status",
     "sortCreatedAt": "By created time",

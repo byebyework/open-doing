@@ -2,7 +2,7 @@
 
 import type { TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
-import { Button, Pagination, Select } from "antd";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +13,20 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+} from "@/components/ui/shadcn/pagination";
 import type { TeamRole } from "@/features/teams/permissions";
 import { teamTaskHref } from "@/lib/routes";
 
@@ -61,6 +75,25 @@ function compareByStatus(a: TeamTaskRow, b: TeamTaskRow): number {
 
 function compareByCreatedAt(a: TeamTaskRow, b: TeamTaskRow): number {
   return a.createdAt.localeCompare(b.createdAt);
+}
+
+/** 分页按钮序列：页数少时全展示，多时收敛为「首尾 + 当前邻域」。 */
+function pageItems(
+  current: number,
+  total: number,
+): (number | "ellipsis-l" | "ellipsis-r")[] {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, index) => index + 1);
+  }
+
+  const items: (number | "ellipsis-l" | "ellipsis-r")[] = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+  if (start > 2) items.push("ellipsis-l");
+  for (let page = start; page <= end; page += 1) items.push(page);
+  if (end < total - 1) items.push("ellipsis-r");
+  items.push(total);
+  return items;
 }
 
 /** 列表视图入参（J-4 复用 `tasks` / `today` / `members` 等数据）。 */
@@ -162,49 +195,59 @@ export function TeamProjectTaskTable({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Select<StatusFilter>
-          size="small"
-          aria-label={t("filterByStatusAria")}
+        <Select
           value={statusFilter}
-          onChange={(value) => {
-            setStatusFilter(value);
+          onValueChange={(value) => {
+            setStatusFilter(value as StatusFilter);
             resetPage();
           }}
-          options={[
-            { value: "all", label: t("filterAllStatus") },
-            ...TEAM_TASK_STATUS_ORDER.map((status) => ({
-              value: status,
-              label: tStatus(TEAM_TASK_STATUS_KEYS[status]),
-            })),
-          ]}
-          style={{ width: 120 }}
-        />
-        <Select<AssigneeFilter>
-          size="small"
-          aria-label={t("filterByAssigneeAria")}
+        >
+          <SelectTrigger className="w-[120px]" aria-label={t("filterByStatusAria")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAllStatus")}</SelectItem>
+            {TEAM_TASK_STATUS_ORDER.map((status) => (
+              <SelectItem key={status} value={status}>
+                {tStatus(TEAM_TASK_STATUS_KEYS[status])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={assigneeFilter}
-          onChange={(value) => {
+          onValueChange={(value) => {
             setAssigneeFilter(value);
             resetPage();
           }}
-          options={assigneeOptions}
-          style={{ width: 130 }}
-        />
-        <Select<SortKey>
-          size="small"
-          aria-label={t("sortByAria")}
+        >
+          <SelectTrigger className="w-[130px]" aria-label={t("filterByAssigneeAria")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {assigneeOptions.map((option) => (
+              <SelectItem key={option.value} value={option.value}>
+                {option.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={sort}
-          onChange={(value) => {
-            setSort(value);
+          onValueChange={(value) => {
+            setSort(value as SortKey);
             resetPage();
           }}
-          options={[
-            { value: "dueDate", label: t("sortDueDate") },
-            { value: "status", label: t("sortStatus") },
-            { value: "createdAt", label: t("sortCreatedAt") },
-          ]}
-          style={{ width: 150 }}
-        />
+        >
+          <SelectTrigger className="w-[150px]" aria-label={t("sortByAria")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dueDate">{t("sortDueDate")}</SelectItem>
+            <SelectItem value="status">{t("sortStatus")}</SelectItem>
+            <SelectItem value="createdAt">{t("sortCreatedAt")}</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
           {t("totalCount", { count: visibleTasks.length })}
         </span>
@@ -216,7 +259,7 @@ export function TeamProjectTaskTable({
             title={t("emptyTasksTitle")}
             description={t("emptyTasksTeamHint")}
             action={
-              <Button type="primary" onClick={() => setNewTaskOpen(true)}>
+              <Button onClick={() => setNewTaskOpen(true)}>
                 {t("newTaskButton")}
               </Button>
             }
@@ -364,13 +407,53 @@ export function TeamProjectTaskTable({
 
       {visibleTasks.length > PAGE_SIZE ? (
         <div className="mt-4 flex justify-end">
-          <Pagination
-            current={currentPage}
-            pageSize={PAGE_SIZE}
-            total={visibleTasks.length}
-            showSizeChanger={false}
-            onChange={setPage}
-          />
+          <Pagination className="mx-0 w-auto justify-end">
+            <PaginationContent>
+              <PaginationItem>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t("prevPageAria")}
+                  disabled={currentPage === 1}
+                  onClick={() => setPage(currentPage - 1)}
+                >
+                  <ChevronLeftIcon aria-hidden className="size-4" />
+                </Button>
+              </PaginationItem>
+              {pageItems(currentPage, pageCount).map((item) =>
+                typeof item === "number" ? (
+                  <PaginationItem key={item}>
+                    <Button
+                      variant={item === currentPage ? "outline" : "ghost"}
+                      size="icon"
+                      className="size-8"
+                      aria-current={item === currentPage ? "page" : undefined}
+                      onClick={() => setPage(item)}
+                    >
+                      {item}
+                    </Button>
+                  </PaginationItem>
+                ) : (
+                  <PaginationItem key={item}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                ),
+              )}
+              <PaginationItem>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="size-8"
+                  aria-label={t("nextPageAria")}
+                  disabled={currentPage === pageCount}
+                  onClick={() => setPage(currentPage + 1)}
+                >
+                  <ChevronRightIcon aria-hidden className="size-4" />
+                </Button>
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
         </div>
       ) : null}
 
