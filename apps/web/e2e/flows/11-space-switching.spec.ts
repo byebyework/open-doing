@@ -10,12 +10,12 @@ import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
  *    进入团队 Dashboard（团队名 + 团队项选中），再切回个人空间；
  * 2. 保留字：团队名为 "Personal" 时 slug 不占用 `personal`，
  *    `/space/personal/dashboard` 仍是个人 Dashboard（Task 2 行为）；
- * 3. 移动端（375px）：汉堡按钮打开 Drawer（与桌面同源导航树），
- *    经 Drawer 内 Kanban 项跳转并断言页面渲染，随后可关闭 Drawer。
+ * 3. 移动端（375px）：汉堡按钮打开 Sheet 抽屉（与桌面同源导航树），
+ *    经抽屉内 Kanban 项跳转并断言页面渲染，随后可关闭抽屉。
  *
  * 切换器选择器对照 `SpaceSwitcher.tsx`：aside 内唯一按钮为触发器，
- * antd Dropdown 菜单渲染在 body portal 中，按 menuitem 文本定位；
- * 选中态是 antd 菜单的 `ant-dropdown-menu-item-selected` 类。
+ * Radix DropdownMenu 菜单渲染在 body portal 中，按 menuitem 文本定位；
+ * 选中态是自定义的 `data-selected=""` 属性（shadcn 无 antd 的选中类）。
  */
 
 // 建团 + 多次跨路由导航在冷启动 dev server 上可能超过默认 60s。
@@ -64,9 +64,7 @@ test.describe("flow 11: 空间切换", () => {
     await expect(switcherTrigger(page)).toHaveText(/个人空间/);
 
     const personalItem = await openSwitcherAndGetItem(page, "个人空间");
-    await expect(personalItem).toHaveClass(
-      /ant-dropdown-menu-item-selected/,
-    );
+    await expect(personalItem).toHaveAttribute("data-selected", "");
     // 无团队时不渲染「我的团队」分组。
     await expect(page.getByText("我的团队", { exact: true })).toHaveCount(0);
 
@@ -77,7 +75,7 @@ test.describe("flow 11: 空间切换", () => {
     // 切换器菜单「我的团队」分组下出现该团队，且为选中态。
     const teamItem = await openSwitcherAndGetItem(page, teamName);
     await expect(page.getByText("我的团队", { exact: true })).toBeVisible();
-    await expect(teamItem).toHaveClass(/ant-dropdown-menu-item-selected/);
+    await expect(teamItem).toHaveAttribute("data-selected", "");
 
     // 点击团队项 → 团队 Dashboard，切换器与选中态同步。
     await teamItem.click();
@@ -102,9 +100,7 @@ test.describe("flow 11: 空间切换", () => {
     await expect(switcherTrigger(page)).toHaveText(/个人空间/);
 
     const personalSelected = await openSwitcherAndGetItem(page, "个人空间");
-    await expect(personalSelected).toHaveClass(
-      /ant-dropdown-menu-item-selected/,
-    );
+    await expect(personalSelected).toHaveAttribute("data-selected", "");
   });
 
   test("保留字：名为 Personal 的团队不占用 /space/personal", async ({
@@ -139,7 +135,12 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
 
   test("汉堡打开 Drawer，经模块项跳 Kanban 并可关闭", async ({ page }) => {
     const username = uniqueUsername("e2e_mob");
-    const hamburger = page.getByRole("button", { name: "打开导航" });
+    // Radix Sheet 是模态抽屉：打开期间外部内容（含触发按钮）被置 aria-hidden，
+    // role 查询默认跳过隐藏节点，需 includeHidden 才能在打开态读到 aria-expanded。
+    const hamburger = page.getByRole("button", {
+      name: "打开导航",
+      includeHidden: true,
+    });
 
     await registerUser(page, username);
 
@@ -182,10 +183,11 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     ).toBeVisible();
     await expect(drawer).toBeHidden();
 
-    // 再次打开并用 Drawer 关闭按钮收起（zhCN 下 close 按钮可访问名为「关闭」）。
+    // 再次打开并用抽屉关闭按钮收起（vendored SheetContent 内置关闭按钮的
+    // sr-only 文案硬编码为 "Close"，不随 locale 翻译）。
     await hamburger.click();
     await expect(drawer).toBeVisible();
-    await drawer.getByRole("button", { name: "关闭" }).click();
+    await drawer.getByRole("button", { name: "Close" }).click();
     await expect(drawer).toBeHidden();
   });
 });

@@ -1,9 +1,16 @@
 "use client";
 
-import { Dropdown } from "antd";
-import type { MenuProps } from "antd";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/shadcn/dropdown-menu";
 
 import {
   createTeamHref,
@@ -74,82 +81,74 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   const currentLabel =
     teams.find((team) => team.slug === selectedKey)?.name ?? t("personalSpace");
 
-  const items: MenuProps["items"] = [
-    {
-      type: "group",
-      label: t("personal"),
-      children: [{ key: "personal", label: t("personalSpace") }],
-    },
-    // 无团队时省略分组标题，避免出现空分组。
-    ...(teams.length > 0
-      ? [
-          {
-            type: "group" as const,
-            label: t("myTeams"),
-            children: teams.map((team) => ({
-              key: `team:${team.slug}`,
-              label: (
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          data-testid="space-switcher-trigger"
+          className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[#e1e3e6] bg-white px-2.5 py-2 text-left text-[13px] transition-colors hover:border-[#c7cdd3] hover:bg-[#f4f5f7]"
+        >
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[#7d2ae8]" />
+          <span className="min-w-0 flex-1 truncate font-semibold text-[#0e1318]">
+            {currentLabel}
+          </span>
+          <svg
+            width="11"
+            height="11"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className="shrink-0 text-[#9aa0a6]"
+            aria-hidden="true"
+          >
+            <path d="M6 9l6 6 6-6" />
+          </svg>
+        </button>
+      </DropdownMenuTrigger>
+      {/* 菜单宽度跟随触发器（antd 菜单默认不小于触发器宽度）。 */}
+      <DropdownMenuContent
+        align="start"
+        className="w-[var(--radix-dropdown-menu-trigger-width)] min-w-48"
+      >
+        <DropdownMenuLabel>{t("personal")}</DropdownMenuLabel>
+        <DropdownMenuItem
+          data-selected={selectedMenuKey === "personal" ? "" : undefined}
+          onSelect={() => router.push(spaceDashboardHref("personal"))}
+        >
+          {t("personalSpace")}
+        </DropdownMenuItem>
+        {/* 无团队时省略分组标题，避免出现空分组。 */}
+        {teams.length > 0 ? (
+          <>
+            <DropdownMenuLabel>{t("myTeams")}</DropdownMenuLabel>
+            {teams.map((team) => (
+              <DropdownMenuItem
+                key={team.slug}
+                data-selected={
+                  selectedMenuKey === `team:${team.slug}` ? "" : undefined
+                }
+                onSelect={() => router.push(spaceDashboardHref(team.slug))}
+              >
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-[#9b87f5]" />
                   {team.name}
                 </span>
-              ),
-            })),
-          },
-        ]
-      : []),
-    { type: "divider" },
-    { key: "create-team", label: t("createTeam") },
-    { key: "join-team", label: t("joinByCode") },
-  ];
-
-  /** 菜单点击：固定入口跳静态路由；`team:` 前缀项解码为团队 slug。 */
-  function handleMenuClick({ key }: { key: string }) {
-    if (key === "personal") {
-      router.push(spaceDashboardHref("personal"));
-    } else if (key === "create-team") {
-      router.push(createTeamHref());
-    } else if (key === "join-team") {
-      router.push(joinTeamHref());
-    } else if (key.startsWith("team:")) {
-      router.push(spaceDashboardHref(key.slice("team:".length)));
-    }
-  }
-
-  return (
-    <Dropdown
-      trigger={["click"]}
-      menu={{
-        items,
-        selectable: true,
-        selectedKeys: selectedMenuKey ? [selectedMenuKey] : [],
-        onClick: handleMenuClick,
-      }}
-    >
-      <button
-        type="button"
-        data-testid="space-switcher-trigger"
-        className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[#e1e3e6] bg-white px-2.5 py-2 text-left text-[13px] transition-colors hover:border-[#c7cdd3] hover:bg-[#f4f5f7]"
-      >
-        <span className="h-2 w-2 shrink-0 rounded-full bg-[#7d2ae8]" />
-        <span className="min-w-0 flex-1 truncate font-semibold text-[#0e1318]">
-          {currentLabel}
-        </span>
-        <svg
-          width="11"
-          height="11"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          className="shrink-0 text-[#9aa0a6]"
-          aria-hidden="true"
-        >
-          <path d="M6 9l6 6 6-6" />
-        </svg>
-      </button>
-    </Dropdown>
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onSelect={() => router.push(createTeamHref())}>
+          {t("createTeam")}
+        </DropdownMenuItem>
+        <DropdownMenuItem onSelect={() => router.push(joinTeamHref())}>
+          {t("joinByCode")}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

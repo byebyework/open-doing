@@ -1,4 +1,3 @@
-import { Tag } from "antd";
 import type { Metadata } from "next";
 import Link from "next/link";
 import dayjs from "dayjs";
@@ -6,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Badge } from "@/components/ui/shadcn/badge";
 import { requireUser } from "@/features/auth/session";
 import { listReceivedInvites } from "@/features/teams/invites/service";
 import { InviteRespondButtons } from "@/features/teams/invites/components/InviteRespondButtons";
@@ -19,30 +19,17 @@ export async function generateMetadata(): Promise<Metadata> {
   return { title: t("invitesTitle") };
 }
 
-/** 邀请结果 tag key（已处理分区）。 */
+/** 邀请结果 tag key + Badge 变体（已处理分区；颜色取 tokens.css 状态色组）。 */
 const RESULT_KEYS = {
-  accepted: "tagAccepted",
-  declined: "tagDeclined",
+  accepted: { labelKey: "tagAccepted", variant: "success" },
+  declined: { labelKey: "tagDeclined", variant: "neutral" },
 } as const;
 
-/** 邀请结果 tag 配色（key 与文案分离，配色与语言无关）。 */
-const RESULT_COLORS = {
-  accepted: { color: "#00b894", background: "rgba(0, 184, 148, 0.12)" },
-  declined: { color: "#5f6368", background: "#f1f3f4" },
-} as const;
-
-/** 「我的加入申请」结果 tag key（已处理项）。 */
+/** 「我的加入申请」结果 tag key + Badge 变体（已处理项）。 */
 const JOIN_RESULT_KEYS = {
-  approved: "tagApproved",
-  declined: "tagNotApproved",
-  cancelled: "tagCancelled",
-} as const;
-
-/** 加入申请结果 tag 配色。 */
-const JOIN_RESULT_COLORS = {
-  approved: { color: "#00b894", background: "rgba(0, 184, 148, 0.12)" },
-  declined: { color: "#5f6368", background: "#f1f3f4" },
-  cancelled: { color: "#5f6368", background: "#f1f3f4" },
+  approved: { labelKey: "tagApproved", variant: "success" },
+  declined: { labelKey: "tagNotApproved", variant: "neutral" },
+  cancelled: { labelKey: "tagCancelled", variant: "neutral" },
 } as const;
 
 /**
@@ -133,24 +120,15 @@ export default async function InvitesPage() {
               </thead>
               <tbody>
                 {resolved.map(({ invite, team }) => {
-                  const resultKey = RESULT_KEYS[invite.status as "accepted" | "declined"];
-                  const resultColor = RESULT_COLORS[invite.status as "accepted" | "declined"];
+                  const result = RESULT_KEYS[invite.status as "accepted" | "declined"];
                   const time = invite.respondedAt ?? invite.createdAt;
                   return (
                     <tr key={invite.id} className="border-t border-[#eceef0]">
                       <td className="py-2.5 font-medium text-[#0e1318]">{team.name}</td>
                       <td className="py-2.5">
                         <span className="flex items-center gap-2.5 text-[#5f6368]">
-                          <Tag
-                            style={{
-                              color: resultColor.color,
-                              background: resultColor.background,
-                              border: "none",
-                              borderRadius: 999,
-                            }}
-                          >
-                            {t(resultKey)}
-                          </Tag>
+                          {/* 原型 invites.html 用 .badge-done / .badge-neutral */}
+                          <Badge variant={result.variant}>{t(result.labelKey)}</Badge>
                           {dayjs(time).format("MM-DD")}
                         </span>
                       </td>
@@ -213,13 +191,9 @@ export default async function InvitesPage() {
               </thead>
               <tbody>
                 {resolvedJoin.map(({ request, team }) => {
-                  const resultKey =
+                  const result =
                     JOIN_RESULT_KEYS[
                       request.status as keyof typeof JOIN_RESULT_KEYS
-                    ];
-                  const resultColor =
-                    JOIN_RESULT_COLORS[
-                      request.status as keyof typeof JOIN_RESULT_COLORS
                     ];
                   const time = request.respondedAt ?? request.createdAt;
                   return (
@@ -227,16 +201,7 @@ export default async function InvitesPage() {
                       <td className="py-2.5 font-medium text-[#0e1318]">{team.name}</td>
                       <td className="py-2.5">
                         <span className="flex items-center gap-2.5 text-[#5f6368]">
-                          <Tag
-                            style={{
-                              color: resultColor.color,
-                              background: resultColor.background,
-                              border: "none",
-                              borderRadius: 999,
-                            }}
-                          >
-                            {t(resultKey)}
-                          </Tag>
+                          <Badge variant={result.variant}>{t(result.labelKey)}</Badge>
                           {dayjs(time).format("MM-DD HH:mm")}
                         </span>
                       </td>
