@@ -32,6 +32,10 @@ export interface SpaceKanbanFilterBarProps {
   caption: string;
   /** 「基准日期 YYYY-MM-DD（周X）」。 */
   todayCaption: string;
+  /** 项目进度（0~1，slug → progress）；传入时选项文案追加 `· NN%`。 */
+  projectProgress?: Record<string, number>;
+  /** 「全部项目」的聚合进度（0~1）；与 `projectProgress` 同时传入。 */
+  allProjectsProgress?: number;
 }
 
 /**
@@ -52,10 +56,21 @@ export function SpaceKanbanFilterBar({
   unassignedOnly = false,
   caption,
   todayCaption,
+  projectProgress,
+  allProjectsProgress,
 }: SpaceKanbanFilterBarProps) {
   const router = useRouter();
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
+
+  /** 选项文案：有进度时按原型追加 `· NN%`。 */
+  function optionLabel(name: string, slug?: string): string {
+    const progress =
+      slug === undefined ? allProjectsProgress : projectProgress?.[slug];
+    return progress === undefined
+      ? name
+      : `${name} · ${Math.round(progress * 100)}%`;
+  }
 
   /** 把筛选状态写回 URL；空筛选回到无 query 的干净地址。 */
   function pushFilter(projectSlug?: string, onlyUnassigned = false) {
@@ -86,10 +101,12 @@ export function SpaceKanbanFilterBar({
           <SelectValue />
         </SelectTrigger>
         <SelectContent>
-          <SelectItem value={ALL_PROJECTS}>{t("allProjects")}</SelectItem>
+          <SelectItem value={ALL_PROJECTS}>
+            {optionLabel(t("allProjects"))}
+          </SelectItem>
           {projects.map((project) => (
             <SelectItem key={project.slug} value={project.slug}>
-              {project.name}
+              {optionLabel(project.name, project.slug)}
             </SelectItem>
           ))}
         </SelectContent>

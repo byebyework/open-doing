@@ -1,12 +1,16 @@
 import type { SpaceType as SharedSpaceType, TaskStatus } from "@open-doing/types";
+import { addDays, aggregateProjectProgress, getTaskProgress } from "@open-doing/types";
 import {
   and,
+  asc,
   desc,
   eq,
   gte,
   inArray,
   isNull,
   lt,
+  lte,
+  ne,
   sql,
   type SQL,
 } from "drizzle-orm";
@@ -20,12 +24,21 @@ export type SpaceType = SharedSpaceType;
 /** 个人空间看板筛选（页面 / action 已把 URL slug 解析成 projectId）。 */
 export interface PersonalSpaceBoardFilter {
   projectId?: string;
+  /** 只看某状态（统计带「待开始 / 进行中 / 已完成」chip）。 */
+  status?: TaskStatus;
+  /** 只看逾期（dueDate < today 且未完成）。 */
+  overdueOnly?: boolean;
+  /** 只看临期（today <= dueDate <= today+3 且未完成）。 */
+  dueSoonOnly?: boolean;
 }
 
-/** 团队空间看板筛选：项目 + 仅未指派（未指定字段即不过滤）。 */
+/** 团队空间看板筛选：项目 + 仅未指派 + 统计带筛选（未指定字段即不过滤）。 */
 export interface TeamSpaceBoardFilter {
   projectId?: string;
   unassignedOnly?: boolean;
+  status?: TaskStatus;
+  overdueOnly?: boolean;
+  dueSoonOnly?: boolean;
 }
 
 /** 空间看板卡片（三列共用；done 卡额外带 `completedAt`）。 */
@@ -115,7 +128,11 @@ export async function getPersonalSpaceBoard(
     clientOrFilter,
     filter,
   );
-  const scope = personalScope(userId, resolvedFilter);
+  const scope = withStatFilterPredicates(
+    personalScope(userId, resolvedFilter),
+    today,
+    resolvedFilter,
+  );
   const recentStart = doneWindowStart(today);
 
   const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
@@ -173,7 +190,11 @@ export async function getOlderDonePersonalTasks(
     clientOrFilter,
     filter,
   );
-  const scope = personalScope(userId, resolvedFilter);
+  const scope = withStatFilterPredicates(
+    personalScope(userId, resolvedFilter),
+    today,
+    resolvedFilter,
+  );
 
   const rows = await selectCards(
     client,
@@ -209,7 +230,11 @@ export async function getTeamSpaceBoard(
     clientOrFilter,
     filter,
   );
-  const scope = teamScope(teamId, resolvedFilter);
+  const scope = withStatFilterPredicates(
+    teamScope(teamId, resolvedFilter),
+    today,
+    resolvedFilter,
+  );
   const recentStart = doneWindowStart(today);
 
   const [todoRows, inProgressRows, doneRows, olderCountRows] = await Promise.all([
@@ -273,7 +298,11 @@ export async function getOlderDoneTeamTasks(
     clientOrFilter,
     filter,
   );
-  const scope = teamScope(teamId, resolvedFilter);
+  const scope = withStatFilterPredicates(
+    teamScope(teamId, resolvedFilter),
+    today,
+    resolvedFilter,
+  );
 
   const rows = await selectTeamCards(
     client,
@@ -331,6 +360,48 @@ export function teamScope(
   }
 
   return andDefined(...conditions);
+}
+
+/**
+ * 统计带筛选谓词（status / overdueOnly / dueSoonOnly），卡片查询与统计共用，
+ * 不分叉。日期比较用 `YYYY-MM-DD` 字符串的字典序（date 列 ISO 口径安全），
+ * 不经 `new Date()` 本地时区换算。
+ */
+function statFilterPredicates(
+  today: string,
+  filter?: Pick<
+    PersonalSpaceBoardFilter,
+    "status" | "overdueOnly" | "dueSoonOnly"
+  >,
+): (SQL | undefined)[] {
+  const conditions: (SQL | undefined)[] = [];
+
+  if (filter?.status) {
+    conditions.push(eq(tasks.status, filter.status));
+  }
+  if (filter?.overdueOnly) {
+    conditions.push(lt(tasks.dueDate, today));
+    conditions.push(ne(tasks.status, "done"));
+  }
+  if (filter?.dueSoonOnly) {
+    conditions.push(gte(tasks.dueDate, today));
+    conditions.push(lte(tasks.dueDate, addDays(today, 3)));
+    conditions.push(ne(tasks.status, "done"));
+  }
+
+  return conditions;
+}
+
+/** 把统计带筛选谓词并入既有范围谓词（空筛选时原样返回 scope）。 */
+function withStatFilterPredicates(
+  scope: SQL<unknown>,
+  today: string,
+  filter?: Pick<
+    PersonalSpaceBoardFilter,
+    "status" | "overdueOnly" | "dueSoonOnly"
+  >,
+): SQL<unknown> {
+  return andDefined(scope, ...statFilterPredicates(today, filter));
 }
 
 /**
@@ -503,4 +574,168 @@ function toTeamCard(row: TeamKanbanCardRow): TeamKanbanCardItem {
     assigneeId: row.assigneeId ?? null,
     assigneeName: row.assigneeName ?? null,
   };
+}
+
+/** 看板统计带计数（Phase 0 口径，与统计带 chips 一一对应）。 */
+export interface KanbanStats {
+  /** 未开始（排除已完成）。 */
+  todo: number;
+  /** 进行中（排除已完成）。 */
+  inProgress: number;
+  /** 近 7 天完成（与 done 列同口径 doneWindowStart）。 */
+  doneRecent: number;
+  /** 逾期：dueDate < today 且未完成。 */
+  overdue: number;
+  /** 临期：today <= dueDate <= today+3 且未完成。 */
+  dueSoon: number;
+}
+
+/**
+ * 个人空间看板统计（统计即筛选的数字来源）。
+ *
+ * 单条聚合查询：五个计数各用 `count(*) filter (where …)`，范围谓词与卡片
+ * 查询同源（personalScope + 统计带筛选谓词），不会分叉。
+ * 入参形态与 `getPersonalSpaceBoard` 一致（client / filter 兼容）。
+ */
+export async function getPersonalKanbanStats(
+  userId: string,
+  today: string,
+  clientOrFilter: DbClient | PersonalSpaceBoardFilter = db,
+  filter?: PersonalSpaceBoardFilter,
+): Promise<KanbanStats> {
+  const { client, filter: resolvedFilter } = resolveClientAndFilter(
+    clientOrFilter,
+    filter,
+  );
+  const scope = withStatFilterPredicates(
+    personalScope(userId, resolvedFilter),
+    today,
+    resolvedFilter,
+  );
+
+  const [row] = await client
+    .select(kanbanStatsSelect(today))
+    .from(tasks)
+    .where(scope);
+
+  return row!;
+}
+
+/**
+ * 团队空间看板统计：口径与个人侧完全一致。
+ *
+ * 范围为 teamScope（项目归属 + 未指派筛选）+ 统计带筛选谓词。
+ * 调用方负责团队成员资格校验。入参形态与 `getTeamSpaceBoard` 一致。
+ */
+export async function getTeamKanbanStats(
+  teamId: string,
+  today: string,
+  clientOrFilter: DbClient | TeamSpaceBoardFilter = db,
+  filter?: TeamSpaceBoardFilter,
+): Promise<KanbanStats> {
+  const { client, filter: resolvedFilter } = resolveClientAndFilter(
+    clientOrFilter,
+    filter,
+  );
+  const scope = withStatFilterPredicates(
+    teamScope(teamId, resolvedFilter),
+    today,
+    resolvedFilter,
+  );
+
+  const [row] = await client
+    .select(kanbanStatsSelect(today))
+    .from(tasks)
+    .innerJoin(projects, eq(tasks.projectId, projects.id))
+    .where(scope);
+
+  return row!;
+}
+
+/** 五个统计计数的一次性 select 片段（`count(*) filter` 各自独立）。 */
+function kanbanStatsSelect(today: string) {
+  const dueSoonEnd = addDays(today, 3);
+  const recentStart = doneWindowStart(today);
+
+  return {
+    todo: sql<number>`(count(*) filter (where ${tasks.status} = 'todo'))::int`,
+    inProgress: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress'))::int`,
+    doneRecent: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.updatedAt} >= ${recentStart}))::int`,
+    overdue: sql<number>`(count(*) filter (where ${tasks.dueDate} < ${today} and ${tasks.status} <> 'done'))::int`,
+    dueSoon: sql<number>`(count(*) filter (where ${tasks.dueDate} >= ${today} and ${tasks.dueDate} <= ${dueSoonEnd} and ${tasks.status} <> 'done'))::int`,
+  };
+}
+
+/** 团队看板项目进度条目（供项目筛选下拉追加 `· NN%`）。 */
+export interface ProjectProgressEntry {
+  projectId: string;
+  /** 0 ~ 1；与 Dashboard 健康度卡同源（taskProgress + aggregateProjectProgress）。 */
+  progress: number;
+}
+
+/**
+ * 团队各项目的聚合进度：每任务进度取 getTaskProgress（子任务完成比，
+ * 无子任务按状态映射），项目进度为各任务进度的简单平均（aggregateProjectProgress）。
+ *
+ * 只统计 `space_type = 'team'` 的任务（与 Dashboard 健康度口径一致）；
+ * 无任务的项目 progress 为 0，仍出现在结果里（下拉需要完整项目列表）。
+ * `today` 参数为计划冻结签名保留（进度公式与日期无关）。
+ */
+export async function getTeamKanbanProjectProgress(
+  teamId: string,
+  today: string,
+  client: DbClient = db,
+): Promise<ProjectProgressEntry[]> {
+  void today;
+
+  const subtaskStats = client
+    .select({
+      taskId: subtasks.taskId,
+      subtaskTotal: sql<number>`count(*)::int`.as("subtask_total"),
+      subtaskDone: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+        "subtask_done",
+      ),
+    })
+    .from(subtasks)
+    .groupBy(subtasks.taskId)
+    .as("subtask_stats");
+
+  const rows = await client
+    .select({
+      projectId: projects.id,
+      status: tasks.status,
+      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
+      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
+    })
+    .from(projects)
+    .leftJoin(
+      tasks,
+      and(eq(tasks.projectId, projects.id), eq(tasks.spaceType, "team")),
+    )
+    .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
+    .where(eq(projects.teamId, teamId))
+    .orderBy(asc(projects.createdAt));
+
+  const progressAccumulators = new Map<string, number[]>();
+  for (const row of rows) {
+    const progresses = progressAccumulators.get(row.projectId) ?? [];
+    if (row.status !== null) {
+      // 用「子任务计数」还原 getTaskProgress 入参，保持进度口径唯一
+      // （与 Dashboard 健康度卡的 taskProgress 完全一致）。
+      progresses.push(
+        getTaskProgress({
+          status: row.status,
+          subtasks: Array.from({ length: row.subtaskTotal }, (_, index) => ({
+            completed: index < row.subtaskDone,
+          })),
+        }),
+      );
+    }
+    progressAccumulators.set(row.projectId, progresses);
+  }
+
+  return [...progressAccumulators.entries()].map(([projectId, progresses]) => ({
+    projectId,
+    progress: aggregateProjectProgress(progresses, progresses.length),
+  }));
 }

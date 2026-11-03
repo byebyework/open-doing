@@ -318,3 +318,52 @@ async function ageTaskUpdatedAt(title: string, days: number): Promise<void> {
     await client.end({ timeout: 5 });
   }
 }
+
+/**
+ * 统计带（统计即筛选）：点击已逾期 chip 写入 `?overdue=1`，看板只剩逾期卡；
+ * 激活 chip 以 aria-pressed 标记，再点取消回到干净地址。日期取远过去 /
+ * 远未来，不依赖真实时钟。
+ */
+test.describe("flow 6: 看板统计带", () => {
+  test("点击已逾期 chip 即筛选：URL 契约、只剩逾期卡、aria-pressed 激活", async ({
+    page,
+  }) => {
+    const username = uniqueUsername("e2e_kstat");
+    const projectName = uniqueLabel("E2E kb stat");
+    const overdueTask = uniqueLabel("E2E kb stat overdue");
+    const futureTask = uniqueLabel("E2E kb stat future");
+
+    await registerUser(page, username);
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, { title: overdueTask, dueDate: "2020-01-01" });
+    await createPersonalTask(page, { title: futureTask, dueDate: "2099-01-01" });
+
+    await page.goto("/space/personal/kanban");
+
+    const overdueChip = page.locator('[data-filter="overdue"]');
+    await expect(overdueChip).toHaveAttribute("aria-pressed", "false");
+
+    // 点击即筛选：URL 写入契约参数，激活态翻转。
+    await overdueChip.click();
+    await expect(page).toHaveURL(/\/space\/personal\/kanban\?overdue=1$/);
+    await expect(overdueChip).toHaveAttribute("aria-pressed", "true");
+
+    // 看板只剩逾期卡，未来到期卡被筛掉。
+    const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
+    await expect(todo.getByText(overdueTask, { exact: true })).toBeVisible();
+    await expect(todo.getByText(futureTask, { exact: true })).toHaveCount(0);
+
+    // 刷新还原同一筛选视图（RSC 按 query 重新过滤）。
+    await page.reload();
+    await expect(todo.getByText(overdueTask, { exact: true })).toBeVisible();
+    await expect(todo.getByText(futureTask, { exact: true })).toHaveCount(0);
+
+    // 再点取消：参数删除，URL 回到干净地址，两张卡都回来。
+    await overdueChip.click();
+    await expect(page).toHaveURL(/\/space\/personal\/kanban$/);
+    await expect(overdueChip).toHaveAttribute("aria-pressed", "false");
+    await expect(todo.getByText(overdueTask, { exact: true })).toBeVisible();
+    await expect(todo.getByText(futureTask, { exact: true })).toBeVisible();
+  });
+});

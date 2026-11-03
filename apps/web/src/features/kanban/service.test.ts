@@ -20,7 +20,10 @@ import { getOlderDoneTasksAction } from "./actions";
 import {
   getOlderDonePersonalTasks,
   getOlderDoneTeamTasks,
+  getPersonalKanbanStats,
   getPersonalSpaceBoard,
+  getTeamKanbanProjectProgress,
+  getTeamKanbanStats,
   getTeamSpaceBoard,
 } from "./service";
 
@@ -1141,6 +1144,179 @@ async function seedActionFixture(db: DbClient) {
 
   return { alice, bob, team, teamProject, personalProject };
 }
+
+describe.skipIf(!hasTestDatabase)("看板统计（统计即筛选，Phase 0 口径）", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    testDbRef.current = db;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("个人统计：todo/inProgress 排除已完成，overdue 排除已完成与未来到期，dueSoon 仅含 today..today+3 窗口", async () => {
+    const { member } = await seedBoard(db);
+
+    // 边界与排除项补充：已完成但截止在过去（overdue 不得计入）、
+    // today+3（计入 dueSoon）、today+4（不计入）、today-1（逾期非临期）。
+    await db.insert(tasks).values([
+      {
+        spaceType: "personal",
+        projectId: null,
+        title: "已逾期的已完成任务",
+        status: "done",
+        dueDate: "2026-10-01",
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "personal",
+        projectId: null,
+        title: "窗口上边界临期",
+        status: "todo",
+        dueDate: "2026-10-24",
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "personal",
+        projectId: null,
+        title: "窗口外未来到期",
+        status: "todo",
+        dueDate: "2026-10-25",
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+      {
+        spaceType: "personal",
+        projectId: null,
+        title: "昨天到期",
+        status: "todo",
+        dueDate: "2026-10-20",
+        assigneeId: member.id,
+        createdById: member.id,
+      },
+    ]);
+
+    const stats = await getPersonalKanbanStats(member.id, TODAY, db);
+
+    // seedBoard：todo 6 / inProgress 1 / doneRecent 2 / 逾期 2（两条逾期 todo）/
+    // 临期 2（今天到期 10-21 + 进行中任务 10-22）。
+    // 补充：3 张 todo（10-24 上边界临期 / 10-25 未来 / 10-20 逾期）+
+    // 1 张 done（默认 updatedAt 落在近 7 天窗口内）；「已逾期的已完成任务」
+    // 被排除在 overdue 之外，「昨天到期」落逾期而非临期。
+    expect(stats).toEqual({
+      todo: 9,
+      inProgress: 1,
+      doneRecent: 3,
+      overdue: 3,
+      dueSoon: 3,
+    });
+  });
+
+  it("统计与卡片查询共用同一组谓词：status / overdueOnly / dueSoonOnly 同步收窄", async () => {
+    const { member } = await seedBoard(db);
+
+    // overdueOnly：卡片只剩两条逾期 todo，done 侧全部为空。
+    const board = await getPersonalSpaceBoard(member.id, TODAY, {
+      overdueOnly: true,
+    });
+    expect(board.todo.map((card) => card.title)).toEqual([
+      "逾期较早",
+      "逾期较晚",
+    ]);
+    expect(board.inProgress).toEqual([]);
+    expect(board.doneRecent).toEqual([]);
+    expect(board.doneOlderCount).toBe(0);
+
+    const overdueStats = await getPersonalKanbanStats(member.id, TODAY, {
+      overdueOnly: true,
+    });
+    expect(overdueStats).toEqual({
+      todo: 2,
+      inProgress: 0,
+      doneRecent: 0,
+      overdue: 2,
+      dueSoon: 0,
+    });
+
+    // status + dueSoonOnly 组合：只看 todo 且 3 天内到期（今天到期一张卡）。
+    const board2 = await getPersonalSpaceBoard(member.id, TODAY, {
+      status: "todo",
+      dueSoonOnly: true,
+    });
+    expect(board2.todo.map((card) => card.title)).toEqual(["今天到期"]);
+    expect(board2.inProgress).toEqual([]);
+
+    const dueSoonStats = await getPersonalKanbanStats(member.id, TODAY, {
+      status: "todo",
+      dueSoonOnly: true,
+    });
+    expect(dueSoonStats).toEqual({
+      todo: 1,
+      inProgress: 0,
+      doneRecent: 0,
+      overdue: 0,
+      dueSoon: 1,
+    });
+  });
+
+  it("团队统计：同口径聚合，unassignedOnly 与谓词组合生效", async () => {
+    const { teamA } = await seedTeamBoard(db);
+
+    const stats = await getTeamKanbanStats(teamA.id, TODAY, db);
+
+    // seedTeamBoard（团队 A）：todo 7 / inProgress 1 / doneRecent 2 /
+    // 逾期 3（逾期较早 + 成员退出任务 + 逾期较晚）/ 临期 2（今天到期 + 进行中任务）。
+    expect(stats).toEqual({
+      todo: 7,
+      inProgress: 1,
+      doneRecent: 2,
+      overdue: 3,
+      dueSoon: 2,
+    });
+
+    const unassigned = await getTeamKanbanStats(teamA.id, TODAY, {
+      unassignedOnly: true,
+    });
+    // 未指派：成员退出任务（逾期）+ 未指派任务 + 很久以前完成（窗口外）。
+    expect(unassigned).toEqual({
+      todo: 2,
+      inProgress: 0,
+      doneRecent: 0,
+      overdue: 1,
+      dueSoon: 0,
+    });
+
+    // 卡片查询同谓词：未指派看板只剩两张未完成卡。
+    const board = await getTeamSpaceBoard(teamA.id, TODAY, {
+      unassignedOnly: true,
+    });
+    expect(board.todo.map((card) => card.title).sort()).toEqual([
+      "成员退出任务",
+      "未指派任务",
+    ]);
+    expect(board.doneRecent).toEqual([]);
+  });
+
+  it("团队项目进度与 Dashboard 健康度同源（getTaskProgress + aggregateProjectProgress）", async () => {
+    const { teamA, growth, retention, defense } = await seedTeamBoard(db);
+
+    const entries = await getTeamKanbanProjectProgress(teamA.id, TODAY, db);
+
+    // 只含团队 A 的项目；growth：todo×3(0) + 今天到期(2/5=0.4) +
+    // 进行中(0.5) + done×2(1) → 2.9/7；retention：done×2 → 2/5。
+    expect(entries).toEqual([
+      { projectId: growth.id, progress: 2.9 / 7 },
+      { projectId: retention.id, progress: 0.4 },
+    ]);
+    // 团队 B 的项目（有任务）不混入。
+    expect(entries.map((entry) => entry.projectId)).not.toContain(defense.id);
+  });
+});
 
 describe.skipIf(!hasTestDatabase)("展开取数 action（getOlderDoneTasksAction）", () => {
   let db: DbClient;

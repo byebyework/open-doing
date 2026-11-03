@@ -2,10 +2,12 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { requireUser } from "@/features/auth/session";
+import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
 import { PersonalKanbanNewTaskButton } from "@/features/kanban/components/PersonalKanbanNewTaskButton";
-import { getPersonalSpaceBoard } from "@/features/kanban/service";
+import { getPersonalKanbanStats, getPersonalSpaceBoard } from "@/features/kanban/service";
+import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
@@ -31,10 +33,11 @@ export default async function PersonalKanbanPage(
   const tNav = await getTranslations("nav");
   const user = await requireUser();
   const today = todayInShanghai();
-  const { project: projectParam } = await props.searchParams;
+  const { project: projectParam, ...statParams } = await props.searchParams;
   const requestedSlug = Array.isArray(projectParam)
     ? projectParam[0]
     : projectParam;
+  const statFilter = parseStatFilterParams(statParams);
 
   // 筛选条件依赖项目列表（slug → id），故先取项目再取看板。
   const projects = await listPersonalProjects(user.id);
@@ -42,11 +45,15 @@ export default async function PersonalKanbanPage(
     (project) => project.slug === requestedSlug,
   );
 
-  const board = await getPersonalSpaceBoard(
-    user.id,
-    today,
-    activeProject ? { projectId: activeProject.id } : undefined,
-  );
+  const filter = {
+    ...(activeProject ? { projectId: activeProject.id } : {}),
+    ...statFilter,
+  };
+  // 卡片与统计共用同一组筛选谓词（统计带数字与看板内容不叉）。
+  const [board, stats] = await Promise.all([
+    getPersonalSpaceBoard(user.id, today, filter),
+    getPersonalKanbanStats(user.id, today, filter),
+  ]);
 
   const taskHrefs = Object.fromEntries(
     [...board.todo, ...board.inProgress, ...board.doneRecent].map((card) => [
@@ -77,6 +84,20 @@ export default async function PersonalKanbanPage(
           />
         </div>
       </header>
+
+      <KanbanStatStrip
+        stats={stats}
+        today={today}
+        active={{
+          status: statFilter.status,
+          overdue: statFilter.overdueOnly,
+          dueSoon: statFilter.dueSoonOnly,
+        }}
+        basePath={moduleHref("personal", "kanban")}
+        preserveParams={
+          activeProject ? { project: activeProject.slug } : {}
+        }
+      />
 
       <SpaceKanbanFilterBar
         variant="personal"

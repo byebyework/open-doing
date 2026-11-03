@@ -1,13 +1,20 @@
 import type { Metadata } from "next";
+import { aggregateProjectProgress } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
+import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
-import { getTeamSpaceBoard } from "@/features/kanban/service";
+import {
+  getTeamKanbanProjectProgress,
+  getTeamKanbanStats,
+  getTeamSpaceBoard,
+} from "@/features/kanban/service";
+import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listTeamProjects } from "@/features/projects/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
@@ -42,14 +49,18 @@ export default async function TeamKanbanPage(
   props: PageProps<"/space/[teamSlug]/kanban">,
 ) {
   const { teamSlug } = await props.params;
-  const { project: projectParam, assignee: assigneeParam } =
-    await props.searchParams;
+  const {
+    project: projectParam,
+    assignee: assigneeParam,
+    ...statParams
+  } = await props.searchParams;
   const requestedSlug = Array.isArray(projectParam)
     ? projectParam[0]
     : projectParam;
   const assigneeValue = Array.isArray(assigneeParam)
     ? assigneeParam[0]
     : assigneeParam;
+  const statFilter = parseStatFilterParams(statParams);
 
   const t = await getTranslations("kanban");
   const tDate = await getTranslations("date");
@@ -68,12 +79,30 @@ export default async function TeamKanbanPage(
   );
   const unassignedOnly = assigneeValue === "unassigned";
 
-  const board = await getTeamSpaceBoard(
-    team.id,
-    today,
-    activeProject || unassignedOnly
-      ? { projectId: activeProject?.id, unassignedOnly }
-      : undefined,
+  const filter = {
+    ...(activeProject ? { projectId: activeProject.id } : {}),
+    unassignedOnly,
+    ...statFilter,
+  };
+  // 卡片、统计与项目进度共用同一组筛选谓词（统计带数字与看板内容不叉）。
+  const [board, stats, progressEntries] = await Promise.all([
+    getTeamSpaceBoard(team.id, today, filter),
+    getTeamKanbanStats(team.id, today, filter),
+    getTeamKanbanProjectProgress(team.id, today),
+  ]);
+
+  // 项目筛选下拉的 `· NN%`：slug → 进度 + 全部项目的简单平均。
+  const progressBySlug = new Map(
+    projects.map((project) => {
+      const entry = progressEntries.find(
+        (item) => item.projectId === project.id,
+      );
+      return [project.slug, entry?.progress ?? 0];
+    }),
+  );
+  const allProjectsProgress = aggregateProjectProgress(
+    progressEntries.map((entry) => entry.progress),
+    progressEntries.length,
   );
 
   // 卡片只有 projectId；href 需要 project slug，用当前项目列表反查。
@@ -126,12 +155,29 @@ export default async function TeamKanbanPage(
         ) : null}
       </header>
 
+      <KanbanStatStrip
+        stats={stats}
+        today={today}
+        active={{
+          status: statFilter.status,
+          overdue: statFilter.overdueOnly,
+          dueSoon: statFilter.dueSoonOnly,
+        }}
+        basePath={moduleHref(team.slug, "kanban")}
+        preserveParams={{
+          ...(activeProject ? { project: activeProject.slug } : {}),
+          ...(unassignedOnly ? { assignee: "unassigned" } : {}),
+        }}
+      />
+
       <SpaceKanbanFilterBar
         variant="team"
         basePath={moduleHref(team.slug, "kanban")}
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         unassignedOnly={unassignedOnly}
+        projectProgress={Object.fromEntries(progressBySlug)}
+        allProjectsProgress={allProjectsProgress}
         caption={t("captionTeam", {
           project: projectName,
           count: incompleteTotal,
