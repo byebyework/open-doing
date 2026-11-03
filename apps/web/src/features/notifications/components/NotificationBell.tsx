@@ -1,13 +1,21 @@
 "use client";
 
 import type { NotificationType } from "@open-doing/types";
-import { App, Badge, Button, Empty, Popover, Typography, theme, type GlobalToken,  } from "antd";
 import dayjs from "dayjs";
 import relativeTime from "dayjs/plugin/relativeTime";
+import { Loader2Icon } from "lucide-react";
 import { useMessages, useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
+import { EmptyState } from "@/components/ui/EmptyState";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/shadcn/popover";
 import { createTranslator } from "@/i18n/translate";
 
 import { markAllNotificationsReadAction, markNotificationReadAction } from "../actions";
@@ -19,8 +27,6 @@ dayjs.extend(relativeTime);
 
 /** 轮询间隔：30 秒。 */
 const POLL_INTERVAL_MS = 30_000;
-/** 弹层宽度（与原型 360px 对齐，窄屏时收敛到视口内）。 */
-const POPOVER_WIDTH = 360;
 /** 列表最大高度（与原型一致，超出滚动）。 */
 const LIST_MAX_HEIGHT = 340;
 
@@ -56,32 +62,31 @@ function parsePollPayload(data: unknown): NotificationPollPayload | null {
   };
 }
 
-/** 通知类型 → 图标配色（只用 antd 设计令牌，不写死颜色值）。 */
+/** 通知类型 → 图标配色（只用 design tokens，对齐原型 `notif-pop` 形态）。 */
 function typeColors(
   type: NotificationType,
-  token: GlobalToken,
 ): { color: string; background: string } {
   switch (type) {
     case "team_invite":
-      // 未读行背景也是 colorPrimaryBg，图标改用同色系的深一档令牌保持可见。
-      return { color: token.colorPrimary, background: token.colorPrimaryBgHover };
+      // 未读行背景也是淡紫系，图标用品牌主色保持可见。
+      return { color: "var(--primary)", background: "var(--accent-lavender-bg)" };
     case "team_join_requested":
-      // 待审批的待办感：与邀请同色系；未读行背景也是 colorPrimaryBg，图标改用深一档令牌保持可见。
-      return { color: token.colorPrimary, background: token.colorPrimaryBgHover };
+      // 待审批的待办感：与邀请同色系。
+      return { color: "var(--primary)", background: "var(--accent-lavender-bg)" };
     case "team_join_approved":
-      return { color: token.colorSuccess, background: token.colorSuccessBg };
+      return { color: "var(--success-500)", background: "var(--success-bg)" };
     case "team_join_declined":
-      return { color: token.colorTextSecondary, background: token.colorFillSecondary };
+      return { color: "var(--color-text-faint)", background: "var(--muted)" };
     case "task_assigned":
-      return { color: token.colorInfo, background: token.colorInfoBg };
+      return { color: "var(--info-500)", background: "var(--info-bg)" };
     case "task_due_soon":
-      return { color: token.colorWarning, background: token.colorWarningBg };
+      return { color: "var(--warning-500)", background: "var(--warning-bg)" };
     case "task_overdue":
-      return { color: token.colorError, background: token.colorErrorBg };
+      return { color: "var(--error-500)", background: "var(--error-bg)" };
     case "task_commented":
-      return { color: token.colorSuccess, background: token.colorSuccessBg };
+      return { color: "var(--success-500)", background: "var(--success-bg)" };
     case "task_changed_by_admin":
-      return { color: token.colorTextSecondary, background: token.colorFillSecondary };
+      return { color: "var(--color-text-faint)", background: "var(--muted)" };
   }
 }
 
@@ -207,9 +212,7 @@ function NotificationTypeIcon({ type }: { type: NotificationType }) {
  * 已知偏差：原型底部的「查看全部通知」链接在 v1 没有独立通知页，按计划省略。
  */
 export function NotificationBell() {
-  const { message } = App.useApp();
   const router = useRouter();
-  const { token } = theme.useToken();
   const t = useTranslations("notifications");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
@@ -294,7 +297,7 @@ export function NotificationBell() {
     try {
       const result = await markAllNotificationsReadAction();
       if (!result.ok) {
-        message.error(result.errors.form ?? tErrors("operationFailed"));
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
         return;
       }
 
@@ -303,7 +306,7 @@ export function NotificationBell() {
         previous.map((item) => (item.read ? item : { ...item, read: true })),
       );
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setMarkingAll(false);
     }
@@ -332,131 +335,100 @@ export function NotificationBell() {
     }
   }
 
-  const content = (
-    <div style={{ width: POPOVER_WIDTH, maxWidth: "calc(100vw - 32px)" }}>
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 8,
-          padding: "4px 4px 10px",
-          borderBottom: `1px solid ${token.colorBorderSecondary}`,
-        }}
-      >
-        <span style={{ fontSize: 14, fontWeight: 700, color: token.colorText }}>{t("bellTitle")}</span>
-        <Button
-          type="text"
-          size="small"
-          disabled={unreadCount === 0}
-          loading={markingAll}
-          onClick={() => {
-            void handleMarkAllRead();
-          }}
-        >
-          {t("markAllRead")}
-        </Button>
-      </div>
-
-      <div style={{ maxHeight: LIST_MAX_HEIGHT, overflowY: "auto" }}>
-        {items.length === 0 ? (
-          <Empty
-            image={Empty.PRESENTED_IMAGE_SIMPLE}
-            description={t("empty")}
-            style={{ margin: "24px 0" }}
-          />
-        ) : (
-          items.map((item) => {
-            const body = formatNotificationBody(item, tCopy);
-            const colors = typeColors(item.type, token);
-
-            return (
-              <button
-                key={item.id}
-                type="button"
-                onClick={() => {
-                  void handleItemClick(item);
-                }}
-                style={{
-                  display: "flex",
-                  alignItems: "flex-start",
-                  gap: 10,
-                  width: "100%",
-                  padding: "12px 16px",
-                  border: "none",
-                  borderBottom: `1px solid ${token.colorBorderSecondary}`,
-                  background: item.read ? "transparent" : token.colorPrimaryBg,
-                  cursor: "pointer",
-                  textAlign: "left",
-                }}
-              >
-                <span
-                  style={{
-                    display: "grid",
-                    placeItems: "center",
-                    width: 30,
-                    height: 30,
-                    borderRadius: 9999,
-                    flex: "none",
-                    color: colors.color,
-                    background: colors.background,
-                  }}
-                >
-                  <NotificationTypeIcon type={item.type} />
-                </span>
-
-                <span style={{ flex: 1, minWidth: 0 }}>
-                  <Typography.Text
-                    style={{ fontSize: 12.5, lineHeight: 1.5, color: token.colorText }}
-                  >
-                    {body.parts.map((part, index) =>
-                      part.bold ? (
-                        <b key={index} style={{ fontWeight: 600 }}>
-                          {part.text}
-                        </b>
-                      ) : (
-                        <span key={index}>{part.text}</span>
-                      ),
-                    )}
-                  </Typography.Text>
-                  <span
-                    style={{
-                      display: "block",
-                      marginTop: 2,
-                      fontSize: 11,
-                      color: token.colorTextTertiary,
-                    }}
-                  >
-                    {dayjs(item.createdAt).fromNow()}
-                  </span>
-                </span>
-              </button>
-            );
-          })
-        )}
-      </div>
-    </div>
-  );
-
   return (
-    <Popover
-      content={content}
-      trigger="click"
-      placement="bottomRight"
-      arrow={false}
-      styles={{ content: { padding: 0 } }}
-    >
-      <Button
-        type="text"
-        shape="circle"
-        data-testid="notification-bell-button"
-        aria-label={unreadCount > 0 ? t("ariaLabelUnread", { count: unreadCount }) : t("ariaLabel")}
-        icon={
-          <Badge count={unreadCount} size="small" offset={[2, -2]}>
-            <BellIcon />
-          </Badge>
-        }
-      />
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          data-testid="notification-bell-button"
+          aria-label={
+            unreadCount > 0
+              ? t("ariaLabelUnread", { count: unreadCount })
+              : t("ariaLabel")
+          }
+          className="relative grid size-9 place-items-center rounded-full text-[#5f6368] transition-colors outline-none hover:bg-[#f4f5f7] focus-visible:ring-[3px] focus-visible:ring-ring/40"
+        >
+          <BellIcon />
+          {unreadCount > 0 ? (
+            // 角标形态对齐原型 `.notif-dot`：错误色 pill、卡片色描边。
+            <span className="absolute top-[7px] right-[7px] grid h-[15px] min-w-[15px] place-items-center rounded-[var(--radius-pill)] border-2 border-[var(--card)] bg-[var(--error)] px-[3px] text-[9.5px] font-bold leading-none text-white">
+              {unreadCount > 99 ? "99+" : unreadCount}
+            </span>
+          ) : null}
+        </button>
+      </PopoverTrigger>
+
+      <PopoverContent
+        align="end"
+        className="w-[360px] max-w-[calc(100vw-32px)] p-0"
+      >
+        <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-[13px]">
+          <span className="text-[14px] font-bold text-[#0e1318]">
+            {t("bellTitle")}
+          </span>
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={unreadCount === 0 || markingAll}
+            onClick={() => {
+              void handleMarkAllRead();
+            }}
+          >
+            {markingAll ? (
+              <Loader2Icon className="animate-spin" aria-hidden="true" />
+            ) : null}
+            {t("markAllRead")}
+          </Button>
+        </div>
+
+        <div className="max-h-[340px] overflow-y-auto">
+          {items.length === 0 ? (
+            <EmptyState title={t("empty")} />
+          ) : (
+            items.map((item) => {
+              const body = formatNotificationBody(item, tCopy);
+              const colors = typeColors(item.type);
+
+              return (
+                <button
+                  key={item.id}
+                  type="button"
+                  onClick={() => {
+                    void handleItemClick(item);
+                  }}
+                  className={`flex w-full items-start gap-2.5 border-b border-[var(--border)] px-4 py-3 text-left transition-colors last:border-b-0 hover:bg-[var(--muted)] ${
+                    item.read ? "bg-transparent" : "bg-[var(--surface-cool)]"
+                  }`}
+                >
+                  <span
+                    className="grid size-[30px] flex-none place-items-center rounded-full"
+                    style={{ color: colors.color, background: colors.background }}
+                  >
+                    <NotificationTypeIcon type={item.type} />
+                  </span>
+
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-[12.5px] leading-[1.5] text-[#0e1318]">
+                      {body.parts.map((part, index) =>
+                        part.bold ? (
+                          <b key={index} className="font-semibold">
+                            {part.text}
+                          </b>
+                        ) : (
+                          <span key={index}>{part.text}</span>
+                        ),
+                      )}
+                    </span>
+                    <span className="mt-0.5 block text-[11px] text-[var(--color-text-faint)]">
+                      {dayjs(item.createdAt).fromNow()}
+                    </span>
+                  </span>
+                </button>
+              );
+            })
+          )}
+        </div>
+      </PopoverContent>
     </Popover>
   );
 }

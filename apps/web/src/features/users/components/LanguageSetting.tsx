@@ -1,9 +1,16 @@
 "use client";
 
-import { App, Select } from "antd";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { useTranslations } from "next-intl";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
+import { toast } from "sonner";
 
 import type { AppLocale } from "@/i18n/config";
 
@@ -14,7 +21,7 @@ export interface LanguageSettingProps {
   language: AppLocale;
 }
 
-/** antd Select 可选项（语言名用各自母语展示，不随 locale 翻译）。 */
+/** 语言可选项（语言名用各自母语展示，不随 locale 翻译）。 */
 const LANGUAGE_OPTIONS = [
   { value: "zh", label: "简体中文" },
   { value: "en", label: "English" },
@@ -28,7 +35,6 @@ const LANGUAGE_OPTIONS = [
  * （用户可能在看不懂当前界面语言时需要找到这个入口）。
  */
 export function LanguageSetting({ language }: LanguageSettingProps) {
-  const { message } = App.useApp();
   const t = useTranslations("settings");
   const router = useRouter();
   const [current, setCurrent] = useState<AppLocale>(language);
@@ -49,7 +55,7 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
   useEffect(() => {
     if (pendingToast.current !== null && pendingToast.current === language) {
       pendingToast.current = null;
-      message.success(t("languageChanged"));
+      toast.success(t("languageChanged"));
     }
   }, [language, t]);
 
@@ -61,14 +67,14 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
         const result = await updateLanguageAction({ language: next });
         if (!result.ok) {
           // 失败时界面没有切换语言，用当前（旧）语言的错误提示是正确的。
-          message.error(t("saveFailed"));
+          toast.error(t("saveFailed"));
           setCurrent(previous);
           return;
         }
         pendingToast.current = next;
         router.refresh();
       } catch {
-        message.error(t("saveFailed"));
+        toast.error(t("saveFailed"));
         setCurrent(previous);
       }
     });
@@ -84,16 +90,26 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
           {t("languageCaption")}
         </div>
       </div>
-      <Select<AppLocale>
-        data-testid="language-select"
+      <Select
         value={current}
-        options={[...LANGUAGE_OPTIONS]}
-        loading={pending}
+        onValueChange={(value) => handleChange(value as AppLocale)}
         disabled={pending}
-        onChange={handleChange}
-        aria-label={t("language")}
-        className="w-[140px]"
-      />
+      >
+        <SelectTrigger
+          className="w-[140px]"
+          data-testid="language-select"
+          aria-label={t("language")}
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {LANGUAGE_OPTIONS.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
     </div>
   );
 }

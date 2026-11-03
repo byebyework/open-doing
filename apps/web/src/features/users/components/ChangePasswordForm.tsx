@@ -1,17 +1,19 @@
 "use client";
 
-import { App, Alert, Button, Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
 import { changePasswordAction } from "@/features/auth/actions";
 import { PASSWORD_MIN_LENGTH } from "@/features/auth/constants";
-
-interface ChangePasswordValues {
-  oldPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}
 
 /**
  * 修改密码表单（个人设置页客户端交互层）。
@@ -21,22 +23,44 @@ interface ChangePasswordValues {
  * 表单级错误显示在顶部。修改成功后不登出（无状态会话保持不变）。
  */
 export function ChangePasswordForm() {
-  const { message } = App.useApp();
   const t = useTranslations("settings");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<ChangePasswordValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleFinish(values: ChangePasswordValues) {
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z
+    .object({
+      oldPassword: z.string().min(1, t("oldPasswordRequired")),
+      newPassword: z
+        .string()
+        .min(1, t("newPasswordRequired"))
+        .min(
+          PASSWORD_MIN_LENGTH,
+          t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }),
+        ),
+      confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
+    })
+    .refine((values) => values.newPassword === values.confirmPassword, {
+      path: ["confirmPassword"],
+      message: t("passwordMismatch"),
+    });
+  type ChangePasswordValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    reset,
+    formState: { errors },
+  } = useForm<ChangePasswordValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { oldPassword: "", newPassword: "", confirmPassword: "" },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
-    // 清掉上一次提交留下的服务端字段错误，避免旧错误残留在别的输入框。
-    form.setFields([
-      { name: "oldPassword", errors: [] },
-      { name: "newPassword", errors: [] },
-      { name: "confirmPassword", errors: [] },
-    ]);
 
     try {
       const result = await changePasswordAction({
@@ -45,112 +69,120 @@ export function ChangePasswordForm() {
       });
 
       if (!result.ok) {
-        const fieldErrors: {
-          name: "oldPassword" | "newPassword";
-          errors: string[];
-        }[] = [];
-
         if (result.errors.oldPassword) {
-          fieldErrors.push({
-            name: "oldPassword",
-            errors: [result.errors.oldPassword],
-          });
+          setError("oldPassword", { message: result.errors.oldPassword });
         }
         if (result.errors.newPassword) {
-          fieldErrors.push({
-            name: "newPassword",
-            errors: [result.errors.newPassword],
-          });
+          setError("newPassword", { message: result.errors.newPassword });
         }
-        if (fieldErrors.length > 0) form.setFields(fieldErrors);
         if (result.errors.form) setFormError(result.errors.form);
         return;
       }
 
-      message.success(t("passwordUpdated"));
-      form.resetFields();
+      toast.success(t("passwordUpdated"));
+      reset();
     } catch {
       setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
-    <div>
+    <div className="max-w-[460px]">
       {formError ? (
-        <Alert
-          type="error"
-          showIcon
-          title={formError}
-          className="mb-4"
-          role="alert"
-        />
+        <Alert variant="destructive" role="alert" className="mb-4">
+          {formError}
+        </Alert>
       ) : null}
 
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        onFinish={handleFinish}
-        disabled={submitting}
-        className="max-w-[460px]"
-      >
-        <Form.Item
-          label={t("oldPassword")}
-          name="oldPassword"
-          rules={[{ required: true, message: t("oldPasswordRequired") }]}
-        >
-          <Input.Password
+      <form onSubmit={onSubmit} noValidate>
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="settings-old-password">{t("oldPassword")}</Label>
+          <Input
+            id="settings-old-password"
+            type="password"
             data-testid="settings-old-password-input"
             placeholder={t("oldPasswordPlaceholder")}
             autoComplete="current-password"
+            aria-invalid={errors.oldPassword ? true : undefined}
+            aria-describedby={
+              errors.oldPassword ? "settings-old-password-error" : undefined
+            }
+            disabled={submitting}
+            {...register("oldPassword")}
           />
-        </Form.Item>
+          {errors.oldPassword ? (
+            <p id="settings-old-password-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.oldPassword.message}
+            </p>
+          ) : null}
+        </div>
 
-        <Form.Item
-          label={t("newPassword")}
-          name="newPassword"
-          rules={[
-            { required: true, message: t("newPasswordRequired") },
-            { min: PASSWORD_MIN_LENGTH, message: t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }) },
-          ]}
-        >
-          <Input.Password data-testid="settings-new-password-input" placeholder={t("newPasswordPlaceholder", { min: PASSWORD_MIN_LENGTH })} autoComplete="new-password" />
-        </Form.Item>
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="settings-new-password">{t("newPassword")}</Label>
+          <Input
+            id="settings-new-password"
+            type="password"
+            data-testid="settings-new-password-input"
+            placeholder={t("newPasswordPlaceholder", { min: PASSWORD_MIN_LENGTH })}
+            autoComplete="new-password"
+            aria-invalid={errors.newPassword ? true : undefined}
+            aria-describedby={
+              errors.newPassword ? "settings-new-password-error" : undefined
+            }
+            disabled={submitting}
+            {...register("newPassword")}
+          />
+          {errors.newPassword ? (
+            <p id="settings-new-password-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.newPassword.message}
+            </p>
+          ) : null}
+        </div>
 
-        <Form.Item
-          label={t("confirmPassword")}
-          name="confirmPassword"
-          dependencies={["newPassword"]}
-          rules={[
-            { required: true, message: t("confirmPasswordRequired") },
-            ({ getFieldValue }) => ({
-              validator(_rule, value: string) {
-                if (!value || getFieldValue("newPassword") === value) {
-                  return Promise.resolve();
-                }
-                return Promise.reject(new Error(t("passwordMismatch")));
-              },
-            }),
-          ]}
-        >
-          <Input.Password
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="settings-confirm-password">
+            {t("confirmPassword")}
+          </Label>
+          <Input
+            id="settings-confirm-password"
+            type="password"
             data-testid="settings-confirm-password-input"
             placeholder={t("confirmPasswordPlaceholder")}
             autoComplete="new-password"
+            aria-invalid={errors.confirmPassword ? true : undefined}
+            aria-describedby={
+              errors.confirmPassword
+                ? "settings-confirm-password-error"
+                : undefined
+            }
+            disabled={submitting}
+            {...register("confirmPassword")}
           />
-        </Form.Item>
+          {errors.confirmPassword ? (
+            <p id="settings-confirm-password-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.confirmPassword.message}
+            </p>
+          ) : null}
+        </div>
 
         <div className="flex flex-wrap items-center gap-3">
-          <Button type="primary" htmlType="submit" loading={submitting} data-testid="settings-update-password-button">
+          <Button
+            type="submit"
+            disabled={submitting}
+            data-testid="settings-update-password-button"
+          >
+            {submitting ? (
+              <Loader2Icon className="animate-spin" aria-hidden="true" />
+            ) : null}
             {t("updatePassword")}
           </Button>
           <span className="text-[12px] text-[#9aa0a6]">
             {t("keepLoggedInHint")}
           </span>
         </div>
-      </Form>
+      </form>
     </div>
   );
 }

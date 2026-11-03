@@ -1,7 +1,8 @@
-import { Alert, Tag } from "antd";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Badge } from "@/components/ui/shadcn/badge";
 import { requireUser } from "@/features/auth/session";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
 import { LanguageSetting } from "@/features/users/components/LanguageSetting";
@@ -83,12 +84,9 @@ export default async function PersonalSettingsPage() {
 
           <LanguageSetting language={userLanguage ?? "zh"} />
 
-          <Alert
-            type="info"
-            showIcon
-            title={t("remindersDisabledAlert")}
-            className="mt-4"
-          />
+          <Alert variant="info" className="mt-4">
+            {t("remindersDisabledAlert")}
+          </Alert>
         </section>
 
         <section className={CARD_CLASS}>
@@ -106,26 +104,17 @@ export default async function PersonalSettingsPage() {
                 {t("byRecentActivityDesc")}
               </div>
             </div>
-            <Tag
-              className="flex-none"
-              style={{
-                margin: 0,
-                color: "#0d99ff",
-                background: "rgba(13, 153, 255, 0.1)",
-                border: "none",
-                borderRadius: 999,
-              }}
+            <Badge
+              variant="outline"
+              className="flex-none rounded-[var(--radius-pill)] border-transparent bg-[var(--info-bg)] px-2 py-0 text-[12px] font-medium leading-5 text-[var(--info-500)]"
             >
               {t("currentRule")}
-            </Tag>
+            </Badge>
           </div>
 
-          <Alert
-            type="info"
-            showIcon
-            title={t("orderingScopeAlert")}
-            className="mt-4"
-          />
+          <Alert variant="info" className="mt-4">
+            {t("orderingScopeAlert")}
+          </Alert>
         </section>
       </div>
     </div>

@@ -39,10 +39,7 @@ test.describe("flow 12: 英文界面冒烟", () => {
     // ===== 设置页切英文 =====
     await page.goto("/space/personal/settings");
     await page.getByTestId(TEST_IDS.settings.languageSelect).click();
-    await page
-      .locator(".ant-select-item-option")
-      .filter({ hasText: "English" })
-      .click();
+    await page.getByRole("option", { name: "English" }).click();
 
     // 成功 toast（文案是被测行为）+ RSC 以英文重渲染。
     await expect(page.getByText("Language updated")).toBeVisible();
@@ -143,10 +140,7 @@ test.describe("flow 12: 英文界面冒烟", () => {
     // ===== 切回简体中文 =====
     await page.goto("/space/personal/settings");
     await page.getByTestId(TEST_IDS.settings.languageSelect).click();
-    await page
-      .locator(".ant-select-item-option")
-      .filter({ hasText: "简体中文" })
-      .click();
+    await page.getByRole("option", { name: "简体中文" }).click();
     await expect(
       page.getByRole("heading", { name: "设置", level: 1 }),
     ).toBeVisible();

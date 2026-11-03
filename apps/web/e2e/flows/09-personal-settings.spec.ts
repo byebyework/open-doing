@@ -79,16 +79,21 @@ test.describe("flow 9: 个人空间设置", () => {
     await confirmPasswordInput.fill(newPassword);
     await page.getByTestId(TEST_IDS.settings.updatePasswordButton).click();
 
-    // 以包含「旧密码」输入框的 Form.Item 为作用域，而不是页面级文本——
-    // 否则错误即便错误地落到 errors.form 也仍会通过。
-    const oldPasswordItem = page
-      .locator(".ant-form-item")
-      .filter({ has: oldPasswordInput });
-    await expect(oldPasswordItem).toHaveCount(1);
+    // 字段级作用域断言（等价于旧 antd Form.Item 作用域）：shadcn 表单把
+    // 字段错误渲染进 `#settings-old-password-error` 并以 aria-describedby
+    // 绑定到旧密码输入框——错误即便落到 errors.form 也仍会不通过。
+    await expect(oldPasswordInput).toHaveAttribute(
+      "aria-describedby",
+      "settings-old-password-error",
+    );
     // 「旧密码不正确」是恒定错误文案本身，属被测行为。
-    await expect(oldPasswordItem.getByText("旧密码不正确")).toBeVisible();
-    // 反向钉住：表单级错误 Alert 不应出现。
-    await expect(page.locator(".ant-alert-error")).toHaveCount(0);
+    await expect(page.locator("#settings-old-password-error")).toHaveText(
+      "旧密码不正确",
+    );
+    // 反向钉住：表单级错误 Alert 不应出现（destructive variant 才是错误）。
+    await expect(
+      page.locator('[data-slot="alert"].text-destructive'),
+    ).toHaveCount(0);
 
     // ② 旧密码正确：toast「密码已更新」，且仍停留在设置页（保持登录）。
     await oldPasswordInput.fill(E2E_PASSWORD);

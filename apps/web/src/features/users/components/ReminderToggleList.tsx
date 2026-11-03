@@ -1,9 +1,11 @@
 "use client";
 
-import { App, Switch } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
+
+import { Switch } from "@/components/ui/shadcn/switch";
 
 import { updateReminderPrefsAction } from "../actions";
 import type { ReminderPrefs } from "../service";
@@ -23,7 +25,6 @@ export interface ReminderToggleListProps {
  * 建立在新对象身份上，保证刷新后的服务端值与本地 state 一致。
  */
 export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
-  const { message } = App.useApp();
   const t = useTranslations("settings");
   const router = useRouter();
   const [current, setCurrent] = useState(prefs);
@@ -49,7 +50,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
       );
 
       if (!result.ok) {
-        message.error(t("saveFailed"));
+        toast.error(t("saveFailed"));
         setCurrent(previous);
         return;
       }
@@ -57,7 +58,7 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
       // 成功静默（不 toast），刷新让服务端数据与本地 state 对齐。
       router.refresh();
     } catch {
-      message.error(t("saveFailed"));
+      toast.error(t("saveFailed"));
       setCurrent(previous);
     } finally {
       setSaving(null);
@@ -78,9 +79,8 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
         <Switch
           data-testid="settings-due-soon-switch"
           checked={current.dueSoonReminderEnabled}
-          loading={saving === "dueSoonReminderEnabled"}
-          disabled={saving !== null && saving !== "dueSoonReminderEnabled"}
-          onChange={(checked) =>
+          disabled={saving !== null}
+          onCheckedChange={(checked) =>
             handleToggle("dueSoonReminderEnabled", checked)
           }
           aria-label={t("dueSoonReminder")}
@@ -99,9 +99,8 @@ export function ReminderToggleList({ prefs }: ReminderToggleListProps) {
         <Switch
           data-testid="settings-overdue-switch"
           checked={current.overdueReminderEnabled}
-          loading={saving === "overdueReminderEnabled"}
-          disabled={saving !== null && saving !== "overdueReminderEnabled"}
-          onChange={(checked) => handleToggle("overdueReminderEnabled", checked)}
+          disabled={saving !== null}
+          onCheckedChange={(checked) => handleToggle("overdueReminderEnabled", checked)}
           aria-label={t("overdueReminder")}
         />
       </div>
