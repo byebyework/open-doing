@@ -1,29 +1,48 @@
 "use client";
 
+import { zodResolver } from "@hookform/resolvers/zod";
 import type { Subtask, TaskStatus } from "@open-doing/types";
 import {
   getTaskProgress,
   isDueSoon,
   isOverdue,
 } from "@open-doing/types";
-import {
-  Button,
-  Dropdown,
-  Form,
-  Input,
-  Modal,
-  Select,
-  type MenuProps,
-} from "antd";
+import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/shadcn/dropdown-menu";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/shadcn/dialog";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 import { CommentBox } from "@/features/personal/tasks/components/CommentBox";
 import { SubtaskList } from "@/features/personal/tasks/components/SubtaskList";
 import { spaceDashboardHref } from "@/lib/routes";
@@ -106,17 +125,12 @@ interface EditTaskModalProps {
   onCancel: () => void;
 }
 
-interface EditTaskFormValues {
-  title: string;
-  description?: string;
-  dueDate?: string;
-}
-
 /**
  * 编辑任务弹窗：标题 / 描述 / 截止日期。
  *
  * 提交失败时由 `onAction.updateTask`（client 包装件）统一提示错误，
- * 本组件保持弹窗打开，不吞掉失败状态。
+ * 本组件保持弹窗打开，不吞掉失败状态。Radix Dialog 关闭时卸载内容，
+ * 每次打开都会以 task 的当前值重建 RHF 初始值。
  */
 function EditTaskModal({
   open,
@@ -124,19 +138,43 @@ function EditTaskModal({
   onSave,
   onCancel,
 }: EditTaskModalProps) {
-  const [form] = Form.useForm<EditTaskFormValues>();
   const t = useTranslations("tasks");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
 
-  async function handleFinish(values: EditTaskFormValues) {
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z.object({
+    title: z
+      .string()
+      .trim()
+      .min(1, t("titleRequired"))
+      .max(200, t("titleTooLong", { max: 200 })),
+    description: z.string(),
+    dueDate: z.string(),
+  });
+  type EditTaskFormValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<EditTaskFormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: task.title,
+      description: task.description ?? "",
+      dueDate: task.dueDate ?? "",
+    },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
 
     try {
       await onSave({
         title: values.title,
         description: values.description ?? "",
-        dueDate: values.dueDate?.trim() ? values.dueDate : null,
+        dueDate: values.dueDate.trim() ? values.dueDate : null,
       });
       onCancel();
     } catch {
@@ -144,52 +182,70 @@ function EditTaskModal({
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
-    <Modal
-      open={open}
-      title={t("editTask")}
-      okText={tCommon("save")}
-      cancelText={tCommon("cancel")}
-      confirmLoading={submitting}
-      onOk={() => form.submit()}
-      onCancel={onCancel}
-      destroyOnHidden
-      width={520}
-    >
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        disabled={submitting}
-        initialValues={{
-          title: task.title,
-          description: task.description ?? "",
-          dueDate: task.dueDate ?? "",
-        }}
-        onFinish={handleFinish}
-      >
-        <Form.Item
-          label={t("title")}
-          name="title"
-          rules={[
-            { required: true, whitespace: true, message: t("titleRequired") },
-            { max: 200, message: t("titleTooLong", { max: 200 }) },
-          ]}
-        >
-          <Input placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
-        </Form.Item>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) onCancel(); }}>
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{t("editTask")}</DialogTitle>
+        </DialogHeader>
 
-        <Form.Item label={t("dueDateLabel")} name="dueDate">
-          <Input type="date" style={{ maxWidth: 220 }} />
-        </Form.Item>
+        <form onSubmit={onSubmit} noValidate>
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="edit-task-title">{t("title")}</Label>
+            <Input
+              id="edit-task-title"
+              type="text"
+              placeholder={t("titlePlaceholder")}
+              maxLength={200}
+              autoFocus
+              aria-invalid={errors.title ? true : undefined}
+              aria-describedby={errors.title ? "edit-task-title-error" : undefined}
+              disabled={submitting}
+              {...register("title")}
+            />
+            {errors.title ? (
+              <p id="edit-task-title-error" className="text-[12.5px] text-[var(--error)]">
+                {errors.title.message}
+              </p>
+            ) : null}
+          </div>
 
-        <Form.Item label={t("descriptionLabel")} name="description">
-          <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} />
-        </Form.Item>
-      </Form>
-    </Modal>
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="edit-task-due-date">{t("dueDateLabel")}</Label>
+            <Input
+              id="edit-task-due-date"
+              type="date"
+              className="max-w-[220px]"
+              disabled={submitting}
+              {...register("dueDate")}
+            />
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="edit-task-description">{t("descriptionLabel")}</Label>
+            <Textarea
+              id="edit-task-description"
+              rows={4}
+              placeholder={t("descriptionPlaceholder")}
+              disabled={submitting}
+              {...register("description")}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={submitting} data-testid="task-edit-save">
+              {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
+              {tCommon("save")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -356,15 +412,23 @@ export function TaskDetailView({
     }
   }
 
-  const statusMenuItems: MenuProps["items"] = STATUS_ORDER.map(
-    (candidate) => ({
-      key: candidate,
-      label: tStatus(STATUS_LABEL_KEY[candidate]),
-      disabled: candidate === status,
-    }),
-  );
-
   const nextStatus: TaskStatus = status === "done" ? "todo" : "done";
+
+  // 改派选项：未指派是占位，不是可选项；成员离职后任务保留未指派状态，
+  // 但改派只能指向团队内成员（控制器裁决 5）。
+  const assigneeChoices = assigneeOptions
+    ? [
+        ...assigneeOptions,
+        ...(assigneeId && !assigneeOptions.some((option) => option.id === assigneeId)
+          ? [
+              {
+                id: assigneeId,
+                name: task.assigneeName ?? t("leftMember"),
+              },
+            ]
+          : []),
+      ]
+    : [];
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
@@ -464,20 +528,26 @@ export function TaskDetailView({
               {/* 只读（团队态非责任人 / 非管理员）时不给状态切换入口：
                   服务层同样会拒绝，但界面不应先给出可点的假象。 */}
               {permissions.canEdit ? (
-                <Dropdown
-                  trigger={["click"]}
-                  disabled={statusPending !== null}
-                  menu={{
-                    items: statusMenuItems,
-                    onClick: ({ key }) => {
-                      void changeStatus(key as TaskStatus);
-                    },
-                  }}
-                >
-                  <Button type="text" size="small" className="px-1">
-                    {t("change")}
-                  </Button>
-                </Dropdown>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild disabled={statusPending !== null}>
+                    <Button variant="ghost" size="sm" className="px-1">
+                      {t("change")}
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    {STATUS_ORDER.map((candidate) => (
+                      <DropdownMenuItem
+                        key={candidate}
+                        disabled={candidate === status}
+                        onClick={() => {
+                          void changeStatus(candidate);
+                        }}
+                      >
+                        {tStatus(STATUS_LABEL_KEY[candidate])}
+                      </DropdownMenuItem>
+                    ))}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               ) : null}
             </MetaRow>
 
@@ -487,37 +557,31 @@ export function TaskDetailView({
               assigneeOptions &&
               onAssign ? (
                 <Select
-                  size="small"
-                  showSearch
-                  optionFilterProp="label"
-                  aria-label={t("assigneeLabel")}
-                  style={{ width: 170 }}
                   value={assigneeId ?? undefined}
-                  placeholder={t("unassigned")}
-                  loading={assigneePending}
-                  disabled={assigneePending}
-                  // 未指派是占位，不是可选项：成员离职后任务保留未指派状态，
-                  // 但改派只能指向团队内成员（控制器裁决 5）。
-                  options={[
-                    ...assigneeOptions,
-                    ...(assigneeId &&
-                    !assigneeOptions.some((option) => option.id === assigneeId)
-                      ? [
-                          {
-                            id: assigneeId,
-                            name: task.assigneeName ?? t("leftMember"),
-                          },
-                        ]
-                      : []),
-                  ].map((option) => ({
-                    value: option.id,
-                    label: option.name,
-                    disabled: option.id === assigneeId,
-                  }))}
-                  onChange={(value) => {
+                  onValueChange={(value) => {
                     void handleAssign(value);
                   }}
-                />
+                  disabled={assigneePending}
+                >
+                  <SelectTrigger
+                    className="h-8 w-[170px]"
+                    aria-label={t("assigneeLabel")}
+                    data-testid="task-assignee-select"
+                  >
+                    <SelectValue placeholder={t("unassigned")} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {assigneeChoices.map((option) => (
+                      <SelectItem
+                        key={option.id}
+                        value={option.id}
+                        disabled={option.id === assigneeId}
+                      >
+                        {option.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               ) : task.assigneeName ? (
                 <>
                   <UserAvatar username={task.assigneeName} size={24} />
@@ -618,27 +682,34 @@ export function TaskDetailView({
 
           <div className="mt-4 flex flex-col gap-2">
             {permissions.canEdit ? (
-              <Button type="primary" block onClick={() => setEditOpen(true)}>
+              <Button className="w-full" onClick={() => setEditOpen(true)} data-testid="task-edit-open">
                 {t("editTask")}
               </Button>
             ) : null}
 
             {permissions.canEdit ? (
               <Button
-                block
+                variant="outline"
+                className="w-full"
                 data-testid="task-status-toggle"
-                loading={statusPending === nextStatus}
                 disabled={statusPending !== null}
                 onClick={() => {
                   void changeStatus(nextStatus);
                 }}
               >
+                {statusPending === nextStatus ? (
+                  <Loader2Icon className="animate-spin" aria-hidden="true" />
+                ) : null}
                 {status === "done" ? t("markNotDone") : t("markDone")}
               </Button>
             ) : null}
 
             {permissions.canDelete ? (
-              <Button danger block onClick={() => setDeleteOpen(true)}>
+              <Button
+                variant="outline"
+                className="w-full border-destructive/40 text-destructive hover:bg-[var(--error-bg)] hover:text-destructive"
+                onClick={() => setDeleteOpen(true)}
+              >
                 {t("deleteTask")}
               </Button>
             ) : null}
