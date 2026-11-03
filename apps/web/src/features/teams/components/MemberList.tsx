@@ -1,17 +1,17 @@
-import { Tag } from "antd";
 import { getTranslations } from "next-intl/server";
 import dayjs from "dayjs";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Badge } from "@/components/ui/shadcn/badge";
 
 import { RemoveMemberButton } from "../members/components/RemoveMemberButton";
 import type { MemberView } from "../service";
 
-/** 角色 -> 配色（语言无关）；文案 key 见 ROLE_KEYS，渲染时按请求语言翻译。 */
-const ROLE_COLORS: Record<MemberView["membership"]["role"], { color: string; background: string }> = {
-  owner: { color: "#7d2ae8", background: "rgba(125, 42, 232, 0.12)" },
-  admin: { color: "#7d2ae8", background: "rgba(125, 42, 232, 0.12)" },
-  member: { color: "#5f6368", background: "#f1f3f4" },
+/** 角色 -> Badge 变体（语言无关，取 tokens.css 状态色组）；文案 key 见 ROLE_KEYS。 */
+const ROLE_VARIANTS: Record<MemberView["membership"]["role"], "info" | "neutral"> = {
+  owner: "info",
+  admin: "info",
+  member: "neutral",
 };
 
 const ROLE_KEYS: Record<MemberView["membership"]["role"], "roleOwner" | "roleAdmin" | "roleMember"> = {
@@ -60,7 +60,7 @@ export async function MemberList({
         </thead>
         <tbody>
           {members.map(({ membership, user }) => {
-            const roleColor = ROLE_COLORS[membership.role];
+            const roleVariant = ROLE_VARIANTS[membership.role];
             return (
               <tr key={membership.id} className="border-t border-[#eceef0]">
                 <td className="py-2.5">
@@ -71,9 +71,12 @@ export async function MemberList({
                   </span>
                 </td>
                 <td className="py-2.5">
-                  <Tag style={{ color: roleColor.color, background: roleColor.background, border: "none", borderRadius: 999 }}>
+                  <Badge
+                    variant={roleVariant}
+                    className="rounded-[var(--radius-pill)] px-2 py-0 text-[12px] font-medium leading-5"
+                  >
                     {t(ROLE_KEYS[membership.role])}
-                  </Tag>
+                  </Badge>
                 </td>
                 <td className="py-2.5 text-[#5f6368]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
                 {actionTeamSlug ? (

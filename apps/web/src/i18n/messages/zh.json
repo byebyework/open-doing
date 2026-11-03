@@ -339,6 +339,8 @@
     "joinCodeEnabledOff": "已关闭：成员无法凭码加入",
     "joinCodeReset": "重置加入码",
     "joinCodeResetConfirm": "重置后旧加入码立即失效，尚未处理完的申请不受影响；请把新码重新告知成员。",
+    "copyJoinCode": "复制加入码",
+    "copyJoinCodeFailed": "复制失败，请手动复制",
     "reset": "重置",
     "noPendingJoinRequests": "暂无待处理的加入申请",
     "requestedAtSuffix": "{time} 申请",

@@ -1,29 +1,32 @@
 "use client";
 
-import { App, Button, Tag } from "antd";
+import { Loader2Icon } from "lucide-react";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Badge } from "@/components/ui/shadcn/badge";
+import { Button } from "@/components/ui/shadcn/button";
 
 import { respondToJoinRequestAction } from "../actions";
 import type { TeamJoinRequestView } from "../service";
 
-/** 已处理申请的结果 tag key（与 /invites「我的加入申请」复用同一套 key 与配色）。 */
+/** 已处理申请的结果 badge 文案 key（与 /invites「我的加入申请」复用同一套 key 与配色）。 */
 const RESULT_KEYS = {
   approved: "tagApproved",
   declined: "tagNotApproved",
   cancelled: "tagCancelled",
 } as const;
 
-/** 结果 tag 配色（与 /invites 复用；配色与语言无关）。 */
-const RESULT_COLORS = {
-  approved: { color: "#00b894", background: "rgba(0, 184, 148, 0.12)" },
-  declined: { color: "#5f6368", background: "#f1f3f4" },
-  cancelled: { color: "#5f6368", background: "#f1f3f4" },
+/** 结果 badge 变体（与 /invites 复用；变体取 tokens.css 状态色组，语言无关）。 */
+const RESULT_VARIANTS = {
+  approved: "success",
+  declined: "neutral",
+  cancelled: "neutral",
 } as const;
 
 export interface JoinRequestListProps {
@@ -39,7 +42,6 @@ export interface JoinRequestListProps {
  * 一条申请在提交中，其余按钮禁用，避免重复/并发提交。
  */
 export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
@@ -57,17 +59,17 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
       const result = await respondToJoinRequestAction({ requestId, approve });
 
       if (!result.ok) {
-        message.error(
+        toast.error(
           result.errors.form ?? (approve ? t("approveFailedUi") : t("declineFailedUi")),
         );
         return;
       }
 
-      message.success(approve ? t("approveDone") : t("declineDone"));
+      toast.success(approve ? t("approveDone") : t("declineDone"));
       setDeclining(null);
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setSubmittingId(null);
     }
@@ -97,19 +99,20 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
             </span>
             <span className="flex flex-none items-center gap-1.5">
               <Button
-                type="primary"
-                size="small"
-                loading={submittingId === request.id}
+                size="sm"
                 disabled={busy && submittingId !== request.id}
                 aria-label={t("approveAria", { name: user.username })}
                 onClick={() => respond(request.id, true)}
               >
+                {submittingId === request.id ? (
+                  <Loader2Icon className="animate-spin" aria-hidden="true" />
+                ) : null}
                 {t("approve")}
               </Button>
               <Button
-                type="text"
-                danger
-                size="small"
+                variant="ghost"
+                size="sm"
+                className="text-destructive hover:text-destructive"
                 disabled={busy}
                 aria-label={t("declineAria", { name: user.username })}
                 onClick={() => setDeclining({ request, user })}
@@ -124,8 +127,8 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
       {processed.map(({ request, user }) => {
         const resultKey =
           RESULT_KEYS[request.status as keyof typeof RESULT_KEYS];
-        const resultColor =
-          RESULT_COLORS[request.status as keyof typeof RESULT_COLORS];
+        const resultVariant =
+          RESULT_VARIANTS[request.status as keyof typeof RESULT_VARIANTS];
         const time = request.respondedAt ?? request.createdAt;
 
         return (
@@ -133,16 +136,12 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
             key={`${teamId}:${request.id}`}
             className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#eceef0] py-2.5"
           >
-            <Tag
-              style={{
-                color: resultColor.color,
-                background: resultColor.background,
-                border: "none",
-                borderRadius: 999,
-              }}
+            <Badge
+              variant={resultVariant}
+              className="rounded-[var(--radius-pill)] px-2 py-0 text-[12px] font-medium leading-5"
             >
               {t(resultKey)}
-            </Tag>
+            </Badge>
             <UserAvatar username={user.username} />
             <span className="max-w-[180px] truncate text-[13px] font-medium text-[#0e1318]">
               {user.username}

@@ -1,11 +1,14 @@
 "use client";
 
-import { App, Button, Switch, Typography } from "antd";
+import { CheckIcon, CopyIcon, Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
+import { Switch } from "@/components/ui/shadcn/switch";
 
 import { resetJoinCodeAction, setJoinCodeEnabledAction } from "../actions";
 
@@ -28,7 +31,6 @@ export function JoinCodeSettings({
   joinCode,
   joinCodeEnabled,
 }: JoinCodeSettingsProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
@@ -37,6 +39,7 @@ export function JoinCodeSettings({
   const [toggling, setToggling] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [copied, setCopied] = useState(false);
 
   // 渲染期同步 props → state：action 成功后 refresh 带来新的服务端值。
   if (joinCodeEnabled !== syncedEnabled) {
@@ -54,18 +57,28 @@ export function JoinCodeSettings({
       const result = await setJoinCodeEnabledAction({ teamId, enabled: nextEnabled });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("joinCodeSettingsFailed"));
+        toast.error(result.errors.form ?? t("joinCodeSettingsFailed"));
         setEnabled(previous);
         return;
       }
 
-      message.success(nextEnabled ? t("joinCodeEnabledOnToast") : t("joinCodeEnabledOffToast"));
+      toast.success(nextEnabled ? t("joinCodeEnabledOnToast") : t("joinCodeEnabledOffToast"));
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
       setEnabled(previous);
     } finally {
       setToggling(false);
+    }
+  }
+
+  async function handleCopy() {
+    try {
+      await navigator.clipboard.writeText(joinCode);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error(t("copyJoinCodeFailed"));
     }
   }
 
@@ -76,15 +89,15 @@ export function JoinCodeSettings({
       const result = await resetJoinCodeAction({ teamId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("joinCodeResetFailedUi"));
+        toast.error(result.errors.form ?? t("joinCodeResetFailedUi"));
         return;
       }
 
-      message.success(t("joinCodeResetDone"));
+      toast.success(t("joinCodeResetDone"));
       setConfirming(false);
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setResetting(false);
     }
@@ -94,24 +107,42 @@ export function JoinCodeSettings({
     <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
         <span className="text-[13px] text-[#5f6368]">{t("joinCodeLabel")}</span>
-        <Typography.Text
-          copyable
+        <span
           data-testid="join-code-value"
           className="font-mono text-[16px] font-semibold tracking-[0.12em] text-[#0e1318]"
         >
           {joinCode}
-        </Typography.Text>
+        </span>
+        <button
+          type="button"
+          aria-label={t("copyJoinCode")}
+          className="inline-flex size-8 items-center justify-center rounded-[var(--radius-8)] text-[#5f6368] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[#0e1318] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          onClick={() => void handleCopy()}
+        >
+          {copied ? (
+            <CheckIcon className="size-4 text-[var(--success-500)]" aria-hidden="true" />
+          ) : (
+            <CopyIcon className="size-4" aria-hidden="true" />
+          )}
+        </button>
         <Button
+          variant="outline"
           className="ml-auto"
-          loading={resetting}
+          disabled={resetting}
           onClick={() => setConfirming(true)}
         >
+          {resetting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
           {t("joinCodeReset")}
         </Button>
       </div>
 
       <label className="flex cursor-pointer items-center gap-2.5">
-        <Switch data-testid="join-code-switch" checked={enabled} loading={toggling} onChange={handleToggle} />
+        <Switch
+          data-testid="join-code-switch"
+          checked={enabled}
+          disabled={toggling}
+          onCheckedChange={handleToggle}
+        />
         <span className="text-[13px] text-[#5f6368]">
           {enabled ? t("joinCodeEnabledOn") : t("joinCodeEnabledOff")}
         </span>

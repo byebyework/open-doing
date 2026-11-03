@@ -1,18 +1,23 @@
 "use client";
 
-import { App, Alert, Button, Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import { applyActionErrors } from "@/lib/action-form";
 import { invitesHref } from "@/lib/routes";
 
 import { createJoinRequestAction } from "../actions";
-
-interface JoinValues {
-  code: string;
-}
 
 /**
  * 凭码加入表单（客户端交互层）：输入 8 位团队加入码发起审批申请。
@@ -21,15 +26,30 @@ interface JoinValues {
  * 错误按字段落回输入框 / 表单顶部，成功后重置输入并引导到邀请页查看进度。
  */
 export function JoinByCodeForm() {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<JoinValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleFinish(values: JoinValues) {
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z.object({
+    code: z.string().min(1, t("joinCodeRequired")),
+  });
+  type JoinValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    setValue,
+    formState: { errors },
+  } = useForm<JoinValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { code: "" },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
 
@@ -37,56 +57,68 @@ export function JoinByCodeForm() {
       const result = await createJoinRequestAction({ code: values.code });
 
       if (!result.ok) {
-        if (result.errors.code) {
-          form.setFields([{ name: "code", errors: [result.errors.code] }]);
-        }
-        if (result.errors.form) setFormError(result.errors.form);
+        applyActionErrors(result.errors, {
+          setFieldError: (name, message) =>
+            setError(name as keyof JoinValues, { message }),
+          onFormError: setFormError,
+        });
         return;
       }
 
-      message.success(t("joinSubmitted"));
-      form.resetFields();
+      toast.success(t("joinSubmitted"));
+      setValue("code", "");
       router.refresh();
     } catch {
       setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
     <div>
       {formError ? (
-        <Alert type="error" showIcon title={formError} className="mb-4" role="alert" />
+        <Alert variant="destructive" role="alert" className="mb-4">
+          {formError}
+        </Alert>
       ) : null}
 
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        onFinish={handleFinish}
-        disabled={submitting}
-      >
-        <Form.Item
-          label={t("joinCodeLabel")}
-          name="code"
-          rules={[{ required: true, message: t("joinCodeRequired") }]}
-          extra={t("joinCodeHint")}
-        >
+      <form onSubmit={onSubmit} noValidate>
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="join-code">{t("joinCodeLabel")}</Label>
           <Input
-            data-testid="join-code-input"
-            size="large"
+            id="join-code"
+            type="text"
+            className="h-10"
             placeholder={t("joinCodePlaceholder")}
             spellCheck={false}
             autoComplete="off"
+            data-testid="join-code-input"
             autoFocus
+            aria-invalid={errors.code ? true : undefined}
+            aria-describedby={errors.code ? "join-code-error" : undefined}
+            disabled={submitting}
+            {...register("code")}
           />
-        </Form.Item>
+          {errors.code ? (
+            <p id="join-code-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.code.message}
+            </p>
+          ) : (
+            <p className="text-[12px] text-[#9aa0a6]">{t("joinCodeHint")}</p>
+          )}
+        </div>
 
-        <Button type="primary" size="large" htmlType="submit" loading={submitting} data-testid="join-submit-button">
+        <Button
+          type="submit"
+          size="lg"
+          disabled={submitting}
+          data-testid="join-submit-button"
+        >
+          {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
           {t("submitRequest")}
         </Button>
-      </Form>
+      </form>
 
       <p className="mt-5 text-[13px] text-[#5f6368]">
         {t("trackBefore")}{" "}

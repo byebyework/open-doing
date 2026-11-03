@@ -1,4 +1,3 @@
-import { Tag } from "antd";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -6,6 +5,7 @@ import dayjs from "dayjs";
 
 import { requireUser } from "@/features/auth/session";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Badge } from "@/components/ui/shadcn/badge";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { InviteMemberForm } from "@/features/teams/components/InviteMemberForm";
@@ -101,9 +101,12 @@ export default async function TeamSettingsPage(
                 key={invite.id}
                 className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#eceef0] py-2.5 first:border-t-0"
               >
-                <Tag style={{ color: "#6d4fd4", background: "rgba(155, 135, 245, 0.14)", border: "none", borderRadius: 999 }}>
+                <Badge
+                  variant="info"
+                  className="rounded-[var(--radius-pill)] px-2 py-0 text-[12px] font-medium leading-5"
+                >
                   {t("pendingTag")}
-                </Tag>
+                </Badge>
                 <UserAvatar username={invitee.username} />
                 <span className="text-[13px] font-medium text-[#0e1318]">{invitee.username}</span>
                 <span className="font-mono text-[12px] text-[#9aa0a6]">{invitee.uid}</span>

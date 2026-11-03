@@ -1,11 +1,19 @@
 "use client";
 
-import { App, Button, Select } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
 
 import { transferTeamAction } from "../actions";
 
@@ -29,7 +37,6 @@ export interface TransferTeamButtonProps {
  * 团队内容不迁移，设置页刷新后按新角色渲染。
  */
 export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
@@ -44,7 +51,7 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
 
   async function handleConfirm() {
     if (!targetUserId) {
-      message.warning(t("selectTransferee"));
+      toast.warning(t("selectTransferee"));
       return;
     }
 
@@ -54,16 +61,16 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
       const result = await transferTeamAction({ teamSlug, targetUserId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("transferFailed"));
+        toast.error(result.errors.form ?? t("transferFailed"));
         return;
       }
 
-      message.success(t("transferredTeam"));
+      toast.success(t("transferredTeam"));
       setOpen(false);
       setTargetUserId(undefined);
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -87,17 +94,22 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
             <p className="mb-3 text-[13px] text-[#5f6368]">
               {t("transferConfirmIntro")}
             </p>
-            <Select
-              className="w-full"
-              aria-label={t("selectNewOwner")}
-              placeholder={t("selectNewOwner")}
-              options={candidates.map((candidate) => ({
-                value: candidate.userId,
-                label: `${candidate.username}（${candidate.uid}）`,
-              }))}
-              value={targetUserId}
-              onChange={(value: string) => setTargetUserId(value)}
-            />
+            <Select value={targetUserId} onValueChange={setTargetUserId}>
+              <SelectTrigger
+                className="w-full"
+                aria-label={t("selectNewOwner")}
+                data-testid="transfer-owner-select"
+              >
+                <SelectValue placeholder={t("selectNewOwner")} />
+              </SelectTrigger>
+              <SelectContent>
+                {candidates.map((candidate) => (
+                  <SelectItem key={candidate.userId} value={candidate.userId}>
+                    {`${candidate.username}（${candidate.uid}）`}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         }
         confirmText={t("confirmTransfer")}

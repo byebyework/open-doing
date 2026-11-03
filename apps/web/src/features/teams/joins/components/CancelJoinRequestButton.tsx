@@ -1,18 +1,19 @@
 "use client";
 
-import { App, Button } from "antd";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
 
 import { cancelJoinRequestAction } from "../actions";
 
 /**
  * 取消加入申请按钮（客户端交互层）。
  *
- * 破坏性操作走 `ConfirmModal` 二次确认；失败时以 message 提示 action 返回的
+ * 破坏性操作走 `ConfirmModal` 二次确认；失败时以 toast 提示 action 返回的
  * form 错误（如「加入申请不存在或已失效」），成功后刷新服务端数据。
  */
 export function CancelJoinRequestButton({
@@ -22,7 +23,6 @@ export function CancelJoinRequestButton({
   requestId: string;
   teamName: string;
 }) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
@@ -36,15 +36,15 @@ export function CancelJoinRequestButton({
       const result = await cancelJoinRequestAction({ requestId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("cancelRequestFailedUi"));
+        toast.error(result.errors.form ?? t("cancelRequestFailedUi"));
         return;
       }
 
-      message.success(t("cancelRequestDone"));
+      toast.success(t("cancelRequestDone"));
       setConfirming(false);
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -52,7 +52,12 @@ export function CancelJoinRequestButton({
 
   return (
     <>
-      <Button type="text" danger size="small" onClick={() => setConfirming(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-destructive hover:text-destructive"
+        onClick={() => setConfirming(true)}
+      >
         {t("cancelRequest")}
       </Button>
 

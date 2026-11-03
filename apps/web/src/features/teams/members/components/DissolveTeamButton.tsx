@@ -1,11 +1,14 @@
 "use client";
 
-import { App, Alert, Button, Input } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
 import { spaceDashboardHref } from "@/lib/routes";
 
 import { dissolveTeamAction } from "../actions";
@@ -17,7 +20,6 @@ import { dissolveTeamAction } from "../actions";
  * 被级联删除，因此离开已不存在的团队页。
  */
 export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; teamName: string }) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
@@ -32,7 +34,7 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
 
   async function handleConfirm() {
     if (typedName.trim() !== teamName) {
-      message.error(t("nameMismatch"));
+      toast.error(t("nameMismatch"));
       return;
     }
 
@@ -42,16 +44,16 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
       const result = await dissolveTeamAction({ teamSlug });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("dissolveFailed"));
+        toast.error(result.errors.form ?? t("dissolveFailed"));
         return;
       }
 
-      message.success(t("teamDissolved"));
+      toast.success(t("teamDissolved"));
       setOpen(false);
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -59,7 +61,12 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
 
   return (
     <>
-      <Button danger data-testid="dissolve-team-button" onClick={handleOpen}>
+      <Button
+        variant="outline"
+        className="border-destructive/40 text-destructive hover:bg-[var(--error-bg)] hover:text-destructive"
+        data-testid="dissolve-team-button"
+        onClick={handleOpen}
+      >
         {t("dissolveTeam")}
       </Button>
 
@@ -68,13 +75,10 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
         title={t("dissolveTeam")}
         content={
           <div>
-            <Alert
-              type="error"
-              showIcon
-              className="mb-4"
-              title={t("irreversible")}
-              description={t("dissolveWarning", { team: teamName })}
-            />
+            <Alert variant="destructive" className="mb-4">
+              <AlertTitle>{t("irreversible")}</AlertTitle>
+              <AlertDescription>{t("dissolveWarning", { team: teamName })}</AlertDescription>
+            </Alert>
             <label className="mb-2 block text-[13px] font-medium text-[#0e1318]" htmlFor="dissolve-team-name">
               {t("typeTeamName")}
             </label>

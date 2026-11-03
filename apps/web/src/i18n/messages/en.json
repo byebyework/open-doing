@@ -339,6 +339,8 @@
     "joinCodeEnabledOff": "Off: members cannot join by code",
     "joinCodeReset": "Reset join code",
     "joinCodeResetConfirm": "The old code stops working immediately; pending requests are unaffected. Share the new code with your members.",
+    "copyJoinCode": "Copy join code",
+    "copyJoinCodeFailed": "Copy failed. Please copy it manually.",
     "reset": "Reset",
     "noPendingJoinRequests": "No pending join requests",
     "requestedAtSuffix": "{time} requested",

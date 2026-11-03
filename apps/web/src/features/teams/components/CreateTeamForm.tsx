@@ -1,17 +1,21 @@
 "use client";
 
-import { Alert, Button, Form, Input } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
 
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import { applyActionErrors } from "@/lib/action-form";
 import { teamSettingsHref } from "@/lib/routes";
 
 import { createTeamAction } from "../actions";
-
-interface CreateTeamValues {
-  name: string;
-}
 
 /**
  * 创建团队表单（客户端交互层）。
@@ -23,11 +27,26 @@ export function CreateTeamForm() {
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<CreateTeamValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  async function handleFinish(values: CreateTeamValues) {
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z.object({
+    name: z.string().min(1, t("nameRequired")),
+  });
+  type CreateTeamValues = z.infer<typeof schema>;
+
+  const {
+    register,
+    handleSubmit,
+    setError,
+    formState: { errors },
+  } = useForm<CreateTeamValues>({
+    resolver: zodResolver(schema),
+    defaultValues: { name: "" },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
 
@@ -35,10 +54,11 @@ export function CreateTeamForm() {
       const result = await createTeamAction({ name: values.name });
 
       if (!result.ok) {
-        if (result.errors.name) {
-          form.setFields([{ name: "name", errors: [result.errors.name] }]);
-        }
-        if (result.errors.form) setFormError(result.errors.form);
+        applyActionErrors(result.errors, {
+          setFieldError: (name, message) =>
+            setError(name as keyof CreateTeamValues, { message }),
+          onFormError: setFormError,
+        });
         return;
       }
 
@@ -49,27 +69,50 @@ export function CreateTeamForm() {
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
     <div>
       {formError ? (
-        <Alert type="error" showIcon title={formError} className="mb-5" role="alert" />
+        <Alert variant="destructive" role="alert" className="mb-5">
+          {formError}
+        </Alert>
       ) : null}
 
-      <Form form={form} layout="vertical" requiredMark={false} onFinish={handleFinish} disabled={submitting}>
-        <Form.Item
-          label={t("nameLabel")}
-          name="name"
-          rules={[{ required: true, message: t("nameRequired") }]}
-        >
-          <Input data-testid="team-name-input" size="large" placeholder={t("namePlaceholder")} maxLength={30} autoFocus />
-        </Form.Item>
+      <form onSubmit={onSubmit} noValidate>
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="create-team-name">{t("nameLabel")}</Label>
+          <Input
+            id="create-team-name"
+            type="text"
+            className="h-10"
+            placeholder={t("namePlaceholder")}
+            maxLength={30}
+            data-testid="team-name-input"
+            autoFocus
+            aria-invalid={errors.name ? true : undefined}
+            aria-describedby={errors.name ? "create-team-name-error" : undefined}
+            disabled={submitting}
+            {...register("name")}
+          />
+          {errors.name ? (
+            <p id="create-team-name-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.name.message}
+            </p>
+          ) : null}
+        </div>
 
-        <Button type="primary" htmlType="submit" size="large" block loading={submitting} data-testid="create-team-button">
+        <Button
+          type="submit"
+          size="lg"
+          className="w-full font-semibold"
+          disabled={submitting}
+          data-testid="create-team-button"
+        >
+          {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
           {t("createTitle")}
         </Button>
-      </Form>
+      </form>
     </div>
   );
 }

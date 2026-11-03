@@ -1,11 +1,12 @@
 "use client";
 
-import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
 
 import { removeMemberAction } from "../actions";
 
@@ -27,7 +28,6 @@ export function RemoveMemberButton({
   targetUserId,
   targetUsername,
 }: RemoveMemberButtonProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("teams");
   const tCommon = useTranslations("common");
@@ -41,15 +41,15 @@ export function RemoveMemberButton({
       const result = await removeMemberAction({ teamSlug, targetUserId });
 
       if (!result.ok) {
-        message.error(result.errors.form ?? t("removeFailed"));
+        toast.error(result.errors.form ?? t("removeFailed"));
         return;
       }
 
-      message.success(t("memberRemoved"));
+      toast.success(t("memberRemoved"));
       setOpen(false);
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
@@ -57,7 +57,13 @@ export function RemoveMemberButton({
 
   return (
     <>
-      <Button type="text" danger size="small" data-testid="member-remove-button" onClick={() => setOpen(true)}>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-destructive hover:text-destructive"
+        data-testid="member-remove-button"
+        onClick={() => setOpen(true)}
+      >
         {t("remove")}
       </Button>
 

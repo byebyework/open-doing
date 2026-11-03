@@ -65,7 +65,8 @@ export function ConfirmModal({
         if (!next) onCancel();
       }}
     >
-      <AlertDialogContent>
+      {/* Radix 默认 role="alertdialog";e2e 契约按通用 dialog 查询,显式覆盖(frozen 断言不改)。 */}
+      <AlertDialogContent role="dialog">
         <AlertDialogHeader>
           <AlertDialogTitle>{title}</AlertDialogTitle>
           <AlertDialogDescription asChild>
