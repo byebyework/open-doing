@@ -362,16 +362,16 @@ async function createTeamTask(
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
-  // 等弹窗 afterOpenChange 的 resetFields 完成后再填写。
+  // 等弹窗动效与初始值同步完成后再填写。
   await page.waitForTimeout(500);
   await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(input.title);
   await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);
 
   if (input.assignee) {
-    // antd Select 的可见选项没有 role="option"，点击可见选项项。
+    // shadcn Select 的选项带 role="option"（迁移前 antd 虚拟列表无此 role）。
     await dialog.getByLabel("责任人").click();
     await page
-      .locator(".ant-select-item-option")
+      .getByRole("option")
       .filter({ hasText: input.assignee })
       .click();
   }

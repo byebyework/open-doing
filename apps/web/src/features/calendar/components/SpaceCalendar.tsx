@@ -1,14 +1,12 @@
 "use client";
 
 import { addDays } from "@open-doing/types";
-import { Calendar } from "antd";
-import enUSCalendar from "antd/es/calendar/locale/en_US";
-import zhCNCalendar from "antd/es/calendar/locale/zh_CN";
+import { enUS, zhCN } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
-import dayjs, { type Dayjs } from "dayjs";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { DayPicker, type DayProps } from "react-day-picker";
 
 import {
   WEEKDAY_KEYS,
@@ -18,6 +16,12 @@ import {
   weekdayIndex,
 } from "@/lib/today";
 
+import {
+  dateKey,
+  indexTasksByDate,
+  monthAnchor,
+  shiftMonth,
+} from "./calendar-grid";
 import type { CalendarTaskItem, SpaceCalendarData } from "../service";
 
 /** 空间日历入参（个人 / 团队共用，团队专有入口由 variant 决定）。 */
@@ -35,21 +39,6 @@ export interface SpaceCalendarProps {
   /** 「N 项任务没有截止日期 →」的跳转 href；仅 variant=personal 使用 */
   noDueHref?: string;
 }
-
-/**
- * 星期表头文案（原型「周一 … 周日」）。
- *
- * antd 由 dayjs locale `weekdaysMin` 生成「一/二/…」，这里通过 Calendar 的
- * `locale` prop 覆盖 `lang.shortWeekDays`；数组沿用 dayjs 的「周日=0」顺序，
- * rc-picker 会按周一为首日自动旋转。
- */
-const ZH_CALENDAR_LOCALE = {
-  ...zhCNCalendar,
-  lang: {
-    ...zhCNCalendar.lang,
-    shortWeekDays: ["周日", "周一", "周二", "周三", "周四", "周五", "周六"],
-  },
-};
 
 /** 「本月即将到期」默认展示条数（其余折叠）。 */
 const UPCOMING_PREVIEW = 5;
@@ -277,14 +266,15 @@ function CalendarChip({
 }
 
 /**
- * 月网格整格（`fullCellRender`）：复刻原型单元格。
+ * 月网格整格：复刻原型单元格。
  *
  * 周末 #f7f8fa / 今天 #f9f4ff + 紫色日期圆 / 非本月 #f4f5f7 并整体淡化，
- * 手绘日期数字与 chip 内容，保留 antd 的 td 结构与点击行为。
+ * 手绘日期数字与 chip 内容；由 react-day-picker 的自定义 `Day` 渲染进
+ * `<td title="YYYY-MM-DD">`（e2e 07 以 `td[title]` 定位日期格）。
  */
 function CalendarDayCell({
   variant,
-  date,
+  cellDateKey,
   gridStart,
   items,
   today,
@@ -292,7 +282,7 @@ function CalendarDayCell({
   taskHrefs,
 }: {
   variant: "personal" | "team";
-  date: Dayjs;
+  cellDateKey: string;
   gridStart: string;
   items: CalendarTaskItem[];
   today: string;
@@ -301,13 +291,13 @@ function CalendarDayCell({
 }) {
   const tDate = useTranslations("date");
   const tCalendar = useTranslations("calendar");
-  const dateKey = date.format("YYYY-MM-DD");
-  const isToday = dateKey === today;
-  const isOut = date.format("YYYY-MM") !== month;
-  const isWeekend = date.day() === 0 || date.day() === 6;
+  const isToday = cellDateKey === today;
+  const isOut = cellDateKey.slice(0, 7) !== month;
+  const weekday = weekdayIndex(cellDateKey);
+  const isWeekend = weekday === 0 || weekday === 6;
   // 周一为首日：column 0 = 周一 … 6 = 周日；row 为 42 天网格中的行号。
-  const column = (date.day() + 6) % 7;
-  const row = daysBetween(gridStart, dateKey) / 7;
+  const column = (weekday + 6) % 7;
+  const row = daysBetween(gridStart, cellDateKey) / 7;
   const gridLineClassName = `${column > 0 ? "border-l" : ""} ${
     row > 0 ? "border-t" : ""
   }`;
@@ -332,7 +322,7 @@ function CalendarDayCell({
               isToday ? "bg-[#7d2ae8] font-bold text-white" : ""
             }`}
           >
-            {date.date()}
+            {Number(cellDateKey.slice(8))}
           </span>
           {isToday ? (
             <span className="text-[10.5px] font-semibold text-[#7d2ae8]">
@@ -465,9 +455,11 @@ function UpcomingItem({
 /**
  * 空间级 Calendar（个人 / 团队共用，对照 `space-calendar-*.html`）。
  *
- * - antd Calendar 受控于 URL 月份；标题行（‹ › / 今天）在网格卡片之外自绘并
- *   `router.push` 翻月，`headerRender` 仅用于关闭 antd 默认头部；
- * - `fullCellRender` 复刻原型单元格（日期数字 + chip + 周末/今天/非本月底色）；
+ * - react-day-picker（DayPicker）受控于 URL 月份；标题行（‹ › / 今天）在
+ *   网格卡片之外自绘并 `router.push` 翻月，默认导航与标题组件整体隐藏；
+ * - 自定义 `Day` 组件渲染 `<td title>` + 原型单元格（日期数字 + chip +
+ *   周末/今天/非本月底色）；锚点与键全部走本地日历字段（calendar-grid），
+ *   不经 `new Date("YYYY-MM-DD")` 的 UTC 解析；
  * - 侧栏锚定「今天」（不随所显示月份翻动）：本周清单 + 本月即将到期；
  * - 只读：chip / 条目按 `taskHrefs` 渲染成 next/link，缺 href 时为纯文本。
  */
@@ -488,21 +480,7 @@ export function SpaceCalendar({
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
 
   /** 月网格按 dueDate 索引（`data.items` 已覆 42 天窗口）。 */
-  const itemsByDate = useMemo(() => {
-    const byDate = new Map<string, CalendarTaskItem[]>();
-
-    for (const item of data.items) {
-      const bucket = byDate.get(item.dueDate);
-
-      if (bucket) {
-        bucket.push(item);
-      } else {
-        byDate.set(item.dueDate, [item]);
-      }
-    }
-
-    return byDate;
-  }, [data.items]);
+  const itemsByDate = useMemo(() => indexTasksByDate(data.items), [data.items]);
 
   /** 侧栏本周窗口（与 service 同口径：周一起 7 天）。 */
   const weekStart = getWeekStart(today);
@@ -532,9 +510,45 @@ export function SpaceCalendar({
     return dates.map((date) => ({ date, items: byDate.get(date)! }));
   }, [data.weekItems, today]);
 
-  /** Calendar 受控值恒为月初；「今天」高亮由 fullCellRender 自行渲染。 */
-  const calendarValue: Dayjs = dayjs(`${month}-01`);
   const gridStart = useMemo(() => getMonthGrid(month).start, [month]);
+
+  /** 星期表头文案（原型「周一 … 周日」，en 对齐 antd 的 Sun/Mon/…）。 */
+  const weekdayLabels = useMemo(
+    () =>
+      Object.fromEntries(
+        WEEKDAY_KEYS.map((key, index) => [index, tDate(key)]),
+      ) as Record<number, string>,
+    [tDate],
+  );
+
+  /** react-day-picker 自定义组件：随数据/月份重建（键与文案闭包）。 */
+  const dayPickerComponents = useMemo(
+    () => ({
+      MonthCaption: () => <></>,
+      Day: ({ day, ...tdProps }: DayProps) => {
+        const key = dateKey(day.date);
+
+        return (
+          <td
+            {...tdProps}
+            title={key}
+            className={`${tdProps.className ?? ""} p-0 align-top`}
+          >
+            <CalendarDayCell
+              variant={variant}
+              cellDateKey={key}
+              gridStart={gridStart}
+              items={itemsByDate.get(key) ?? []}
+              today={today}
+              month={month}
+              taskHrefs={taskHrefs}
+            />
+          </td>
+        );
+      },
+    }),
+    [variant, gridStart, itemsByDate, today, month, taskHrefs],
+  );
 
   const upcomingVisible = upcomingExpanded
     ? data.monthUpcoming
@@ -542,8 +556,8 @@ export function SpaceCalendar({
   const upcomingRest = data.monthUpcoming.length - UPCOMING_PREVIEW;
 
   /** 翻月：沿用 basePath，只替换 `?month=`。 */
-  function pushMonth(target: Dayjs) {
-    router.push(`${basePath}?month=${target.format("YYYY-MM")}`);
+  function pushMonth(monthKey: string) {
+    router.push(`${basePath}?month=${monthKey}`);
   }
 
   const navButtonClassName =
@@ -597,8 +611,8 @@ export function SpaceCalendar({
           <div className="mb-3 flex items-center gap-2">
             <span className="min-w-[110px] text-[16px] font-bold text-[#0e1318]">
               {tCalendar("monthTitle", {
-                year: calendarValue.year(),
-                month: calendarValue.month() + 1,
+                year: Number(month.slice(0, 4)),
+                month: Number(month.slice(5, 7)),
               })}
             </span>
             <button
@@ -607,7 +621,7 @@ export function SpaceCalendar({
               aria-label={tCalendar("prevMonth")}
               className={navButtonClassName}
               onClick={() => {
-                pushMonth(calendarValue.subtract(1, "month"));
+                pushMonth(shiftMonth(month, -1));
               }}
             >
               ‹
@@ -618,7 +632,7 @@ export function SpaceCalendar({
               aria-label={tCalendar("nextMonth")}
               className={navButtonClassName}
               onClick={() => {
-                pushMonth(calendarValue.add(1, "month"));
+                pushMonth(shiftMonth(month, 1));
               }}
             >
               ›
@@ -638,35 +652,28 @@ export function SpaceCalendar({
 
           {/* 卡片只包住星期表头 + 网格本体。 */}
           <div className="overflow-hidden rounded-xl border border-[#e1e3e6] bg-white">
-            <Calendar
-              fullscreen
-              value={calendarValue}
-              locale={locale === "zh" ? ZH_CALENDAR_LOCALE : enUSCalendar}
-              styles={{ body: { padding: 0 } }}
+            <DayPicker
+              month={monthAnchor(month)}
+              onMonthChange={(date) => {
+                router.push(`${basePath}?month=${dateKey(date).slice(0, 7)}`);
+              }}
+              hideNavigation
+              showOutsideDays
+              fixedWeeks
+              weekStartsOn={1}
+              locale={locale === "zh" ? zhCN : enUS}
+              formatters={{
+                formatWeekdayName: (date) => weekdayLabels[date.getDay()] ?? "",
+              }}
               classNames={{
-                // panel 自带顶部分隔线与卡片边框重复，去掉；表头照原型灰底。
-                root: "[&_.ant-picker-panel]:border-t-0!",
-                content:
-                  "[&_thead_th]:border-b [&_thead_th]:border-b-[#e1e3e6] [&_thead_th]:bg-[#f4f5f7] [&_thead_th]:text-[11px] [&_thead_th]:font-normal [&_thead_th]:text-[#9aa0a6]",
+                months: "w-full",
+                month: "w-full",
+                month_grid: "w-full border-collapse",
+                weekdays: "border-b border-b-[#e1e3e6] bg-[#f4f5f7]",
+                weekday: "text-center text-[11px] font-normal text-[#9aa0a6]",
+                day: "p-0",
               }}
-              headerRender={() => null}
-              fullCellRender={(date, info) => {
-                if (info.type !== "date") return info.originNode;
-
-                const dayItems = itemsByDate.get(date.format("YYYY-MM-DD"));
-
-                return (
-                  <CalendarDayCell
-                    variant={variant}
-                    date={date}
-                    gridStart={gridStart}
-                    items={dayItems ?? []}
-                    today={today}
-                    month={month}
-                    taskHrefs={taskHrefs}
-                  />
-                );
-              }}
+              components={dayPickerComponents}
             />
           </div>
         </div>

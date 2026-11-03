@@ -11,7 +11,7 @@ import { registerUser, uniqueUsername } from "../utils/flows";
  * 覆盖（对照 i18n 计划 Task 20）：
  * 1. 设置页把界面语言切到 English → Dashboard / 看板 / 日历出现英文文案；
  * 2. 刷新后仍是英文（cookie 持久化），`html lang="en-US"`；
- * 3. antd 日期组件（月历表头）随 locale 切到英文；
+ * 3. 月历表头星期随 locale 切到英文；
  * 4. 整个过程无 hydration error；
  * 5. 数据库 `users.language = 'en'`；
  * 6. 切回「简体中文」的路径可用（界面恢复中文）。
@@ -80,18 +80,15 @@ test.describe("flow 12: 英文界面冒烟", () => {
         .getByText("Done", { exact: true }),
     ).toBeVisible();
 
-    // ===== html lang + antd 日期组件英文 =====
+    // ===== html lang + 日历表头英文 =====
     await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
     await page.goto("/space/personal/calendar");
-    // antd Calendar（en_US）表头为英文短星期（Su / Sun 视版本），且不再出现中文星期。
+    // 月历表头为英文短星期（date.weekdaySun = "Sun"），且不再出现中文星期。
     await expect(
-      page
-        .locator(".ant-picker-content th")
-        .filter({ hasText: /^(Su|Sun)$/ })
-        .first(),
+      page.locator("thead th").filter({ hasText: /^Sun$/ }).first(),
     ).toBeVisible();
     await expect(
-      page.locator(".ant-picker-content th").filter({ hasText: /^一$/ }),
+      page.locator("thead th").filter({ hasText: /^一$/ }),
     ).toHaveCount(0);
 
     // ===== 刷新后仍为英文（cookie 持久化） =====
