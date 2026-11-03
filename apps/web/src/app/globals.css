@@ -1,9 +1,11 @@
 /*
- * Tailwind CSS 4：只引入 theme 与 utilities，关闭 preflight（base 层），
- * 避免重置样式污染 antd 组件。
+ * Tailwind CSS 4：theme + utilities + preflight（base 层）。
+ * antd 移除后开启 preflight；样式重置与 tokens.css 的基础样式并存
+ * （body 字体/底色等仍在下方显式声明）。
  */
 @import "./tokens.css";
 @import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/preflight.css" layer(base);
 @import "tailwindcss/utilities.css" layer(utilities);
 
 /*
