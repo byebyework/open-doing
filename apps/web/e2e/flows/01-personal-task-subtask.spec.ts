@@ -52,4 +52,30 @@ test.describe("flow 1: 个人项目与子任务", () => {
       );
     }).toPass();
   });
+
+  test("编辑任务弹窗重开后回显任务当前值", async ({ page }) => {
+    const username = uniqueUsername("e2e_editr");
+    const projectName = uniqueLabel("E2E edit reset project");
+    const taskTitle = uniqueLabel("E2E edit reset task");
+
+    await registerUser(page, username);
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, { title: taskTitle });
+    await openPersonalTask(page, taskTitle);
+
+    // 打开编辑弹窗 → 改标题（不保存）→ Esc 关闭 → 重开：应回显任务的当前值。
+    await page.getByTestId(TEST_IDS.tasks.editOpenButton).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByLabel("标题", { exact: true }).fill("改过的标题");
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    await page.getByTestId(TEST_IDS.tasks.editOpenButton).click();
+    await expect(dialog.getByLabel("标题", { exact: true })).toHaveValue(
+      taskTitle,
+    );
+  });
 });

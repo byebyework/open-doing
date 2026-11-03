@@ -11,7 +11,7 @@ import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -129,8 +129,9 @@ interface EditTaskModalProps {
  * 编辑任务弹窗：标题 / 描述 / 截止日期。
  *
  * 提交失败时由 `onAction.updateTask`（client 包装件）统一提示错误，
- * 本组件保持弹窗打开，不吞掉失败状态。Radix Dialog 关闭时卸载内容，
- * 每次打开都会以 task 的当前值重建 RHF 初始值。
+ * 本组件保持弹窗打开，不吞掉失败状态。RHF 状态挂在常驻包装件上，
+ * Radix Dialog 关闭即卸载内容，打开时以 task 的当前值重置表单
+ * （还原 antd `destroyOnHidden` + `resetFields` 语义）。
  */
 function EditTaskModal({
   open,
@@ -157,6 +158,7 @@ function EditTaskModal({
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm<EditTaskFormValues>({
     resolver: zodResolver(schema),
@@ -166,6 +168,17 @@ function EditTaskModal({
       dueDate: task.dueDate ?? "",
     },
   });
+
+  // 每次打开都以 task 的当前值重置（关闭期间内容被卸载，但 RHF 状态常驻）。
+  useEffect(() => {
+    if (open) {
+      reset({
+        title: task.title,
+        description: task.description ?? "",
+        dueDate: task.dueDate ?? "",
+      });
+    }
+  }, [open, reset, task.title, task.description, task.dueDate]);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);

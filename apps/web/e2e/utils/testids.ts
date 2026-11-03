@@ -25,6 +25,7 @@ export const TEST_IDS = {
     dueDateInput: "task-due-date-input",
     createSubmitButton: "task-create-submit-button",
     statusToggle: "task-status-toggle",
+    editOpenButton: "task-edit-open",
     subtaskHeading: "subtask-heading",
     subtaskInput: "subtask-input",
     subtaskAddButton: "subtask-add-button",

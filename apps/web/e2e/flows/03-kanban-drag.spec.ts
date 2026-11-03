@@ -81,4 +81,27 @@ test.describe("flow 3: 看板拖拽", () => {
       ).toHaveCount(0);
     }).toPass();
   });
+
+  test("新建任务弹窗重开后不残留上次输入", async ({ page }) => {
+    const username = uniqueUsername("e2e_kbreset");
+    const projectName = uniqueLabel("E2E reset board");
+
+    await registerUser(page, username);
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+
+    // 打开 → 输入 → Esc 关闭 → 重开：标题应为空（antd resetFields 语义）。
+    await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+    await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill("草稿残留检查");
+
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+
+    await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
+    await expect(
+      page.getByRole("dialog").getByTestId(TEST_IDS.tasks.titleInput),
+    ).toHaveValue("");
+  });
 });

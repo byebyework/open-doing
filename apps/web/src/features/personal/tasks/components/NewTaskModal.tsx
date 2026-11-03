@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -53,7 +53,8 @@ const NO_PROJECT = "__none__";
  *
  * 文案逐字对照 `personal-project.html`「新建任务」弹窗：无责任人字段，
  * 项目下拉 = 传入项目 + 末项「个人空间 · 不属于项目」。
- * Radix Dialog 关闭即卸载内容，每次打开按 props 重建 RHF 初始值。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
+ * 表单以还原 antd `resetFields` 语义。
  */
 export function NewTaskModal({
   open,
@@ -92,6 +93,7 @@ export function NewTaskModal({
     setError,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -102,6 +104,19 @@ export function NewTaskModal({
       description: "",
     },
   });
+
+  // 每次打开都重置为初始值（关闭期间内容被卸载，但 RHF 状态常驻）。
+  useEffect(() => {
+    if (open) {
+      reset({
+        title: "",
+        projectId: defaultProject,
+        dueDate: "",
+        description: "",
+      });
+      setFormError(null);
+    }
+  }, [open, reset, defaultProject]);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);

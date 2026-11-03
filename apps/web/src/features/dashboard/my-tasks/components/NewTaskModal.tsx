@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -103,7 +103,8 @@ function buildProjectGroups(
  * 对照 `my-tasks.html`「新建任务」弹窗：项目下拉同时列出个人项目、
  * 「不属于项目」与各团队项目（按团队分组）。提交时按所选项目的
  * teamId 分流到对应的 Server Action；团队任务的默认责任人即创建者。
- * Radix Dialog 关闭即卸载内容，每次打开重建 RHF 初始值。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
+ * 表单以还原 antd `resetFields` 语义。
  */
 export function NewTaskModal({
   open,
@@ -135,6 +136,7 @@ export function NewTaskModal({
     setError,
     setValue,
     watch,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -145,6 +147,19 @@ export function NewTaskModal({
       description: "",
     },
   });
+
+  // 每次打开都重置为初始值（关闭期间内容被卸载，但 RHF 状态常驻）。
+  useEffect(() => {
+    if (open) {
+      reset({
+        title: "",
+        projectId: NO_PROJECT,
+        dueDate: "",
+        description: "",
+      });
+      setFormError(null);
+    }
+  }, [open, reset]);
 
   const projectGroups = buildProjectGroups(projects, t);
 

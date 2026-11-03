@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -45,7 +45,8 @@ export interface PersonalProjectFormModalProps {
  *
  * 文案对照 `my-tasks.html`「新建个人项目」弹窗；服务端校验失败时
  * 把 `DomainError.field` 映射回对应表单项，表单级错误显示在顶部。
- * Radix Dialog 关闭即卸载内容，每次打开按 props 重建 RHF 初始值。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
+ * 表单以还原 antd `resetFields` 语义。
  */
 export function PersonalProjectFormModal({
   open,
@@ -77,6 +78,7 @@ export function PersonalProjectFormModal({
     handleSubmit,
     setError,
     watch,
+    reset,
     formState: { errors },
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -85,6 +87,17 @@ export function PersonalProjectFormModal({
       description: mode === "edit" ? (project?.description ?? "") : "",
     },
   });
+
+  // 每次打开都重置为当前值（关闭期间内容被卸载，但 RHF 状态常驻）。
+  useEffect(() => {
+    if (open) {
+      reset({
+        name: mode === "edit" ? (project?.name ?? "") : "",
+        description: mode === "edit" ? (project?.description ?? "") : "",
+      });
+      setFormError(null);
+    }
+  }, [open, reset, mode, project]);
 
   const onSubmit = handleSubmit(async (values) => {
     if (mode === "edit" && !project) {
