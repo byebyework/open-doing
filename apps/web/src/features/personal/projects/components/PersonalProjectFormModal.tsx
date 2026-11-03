@@ -1,8 +1,25 @@
 "use client";
 
-import { App, Alert, Form, Input, Modal } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/shadcn/dialog";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 
 import {
   createPersonalProjectAction,
@@ -23,21 +40,12 @@ export interface PersonalProjectFormModalProps {
   onCancel: () => void;
 }
 
-interface FormValues {
-  name: string;
-  description?: string;
-}
-
-interface FieldError {
-  name: "name" | "description";
-  errors: string[];
-}
-
 /**
  * 个人项目新建 / 编辑弹窗。
  *
  * 文案对照 `my-tasks.html`「新建个人项目」弹窗；服务端校验失败时
  * 把 `DomainError.field` 映射回对应表单项，表单级错误显示在顶部。
+ * Radix Dialog 关闭即卸载内容，每次打开按 props 重建 RHF 初始值。
  */
 export function PersonalProjectFormModal({
   open,
@@ -46,24 +54,39 @@ export function PersonalProjectFormModal({
   onSuccess,
   onCancel,
 }: PersonalProjectFormModalProps) {
-  const { message } = App.useApp();
   const t = useTranslations("personal");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  /**
-   * `destroyOnHidden` 会在关闭后卸载表单，下次打开时按 `initialValues`
-   * 重新挂载；这里只需在打开后清掉上一次的表单级错误。
-   */
-  function handleOpenChange(visible: boolean) {
-    if (!visible) return;
-    setFormError(null);
-    form.resetFields();
-  }
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z.object({
+    name: z
+      .string()
+      .trim()
+      .min(1, t("nameRequired"))
+      .max(50, t("nameTooLong", { max: 50 })),
+    description: z
+      .string()
+      .max(500, t("descriptionTooLong", { max: 500 })),
+  });
+  type FormValues = z.infer<typeof schema>;
 
-  async function handleFinish(values: FormValues) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      name: mode === "edit" ? (project?.name ?? "") : "",
+      description: mode === "edit" ? (project?.description ?? "") : "",
+    },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     if (mode === "edit" && !project) {
       setFormError(t("missingProject"));
       return;
@@ -84,96 +107,116 @@ export function PersonalProjectFormModal({
           : await createPersonalProjectAction(input);
 
       if (!result.ok) {
-        const fieldErrors: FieldError[] = [];
         if (result.errors.name) {
-          fieldErrors.push({ name: "name", errors: [result.errors.name] });
+          setError("name", { message: result.errors.name });
         }
         if (result.errors.description) {
-          fieldErrors.push({
-            name: "description",
-            errors: [result.errors.description],
-          });
+          setError("description", { message: result.errors.description });
         }
-        if (fieldErrors.length > 0) form.setFields(fieldErrors);
         if (result.errors.form) setFormError(result.errors.form);
         return;
       }
 
-      message.success(mode === "edit" ? t("projectSaved") : t("projectCreated"));
+      toast.success(mode === "edit" ? t("projectSaved") : t("projectCreated"));
       onSuccess();
     } catch {
       setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
-    <Modal
+    <Dialog
       open={open}
-      title={mode === "create" ? t("modalTitleCreate") : t("modalTitleEdit")}
-      okText={mode === "create" ? t("okCreate") : tCommon("save")}
-      cancelText={tCommon("cancel")}
-      confirmLoading={submitting}
-      okButtonProps={{ "data-testid": "personal-project-submit-button" }}
-      onOk={() => form.submit()}
-      onCancel={onCancel}
-      afterOpenChange={handleOpenChange}
-      destroyOnHidden
-      width={480}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
     >
-      <Alert type="info" showIcon title={t("infoText")} className="mb-5" />
+      <DialogContent className="sm:max-w-[480px]">
+        <DialogHeader>
+          <DialogTitle>
+            {mode === "create" ? t("modalTitleCreate") : t("modalTitleEdit")}
+          </DialogTitle>
+        </DialogHeader>
 
-      {formError ? (
-        <Alert
-          type="error"
-          showIcon
-          title={formError}
-          className="mb-4"
-          role="alert"
-        />
-      ) : null}
+        <Alert variant="info" className="mb-4">
+          {t("infoText")}
+        </Alert>
 
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        initialValues={{
-          name: mode === "edit" ? (project?.name ?? "") : "",
-          description: mode === "edit" ? (project?.description ?? "") : "",
-        }}
-        onFinish={handleFinish}
-        disabled={submitting}
-      >
-        <Form.Item
-          label={t("nameLabel")}
-          name="name"
-          rules={[
-            { required: true, whitespace: true, message: t("nameRequired") },
-            { max: 50, message: t("nameTooLong", { max: 50 }) },
-          ]}
-        >
-          <Input
-            data-testid="personal-project-name-input"
-            placeholder={t("namePlaceholder")}
-            maxLength={50}
-            autoFocus
-          />
-        </Form.Item>
+        {formError ? (
+          <Alert variant="destructive" role="alert" className="mb-4">
+            {formError}
+          </Alert>
+        ) : null}
 
-        <Form.Item
-          label={t("descriptionOptional")}
-          name="description"
-          rules={[{ max: 500, message: t("descriptionTooLong", { max: 500 }) }]}
-        >
-          <Input.TextArea
-            rows={4}
-            placeholder={t("descriptionPlaceholder")}
-            maxLength={500}
-            showCount
-          />
-        </Form.Item>
-      </Form>
-    </Modal>
+        <form onSubmit={onSubmit} noValidate>
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="personal-project-name">{t("nameLabel")}</Label>
+            <Input
+              id="personal-project-name"
+              type="text"
+              data-testid="personal-project-name-input"
+              placeholder={t("namePlaceholder")}
+              maxLength={50}
+              autoFocus
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={
+                errors.name ? "personal-project-name-error" : undefined
+              }
+              disabled={submitting}
+              {...register("name")}
+            />
+            {errors.name ? (
+              <p id="personal-project-name-error" className="text-[12.5px] text-[var(--error)]">
+                {errors.name.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="personal-project-description">
+              {t("descriptionOptional")}
+            </Label>
+            <Textarea
+              id="personal-project-description"
+              rows={4}
+              placeholder={t("descriptionPlaceholder")}
+              disabled={submitting}
+              {...register("description")}
+            />
+            <div className="text-right text-[12px] text-[#9aa0a6]">
+              {watch("description").length} / 500
+            </div>
+            {errors.description ? (
+              <p className="text-[12.5px] text-[var(--error)]">
+                {errors.description.message}
+              </p>
+            ) : null}
+          </div>
+
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={submitting}
+              onClick={onCancel}
+            >
+              {tCommon("cancel")}
+            </Button>
+            <Button
+              type="submit"
+              disabled={submitting}
+              data-testid="personal-project-submit-button"
+            >
+              {submitting ? (
+                <Loader2Icon className="animate-spin" aria-hidden="true" />
+              ) : null}
+              {mode === "create" ? t("okCreate") : tCommon("save")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }

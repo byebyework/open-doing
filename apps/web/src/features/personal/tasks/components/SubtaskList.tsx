@@ -1,9 +1,13 @@
 "use client";
 
 import type { Subtask } from "@open-doing/types";
-import { Button, Checkbox, Input } from "antd";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/shadcn/button";
+import { Checkbox } from "@/components/ui/shadcn/checkbox";
+import { Input } from "@/components/ui/shadcn/input";
 
 /** 子任务列表入参（`onToggle` / `onAdd` / `onRemove` 缺省时对应 UI 只读或隐藏）。 */
 export interface SubtaskListProps {
@@ -85,38 +89,40 @@ export function SubtaskList({
           {subtasks.map((subtask) => (
             <div
               key={subtask.id}
-              className="group flex min-h-9 items-center gap-2 rounded-lg px-1 hover:bg-[#f7f8fa]"
+              className="group flex min-h-9 items-center gap-2.5 rounded-lg px-1 hover:bg-[#f7f8fa]"
             >
               <Checkbox
                 checked={subtask.completed}
+                aria-label={subtask.title}
                 disabled={!onToggle || pendingId === subtask.id}
-                onChange={(event) => {
-                  if (!onToggle) return;
-                  void handleToggle(subtask, event.target.checked);
+                onCheckedChange={(checked) => {
+                  if (!onToggle || typeof checked !== "boolean") return;
+                  void handleToggle(subtask, checked);
                 }}
+              />
+              <span
+                className={
+                  subtask.completed
+                    ? "text-[#9aa0a6] line-through"
+                    : "text-[#0e1318]"
+                }
               >
-                <span
-                  className={
-                    subtask.completed
-                      ? "text-[#9aa0a6] line-through"
-                      : "text-[#0e1318]"
-                  }
-                >
-                  {subtask.title}
-                </span>
-              </Checkbox>
+                {subtask.title}
+              </span>
 
               {onRemove ? (
                 <Button
-                  type="text"
-                  size="small"
-                  danger
-                  className="ml-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                  loading={pendingId === subtask.id}
+                  variant="ghost"
+                  size="sm"
+                  className="ml-auto text-destructive opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                  disabled={pendingId === subtask.id}
                   onClick={() => {
                     void handleRemove(subtask.id);
                   }}
                 >
+                  {pendingId === subtask.id ? (
+                    <Loader2Icon className="animate-spin" aria-hidden="true" />
+                  ) : null}
                   {tCommon("delete")}
                 </Button>
               ) : null}
@@ -135,8 +141,11 @@ export function SubtaskList({
             maxLength={200}
             disabled={adding}
             onChange={(event) => setDraft(event.target.value)}
-            onPressEnter={() => {
-              void handleAdd();
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void handleAdd();
+              }
             }}
           />
           <Button
@@ -144,9 +153,9 @@ export function SubtaskList({
             onClick={() => {
               void handleAdd();
             }}
-            loading={adding}
-            disabled={!draft.trim()}
+            disabled={adding || !draft.trim()}
           >
+            {adding ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
             {t("add")}
           </Button>
         </div>

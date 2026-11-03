@@ -95,8 +95,8 @@ describe("TaskDetailView 子任务权限门", () => {
 
     expect(html).not.toContain("＋ 添加子任务");
     expect(html).not.toContain(">删除<");
-    // antd 的禁用态体现在 wrapper 与 input 的 disabled 属性上。
-    expect(html).toContain("ant-checkbox-wrapper-disabled");
+    // shadcn Checkbox 的禁用态体现在 data-slot 按钮的 disabled 属性上。
+    expect(html).toMatch(/role="checkbox"[^>]*data-disabled=""/);
   });
 
   it("canEdit=true 时子任务可勾选、可增删", () => {
@@ -107,6 +107,6 @@ describe("TaskDetailView 子任务权限门", () => {
 
     expect(html).toContain("＋ 添加子任务");
     expect(html).toContain(">删除<");
-    expect(html).not.toContain("ant-checkbox-wrapper-disabled");
+    expect(html).not.toMatch(/role="checkbox"[^>]*data-disabled=""/);
   });
 });

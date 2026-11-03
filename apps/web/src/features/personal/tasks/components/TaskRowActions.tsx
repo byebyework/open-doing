@@ -1,12 +1,22 @@
 "use client";
 
 import type { Subtask, Task, TaskStatus } from "@open-doing/types";
-import { App, Button, Dropdown, Segmented, type MenuProps } from "antd";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/shadcn/dropdown-menu";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { PersonalProjectHeaderActions } from "@/features/personal/projects/components/PersonalProjectHeaderActions";
 import { personalTaskHref } from "@/lib/routes";
 
@@ -43,7 +53,6 @@ function firstError(errors: Record<string, string>, fallback: string): string {
 
 /** 行内状态切换的共享逻辑（列表下拉与看板移动端按钮共用）。 */
 function useStatusChange(task: ProjectTask, onChanged: () => void) {
-  const { message } = App.useApp();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
   const [pending, setPending] = useState<TaskStatus | null>(null);
@@ -56,13 +65,13 @@ function useStatusChange(task: ProjectTask, onChanged: () => void) {
       const result = await updatePersonalTaskAction(task.id, { status });
 
       if (!result.ok) {
-        message.error(firstError(result.errors, tErrors("operationFailed")));
+        toast.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
       onChanged();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setPending(null);
     }
@@ -86,7 +95,6 @@ export interface TaskRowActionsProps {
  * 原型表格没有操作列，因此入口收在任务标题右侧，不额外占一列。
  */
 export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");
@@ -96,18 +104,7 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
-  const items: MenuProps["items"] = [
-    ...TASK_STATUS_ORDER.map((status) => ({
-      key: `status:${status}`,
-      label: t("markAs", { status: tStatus(TASK_STATUS_KEYS[status]) }),
-      disabled: status === task.status,
-    })),
-    { type: "divider" as const },
-    { key: "edit", label: tCommon("edit") },
-    { key: "delete", label: tCommon("delete"), danger: true },
-  ];
-
-  function handleMenuClick({ key }: { key: string }) {
+  function handleMenuClick(key: string) {
     if (key === "edit") {
       router.push(personalTaskHref(task.id));
       return;
@@ -128,15 +125,15 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
       const result = await deletePersonalTaskAction(task.id);
 
       if (!result.ok) {
-        message.error(firstError(result.errors, tErrors("operationFailed")));
+        toast.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
-      message.success(t("taskDeleted"));
+      toast.success(t("taskDeleted"));
       setDeleteOpen(false);
       onChanged();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -144,32 +141,51 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
 
   return (
     <>
-      <Dropdown
-        trigger={["click"]}
-        placement="bottomRight"
-        menu={{ items, onClick: handleMenuClick }}
-        disabled={pending !== null || deleting}
-      >
-        <Button
-          type="text"
-          size="small"
-          aria-label={t("rowActionsAria", { title: task.title })}
-          className="shrink-0"
-          style={{ color: "#9aa0a6" }}
-        >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            aria-hidden="true"
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild disabled={pending !== null || deleting}>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="size-7 shrink-0 text-[#9aa0a6]"
+            aria-label={t("rowActionsAria", { title: task.title })}
           >
-            <circle cx="5" cy="12" r="1.7" />
-            <circle cx="12" cy="12" r="1.7" />
-            <circle cx="19" cy="12" r="1.7" />
-          </svg>
-        </Button>
-      </Dropdown>
+            <svg
+              width="16"
+              height="16"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <circle cx="5" cy="12" r="1.7" />
+              <circle cx="12" cy="12" r="1.7" />
+              <circle cx="19" cy="12" r="1.7" />
+            </svg>
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end">
+          {TASK_STATUS_ORDER.map((status) => (
+            <DropdownMenuItem
+              key={`status:${status}`}
+              disabled={status === task.status}
+              onClick={() => {
+                handleMenuClick(`status:${status}`);
+              }}
+            >
+              {t("markAs", { status: tStatus(TASK_STATUS_KEYS[status]) })}
+            </DropdownMenuItem>
+          ))}
+          <DropdownMenuSeparator />
+          <DropdownMenuItem onClick={() => handleMenuClick("edit")}>
+            {tCommon("edit")}
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            className="text-destructive"
+            onClick={() => handleMenuClick("delete")}
+          >
+            {tCommon("delete")}
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
 
       <ConfirmModal
         open={deleteOpen}
@@ -213,14 +229,16 @@ export function TaskStatusButtons({
         return (
           <Button
             key={status}
-            size="small"
-            type={current ? "primary" : "default"}
+            size="sm"
+            variant={current ? "default" : "outline"}
             disabled={current || pending !== null}
-            loading={pending === status}
             onClick={() => {
               void change(status);
             }}
           >
+            {pending === status ? (
+              <Loader2Icon className="animate-spin" aria-hidden="true" />
+            ) : null}
             {tStatus(TASK_STATUS_KEYS[status])}
           </Button>
         );
@@ -243,7 +261,7 @@ export interface PersonalProjectPageActionsProps {
 
 /**
  * 项目页页头操作区（从左到右）：
- * 「编辑」「删除」→ Segmented「列表 / 看板」→ 主按钮「＋ 新建任务」。
+ * 「编辑」「删除」→ 视图切换「列表 / 看板」→ 主按钮「＋ 新建任务」。
  *
  * 新建任务弹窗默认选中当前项目；视图切换写 `?view=list|board`。
  */
@@ -261,18 +279,18 @@ export function PersonalProjectPageActions({
     <div className="flex shrink-0 flex-wrap items-center gap-2">
       <PersonalProjectHeaderActions project={project} />
 
-      <Segmented<"list" | "board">
-        options={[
-          { label: t("viewList"), value: "list" },
-          { label: t("viewBoard"), value: "board" },
-        ]}
-        value={view}
-        onChange={(nextView) => {
+      <Tabs value={view} onValueChange={(nextView) => {
+        if (nextView === "list" || nextView === "board") {
           router.push(`${projectPath}?view=${nextView}`);
-        }}
-      />
+        }
+      }}>
+        <TabsList>
+          <TabsTrigger value="list">{t("viewList")}</TabsTrigger>
+          <TabsTrigger value="board">{t("viewBoard")}</TabsTrigger>
+        </TabsList>
+      </Tabs>
 
-      <Button type="primary" data-testid="new-task-button" onClick={() => setNewTaskOpen(true)}>
+      <Button data-testid="new-task-button" onClick={() => setNewTaskOpen(true)}>
         {t("newTaskButton")}
       </Button>
 

@@ -1,9 +1,10 @@
 "use client";
 
-import { Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+
+import { Button } from "@/components/ui/shadcn/button";
 
 import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
 

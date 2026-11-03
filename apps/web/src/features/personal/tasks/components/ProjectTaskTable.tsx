@@ -2,7 +2,6 @@
 
 import type { TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
-import { Button, Select } from "antd";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -12,6 +11,14 @@ import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
 import { personalTaskHref } from "@/lib/routes";
 
 import { NewTaskModal } from "./NewTaskModal";
@@ -107,32 +114,43 @@ export function ProjectTaskTable({
   return (
     <>
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <Select<StatusFilter>
-          size="small"
-          aria-label={t("filterByStatusAria")}
+        <Select
           value={statusFilter}
-          onChange={setStatusFilter}
-          options={[
-            { value: "all", label: t("filterAllStatus") },
-            ...TASK_STATUS_ORDER.map((status) => ({
-              value: status,
-              label: tStatus(TASK_STATUS_KEYS[status]),
-            })),
-          ]}
-          style={{ width: 120 }}
-        />
-        <Select<SortKey>
-          size="small"
-          aria-label={t("sortByAria")}
+          onValueChange={(value) => setStatusFilter(value as StatusFilter)}
+        >
+          <SelectTrigger
+            className="h-8 w-[120px]"
+            aria-label={t("filterByStatusAria")}
+            data-testid="task-status-filter"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("filterAllStatus")}</SelectItem>
+            {TASK_STATUS_ORDER.map((status) => (
+              <SelectItem key={status} value={status}>
+                {tStatus(TASK_STATUS_KEYS[status])}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select
           value={sort}
-          onChange={setSort}
-          options={[
-            { value: "dueDate", label: t("sortDueDate") },
-            { value: "status", label: t("sortStatus") },
-            { value: "createdAt", label: t("sortCreatedAt") },
-          ]}
-          style={{ width: 150 }}
-        />
+          onValueChange={(value) => setSort(value as SortKey)}
+        >
+          <SelectTrigger
+            className="h-8 w-[150px]"
+            aria-label={t("sortByAria")}
+            data-testid="task-sort-select"
+          >
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="dueDate">{t("sortDueDate")}</SelectItem>
+            <SelectItem value="status">{t("sortStatus")}</SelectItem>
+            <SelectItem value="createdAt">{t("sortCreatedAt")}</SelectItem>
+          </SelectContent>
+        </Select>
         <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
           {t("totalCount", { count: visibleTasks.length })}
         </span>
@@ -144,7 +162,7 @@ export function ProjectTaskTable({
             title={t("emptyTasksTitle")}
             description={t("emptyTasksPersonalHint")}
             action={
-              <Button type="primary" onClick={() => setNewTaskOpen(true)}>
+              <Button onClick={() => setNewTaskOpen(true)}>
                 {t("newTaskButton")}
               </Button>
             }

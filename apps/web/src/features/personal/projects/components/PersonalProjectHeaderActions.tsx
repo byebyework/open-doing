@@ -1,11 +1,12 @@
 "use client";
 
-import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { Button } from "@/components/ui/shadcn/button";
 import { spaceDashboardHref } from "@/lib/routes";
 
 import { deletePersonalProjectAction } from "../actions";
@@ -24,7 +25,6 @@ export interface PersonalProjectHeaderActionsProps {
 export function PersonalProjectHeaderActions({
   project,
 }: PersonalProjectHeaderActionsProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const t = useTranslations("personal");
   const tCommon = useTranslations("common");
@@ -40,16 +40,16 @@ export function PersonalProjectHeaderActions({
       const result = await deletePersonalProjectAction(project.id);
 
       if (!result.ok) {
-        message.error(result.errors.form ?? Object.values(result.errors)[0] ?? tErrors("operationFailed"));
+        toast.error(result.errors.form ?? Object.values(result.errors)[0] ?? tErrors("operationFailed"));
         return;
       }
 
-      message.success(t("projectDeleted"));
+      toast.success(t("projectDeleted"));
       setDeleteOpen(false);
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     } finally {
       setDeleting(false);
     }
@@ -57,10 +57,10 @@ export function PersonalProjectHeaderActions({
 
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <Button type="text" onClick={() => setEditOpen(true)}>
+      <Button variant="ghost" onClick={() => setEditOpen(true)}>
         {tCommon("edit")}
       </Button>
-      <Button type="text" danger onClick={() => setDeleteOpen(true)}>
+      <Button variant="ghost" className="text-destructive" onClick={() => setDeleteOpen(true)}>
         {tCommon("delete")}
       </Button>
 

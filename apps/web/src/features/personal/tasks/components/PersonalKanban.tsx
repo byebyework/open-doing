@@ -14,14 +14,15 @@ import {
   type DragEndEvent,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import { App, Button } from "antd";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { DueText } from "@/components/ui/DueText";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
+import { Button } from "@/components/ui/shadcn/button";
 import { useIsDesktop } from "@/features/kanban/components/useIsDesktop";
 
 import { updatePersonalTaskAction } from "../actions";
@@ -188,9 +189,9 @@ function KanbanColumn({
         </span>
         {status === "todo" ? (
           <Button
-            type="text"
-            size="small"
-            className="ml-auto"
+            variant="ghost"
+            size="icon"
+            className="ml-auto size-7"
             aria-label={t("newTaskAria")}
             onClick={onNewTask}
           >
@@ -233,7 +234,6 @@ export function PersonalKanban({
   projectId,
   projects,
 }: PersonalKanbanProps) {
-  const { message } = App.useApp();
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -298,7 +298,7 @@ export function PersonalKanban({
             item.id === taskId ? { ...item, status: previousStatus } : item,
           ),
         );
-        message.error(firstError(result.errors, tErrors("operationFailed")));
+        toast.error(firstError(result.errors, tErrors("operationFailed")));
         return;
       }
 
@@ -309,7 +309,7 @@ export function PersonalKanban({
           item.id === taskId ? { ...item, status: previousStatus } : item,
         ),
       );
-      message.error(tCommon("networkError"));
+      toast.error(tCommon("networkError"));
     }
   }
 

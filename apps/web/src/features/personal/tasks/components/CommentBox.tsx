@@ -1,10 +1,12 @@
 "use client";
 
-import { Button, Input } from "antd";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Button } from "@/components/ui/shadcn/button";
+import { Textarea } from "@/components/ui/shadcn/textarea";
 
 /** 评论列表项（作者名由服务端组装）。 */
 export interface CommentBoxItem {
@@ -119,15 +121,17 @@ export function CommentBox({
 
                   {onDelete && comment.authorId === currentUserId ? (
                     <Button
-                      type="text"
-                      size="small"
-                      danger
-                      className="ml-auto opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
-                      loading={deletingId === comment.id}
+                      variant="ghost"
+                      size="sm"
+                      className="ml-auto text-destructive opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                      disabled={deletingId === comment.id}
                       onClick={() => {
                         void handleDelete(comment.id);
                       }}
                     >
+                      {deletingId === comment.id ? (
+                        <Loader2Icon className="animate-spin" aria-hidden="true" />
+                      ) : null}
                       {tCommon("delete")}
                     </Button>
                   ) : null}
@@ -143,32 +147,34 @@ export function CommentBox({
       )}
 
       <div className="mt-5">
-        <Input.TextArea
+        <Textarea
           value={draft}
           rows={3}
           maxLength={2000}
           aria-label={t("commentAria")}
-          showCount
           placeholder={t("commentPlaceholder")}
           disabled={submitting}
           onChange={(event) => setDraft(event.target.value)}
         />
+        <div className="mt-1 text-right text-[12px] text-[#9aa0a6]">
+          {draft.length} / 2000
+        </div>
 
         <div className="mt-2.5 flex justify-end gap-2">
           <Button
+            variant="outline"
             disabled={submitting || draft.length === 0}
             onClick={() => setDraft("")}
           >
             {tCommon("cancel")}
           </Button>
           <Button
-            type="primary"
-            loading={submitting}
-            disabled={!draft.trim()}
+            disabled={submitting || !draft.trim()}
             onClick={() => {
               void handleSubmit();
             }}
           >
+            {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
             {t("postComment")}
           </Button>
         </div>

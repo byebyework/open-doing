@@ -1,8 +1,33 @@
 "use client";
 
-import { App, Alert, Form, Input, Modal, Select } from "antd";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
+import { useForm } from "react-hook-form";
+import { toast } from "sonner";
+import { z } from "zod";
+
+import { Alert } from "@/components/ui/shadcn/alert";
+import { Button } from "@/components/ui/shadcn/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/shadcn/dialog";
+import { Input } from "@/components/ui/shadcn/input";
+import { Label } from "@/components/ui/shadcn/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/shadcn/select";
+import { Textarea } from "@/components/ui/shadcn/textarea";
+import { applyActionErrors } from "@/lib/action-form";
 
 import { createPersonalTaskAction } from "../actions";
 
@@ -20,23 +45,15 @@ export interface NewTaskModalProps {
   onCancel: () => void;
 }
 
-interface FormValues {
-  title: string;
-  projectId: string;
-  dueDate?: string;
-  description?: string;
-}
-
-/** 服务端可能返回的字段错误键。 */
-const FIELD_KEYS = ["title", "projectId", "dueDate", "description"] as const;
-
-type FieldKey = (typeof FIELD_KEYS)[number];
+/** 「不属于项目」在 Radix Select 里的哨兵值（不允许空字符串 item value）。 */
+const NO_PROJECT = "__none__";
 
 /**
  * 新建任务弹窗（个人空间）。
  *
  * 文案逐字对照 `personal-project.html`「新建任务」弹窗：无责任人字段，
  * 项目下拉 = 传入项目 + 末项「个人空间 · 不属于项目」。
+ * Radix Dialog 关闭即卸载内容，每次打开按 props 重建 RHF 初始值。
  */
 export function NewTaskModal({
   open,
@@ -45,10 +62,8 @@ export function NewTaskModal({
   onSuccess,
   onCancel,
 }: NewTaskModalProps) {
-  const { message } = App.useApp();
   const t = useTranslations("tasks");
   const tCommon = useTranslations("common");
-  const [form] = Form.useForm<FormValues>();
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -56,19 +71,39 @@ export function NewTaskModal({
     defaultProjectId &&
     projects.some((project) => project.id === defaultProjectId)
       ? defaultProjectId
-      : "";
+      : NO_PROJECT;
 
-  /**
-   * `destroyOnHidden` 会在关闭后卸载表单，下次打开时按 `initialValues`
-   * 重新挂载；这里只需在打开后清掉上一次的表单级错误。
-   */
-  function handleOpenChange(visible: boolean) {
-    if (!visible) return;
-    setFormError(null);
-    form.resetFields();
-  }
+  // zod schema 在组件内构建:必填文案取自 next-intl。
+  const schema = z.object({
+    title: z
+      .string()
+      .trim()
+      .min(1, t("titleRequired"))
+      .max(200, t("titleTooLong", { max: 200 })),
+    projectId: z.string(),
+    dueDate: z.string(),
+    description: z.string(),
+  });
+  type FormValues = z.infer<typeof schema>;
 
-  async function handleFinish(values: FormValues) {
+  const {
+    register,
+    handleSubmit,
+    setError,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(schema),
+    defaultValues: {
+      title: "",
+      projectId: defaultProject,
+      dueDate: "",
+      description: "",
+    },
+  });
+
+  const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
     setFormError(null);
 
@@ -76,102 +111,122 @@ export function NewTaskModal({
       const result = await createPersonalTaskAction({
         title: values.title,
         description: values.description ?? "",
-        dueDate: values.dueDate?.trim() ? values.dueDate : null,
-        projectId: values.projectId ? values.projectId : null,
+        dueDate: values.dueDate.trim() ? values.dueDate : null,
+        projectId: values.projectId === NO_PROJECT ? null : values.projectId,
       });
 
       if (!result.ok) {
-        const fieldErrors: { name: FieldKey; errors: string[] }[] = [];
-
-        for (const key of FIELD_KEYS) {
-          const messageText = result.errors[key];
-          if (messageText) {
-            fieldErrors.push({ name: key, errors: [messageText] });
-          }
-        }
-
-        if (fieldErrors.length > 0) form.setFields(fieldErrors);
-        if (result.errors.form) setFormError(result.errors.form);
+        applyActionErrors(result.errors, {
+          setFieldError: (name, message) =>
+            setError(name as keyof FormValues, { message }),
+          onFormError: setFormError,
+        });
         return;
       }
 
-      message.success(t("taskCreated"));
+      toast.success(t("taskCreated"));
       onSuccess();
     } catch {
       setFormError(tCommon("networkError"));
     } finally {
       setSubmitting(false);
     }
-  }
+  });
 
   return (
-    <Modal
+    <Dialog
       open={open}
-      title={t("newTaskTitle")}
-      okText={t("okCreateTask")}
-      cancelText={tCommon("cancel")}
-      confirmLoading={submitting}
-      okButtonProps={{ "data-testid": "task-create-submit-button" }}
-      onOk={() => form.submit()}
-      onCancel={onCancel}
-      afterOpenChange={handleOpenChange}
-      destroyOnHidden
-      width={520}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
     >
-      {formError ? (
-        <Alert
-          type="error"
-          showIcon
-          title={formError}
-          className="mb-4"
-          role="alert"
-        />
-      ) : null}
+      <DialogContent className="sm:max-w-[520px]">
+        <DialogHeader>
+          <DialogTitle>{t("newTaskTitle")}</DialogTitle>
+        </DialogHeader>
 
-      <Form
-        form={form}
-        layout="vertical"
-        requiredMark={false}
-        initialValues={{
-          title: "",
-          projectId: defaultProject,
-          dueDate: "",
-          description: "",
-        }}
-        onFinish={handleFinish}
-        disabled={submitting}
-      >
-        <Form.Item
-          label={t("title")}
-          name="title"
-          rules={[
-            { required: true, whitespace: true, message: t("titleRequired") },
-            { max: 200, message: t("titleTooLong", { max: 200 }) },
-          ]}
-        >
-          <Input data-testid="task-title-input" placeholder={t("titlePlaceholder")} maxLength={200} autoFocus />
-        </Form.Item>
+        {formError ? (
+          <Alert variant="destructive" role="alert" className="mb-4">
+            {formError}
+          </Alert>
+        ) : null}
 
-        <Form.Item label={t("spaceProjectLabel")} name="projectId">
-          <Select
-            options={[
-              ...projects.map((project) => ({
-                value: project.id,
-                label: t("personalProjectOption", { name: project.name }),
-              })),
-              { value: "", label: t("personalLooseOption") },
-            ]}
-          />
-        </Form.Item>
+        <form onSubmit={onSubmit} noValidate>
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="personal-task-title">{t("title")}</Label>
+            <Input
+              id="personal-task-title"
+              type="text"
+              data-testid="task-title-input"
+              placeholder={t("titlePlaceholder")}
+              maxLength={200}
+              autoFocus
+              aria-invalid={errors.title ? true : undefined}
+              aria-describedby={errors.title ? "personal-task-title-error" : undefined}
+              disabled={submitting}
+              {...register("title")}
+            />
+            {errors.title ? (
+              <p id="personal-task-title-error" className="text-[12.5px] text-[var(--error)]">
+                {errors.title.message}
+              </p>
+            ) : null}
+          </div>
 
-        <Form.Item label={t("dueDateLabel")} name="dueDate">
-          <Input data-testid="task-due-date-input" type="date" style={{ maxWidth: 220 }} />
-        </Form.Item>
+          <div className="mb-4 flex flex-col gap-2">
+            <Label>{t("spaceProjectLabel")}</Label>
+            <Select
+              value={watch("projectId")}
+              onValueChange={(value) => setValue("projectId", value)}
+            >
+              <SelectTrigger className="w-full" data-testid="task-project-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {projects.map((project) => (
+                  <SelectItem key={project.id} value={project.id}>
+                    {t("personalProjectOption", { name: project.name })}
+                  </SelectItem>
+                ))}
+                <SelectItem value={NO_PROJECT}>{t("personalLooseOption")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
 
-        <Form.Item label={t("descriptionLabel")} name="description">
-          <Input.TextArea rows={4} placeholder={t("descriptionPlaceholder")} />
-        </Form.Item>
-      </Form>
-    </Modal>
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="personal-task-due-date">{t("dueDateLabel")}</Label>
+            <Input
+              id="personal-task-due-date"
+              type="date"
+              className="max-w-[220px]"
+              data-testid="task-due-date-input"
+              disabled={submitting}
+              {...register("dueDate")}
+            />
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="personal-task-description">{t("descriptionLabel")}</Label>
+            <Textarea
+              id="personal-task-description"
+              rows={4}
+              placeholder={t("descriptionPlaceholder")}
+              disabled={submitting}
+              {...register("description")}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
+              {tCommon("cancel")}
+            </Button>
+            <Button type="submit" disabled={submitting} data-testid="task-create-submit-button">
+              {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
+              {t("okCreateTask")}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
 }
