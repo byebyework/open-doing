@@ -1,8 +1,20 @@
 "use client";
 
-import { Modal } from "antd";
+import { Loader2Icon } from "lucide-react";
 import type { ComponentProps, ReactNode } from "react";
 import { useTranslations } from "next-intl";
+
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/shadcn/alert-dialog";
+import { buttonVariants } from "@/components/ui/shadcn/button";
 
 /** ConfirmModal 入参。 */
 export interface ConfirmModalProps {
@@ -19,7 +31,7 @@ export interface ConfirmModalProps {
   /** 确认按钮加载态（异步提交中）。 */
   loading?: boolean;
   /** 透传给确认按钮的附加 props（e2e data-testid 等）。 */
-  okButtonProps?: ComponentProps<typeof Modal>["okButtonProps"];
+  okButtonProps?: ComponentProps<"button"> & { "data-testid"?: string };
   /** 点击确认。 */
   onConfirm: () => void;
   /** 点击取消或关闭。 */
@@ -29,7 +41,8 @@ export interface ConfirmModalProps {
 /**
  * 二次确认弹窗（删除任务、移除成员等）。
  *
- * 统一封装 antd Modal 的确认/取消语义；确认按钮可切换危险样式与加载态。
+ * 统一封装 shadcn AlertDialog 的确认/取消语义；确认按钮可切换危险样式与加载态。
+ * 关闭（取消/Esc/遮罩）统一走 onCancel。
  */
 export function ConfirmModal({
   open,
@@ -46,17 +59,32 @@ export function ConfirmModal({
   const okText = confirmText ?? t("confirm");
 
   return (
-    <Modal
+    <AlertDialog
       open={open}
-      title={title}
-      okText={okText}
-      cancelText={t("cancel")}
-      confirmLoading={loading}
-      okButtonProps={{ danger, ...okButtonProps }}
-      onOk={onConfirm}
-      onCancel={onCancel}
+      onOpenChange={(next) => {
+        if (!next) onCancel();
+      }}
     >
-      {content}
-    </Modal>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{title}</AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div>{content}</div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={loading}>{t("cancel")}</AlertDialogCancel>
+          <AlertDialogAction
+            className={buttonVariants({ variant: danger ? "destructive" : "default" })}
+            disabled={loading}
+            onClick={onConfirm}
+            {...okButtonProps}
+          >
+            {loading ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
+            {okText}
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
   );
 }

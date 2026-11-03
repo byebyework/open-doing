@@ -1,7 +1,7 @@
 "use client";
 
 import type { TaskStatus } from "@open-doing/types";
-import { Tag } from "antd";
+import { Badge } from "@/components/ui/shadcn/badge";
 import { useTranslations } from "next-intl";
 
 /** StatusTag 入参。 */
@@ -10,41 +10,28 @@ export interface StatusTagProps {
   status: TaskStatus;
 }
 
-/** 状态 → 配色与文案 key（取值自设计令牌：未开始灰 / 进行中紫 / 已完成绿）。 */
-const STATUS_STYLE: Record<
-  TaskStatus,
-  { labelKey: string; color: string; background: string }
-> = {
-  todo: { labelKey: "notStarted", color: "#5f6368", background: "#f4f5f7" },
-  in_progress: { labelKey: "inProgress", color: "#7d2ae8", background: "#eef0fc" },
-  done: { labelKey: "completed", color: "#00b894", background: "rgba(0,184,148,0.1)" },
+/** 状态 → Badge 变体与文案 key（变体颜色取 tokens.css 状态色组 --status-*）。 */
+const STATUS_VARIANT: Record<TaskStatus, { labelKey: string; variant: "neutral" | "info" | "success" }> = {
+  todo: { labelKey: "notStarted", variant: "neutral" },
+  in_progress: { labelKey: "inProgress", variant: "info" },
+  done: { labelKey: "completed", variant: "success" },
 };
 
 /**
  * 任务状态标签：未开始 / 进行中 / 已完成。
  *
- * 使用 antd Tag 的无边框填充形态，颜色对齐原型状态配色；文案来自 status 命名空间。
+ * shadcn Badge 的 pill 填充形态，颜色取状态色组；文案来自 status 命名空间。
  */
 export function StatusTag({ status }: StatusTagProps) {
   const t = useTranslations("status");
-  const { labelKey, color, background } = STATUS_STYLE[status];
+  const { labelKey, variant } = STATUS_VARIANT[status];
 
   return (
-    <Tag
-      variant="filled"
-      style={{
-        marginInlineEnd: 0,
-        border: "none",
-        borderRadius: 9999,
-        paddingInline: 8,
-        color,
-        background,
-        fontSize: 12,
-        fontWeight: 500,
-        lineHeight: "20px",
-      }}
+    <Badge
+      variant={variant}
+      className="rounded-[var(--radius-pill)] px-2 py-0 text-[12px] font-medium leading-5"
     >
       {t(labelKey as "notStarted")}
-    </Tag>
+    </Badge>
   );
 }
