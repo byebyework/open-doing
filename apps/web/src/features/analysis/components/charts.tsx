@@ -47,7 +47,7 @@ export interface TrendChartProps {
  *
  * - y 轴刻度：0..yMax；`yMax <= 3` 时每个整数一档，否则只画偶数档
  *   （与原型三张图的刻度密度一致）；
- * - 网格线为 hairline `#e1e3e6`，0 值基线用加强边 `#c7cdd3`；
+ * - 网格线为 hairline `var(--border-default)`，0 值基线用加强边 `#c7cdd3`；
  * - 0 值桶不画柱（列仍占位，保证 x 轴对齐）；
  * - 每系列峰值（并列取最后一根）与末桶直接标数；
  * - x 轴每 5 桶标一个标签，并始终标出末桶。
@@ -93,7 +93,7 @@ export async function TrendChart({
           {ticks.map((value) => (
             <span
               key={value}
-              className="absolute right-0 text-[11px] text-[#5f6368]"
+              className="absolute right-0 text-[11px] text-[var(--ink-500)]"
               style={{
                 bottom: value * unit,
                 transform: "translateY(50%)",
@@ -113,7 +113,7 @@ export async function TrendChart({
               .map((value) => (
                 <i
                   key={value}
-                  className="absolute left-0 right-0 block h-px bg-[#e1e3e6]"
+                  className="absolute left-0 right-0 block h-px bg-[var(--border-default)]"
                   style={{ bottom: value * unit }}
                 />
               ))}
@@ -182,7 +182,7 @@ export async function TrendChart({
         {buckets.map((bucket, index) => (
           <span
             key={`${bucket.start}-${bucket.label}-${index}`}
-            className="min-w-0 flex-1 whitespace-nowrap text-[11px] text-[#5f6368]"
+            className="min-w-0 flex-1 whitespace-nowrap text-[11px] text-[var(--ink-500)]"
             style={{
               textAlign: index === lastIndex ? "right" : "center",
               fontVariantNumeric: "tabular-nums",
@@ -277,20 +277,20 @@ export function HBarList({ rows }: { rows: HBarRow[] }) {
               `${row.name}${row.tag ? ` · ${row.tag}` : ""} · ${row.count}`
             }
             className={`flex min-w-0 items-center gap-3 py-[13px] ${
-              index > 0 ? "border-t border-[#e1e3e6]" : ""
+              index > 0 ? "border-t border-[var(--border-default)]" : ""
             }`}
           >
             {row.sub !== undefined ? (
               <div className="w-24 flex-none leading-[1.3]">
-                <div className="truncate text-[13.5px] font-semibold text-[#0e1318]">
+                <div className="truncate text-[13.5px] font-semibold text-[var(--ink-900)]">
                   {row.name}
                 </div>
-                <div className="truncate text-[12px] text-[#5f6368]">
+                <div className="truncate text-[12px] text-[var(--ink-500)]">
                   {row.sub}
                 </div>
               </div>
             ) : (
-              <div className="w-[170px] flex-none truncate whitespace-nowrap text-[13.5px] font-semibold text-[#0e1318]">
+              <div className="w-[170px] flex-none truncate whitespace-nowrap text-[13.5px] font-semibold text-[var(--ink-900)]">
                 {row.name}
                 {row.tag ? (
                   <span

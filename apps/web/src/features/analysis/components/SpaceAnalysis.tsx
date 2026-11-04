@@ -38,7 +38,7 @@ export interface SpaceAnalysisProps {
 
 /** 讨论 / 统计卡的统一外观（与 Dashboard 卡片一致）。 */
 const CARD_CLASS =
-  "min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5";
+  "min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5";
 
 /** 原型 `.callout.info` 的配色（设计令牌 info 系列）。 */
 const INFO_CALLOUT_STYLE = {
@@ -62,10 +62,10 @@ async function PageHeader({
   return (
     <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
       <div className="min-w-0">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
           {tNav("analysis")}
         </h1>
-        <p className="mt-1.5 text-[14px] text-[#5f6368]">
+        <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
           {variant === "personal" ? t("personalSubtitle") : t("teamSubtitle")}
         </p>
       </div>
@@ -109,10 +109,10 @@ function CardHeader({
 }) {
   return (
     <div className="flex min-w-0 flex-wrap items-center gap-2">
-      <h2 className="flex-1 text-[15px] font-bold text-[#0e1318]">{title}</h2>
+      <h2 className="flex-1 text-[15px] font-bold text-[var(--ink-900)]">{title}</h2>
       {extra}
       {caption ? (
-        <span className="ml-auto text-[12px] text-[#5f6368]">{caption}</span>
+        <span className="ml-auto text-[12px] text-[var(--ink-500)]">{caption}</span>
       ) : null}
     </div>
   );
@@ -276,7 +276,7 @@ async function PersonalBody({
           <CardHeader
             title={t("flowTitle")}
             extra={
-              <span className="inline-flex items-center gap-3.5 text-[12.5px] text-[#5f6368]">
+              <span className="inline-flex items-center gap-3.5 text-[12.5px] text-[var(--ink-500)]">
                 <span className="inline-flex items-center">
                   <LegendSwatch color="#0e9ba3" />
                   {t("legendCreated")}
@@ -288,7 +288,7 @@ async function PersonalBody({
               </span>
             }
           />
-          <div className="mt-1 text-[12px] text-[#5f6368]">
+          <div className="mt-1 text-[12px] text-[var(--ink-500)]">
             {t("captionFlow", {
               range,
               grain: unit === "day" ? t("grainDay") : t("grainWeek"),
@@ -334,7 +334,7 @@ async function PersonalBody({
         />
         <div className="mt-3">
           {projectRows.length === 0 ? (
-            <p className="py-3 text-[13px] text-[#5f6368]">
+            <p className="py-3 text-[13px] text-[var(--ink-500)]">
               {t("projectCompareEmpty")}
             </p>
           ) : (
@@ -459,7 +459,7 @@ async function TeamBody({
           />
           <div className="mt-3">
             {memberRows.length === 0 ? (
-              <p className="py-3 text-[13px] text-[#5f6368]">
+              <p className="py-3 text-[13px] text-[var(--ink-500)]">
                 {t("memberLoadEmpty")}
               </p>
             ) : (
@@ -485,7 +485,7 @@ async function TeamBody({
           />
           <div className="mt-3">
             {analysis.projectHealth.length === 0 ? (
-              <p className="py-3 text-[13px] text-[#5f6368]">
+              <p className="py-3 text-[13px] text-[var(--ink-500)]">
                 {t("noProjects")}
               </p>
             ) : (
@@ -500,15 +500,15 @@ async function TeamBody({
                   <div
                     key={project.projectId}
                     className={`py-[14px] ${
-                      index > 0 ? "border-t border-[#e1e3e6]" : ""
+                      index > 0 ? "border-t border-[var(--border-default)]" : ""
                     }`}
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-[14px] font-semibold text-[#0e1318]">
+                        <div className="truncate text-[14px] font-semibold text-[var(--ink-900)]">
                           {project.projectName}
                         </div>
-                        <div className="mt-0.5 text-[12px] text-[#5f6368]">
+                        <div className="mt-0.5 text-[12px] text-[var(--ink-500)]">
                           {t("projectLine", {
                             count: project.taskCount,
                             done: project.doneTotal,
@@ -554,7 +554,7 @@ async function TeamBody({
                     </div>
 
                     <div className="mt-2 flex items-center gap-2.5">
-                      <span className="text-[12px] text-[#5f6368]">
+                      <span className="text-[12px] text-[var(--ink-500)]">
                         {t("weeklyDoneLabel")}
                       </span>
                       <WeekMiniBars
@@ -579,7 +579,7 @@ async function TeamBody({
         />
 
         {analysis.zombieTasks.length === 0 ? (
-          <p className="mt-3 text-[13px] text-[#5f6368]">
+          <p className="mt-3 text-[13px] text-[var(--ink-500)]">
             {t("zombieEmpty")}
           </p>
         ) : (
@@ -587,7 +587,7 @@ async function TeamBody({
             {analysis.zombieTasks.map((task) => (
               <div
                 key={task.id}
-                className="flex min-w-0 items-start gap-2.5 border-t border-[#e1e3e6] py-[11px] first:border-t-0"
+                className="flex min-w-0 items-start gap-2.5 border-t border-[var(--border-default)] py-[11px] first:border-t-0"
               >
                 <span
                   className="grid h-7 w-7 flex-none place-items-center rounded-lg text-[14px]"
@@ -597,10 +597,10 @@ async function TeamBody({
                   🕸
                 </span>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[13.5px] font-semibold leading-[1.35] text-[#0e1318]">
+                  <div className="text-[13.5px] font-semibold leading-[1.35] text-[var(--ink-900)]">
                     {task.title}
                   </div>
-                  <div className="mt-1 text-[12px] text-[#5f6368]">
+                  <div className="mt-1 text-[12px] text-[var(--ink-500)]">
                     {task.projectName} ·{" "}
                     {task.assigneeName ?? tTasks("unassigned")} ·{" "}
                     {t("lastUpdatedLine", {
@@ -623,7 +623,7 @@ async function TeamBody({
           </div>
         )}
 
-        <div className="mt-3 border-t border-[#e1e3e6] pt-2.5">
+        <div className="mt-3 border-t border-[var(--border-default)] pt-2.5">
           <Link
             href={kanbanHref}
             className="text-[13px] font-medium text-[#7d2ae8] no-underline hover:underline"

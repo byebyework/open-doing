@@ -103,7 +103,7 @@ export function CommentBox({
   return (
     <div>
       {comments.length === 0 ? (
-        <p className="py-2 text-[13px] text-[#9aa0a6]">{t("noComments")}</p>
+        <p className="py-2 text-[13px] text-[var(--ink-400)]">{t("noComments")}</p>
       ) : (
         <div className="flex flex-col gap-5">
           {comments.map((comment) => (
@@ -112,10 +112,10 @@ export function CommentBox({
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">
-                  <span className="text-[13.5px] font-semibold text-[#0e1318]">
+                  <span className="text-[13.5px] font-semibold text-[var(--ink-900)]">
                     {comment.authorName}
                   </span>
-                  <span className="text-[12px] text-[#9aa0a6]">
+                  <span className="text-[12px] text-[var(--ink-400)]">
                     {formatCommentTime(comment.createdAt)}
                   </span>
 
@@ -156,7 +156,7 @@ export function CommentBox({
           disabled={submitting}
           onChange={(event) => setDraft(event.target.value)}
         />
-        <div className="mt-1 text-right text-[12px] text-[#9aa0a6]">
+        <div className="mt-1 text-right text-[12px] text-[var(--ink-400)]">
           {draft.length} / 2000
         </div>
 

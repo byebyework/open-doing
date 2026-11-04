@@ -51,7 +51,7 @@ export async function MemberList({
     <div className="min-w-0 overflow-x-auto">
       <table className="w-full border-collapse text-[13px]">
         <thead>
-          <tr className="text-left text-[#9aa0a6]">
+          <tr className="text-left text-[var(--ink-400)]">
             <th className="pb-2 font-medium">{t("colMember")}</th>
             <th className="pb-2 font-medium">{t("colRole")}</th>
             <th className="pb-2 font-medium">{t("colJoinedAt")}</th>
@@ -66,8 +66,8 @@ export async function MemberList({
                 <td className="py-2.5">
                   <span className="flex items-center gap-2.5">
                     <UserAvatar username={user.username} />
-                    <span className="font-medium text-[#0e1318]">{user.username}</span>
-                    <span className="font-mono text-[12px] text-[#9aa0a6]">{user.uid}</span>
+                    <span className="font-medium text-[var(--ink-900)]">{user.username}</span>
+                    <span className="font-mono text-[12px] text-[var(--ink-400)]">{user.uid}</span>
                   </span>
                 </td>
                 <td className="py-2.5">
@@ -78,7 +78,7 @@ export async function MemberList({
                     {t(ROLE_KEYS[membership.role])}
                   </Badge>
                 </td>
-                <td className="py-2.5 text-[#5f6368]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
+                <td className="py-2.5 text-[var(--ink-500)]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
                 {actionTeamSlug ? (
                   <td className="py-2.5 text-right">
                     {membership.role === "owner" || membership.userId === currentUserId ? null : (

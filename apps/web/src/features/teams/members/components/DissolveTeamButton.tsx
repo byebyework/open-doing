@@ -79,7 +79,7 @@ export function DissolveTeamButton({ teamSlug, teamName }: { teamSlug: string; t
               <AlertTitle>{t("irreversible")}</AlertTitle>
               <AlertDescription>{t("dissolveWarning", { team: teamName })}</AlertDescription>
             </Alert>
-            <label className="mb-2 block text-[13px] font-medium text-[#0e1318]" htmlFor="dissolve-team-name">
+            <label className="mb-2 block text-[13px] font-medium text-[var(--ink-900)]" htmlFor="dissolve-team-name">
               {t("typeTeamName")}
             </label>
             <Input

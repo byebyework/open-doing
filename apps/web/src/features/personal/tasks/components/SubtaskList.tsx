@@ -83,7 +83,7 @@ export function SubtaskList({
   return (
     <div>
       {subtasks.length === 0 ? (
-        <p className="py-2 text-[13px] text-[#9aa0a6]">{t("noSubtasks")}</p>
+        <p className="py-2 text-[13px] text-[var(--ink-400)]">{t("noSubtasks")}</p>
       ) : (
         <div className="flex flex-col">
           {subtasks.map((subtask) => (
@@ -103,8 +103,8 @@ export function SubtaskList({
               <span
                 className={
                   subtask.completed
-                    ? "text-[#9aa0a6] line-through"
-                    : "text-[#0e1318]"
+                    ? "text-[var(--ink-400)] line-through"
+                    : "text-[var(--ink-900)]"
                 }
               >
                 {subtask.title}

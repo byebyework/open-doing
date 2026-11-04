@@ -346,7 +346,7 @@ export function NotificationBell() {
               ? t("ariaLabelUnread", { count: unreadCount })
               : t("ariaLabel")
           }
-          className="relative grid size-9 place-items-center rounded-full text-[#5f6368] transition-colors outline-none hover:bg-[#f4f5f7] focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          className="relative grid size-9 place-items-center rounded-full text-[var(--ink-500)] transition-colors outline-none hover:bg-[#f4f5f7] focus-visible:ring-[3px] focus-visible:ring-ring/40"
         >
           <BellIcon />
           {unreadCount > 0 ? (
@@ -363,7 +363,7 @@ export function NotificationBell() {
         className="w-[360px] max-w-[calc(100vw-32px)] p-0"
       >
         <div className="flex items-center justify-between gap-2 border-b border-[var(--border)] px-4 py-[13px]">
-          <span className="text-[14px] font-bold text-[#0e1318]">
+          <span className="text-[14px] font-bold text-[var(--ink-900)]">
             {t("bellTitle")}
           </span>
           <Button
@@ -408,7 +408,7 @@ export function NotificationBell() {
                   </span>
 
                   <span className="min-w-0 flex-1">
-                    <span className="block text-[12.5px] leading-[1.5] text-[#0e1318]">
+                    <span className="block text-[12.5px] leading-[1.5] text-[var(--ink-900)]">
                       {body.parts.map((part, index) =>
                         part.bold ? (
                           <b key={index} className="font-semibold">

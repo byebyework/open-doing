@@ -15,7 +15,7 @@ const NAV_ITEM_BASE =
 
 /** 未选中态：次要文字色，hover 用浅灰表面。 */
 const NAV_ITEM_IDLE =
-  "text-[#3c4043] hover:bg-[#f4f5f7] hover:text-[#0e1318]";
+  "text-[#3c4043] hover:bg-[#f4f5f7] hover:text-[var(--ink-900)]";
 
 /** 当前路由态：品牌紫文字 + 8% 紫底（原型 `.nav-item.active`）。 */
 const NAV_ITEM_ACTIVE =
@@ -23,7 +23,7 @@ const NAV_ITEM_ACTIVE =
 
 /** 分组标题：与原型 `.nav-group-label` 一致。 */
 const NAV_GROUP_LABEL =
-  "px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[#9aa0a6]";
+  "px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--ink-400)]";
 
 /** 图标样式：17px、跟随文字色、原型 0.85 透明度。 */
 const ICON_CLASS = "h-[17px] w-[17px] shrink-0 opacity-[0.85]";

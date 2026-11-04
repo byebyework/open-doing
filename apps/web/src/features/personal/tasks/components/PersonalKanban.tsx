@@ -84,7 +84,7 @@ function KanbanCard({
   const left = done ? (
     <StatusTag status="done" />
   ) : hasSubtasks ? (
-    <span className="text-[12px] text-[#5f6368]">
+    <span className="text-[12px] text-[var(--ink-500)]">
       {completedCount}/{task.subtasks.length}
     </span>
   ) : null;
@@ -93,7 +93,7 @@ function KanbanCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-xl border border-[#e1e3e6] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(14,19,24,0.04)] transition-shadow hover:shadow-[0_8px_24px_rgba(14,19,24,0.08)] ${
+      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(14,19,24,0.04)] transition-shadow hover:shadow-[0_8px_24px_rgba(14,19,24,0.08)] ${
         isDragging ? "opacity-50" : ""
       } ${done ? "opacity-[0.62]" : ""}`}
     >
@@ -109,7 +109,7 @@ function KanbanCard({
       >
         <div
           className={`text-[13.5px] font-semibold leading-[1.35] ${
-            done ? "text-[#9aa0a6] line-through" : "text-[#0e1318]"
+            done ? "text-[var(--ink-400)] line-through" : "text-[var(--ink-900)]"
           }`}
         >
           {task.title}
@@ -130,7 +130,7 @@ function KanbanCard({
           {task.dueDate ? (
             <DueText dueDate={task.dueDate} status={task.status} today={today} />
           ) : (
-            <span className="text-[12.5px] text-[#9aa0a6]">—</span>
+            <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
           )}
         </div>
       </div>
@@ -181,10 +181,10 @@ function KanbanColumn({
       }`}
     >
       <header className="flex items-center gap-2 px-2 pb-3 pt-1">
-        <span className="text-[13.5px] font-bold text-[#0e1318]">
+        <span className="text-[13.5px] font-bold text-[var(--ink-900)]">
           {tStatus(TASK_STATUS_KEYS[status])}
         </span>
-        <span className="rounded-full bg-[#e8eaed] px-2 py-0.5 text-[11px] font-bold text-[#5f6368]">
+        <span className="rounded-full bg-[#e8eaed] px-2 py-0.5 text-[11px] font-bold text-[var(--ink-500)]">
           {tasks.length}
         </span>
         {status === "todo" ? (
@@ -202,7 +202,7 @@ function KanbanColumn({
 
       <div className="flex flex-col gap-2">
         {tasks.length === 0 ? (
-          <p className="rounded-lg border border-dashed border-[#e1e3e6] px-3 py-4 text-center text-[12.5px] text-[#9aa0a6]">
+          <p className="rounded-lg border border-dashed border-[var(--border-default)] px-3 py-4 text-center text-[12.5px] text-[var(--ink-400)]">
             {t("emptyTasksTitle")}
           </p>
         ) : (

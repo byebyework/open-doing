@@ -52,7 +52,7 @@ export function DueText({ dueDate, status, today }: DueTextProps) {
 
   return (
     <span
-      className="inline-flex items-center whitespace-nowrap text-[12.5px] text-[#5f6368]"
+      className="inline-flex items-center whitespace-nowrap text-[12.5px] text-[var(--ink-500)]"
       title={dueDate}
     >
       {shortDate(dueDate)}

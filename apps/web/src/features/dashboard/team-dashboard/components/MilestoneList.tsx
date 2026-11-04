@@ -19,7 +19,7 @@ const KIND_META = {
   },
   upcoming: {
     icon: "📅",
-    color: "#5f6368",
+    color: "var(--ink-500)",
     background: "#e8eaed",
   },
 } as const;
@@ -64,12 +64,12 @@ export async function MilestoneList({
   const tTasks = await getTranslations("tasks");
 
   return (
-    <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+    <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
-        <h2 className="text-[15px] font-bold text-[#0e1318]">
+        <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
           {t("milestonesTitle")}
         </h2>
-        <span className="ml-auto text-[12px] text-[#9aa0a6]">
+        <span className="ml-auto text-[12px] text-[var(--ink-400)]">
           {t("milestonesHint")}
         </span>
       </div>
@@ -103,10 +103,10 @@ export async function MilestoneList({
                     {meta.icon}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-semibold leading-[1.35] text-[#0e1318]">
+                    <div className="truncate text-[13.5px] font-semibold leading-[1.35] text-[var(--ink-900)]">
                       {task.title}
                     </div>
-                    <div className="mt-[3px] flex min-w-0 flex-wrap items-center gap-x-1 text-[12px] text-[#5f6368]">
+                    <div className="mt-[3px] flex min-w-0 flex-wrap items-center gap-x-1 text-[12px] text-[var(--ink-500)]">
                       <span className="max-w-full truncate">
                         {task.projectName}
                       </span>
@@ -136,7 +136,7 @@ export async function MilestoneList({
         </ul>
       )}
 
-      <div className="-mx-4 mt-1 border-t border-[#e1e3e6] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
+      <div className="-mx-4 mt-1 border-t border-[var(--border-default)] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
         <Link
           href={moduleHref(teamSlug, "kanban")}
           className="text-[12.5px] font-medium text-[#7d2ae8] hover:underline"

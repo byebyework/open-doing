@@ -66,16 +66,16 @@ export default async function TeamSettingsPage(
 
   return (
     <div className="mx-auto w-full max-w-[820px] py-8 min-[861px]:py-10">
-      <div className="mb-1 text-[13px] text-[#9aa0a6]">
+      <div className="mb-1 text-[13px] text-[var(--ink-400)]">
         {team.name} <span className="mx-1">/</span> {t("settingsHeading")}
       </div>
-      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[#0e1318]">{t("settingsHeading")}</h1>
-      <p className="mb-8 mt-1.5 text-[14px] text-[#5f6368]">{t("settingsSubtitle")}</p>
+      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">{t("settingsHeading")}</h1>
+      <p className="mb-8 mt-1.5 text-[14px] text-[var(--ink-500)]">{t("settingsSubtitle")}</p>
 
       {canManage ? (
-        <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">{t("teamInfoTitle")}</h2>
-          <p className="mb-4 text-[13px] text-[#9aa0a6]">
+        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+          <h2 className="mb-1 text-[15px] font-bold text-[var(--ink-900)]">{t("teamInfoTitle")}</h2>
+          <p className="mb-4 text-[13px] text-[var(--ink-400)]">
             {t("createdAtLine", { date: dayjs(team.createdAt).format("YYYY-MM-DD") })}
           </p>
 
@@ -84,14 +84,14 @@ export default async function TeamSettingsPage(
       ) : null}
 
       {canManage ? (
-        <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">{t("inviteMembersTitle")}</h2>
-          <p className="mb-4 text-[13px] text-[#5f6368]">{t("inviteMembersHint")}</p>
+        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+          <h2 className="mb-1 text-[15px] font-bold text-[var(--ink-900)]">{t("inviteMembersTitle")}</h2>
+          <p className="mb-4 text-[13px] text-[var(--ink-500)]">{t("inviteMembersHint")}</p>
 
           <InviteMemberForm teamId={team.id} />
 
           <div className="mt-5">
-            <div data-testid="invite-pending-heading" className="mb-2 text-[13px] font-semibold text-[#0e1318]">
+            <div data-testid="invite-pending-heading" className="mb-2 text-[13px] font-semibold text-[var(--ink-900)]">
               {t("sentPendingHeading", { count: pendingSent.length })}
             </div>
             {pendingSent.map(({ invite, invitee }) => (
@@ -108,9 +108,9 @@ export default async function TeamSettingsPage(
                   {t("pendingTag")}
                 </Badge>
                 <UserAvatar username={invitee.username} />
-                <span className="text-[13px] font-medium text-[#0e1318]">{invitee.username}</span>
-                <span className="font-mono text-[12px] text-[#9aa0a6]">{invitee.uid}</span>
-                <span className="ml-auto text-[12px] text-[#9aa0a6]">
+                <span className="text-[13px] font-medium text-[var(--ink-900)]">{invitee.username}</span>
+                <span className="font-mono text-[12px] text-[var(--ink-400)]">{invitee.uid}</span>
+                <span className="ml-auto text-[12px] text-[var(--ink-400)]">
                   {t("sentAtLine", { time: dayjs(invite.createdAt).format("MM-DD HH:mm") })}
                 </span>
                 <RescindInviteButton inviteId={invite.id} teamId={team.id} />
@@ -121,9 +121,9 @@ export default async function TeamSettingsPage(
       ) : null}
 
       {canManage && joinSettings ? (
-        <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[#0e1318]">{t("joinByCode")}</h2>
-          <p className="mb-4 text-[13px] text-[#5f6368]">{t("joinCodeSectionHint")}</p>
+        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+          <h2 className="mb-1 text-[15px] font-bold text-[var(--ink-900)]">{t("joinByCode")}</h2>
+          <p className="mb-4 text-[13px] text-[var(--ink-500)]">{t("joinCodeSectionHint")}</p>
 
           <JoinCodeSettings
             teamId={team.id}
@@ -134,8 +134,8 @@ export default async function TeamSettingsPage(
       ) : null}
 
       {canManage ? (
-        <section className="mb-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">
+        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+          <h2 className="mb-4 text-[15px] font-bold text-[var(--ink-900)]">
             {t("joinRequestsHeading", { count: joinRequests.length })}
           </h2>
 
@@ -143,8 +143,8 @@ export default async function TeamSettingsPage(
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-        <h2 className="mb-4 text-[15px] font-bold text-[#0e1318]">{t("membersHeading", { count: members.length })}</h2>
+      <section className="rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <h2 className="mb-4 text-[15px] font-bold text-[var(--ink-900)]">{t("membersHeading", { count: members.length })}</h2>
         <MemberList
           members={members}
           teamSlug={team.slug}
@@ -153,14 +153,14 @@ export default async function TeamSettingsPage(
         />
       </section>
 
-      <section className="mt-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+      <section className="mt-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
         <h2 className="mb-2 text-[15px] font-bold text-[#ff5757]">{t("dangerZoneTitle")}</h2>
 
         {canLeave ? (
           <div className="flex items-center gap-4 py-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[#0e1318]">{t("leaveTeam")}</div>
-              <div className="mt-1 text-[13px] text-[#5f6368]">
+              <div className="text-[14px] font-semibold text-[var(--ink-900)]">{t("leaveTeam")}</div>
+              <div className="mt-1 text-[13px] text-[var(--ink-500)]">
                 {t("leaveTeamDesc")}
               </div>
             </div>
@@ -171,10 +171,10 @@ export default async function TeamSettingsPage(
         ) : null}
 
         {canTransfer ? (
-          <div className={canLeave ? "flex items-center gap-4 border-t border-[#e1e3e6] py-3" : "flex items-center gap-4 py-3"}>
+          <div className={canLeave ? "flex items-center gap-4 border-t border-[var(--border-default)] py-3" : "flex items-center gap-4 py-3"}>
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[#0e1318]">{t("transferTeam")}</div>
-              <div className="mt-1 text-[13px] text-[#5f6368]">
+              <div className="text-[14px] font-semibold text-[var(--ink-900)]">{t("transferTeam")}</div>
+              <div className="mt-1 text-[13px] text-[var(--ink-500)]">
                 {t("transferTeamDesc")}
               </div>
             </div>
@@ -185,10 +185,10 @@ export default async function TeamSettingsPage(
         ) : null}
 
         {canDissolve ? (
-          <div className="flex items-center gap-4 border-t border-[#e1e3e6] py-3">
+          <div className="flex items-center gap-4 border-t border-[var(--border-default)] py-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[#0e1318]">{t("dissolveTeam")}</div>
-              <div className="mt-1 text-[13px] text-[#5f6368]">
+              <div className="text-[14px] font-semibold text-[var(--ink-900)]">{t("dissolveTeam")}</div>
+              <div className="mt-1 text-[13px] text-[var(--ink-500)]">
                 {t("dissolveTeamDesc")}
               </div>
             </div>

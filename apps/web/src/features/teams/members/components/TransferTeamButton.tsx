@@ -91,7 +91,7 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
         title={t("transferTeam")}
         content={
           <div>
-            <p className="mb-3 text-[13px] text-[#5f6368]">
+            <p className="mb-3 text-[13px] text-[var(--ink-500)]">
               {t("transferConfirmIntro")}
             </p>
             <Select value={targetUserId} onValueChange={setTargetUserId}>

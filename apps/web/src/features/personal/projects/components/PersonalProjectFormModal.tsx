@@ -198,7 +198,7 @@ export function PersonalProjectFormModal({
               disabled={submitting}
               {...register("description")}
             />
-            <div className="text-right text-[12px] text-[#9aa0a6]">
+            <div className="text-right text-[12px] text-[var(--ink-400)]">
               {watch("description").length} / 500
             </div>
             {errors.description ? (

@@ -178,7 +178,7 @@ export function ChangePasswordForm() {
             ) : null}
             {t("updatePassword")}
           </Button>
-          <span className="text-[12px] text-[#9aa0a6]">
+          <span className="text-[12px] text-[var(--ink-400)]">
             {t("keepLoggedInHint")}
           </span>
         </div>

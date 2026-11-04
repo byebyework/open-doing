@@ -38,21 +38,21 @@ export default async function NewTeamProjectPage({
     <div className="mx-auto w-full min-w-0 max-w-[680px]">
       <nav
         aria-label={tCommon("breadcrumb")}
-        className="flex min-w-0 items-center gap-2 text-[13px] text-[#9aa0a6]"
+        className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--ink-400)]"
       >
         <span className="shrink-0">{team.name}</span>
         <span aria-hidden="true">/</span>
-        <strong className="truncate font-semibold text-[#0e1318]">{t("newProjectTitle")}</strong>
+        <strong className="truncate font-semibold text-[var(--ink-900)]">{t("newProjectTitle")}</strong>
       </nav>
 
       <header className="mt-2">
-        <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+        <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
           {t("newProjectTitle")}
         </h1>
-        <p className="mt-1.5 text-[13.5px] text-[#5f6368]">{t("newProjectHint")}</p>
+        <p className="mt-1.5 text-[13.5px] text-[var(--ink-500)]">{t("newProjectHint")}</p>
       </header>
 
-      <section className="mt-5 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+      <section className="mt-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
         <TeamProjectCreatePanel teamId={team.id} teamSlug={team.slug} />
       </section>
     </div>

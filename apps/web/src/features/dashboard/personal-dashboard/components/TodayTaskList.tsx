@@ -184,9 +184,9 @@ export function TodayTaskList({
   }
 
   return (
-    <section className="mt-5 min-w-0 rounded-xl border border-[#e1e3e6] bg-white shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+    <section className="mt-5 min-w-0 rounded-xl border border-[var(--border-default)] bg-white shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
       <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 pb-2 pt-4 min-[861px]:px-5">
-        <h2 className="text-[15px] font-bold text-[#0e1318]">
+        <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
           {t("todayHeader", {
             month: Number(today.slice(5, 7)),
             day: Number(today.slice(8, 10)),
@@ -242,13 +242,13 @@ export function TodayTaskList({
                       href={task.href}
                       className={`block break-words text-[13.5px] font-medium ${
                         done
-                          ? "text-[#9aa0a6] line-through"
-                          : "text-[#0e1318] no-underline hover:underline"
+                          ? "text-[var(--ink-400)] line-through"
+                          : "text-[var(--ink-900)] no-underline hover:underline"
                       }`}
                     >
                       {task.title}
                     </Link>
-                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-[#5f6368]">
+                    <div className="mt-1 flex min-w-0 flex-wrap items-center gap-1.5 text-[12px] text-[var(--ink-500)]">
                       <SourceTag task={task} />
                       <span>{t("me")}</span>
                     </div>
@@ -265,7 +265,7 @@ export function TodayTaskList({
       )}
 
       {total > tasks.length ? (
-        <div className="border-t border-[#e1e3e6] px-4 py-3 min-[861px]:px-5">
+        <div className="border-t border-[var(--border-default)] px-4 py-3 min-[861px]:px-5">
           <Link
             href={moduleHref("personal", "kanban")}
             className="text-[12.5px] text-[#7d2ae8] no-underline hover:underline"

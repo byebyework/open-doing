@@ -87,10 +87,10 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
         <button
           type="button"
           data-testid="space-switcher-trigger"
-          className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[#e1e3e6] bg-white px-2.5 py-2 text-left text-[13px] transition-colors hover:border-[#c7cdd3] hover:bg-[#f4f5f7]"
+          className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[var(--border-default)] bg-white px-2.5 py-2 text-left text-[13px] transition-colors hover:border-[#c7cdd3] hover:bg-[#f4f5f7]"
         >
           <span className="h-2 w-2 shrink-0 rounded-full bg-[#7d2ae8]" />
-          <span className="min-w-0 flex-1 truncate font-semibold text-[#0e1318]">
+          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--ink-900)]">
             {currentLabel}
           </span>
           <svg
@@ -102,7 +102,7 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="shrink-0 text-[#9aa0a6]"
+            className="shrink-0 text-[var(--ink-400)]"
             aria-hidden="true"
           >
             <path d="M6 9l6 6 6-6" />

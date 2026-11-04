@@ -34,9 +34,9 @@ export function EmptyState({ title, description, action }: EmptyStateProps) {
           <path d="M9 13h6" />
         </svg>
       </span>
-      <div className="text-[15px] font-semibold text-[#0e1318]">{title}</div>
+      <div className="text-[15px] font-semibold text-[var(--ink-900)]">{title}</div>
       {description ? (
-        <p className="mt-1.5 max-w-[320px] text-[13.5px] text-[#5f6368]">
+        <p className="mt-1.5 max-w-[320px] text-[13.5px] text-[var(--ink-500)]">
           {description}
         </p>
       ) : null}

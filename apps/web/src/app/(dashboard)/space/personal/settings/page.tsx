@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
 
 /** 卡片外壳：与团队设置页保持一致的描边、圆角与阴影。 */
 const CARD_CLASS =
-  "rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]";
+  "rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]";
 
 /** 卡片头部：左侧标题、右侧说明（对照原型 `.card-header`）。 */
 function SettingsCardHeader({
@@ -29,7 +29,7 @@ function SettingsCardHeader({
 }) {
   return (
     <div className="mb-4 flex items-center gap-3">
-      <h2 className="flex-1 text-[16px] font-semibold text-[#0e1318]">
+      <h2 className="flex-1 text-[16px] font-semibold text-[var(--ink-900)]">
         {title}
       </h2>
       <span className="text-right text-[12px] text-[color:var(--color-text-muted)]">{caption}</span>
@@ -53,10 +53,10 @@ export default async function PersonalSettingsPage() {
   return (
     <div className="mx-auto w-full min-w-0 max-w-[760px]">
       <header className="mb-6">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
           {t("title")}
         </h1>
-        <p className="mt-1.5 text-[13.5px] text-[#5f6368]">
+        <p className="mt-1.5 text-[13.5px] text-[var(--ink-500)]">
           {t("subtitle")}
         </p>
       </header>
@@ -97,7 +97,7 @@ export default async function PersonalSettingsPage() {
 
           <div className="flex items-center gap-4 py-[15px]">
             <div className="min-w-0 flex-1 leading-[1.45]">
-              <div className="text-[13.5px] font-semibold text-[#0e1318]">
+              <div className="text-[13.5px] font-semibold text-[var(--ink-900)]">
                 {t("byRecentActivity")}
               </div>
               <div className="mt-0.5 text-[12px] text-[color:var(--color-text-muted)]">

@@ -37,19 +37,19 @@ function LoadSummary({ member }: { member: MemberLoad }) {
     {
       key: "loadInProgress",
       value: member.inProgress,
-      color: "#5f6368",
+      color: "var(--ink-500)",
     },
     { key: "loadDueSoon", value: member.dueSoon, color: "#a66b00" },
     { key: "loadOverdue", value: member.overdue, color: "#ff5757" },
   ] as const;
 
   return (
-    <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[#9aa0a6]">
+    <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[var(--ink-400)]">
       {parts.map((part) => (
         <span key={part.key} className="whitespace-nowrap">
           <span
             className="font-semibold"
-            style={{ color: part.value > 0 ? part.color : "#9aa0a6" }}
+            style={{ color: part.value > 0 ? part.color : "var(--ink-400)" }}
           >
             {t(part.key, { count: part.value })}
           </span>
@@ -100,12 +100,12 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
             >
               <UserAvatar username={member.username} />
               <div className="min-w-0 flex-1">
-                <div className="truncate text-[13.5px] font-medium text-[#0e1318]">
+                <div className="truncate text-[13.5px] font-medium text-[var(--ink-900)]">
                   {member.username}
                 </div>
                 <LoadSummary member={member} />
               </div>
-              <span className="shrink-0 whitespace-nowrap text-[12px] text-[#5f6368]">
+              <span className="shrink-0 whitespace-nowrap text-[12px] text-[var(--ink-500)]">
                 {expanded ? t("collapse") : t("viewTasks")}
               </span>
               <svg
@@ -118,7 +118,7 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 aria-hidden="true"
-                className={`shrink-0 text-[#9aa0a6] transition-transform ${
+                className={`shrink-0 text-[var(--ink-400)] transition-transform ${
                   expanded ? "rotate-180" : ""
                 }`}
               >
@@ -132,13 +132,13 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                 className="mb-3 min-w-0 rounded-lg bg-[#f4f5f7] px-3 py-2"
               >
                 {groups.length === 0 ? (
-                  <p className="py-1 text-[12.5px] text-[#9aa0a6]">
+                  <p className="py-1 text-[12.5px] text-[var(--ink-400)]">
                     {t("memberNoTasks")}
                   </p>
                 ) : (
                   groups.map(([projectName, tasks]) => (
                     <div key={projectName} className="min-w-0 py-1">
-                      <div className="truncate text-[12px] font-semibold text-[#5f6368]">
+                      <div className="truncate text-[12px] font-semibold text-[var(--ink-500)]">
                         {projectName}
                       </div>
                       <ul className="mt-1 flex flex-col">
@@ -148,7 +148,7 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                               href={task.href}
                               className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 rounded-md px-1 py-1.5 hover:bg-white"
                             >
-                              <span className="w-full min-w-0 truncate text-[13px] text-[#0e1318] min-[861px]:w-auto min-[861px]:flex-1">
+                              <span className="w-full min-w-0 truncate text-[13px] text-[var(--ink-900)] min-[861px]:w-auto min-[861px]:flex-1">
                                 {task.title}
                               </span>
                               <span className="shrink-0">
@@ -162,7 +162,7 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                                     today={today}
                                   />
                                 ) : (
-                                  <span className="whitespace-nowrap text-[12px] text-[#9aa0a6]">
+                                  <span className="whitespace-nowrap text-[12px] text-[var(--ink-400)]">
                                     {t("noDueDate")}
                                   </span>
                                 )}

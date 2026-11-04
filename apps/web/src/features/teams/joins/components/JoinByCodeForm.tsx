@@ -105,7 +105,7 @@ export function JoinByCodeForm() {
               {errors.code.message}
             </p>
           ) : (
-            <p className="text-[12px] text-[#9aa0a6]">{t("joinCodeHint")}</p>
+            <p className="text-[12px] text-[var(--ink-400)]">{t("joinCodeHint")}</p>
           )}
         </div>
 
@@ -120,7 +120,7 @@ export function JoinByCodeForm() {
         </Button>
       </form>
 
-      <p className="mt-5 text-[13px] text-[#5f6368]">
+      <p className="mt-5 text-[13px] text-[var(--ink-500)]">
         {t("trackBefore")}{" "}
         <Link href={invitesHref()} className="font-semibold text-[#7d2ae8]">
           {t("invitesTitle")}

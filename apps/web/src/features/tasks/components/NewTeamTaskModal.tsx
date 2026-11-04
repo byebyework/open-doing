@@ -257,7 +257,7 @@ export function NewTeamTaskModal({
                 ))}
               </SelectContent>
             </Select>
-            <p className="text-[12.5px] text-[#9aa0a6]">{t("assigneeHelp")}</p>
+            <p className="text-[12.5px] text-[var(--ink-400)]">{t("assigneeHelp")}</p>
           </div>
 
           <div className="mb-4 flex flex-col gap-2">

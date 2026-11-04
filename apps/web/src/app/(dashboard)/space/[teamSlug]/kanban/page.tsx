@@ -138,10 +138,10 @@ export default async function TeamKanbanPage(
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
         <div className="min-w-0">
-          <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+          <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
             {tNav("kanban")}
           </h1>
-          <p className="mt-1.5 text-[14px] text-[#5f6368]">
+          <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
             {t("teamSubtitle")}
           </p>
         </div>

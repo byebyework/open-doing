@@ -39,7 +39,7 @@ interface StatChip {
 
 /** chip 卡片外壳（对照原型 `.card .stat`：描边圆角卡、左对齐三行）。 */
 const CHIP_CLASS =
-  "rounded-xl border border-[#e1e3e6] bg-white px-4 py-3 text-left shadow-[0_1px_3px_rgba(14,19,24,0.04)] transition-colors hover:border-[var(--primary)]";
+  "rounded-xl border border-[var(--border-default)] bg-white px-4 py-3 text-left shadow-[0_1px_3px_rgba(14,19,24,0.04)] transition-colors hover:border-[var(--primary)]";
 
 /**
  * 看板统计带（对照 `space-kanban-*.html` 的 `.kb-stats`）。
@@ -125,7 +125,7 @@ export function KanbanStatStrip({
 
   return (
     <div className="mt-5">
-      <div className="mb-2 text-right text-[12px] text-[#5f6368]">
+      <div className="mb-2 text-right text-[12px] text-[var(--ink-500)]">
         {t("statsCaption")}
       </div>
       <div className="grid grid-cols-2 gap-3 min-[481px]:grid-cols-3 min-[861px]:grid-cols-5">
@@ -145,17 +145,17 @@ export function KanbanStatStrip({
                   : ""
               }`}
             >
-              <div className="text-[12.5px] font-medium text-[#5f6368]">
+              <div className="text-[12.5px] font-medium text-[var(--ink-500)]">
                 {chip.label}
               </div>
               <div
                 className={`my-1.5 text-[26px] font-extrabold leading-[1.1] tracking-[-0.02em] ${
-                  chip.valueClass ?? "text-[#0e1318]"
+                  chip.valueClass ?? "text-[var(--ink-900)]"
                 }`}
               >
                 {chip.value}
               </div>
-              <div className="text-[12px] text-[#9aa0a6]">{chip.delta}</div>
+              <div className="text-[12px] text-[var(--ink-400)]">{chip.delta}</div>
             </button>
           );
         })}

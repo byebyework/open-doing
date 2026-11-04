@@ -51,7 +51,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
   }
 
   return (
-    <header className="sticky top-0 z-20 flex h-[60px] items-center gap-3 border-b border-[#e1e3e6] bg-[rgba(255,255,255,0.85)] px-4 backdrop-blur min-[861px]:gap-4 min-[861px]:px-6">
+    <header className="sticky top-0 z-20 flex h-[60px] items-center gap-3 border-b border-[var(--border-default)] bg-[rgba(255,255,255,0.85)] px-4 backdrop-blur min-[861px]:gap-4 min-[861px]:px-6">
       {/* 移动端导航入口（<861px 显示，由 MobileNav 负责） */}
       {mobileNav}
 
@@ -62,7 +62,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
       >
         O
       </span>
-      <div className="truncate text-[13px] text-[#5f6368]">Open Doing</div>
+      <div className="truncate text-[13px] text-[var(--ink-500)]">Open Doing</div>
 
       {/* 禁用态搜索框：键盘快捷键与搜索功能由后续轨道接入 */}
       <div className="relative ml-auto hidden w-[240px] shrink-0 min-[861px]:block">
@@ -75,7 +75,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
           strokeWidth="2"
           strokeLinecap="round"
           aria-hidden="true"
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[#9aa0a6]"
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-400)]"
         >
           <circle cx="11" cy="11" r="7" />
           <path d="M21 21l-4.3-4.3" />
@@ -86,7 +86,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
           placeholder={t("searchPlaceholder")}
           className="pr-10 pl-8"
         />
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-[#e1e3e6] bg-white px-1.5 font-mono text-[11px] text-[#5f6368]">
+        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-[var(--border-default)] bg-white px-1.5 font-mono text-[11px] text-[var(--ink-500)]">
           ⌘K
         </kbd>
       </div>

@@ -60,21 +60,21 @@ export default async function PersonalProjectPage({
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <nav
         aria-label={tCommon("breadcrumb")}
-        className="flex min-w-0 items-center gap-2 text-[13px] text-[#9aa0a6]"
+        className="flex min-w-0 items-center gap-2 text-[13px] text-[var(--ink-400)]"
       >
         <span className="shrink-0">{tNav("personalSpace")}</span>
         <span aria-hidden="true">/</span>
-        <strong className="truncate font-semibold text-[#0e1318]">
+        <strong className="truncate font-semibold text-[var(--ink-900)]">
           {project.name}
         </strong>
       </nav>
 
       <header className="mt-2 flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
         <div className="min-w-0">
-          <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+          <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
             {project.name}
           </h1>
-          <p className="mt-1.5 text-[13.5px] text-[#5f6368]">
+          <p className="mt-1.5 text-[13.5px] text-[var(--ink-500)]">
             {view === "board"
               ? t("boardDragHint")
               : t("personalProjectMeta", { tasks: tasks.length })}

@@ -80,7 +80,7 @@ export function MobileNav({ data }: MobileNavProps) {
 
       {/* antd Drawer size=280 的等宽复刻；关闭按钮由 SheetContent 内置。 */}
       <SheetContent side="left" className="w-[280px] gap-0 p-0 sm:max-w-[280px]">
-        <SheetHeader className="border-b border-[#e1e3e6] px-4 py-3.5">
+        <SheetHeader className="border-b border-[var(--border-default)] px-4 py-3.5">
           {/* 品牌行：复用 Topbar 的品牌标记与名称 */}
           <SheetTitle asChild>
             <div className="flex items-center gap-2.5">
@@ -90,7 +90,7 @@ export function MobileNav({ data }: MobileNavProps) {
               >
                 O
               </span>
-              <div className="truncate text-[13px] text-[#5f6368]">Open Doing</div>
+              <div className="truncate text-[13px] text-[var(--ink-500)]">Open Doing</div>
             </div>
           </SheetTitle>
         </SheetHeader>

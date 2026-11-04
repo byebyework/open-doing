@@ -138,9 +138,9 @@ export function SpaceKanbanFilterBar({
         </Tabs>
       ) : null}
 
-      <span className="text-[12.5px] text-[#5f6368]">{caption}</span>
+      <span className="text-[12.5px] text-[var(--ink-500)]">{caption}</span>
       <span className="flex-1" />
-      <span className="text-[12.5px] text-[#9aa0a6]">{todayCaption}</span>
+      <span className="text-[12.5px] text-[var(--ink-400)]">{todayCaption}</span>
     </div>
   );
 }

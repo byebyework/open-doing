@@ -65,7 +65,7 @@ const CHIP_TONE_CLASS: Record<Tone, string> = {
   overdue: "bg-[rgba(255,87,87,0.1)] text-[#ff5757]",
   today: "bg-[#fff3cd] text-[#8a5800]",
   soon: "bg-[#ffe9d6] text-[#b35400]",
-  later: "bg-[#f1f3f4] text-[#5f6368]",
+  later: "bg-[#f1f3f4] text-[var(--ink-500)]",
 };
 
 /** 侧栏状态点颜色。 */
@@ -74,7 +74,7 @@ const DOT_COLOR: Record<Tone, string> = {
   overdue: "#ff5757",
   today: "#a66b00",
   soon: "#b35400",
-  later: "#5f6368",
+  later: "var(--ink-500)",
 };
 
 /** 负责人 id 哈希：同一负责人跨渲染恒定映射到同一头像底色。 */
@@ -128,7 +128,7 @@ function weekMeta(
   variant: "personal" | "team",
 ): WeekMeta | null {
   if (item.done) {
-    return { kind: "done", className: "text-[#9aa0a6]" };
+    return { kind: "done", className: "text-[var(--ink-400)]" };
   }
 
   const diff = daysBetween(today, item.dueDate);
@@ -143,7 +143,7 @@ function weekMeta(
       return {
         kind: "project",
         text: item.projectName,
-        className: "text-[#9aa0a6]",
+        className: "text-[var(--ink-400)]",
       };
     }
 
@@ -153,7 +153,7 @@ function weekMeta(
   return {
     kind: "daysLeft",
     days: diff,
-    className: diff <= 3 ? "text-[#b35400]" : "text-[#9aa0a6]",
+    className: diff <= 3 ? "text-[#b35400]" : "text-[var(--ink-400)]",
   };
 }
 
@@ -313,7 +313,7 @@ function CalendarDayCell({
 
   return (
     <div
-      className={`flex min-h-[132px] flex-col border-[#e1e3e6] px-2 py-2 ${gridLineClassName} ${background}`}
+      className={`flex min-h-[132px] flex-col border-[var(--border-default)] px-2 py-2 ${gridLineClassName} ${background}`}
     >
       <div className={`flex flex-1 flex-col ${isOut ? "opacity-[0.45]" : ""}`}>
         <div className="flex items-center gap-1.5 text-[12px] tabular-nums text-[#3c4043]">
@@ -376,7 +376,7 @@ function WeekItem({
   return (
     <div
       className={`flex items-center gap-1.5 py-[3px] text-[12.5px] ${
-        item.done ? "text-[#9aa0a6]" : "text-[#0e1318]"
+        item.done ? "text-[var(--ink-400)]" : "text-[var(--ink-900)]"
       }`}
     >
       <span
@@ -426,7 +426,7 @@ function UpcomingItem({
   const tCalendar = useTranslations("calendar");
 
   return (
-    <div className="flex items-center gap-1.5 py-[3px] text-[12.5px] text-[#0e1318]">
+    <div className="flex items-center gap-1.5 py-[3px] text-[12.5px] text-[var(--ink-900)]">
       <span
         className="h-[7px] w-[7px] shrink-0 rounded-full"
         style={{ backgroundColor: DOT_COLOR.later }}
@@ -442,7 +442,7 @@ function UpcomingItem({
         <span className="min-w-0 flex-1 truncate">{item.title}</span>
       )}
 
-      <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] text-[#9aa0a6]">
+      <span className="ml-auto shrink-0 whitespace-nowrap text-[11px] text-[var(--ink-400)]">
         {tCalendar("upcomingLine", {
           date: shortDate(item.dueDate),
           days: daysBetween(today, item.dueDate),
@@ -561,7 +561,7 @@ export function SpaceCalendar({
   }
 
   const navButtonClassName =
-    "rounded-md border border-[#e1e3e6] bg-white px-2.5 py-[3px] text-[13px] text-[#3c4043] hover:border-[#c7cdd3] hover:text-[#0e1318]";
+    "rounded-md border border-[var(--border-default)] bg-white px-2.5 py-[3px] text-[13px] text-[#3c4043] hover:border-[#c7cdd3] hover:text-[var(--ink-900)]";
 
   return (
     <div>
@@ -569,7 +569,7 @@ export function SpaceCalendar({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {variant === "personal" ? (
           data.noDueCount > 0 ? (
-            <span className="text-[12px] text-[#9aa0a6]">
+            <span className="text-[12px] text-[var(--ink-400)]">
               {noDueHref ? (
                 <Link
                   href={noDueHref}
@@ -586,7 +586,7 @@ export function SpaceCalendar({
             </span>
           ) : null
         ) : (
-          <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[#5f6368]">
+          <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--ink-500)]">
             <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(13,153,255,0.1)] px-2 py-0.5 text-[11px] font-medium text-[#0d99ff]">
               <span className="h-1.5 w-1.5 rounded-full bg-current" />
               {tTasks("unassigned")}
@@ -596,7 +596,7 @@ export function SpaceCalendar({
         )}
 
         <span className="flex-1" />
-        <span className="text-[12px] text-[#9aa0a6]">
+        <span className="text-[12px] text-[var(--ink-400)]">
           {tDate("todayCaption", {
             date: today,
             weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
@@ -609,7 +609,7 @@ export function SpaceCalendar({
         <div className="min-w-0 flex-1">
           {/* 月历标题行：网格卡片之外（原型 .cal-header）。 */}
           <div className="mb-3 flex items-center gap-2">
-            <span className="min-w-[110px] text-[16px] font-bold text-[#0e1318]">
+            <span className="min-w-[110px] text-[16px] font-bold text-[var(--ink-900)]">
               {tCalendar("monthTitle", {
                 year: Number(month.slice(0, 4)),
                 month: Number(month.slice(5, 7)),
@@ -651,7 +651,7 @@ export function SpaceCalendar({
           </div>
 
           {/* 卡片只包住星期表头 + 网格本体。 */}
-          <div className="overflow-hidden rounded-xl border border-[#e1e3e6] bg-white">
+          <div className="overflow-hidden rounded-xl border border-[var(--border-default)] bg-white">
             <DayPicker
               month={monthAnchor(month)}
               onMonthChange={(date) => {
@@ -669,8 +669,8 @@ export function SpaceCalendar({
                 months: "w-full",
                 month: "w-full",
                 month_grid: "w-full border-collapse",
-                weekdays: "border-b border-b-[#e1e3e6] bg-[#f4f5f7]",
-                weekday: "text-center text-[11px] font-normal text-[#9aa0a6]",
+                weekdays: "border-b border-b-[var(--border-default)] bg-[#f4f5f7]",
+                weekday: "text-center text-[11px] font-normal text-[var(--ink-400)]",
                 day: "p-0",
               }}
               components={dayPickerComponents}
@@ -681,11 +681,11 @@ export function SpaceCalendar({
         {/* ===== 右：侧栏 ===== */}
         <aside className="flex w-full flex-col gap-3 min-[861px]:w-[320px] min-[861px]:flex-none">
           {/* 本周任务 */}
-          <section data-testid="calendar-week-card" className="rounded-xl border border-[#e1e3e6] bg-white p-3">
-            <h3 className="text-[13px] font-bold text-[#0e1318]">
+          <section data-testid="calendar-week-card" className="rounded-xl border border-[var(--border-default)] bg-white p-3">
+            <h3 className="text-[13px] font-bold text-[var(--ink-900)]">
               {tCalendar("thisWeek")}
             </h3>
-            <div className="mb-2 text-[11.5px] text-[#9aa0a6]">
+            <div className="mb-2 text-[11.5px] text-[var(--ink-400)]">
               {tCalendar("weekRange", {
                 start: shortDate(weekStart),
                 end: shortDate(weekEnd),
@@ -694,7 +694,7 @@ export function SpaceCalendar({
             </div>
 
             {weekGroups.length === 0 ? (
-              <p className="py-2 text-[12px] text-[#9aa0a6]">
+              <p className="py-2 text-[12px] text-[var(--ink-400)]">
                 {tCalendar("weekEmpty")}
               </p>
             ) : (
@@ -706,11 +706,11 @@ export function SpaceCalendar({
                     key={group.date}
                     className={`py-[7px] ${
                       index > 0
-                        ? "border-t border-dashed border-[#e1e3e6]"
+                        ? "border-t border-dashed border-[var(--border-default)]"
                         : ""
                     }`}
                   >
-                    <div className="mb-1 flex items-center gap-1.5 text-[11.5px] text-[#9aa0a6]">
+                    <div className="mb-1 flex items-center gap-1.5 text-[11.5px] text-[var(--ink-400)]">
                       {isToday ? (
                         <>
                           <b className="font-semibold text-[#7d2ae8]">
@@ -748,16 +748,16 @@ export function SpaceCalendar({
           </section>
 
           {/* 本月即将到期 */}
-          <section className="rounded-xl border border-[#e1e3e6] bg-white p-3">
-            <h3 className="text-[13px] font-bold text-[#0e1318]">
+          <section className="rounded-xl border border-[var(--border-default)] bg-white p-3">
+            <h3 className="text-[13px] font-bold text-[var(--ink-900)]">
               {tCalendar("upcomingTitle")}
             </h3>
-            <div className="mb-2 text-[11.5px] text-[#9aa0a6]">
+            <div className="mb-2 text-[11.5px] text-[var(--ink-400)]">
               {tCalendar("upcomingHint")}
             </div>
 
             {data.monthUpcoming.length === 0 ? (
-              <p className="py-2 text-[12px] text-[#9aa0a6]">
+              <p className="py-2 text-[12px] text-[var(--ink-400)]">
                 {tCalendar("upcomingEmpty")}
               </p>
             ) : (
@@ -773,7 +773,7 @@ export function SpaceCalendar({
                 ))}
 
                 {upcomingRest > 0 ? (
-                  <div className="mt-2 border-t border-dashed border-[#e1e3e6] pt-2 text-[12px]">
+                  <div className="mt-2 border-t border-dashed border-[var(--border-default)] pt-2 text-[12px]">
                     <button
                       type="button"
                       className="font-medium text-[#7d2ae8] hover:underline"

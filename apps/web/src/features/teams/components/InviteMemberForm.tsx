@@ -90,7 +90,7 @@ export function InviteMemberForm({ teamId }: { teamId: string }) {
           <Label htmlFor="invite-uid">{t("uidLabel")}</Label>
           {/* doing_ 前缀壳：复刻 antd Input prefix 的形态（对照 team-settings 原型）。 */}
           <div className="flex h-9 items-center rounded-[var(--radius-8)] border border-input bg-card px-3 shadow-xs transition-[color,box-shadow] focus-within:ring-[3px] focus-within:ring-ring/40">
-            <span className="select-none text-[14px] text-[#9aa0a6]" aria-hidden="true">
+            <span className="select-none text-[14px] text-[var(--ink-400)]" aria-hidden="true">
               doing_
             </span>
             <Input
@@ -112,7 +112,7 @@ export function InviteMemberForm({ teamId }: { teamId: string }) {
               {errors.uid.message}
             </p>
           ) : (
-            <p className="text-[12px] text-[#9aa0a6]">{t("uidExtra")}</p>
+            <p className="text-[12px] text-[var(--ink-400)]">{t("uidExtra")}</p>
           )}
         </div>
 

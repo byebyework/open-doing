@@ -83,10 +83,10 @@ export function LanguageSetting({ language }: LanguageSettingProps) {
   return (
     <div className="flex items-center gap-4 py-[15px]">
       <div className="min-w-0 flex-1 leading-[1.45]">
-        <div className="text-[13.5px] font-semibold text-[#0e1318]">
+        <div className="text-[13.5px] font-semibold text-[var(--ink-900)]">
           {t("language")}
         </div>
-        <div className="mt-0.5 text-[12px] text-[#9aa0a6]">
+        <div className="mt-0.5 text-[12px] text-[var(--ink-400)]">
           {t("languageCaption")}
         </div>
       </div>

@@ -19,14 +19,14 @@ export default async function CreateTeamPage() {
 
   return (
     <div className="mx-auto w-full max-w-[520px] py-10">
-      <h1 data-testid="create-team-heading" className="text-[22px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
+      <h1 data-testid="create-team-heading" className="text-[22px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">
         {t("createTitle")}
       </h1>
-      <p className="mb-8 mt-1.5 text-[14px] text-[#5f6368]">{t("createSubtitle")}</p>
+      <p className="mb-8 mt-1.5 text-[14px] text-[var(--ink-500)]">{t("createSubtitle")}</p>
 
       <CreateTeamForm />
 
-      <p className="mt-8 text-center text-[13px] text-[#5f6368]">
+      <p className="mt-8 text-center text-[13px] text-[var(--ink-500)]">
         {t("haveJoinCode")}{" "}
         <Link href={joinTeamHref()} className="font-semibold text-[#7d2ae8]">
           {t("joinByCode")}

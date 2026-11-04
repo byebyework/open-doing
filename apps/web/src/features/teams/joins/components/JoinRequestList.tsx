@@ -78,7 +78,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
   return (
     <div className="min-w-0">
       {pending.length === 0 ? (
-        <p className="text-[13px] text-[#9aa0a6]">{t("noPendingJoinRequests")}</p>
+        <p className="text-[13px] text-[var(--ink-400)]">{t("noPendingJoinRequests")}</p>
       ) : (
         pending.map(({ request, user }) => (
           // 窄屏（375px）允许换行：头像 / 用户名 / UID / 时间 / 操作折行，
@@ -88,13 +88,13 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
             className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#eceef0] py-2.5 first:border-t-0"
           >
             <UserAvatar username={user.username} />
-            <span className="max-w-[180px] truncate text-[13px] font-medium text-[#0e1318]">
+            <span className="max-w-[180px] truncate text-[13px] font-medium text-[var(--ink-900)]">
               {user.username}
             </span>
-            <span className="max-w-[160px] truncate font-mono text-[12px] text-[#9aa0a6]">
+            <span className="max-w-[160px] truncate font-mono text-[12px] text-[var(--ink-400)]">
               {user.uid}
             </span>
-            <span className="ml-auto text-[12px] text-[#9aa0a6]">
+            <span className="ml-auto text-[12px] text-[var(--ink-400)]">
               {t("requestedAtSuffix", { time: dayjs(request.createdAt).format("MM-DD HH:mm") })}
             </span>
             <span className="flex flex-none items-center gap-1.5">
@@ -143,13 +143,13 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
               {t(resultKey)}
             </Badge>
             <UserAvatar username={user.username} />
-            <span className="max-w-[180px] truncate text-[13px] font-medium text-[#0e1318]">
+            <span className="max-w-[180px] truncate text-[13px] font-medium text-[var(--ink-900)]">
               {user.username}
             </span>
-            <span className="max-w-[160px] truncate font-mono text-[12px] text-[#9aa0a6]">
+            <span className="max-w-[160px] truncate font-mono text-[12px] text-[var(--ink-400)]">
               {user.uid}
             </span>
-            <span className="ml-auto text-[12px] text-[#9aa0a6]">
+            <span className="ml-auto text-[12px] text-[var(--ink-400)]">
               {dayjs(time).format("MM-DD HH:mm")}
             </span>
           </div>

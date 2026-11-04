@@ -27,7 +27,7 @@ export interface AppShellProps {
  */
 export function AppShell({ nav, mobileNav, user, children }: AppShellProps) {
   return (
-    <div className="flex min-h-screen bg-[#f4f5f7] text-[#0e1318]">
+    <div className="flex min-h-screen bg-[#f4f5f7] text-[var(--ink-900)]">
       <Sidebar nav={nav} />
       <div className="flex min-w-0 flex-1 flex-col">
         <Topbar user={user} mobileNav={mobileNav} />

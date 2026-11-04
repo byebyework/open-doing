@@ -106,17 +106,17 @@ export function JoinCodeSettings({
   return (
     <div className="flex flex-col gap-4">
       <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
-        <span className="text-[13px] text-[#5f6368]">{t("joinCodeLabel")}</span>
+        <span className="text-[13px] text-[var(--ink-500)]">{t("joinCodeLabel")}</span>
         <span
           data-testid="join-code-value"
-          className="font-mono text-[16px] font-semibold tracking-[0.12em] text-[#0e1318]"
+          className="font-mono text-[16px] font-semibold tracking-[0.12em] text-[var(--ink-900)]"
         >
           {joinCode}
         </span>
         <button
           type="button"
           aria-label={t("copyJoinCode")}
-          className="inline-flex size-8 items-center justify-center rounded-[var(--radius-8)] text-[#5f6368] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[#0e1318] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
+          className="inline-flex size-8 items-center justify-center rounded-[var(--radius-8)] text-[var(--ink-500)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--ink-900)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40"
           onClick={() => void handleCopy()}
         >
           {copied ? (
@@ -143,7 +143,7 @@ export function JoinCodeSettings({
           disabled={toggling}
           onCheckedChange={handleToggle}
         />
-        <span className="text-[13px] text-[#5f6368]">
+        <span className="text-[13px] text-[var(--ink-500)]">
           {enabled ? t("joinCodeEnabledOn") : t("joinCodeEnabledOff")}
         </span>
       </label>

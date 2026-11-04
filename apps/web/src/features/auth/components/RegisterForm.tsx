@@ -103,10 +103,10 @@ export function RegisterForm() {
         O
       </span>
 
-      <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
+      <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">
         {t("createAccount")}
       </h1>
-      <p className="mb-6 text-[14px] text-[#5f6368]">{t("registerSubtitle")}</p>
+      <p className="mb-6 text-[14px] text-[var(--ink-500)]">{t("registerSubtitle")}</p>
 
       {formError ? (
         <Alert variant="destructive" role="alert" className="mb-5">
@@ -137,7 +137,7 @@ export function RegisterForm() {
               {errors.username.message}
             </p>
           ) : (
-            <p id="register-username-extra" className="text-[12px] text-[#9aa0a6]">
+            <p id="register-username-extra" className="text-[12px] text-[var(--ink-400)]">
               {t("usernameExtra", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH })}
             </p>
           )}
@@ -212,7 +212,7 @@ export function RegisterForm() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-[13px] text-[#5f6368]">
+      <p className="mt-5 text-center text-[13px] text-[var(--ink-500)]">
         {t("hasAccount")}{" "}
         <Link href="/login" className="font-semibold text-[#7d2ae8]">
           {t("signInInstead")}

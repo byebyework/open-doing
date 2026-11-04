@@ -67,10 +67,10 @@ export default async function TeamDashboardPage(
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
       <header className="min-w-0">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
           {tNav("dashboard")}
         </h1>
-        <p className="mt-1.5 text-[14px] text-[#5f6368]">
+        <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
           {t("teamSubtitle")}
         </p>
       </header>
@@ -102,12 +102,12 @@ export default async function TeamDashboardPage(
       </div>
 
       <div className="mt-6 grid min-w-0 grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
-        <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+        <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
-            <h2 className="text-[15px] font-bold text-[#0e1318]">
+            <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
               {t("healthTitle")}
             </h2>
-            <span className="ml-auto text-[12px] text-[#9aa0a6]">
+            <span className="ml-auto text-[12px] text-[var(--ink-400)]">
               {t("healthHint")}
             </span>
           </div>
@@ -135,10 +135,10 @@ export default async function TeamDashboardPage(
                     >
                       <div className="flex min-w-0 items-center gap-2">
                         <div className="min-w-0 flex-1">
-                          <div className="truncate text-[13.5px] font-semibold text-[#0e1318]">
+                          <div className="truncate text-[13.5px] font-semibold text-[var(--ink-900)]">
                             {project.projectName}
                           </div>
-                          <div className="mt-0.5 text-[12px] text-[#9aa0a6]">
+                          <div className="mt-0.5 text-[12px] text-[var(--ink-400)]">
                             {t("taskCount", { count: project.taskCount })}
                           </div>
                         </div>
@@ -176,12 +176,12 @@ export default async function TeamDashboardPage(
         />
       </div>
 
-      <section className="mt-5 min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+      <section className="mt-5 min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
-          <h2 className="text-[15px] font-bold text-[#0e1318]">
+          <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
             {t("memberLoadTitle")}
           </h2>
-          <span className="ml-auto text-[12px] text-[#9aa0a6]">
+          <span className="ml-auto text-[12px] text-[var(--ink-400)]">
             {t("memberLoadHint")}
           </span>
         </div>

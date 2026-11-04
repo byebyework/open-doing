@@ -146,7 +146,7 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 shrink-0 text-[#9aa0a6]"
+            className="size-7 shrink-0 text-[var(--ink-400)]"
             aria-label={t("rowActionsAria", { title: task.title })}
           >
             <svg

@@ -151,12 +151,12 @@ export function ProjectTaskTable({
             <SelectItem value="createdAt">{t("sortCreatedAt")}</SelectItem>
           </SelectContent>
         </Select>
-        <span className="ml-auto text-[12.5px] text-[#9aa0a6]">
+        <span className="ml-auto text-[12.5px] text-[var(--ink-400)]">
           {t("totalCount", { count: visibleTasks.length })}
         </span>
       </div>
 
-      <section className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white px-4 py-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:px-5">
+      <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white px-4 py-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:px-5">
         {isEmptyProject ? (
           <EmptyState
             title={t("emptyTasksTitle")}
@@ -168,7 +168,7 @@ export function ProjectTaskTable({
             }
           />
         ) : visibleTasks.length === 0 ? (
-          <p className="py-10 text-center text-[13px] text-[#9aa0a6]">
+          <p className="py-10 text-center text-[13px] text-[var(--ink-400)]">
             {t("filteredEmpty")}
           </p>
         ) : (
@@ -177,16 +177,16 @@ export function ProjectTaskTable({
             <table className="w-full min-w-[680px] border-collapse text-left text-[13.5px]">
               <thead>
                 <tr>
-                  <th className="border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
+                  <th className="border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("colTask")}
                   </th>
-                  <th className="w-24 border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
+                  <th className="w-24 border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("statusLabel")}
                   </th>
-                  <th className="w-[170px] border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
+                  <th className="w-[170px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("colProgress")}
                   </th>
-                  <th className="w-[130px] border-b border-[#e1e3e6] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[#9aa0a6]">
+                  <th className="w-[130px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("dueDateLabel")}
                   </th>
                 </tr>
@@ -209,14 +209,14 @@ export function ProjectTaskTable({
                         done ? "opacity-[0.62]" : ""
                       }`}
                     >
-                      <td className="border-b border-[#e1e3e6] px-3 py-3 align-middle">
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <div className="flex min-w-0 items-center gap-1">
                           <Link
                             href={personalTaskHref(task.id)}
                             className={`min-w-0 break-words font-medium ${
                               done
-                                ? "text-[#9aa0a6] line-through"
-                                : "text-[#0e1318] no-underline hover:underline"
+                                ? "text-[var(--ink-400)] line-through"
+                                : "text-[var(--ink-900)] no-underline hover:underline"
                             }`}
                           >
                             {task.title}
@@ -228,13 +228,13 @@ export function ProjectTaskTable({
                         </div>
                       </td>
 
-                      <td className="border-b border-[#e1e3e6] px-3 py-3 align-middle">
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <StatusTag status={task.status} />
                       </td>
 
-                      <td className="border-b border-[#e1e3e6] px-3 py-3 align-middle">
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {done ? (
-                          <span className="text-[12.5px] text-[#9aa0a6]">
+                          <span className="text-[12.5px] text-[var(--ink-400)]">
                             —
                           </span>
                         ) : task.subtasks.length > 0 ? (
@@ -242,7 +242,7 @@ export function ProjectTaskTable({
                             <div className="mb-1 w-[110px]">
                               <ProgressBar value={progress} />
                             </div>
-                            <span className="text-[12px] text-[#9aa0a6]">
+                            <span className="text-[12px] text-[var(--ink-400)]">
                               {t("tableSubtasksProgress", {
                                 completed: completedCount,
                                 total: task.subtasks.length,
@@ -251,13 +251,13 @@ export function ProjectTaskTable({
                             </span>
                           </div>
                         ) : (
-                          <span className="text-[12px] text-[#9aa0a6]">
+                          <span className="text-[12px] text-[var(--ink-400)]">
                             {t("noSubtasksProgress", { percent: Math.round(progress * 100) })}
                           </span>
                         )}
                       </td>
 
-                      <td className="border-b border-[#e1e3e6] px-3 py-3 align-middle">
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {task.dueDate ? (
                           <DueText
                             dueDate={task.dueDate}
@@ -265,7 +265,7 @@ export function ProjectTaskTable({
                             today={today}
                           />
                         ) : (
-                          <span className="text-[12.5px] text-[#9aa0a6]">
+                          <span className="text-[12.5px] text-[var(--ink-400)]">
                             —
                           </span>
                         )}

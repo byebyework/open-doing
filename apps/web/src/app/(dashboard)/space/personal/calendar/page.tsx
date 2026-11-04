@@ -47,10 +47,10 @@ export default async function PersonalCalendarPage(
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <header className="min-w-0">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[#0e1318]">
+        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
           {tNav("calendar")}
         </h1>
-        <p className="mt-1.5 text-[14px] text-[#5f6368]">
+        <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
           {t("personalSubtitle")}
         </p>
       </header>

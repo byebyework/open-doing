@@ -85,10 +85,10 @@ export function LoginForm() {
         O
       </span>
 
-      <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[#0e1318]">
+      <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">
         {t("welcomeBack")}
       </h1>
-      <p className="mb-7 text-[14px] text-[#5f6368]">{t("loginSubtitle")}</p>
+      <p className="mb-7 text-[14px] text-[var(--ink-500)]">{t("loginSubtitle")}</p>
 
       {formError ? (
         <Alert variant="destructive" role="alert" className="mb-5">
@@ -141,7 +141,7 @@ export function LoginForm() {
         </div>
 
         <div className="-mt-1 mb-4 flex justify-end">
-          <span className="text-[12px] text-[#9aa0a6]">{t("noPasswordRecovery")}</span>
+          <span className="text-[12px] text-[var(--ink-400)]">{t("noPasswordRecovery")}</span>
         </div>
 
         <Button
@@ -157,7 +157,7 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <p className="mt-5 text-center text-[13px] text-[#5f6368]">
+      <p className="mt-5 text-center text-[13px] text-[var(--ink-500)]">
         {t("noAccount")}{" "}
         <Link href="/register" className="font-semibold text-[#7d2ae8]">
           {t("registerNow")}

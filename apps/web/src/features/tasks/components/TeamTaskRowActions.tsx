@@ -135,7 +135,7 @@ export function TeamTaskRowActions({
             variant="ghost"
             size="sm"
             aria-label={t("rowActionsAria", { title: task.title })}
-            className="shrink-0 text-[#9aa0a6]"
+            className="shrink-0 text-[var(--ink-400)]"
             disabled={pending !== null || deleting}
           >
             <svg

@@ -109,8 +109,8 @@ function DueTag({
 /** 右列 meta 行：固定宽度的键 + 自适应值。 */
 function MetaRow({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex items-center gap-3 border-t border-[#e1e3e6] py-[11px] text-[13px] first:border-t-0">
-      <span className="w-16 shrink-0 text-[#5f6368]">{label}</span>
+    <div className="flex items-center gap-3 border-t border-[var(--border-default)] py-[11px] text-[13px] first:border-t-0">
+      <span className="w-16 shrink-0 text-[var(--ink-500)]">{label}</span>
       <span className="flex min-w-0 flex-1 items-center gap-2 font-medium">
         {children}
       </span>
@@ -447,7 +447,7 @@ export function TaskDetailView({
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <Link
         href={backHref}
-        className="mb-4 inline-block text-[13px] text-[#5f6368] no-underline hover:text-[#7d2ae8] hover:underline"
+        className="mb-4 inline-block text-[13px] text-[var(--ink-500)] no-underline hover:text-[#7d2ae8] hover:underline"
       >
         {resolvedBackLabel}
       </Link>
@@ -455,7 +455,7 @@ export function TaskDetailView({
       <div className="grid min-w-0 grid-cols-1 items-start gap-6 min-[1101px]:grid-cols-[minmax(0,1fr)_300px]">
         {/* 左列：任务主体 */}
         <div className="min-w-0">
-          <h1 className="break-words text-[30px] font-bold leading-[1.2] tracking-[-0.01em] text-[#0e1318]">
+          <h1 className="break-words text-[30px] font-bold leading-[1.2] tracking-[-0.01em] text-[var(--ink-900)]">
             {task.title}
           </h1>
 
@@ -478,13 +478,13 @@ export function TaskDetailView({
               {task.description}
             </p>
           ) : (
-            <p className="mt-4 text-[14px] leading-[1.65] text-[#9aa0a6]">
+            <p className="mt-4 text-[14px] leading-[1.65] text-[var(--ink-400)]">
               {t("noDescription")}
             </p>
           )}
 
           <div className="mb-4 mt-6">
-            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px] text-[#5f6368]">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px] text-[var(--ink-500)]">
               <span>
                 {hasSubtasks
                   ? t("progressWithSubtasks", { completed, total })
@@ -492,7 +492,7 @@ export function TaskDetailView({
               </span>
               <span
                 className={
-                  hasSubtasks ? "font-semibold text-[#0e1318]" : undefined
+                  hasSubtasks ? "font-semibold text-[var(--ink-900)]" : undefined
                 }
               >
                 {hasSubtasks
@@ -503,7 +503,7 @@ export function TaskDetailView({
             <ProgressBar value={progress} />
           </div>
 
-          <h2 data-testid="subtask-heading" className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
+          <h2 data-testid="subtask-heading" className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[var(--ink-500)]">
             {t("subtasksProgress", { completed, total })}
           </h2>
           {/* 子任务与状态同属编辑权：只读态下复选框禁用、增删入口隐藏。 */}
@@ -522,7 +522,7 @@ export function TaskDetailView({
             }
           />
 
-          <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[#5f6368]">
+          <h2 className="mb-3 mt-8 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.04em] text-[var(--ink-500)]">
             {t("commentsCount", { count: task.comments.length })}
           </h2>
           <CommentBox
@@ -534,7 +534,7 @@ export function TaskDetailView({
         </div>
 
         {/* 右列：元信息 */}
-        <aside className="min-w-0 rounded-xl border border-[#e1e3e6] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <aside className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
           <div>
             <MetaRow label={t("statusLabel")}>
               <StatusTag status={status} />
@@ -603,7 +603,7 @@ export function TaskDetailView({
                   </span>
                 </>
               ) : (
-                <span className="font-normal text-[#9aa0a6]">
+                <span className="font-normal text-[var(--ink-400)]">
                   {t("unassigned")}
                 </span>
               )}
@@ -629,7 +629,7 @@ export function TaskDetailView({
                   ) : null}
                 </>
               ) : (
-                <span className="font-normal text-[#9aa0a6]">—</span>
+                <span className="font-normal text-[var(--ink-400)]">—</span>
               )}
             </MetaRow>
 
@@ -642,13 +642,13 @@ export function TaskDetailView({
                   {task.projectName}
                 </Link>
               ) : (
-                <span className="font-normal text-[#9aa0a6]">—</span>
+                <span className="font-normal text-[var(--ink-400)]">—</span>
               )}
             </MetaRow>
 
             {task.creatorName ? (
               <MetaRow label={t("creatorLabel")}>
-                <span className="font-normal text-[#5f6368]">
+                <span className="font-normal text-[var(--ink-500)]">
                   {t("createdAtLine", {
                     name: task.creatorName,
                     date: formatShanghaiDate(task.createdAt),
@@ -658,13 +658,13 @@ export function TaskDetailView({
             ) : null}
           </div>
 
-          <div className="mt-4 border-t border-[#e1e3e6] pt-4">
-            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px] text-[#5f6368]">
+          <div className="mt-4 border-t border-[var(--border-default)] pt-4">
+            <div className="mb-1.5 flex items-baseline justify-between gap-2 text-[12px] text-[var(--ink-500)]">
               <span>{t("progress")}</span>
               <span>{percent}%</span>
             </div>
             <ProgressBar value={progress} />
-            <p className="mt-2 text-[12px] leading-relaxed text-[#9aa0a6]">
+            <p className="mt-2 text-[12px] leading-relaxed text-[var(--ink-400)]">
               {hasSubtasks
                 ? t("progressHintWithSubtasks", { completed, total })
                 : t("progressHintByStatus")}
