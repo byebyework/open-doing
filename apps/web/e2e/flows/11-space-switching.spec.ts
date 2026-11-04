@@ -184,10 +184,10 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     await expect(drawer).toBeHidden();
 
     // 再次打开并用抽屉关闭按钮收起（vendored SheetContent 内置关闭按钮的
-    // sr-only 文案硬编码为 "Close"，不随 locale 翻译）。
+    // sr-only 文案已走 i18n：zh 为「关闭」，随 locale 翻译）。
     await hamburger.click();
     await expect(drawer).toBeVisible();
-    await drawer.getByRole("button", { name: "Close" }).click();
+    await drawer.getByRole("button", { name: "关闭" }).click();
     await expect(drawer).toBeHidden();
   });
 });
