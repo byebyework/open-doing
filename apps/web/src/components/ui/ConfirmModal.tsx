@@ -44,8 +44,9 @@ export interface ConfirmModalProps {
  * 统一封装 shadcn AlertDialog 的确认/取消语义；确认按钮可切换危险样式与加载态。
  * 确认点击不自动关闭（preventDefault）——关闭责任在消费方 success 分支置
  * open=false；失败时弹窗保持、输入不丢，loading 态可见（spinner + 禁用）。
- * 取消/Esc/遮罩（非 loading 时）统一走 onCancel；loading 期间三者全被阻止
- * （antd confirmLoading 同语义：提交中不允许侧门关闭丢输入）。
+ * 取消/Esc（非 loading 时）统一走 onCancel；loading 期间 Esc 被阻止
+ * （antd confirmLoading 同语义）。Radix AlertDialog 外部点击本就不触发关闭
+ * （onInteractOutside 被 Radix Omit），遮罩不是侧门。
  */
 export function ConfirmModal({
   open,
@@ -72,9 +73,6 @@ export function ConfirmModal({
       <AlertDialogContent
         role="dialog"
         onEscapeKeyDown={(event) => {
-          if (loading) event.preventDefault();
-        }}
-        onInteractOutside={(event) => {
           if (loading) event.preventDefault();
         }}
       >
