@@ -2,11 +2,12 @@
 
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
- * 适配:dialog 同源遮罩色;供 MobileNav(Drawer → Sheet)消费。
+ * 适配:dialog 同源遮罩色;供 MobileNav(Drawer → Sheet)消费;关闭钮 sr-only 文案走 next-intl(common.close),不硬编码英文。
  */
 import * as SheetPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -56,6 +57,7 @@ function SheetContent({
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
   side?: "top" | "right" | "bottom" | "left";
 }) {
+  const t = useTranslations("common");
   return (
     <SheetPortal>
       <SheetOverlay />
@@ -78,7 +80,7 @@ function SheetContent({
         {children}
         <SheetPrimitive.Close className="ring-offset-background focus:ring-ring/40 data-[state=open]:bg-accent absolute top-4 right-4 rounded-[var(--radius-4)] opacity-60 transition-[opacity,box-shadow] outline-none hover:opacity-100 focus:ring-[3px] disabled:pointer-events-none">
           <XIcon className="size-4" />
-          <span className="sr-only">Close</span>
+          <span className="sr-only">{t("close")}</span>
         </SheetPrimitive.Close>
       </SheetPrimitive.Content>
     </SheetPortal>

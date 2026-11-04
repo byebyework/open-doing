@@ -43,6 +43,7 @@
   "common": {
     "save": "Save",
     "cancel": "Cancel",
+    "close": "Close",
     "delete": "Delete",
     "confirm": "Confirm",
     "networkError": "Network error, please try again later",

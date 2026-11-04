@@ -43,6 +43,7 @@
   "common": {
     "save": "保存",
     "cancel": "取消",
+    "close": "关闭",
     "delete": "删除",
     "confirm": "确认",
     "networkError": "网络异常，请稍后重试",

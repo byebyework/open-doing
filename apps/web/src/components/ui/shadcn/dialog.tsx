@@ -2,11 +2,12 @@
 
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
- * 适配:遮罩用 --ink-900/45(对齐原型 .dialog-overlay);无其他改动。
+ * 适配:遮罩用 --ink-900/45(对齐原型 .dialog-overlay);关闭钮 sr-only 文案走 next-intl(common.close),不硬编码英文。
  */
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
 import * as React from "react";
+import { useTranslations } from "next-intl";
 
 import { cn } from "@/lib/utils";
 
@@ -58,6 +59,7 @@ function DialogContent({
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
+  const t = useTranslations("common");
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -76,7 +78,7 @@ function DialogContent({
             className="ring-offset-background focus:ring-ring/40 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-[var(--radius-4)] opacity-60 transition-[opacity,box-shadow] outline-none hover:opacity-100 focus:ring-[3px] focus:ring-[3px] disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
           >
             <XIcon />
-            <span className="sr-only">Close</span>
+            <span className="sr-only">{t("close")}</span>
           </DialogPrimitive.Close>
         )}
       </DialogPrimitive.Content>

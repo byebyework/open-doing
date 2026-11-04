@@ -62,4 +62,17 @@ describe("共享原子件换芯(antd → shadcn,公开 props 不变)", () => {
       expect(source, `${file} 仍引用 antd`).not.toMatch(/from "antd"/);
     }
   });
+
+  it("Dialog/Sheet 内置关闭钮 sr-only 文案走 i18n(useTranslations)", () => {
+    for (const file of ["shadcn/dialog.tsx", "shadcn/sheet.tsx"]) {
+      const source = readFileSync(
+        path.join(import.meta.dirname, file),
+        "utf8",
+      );
+      expect(source, `${file} 仍硬编码 Close`).not.toContain(">Close</span>");
+      expect(source, `${file} 缺 useTranslations`).toContain(
+        'useTranslations("common")',
+      );
+    }
+  });
 });
