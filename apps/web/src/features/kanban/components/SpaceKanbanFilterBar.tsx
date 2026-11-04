@@ -28,6 +28,11 @@ export interface SpaceKanbanFilterBarProps {
   activeProjectSlug?: string;
   /** 团队空间：是否只显示未指派任务（`?assignee=unassigned`）。 */
   unassignedOnly?: boolean;
+  /**
+   * 当前激活的统计参数（status / overdue / dueSoon）；`pushFilter` 重写 URL
+   * 时透传——项目 / 负责人是统计视角内的细化，切换细化不退出视角。
+   */
+  statParams?: Record<string, string>;
   /** 「当前筛选：{项目} · N 个任务」。 */
   caption: string;
   /** 「基准日期 YYYY-MM-DD（周X）」。 */
@@ -54,6 +59,7 @@ export function SpaceKanbanFilterBar({
   projects,
   activeProjectSlug,
   unassignedOnly = false,
+  statParams,
   caption,
   todayCaption,
   projectProgress,
@@ -76,6 +82,9 @@ export function SpaceKanbanFilterBar({
   function pushFilter(projectSlug?: string, onlyUnassigned = false) {
     const params = new URLSearchParams();
 
+    for (const [key, value] of Object.entries(statParams ?? {})) {
+      params.set(key, value);
+    }
     if (projectSlug) params.set("project", projectSlug);
     if (variant === "team" && onlyUnassigned) {
       params.set("assignee", "unassigned");

@@ -176,6 +176,11 @@ export default async function TeamKanbanPage(
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         unassignedOnly={unassignedOnly}
+        statParams={{
+          ...(statFilter.status ? { status: statFilter.status } : {}),
+          ...(statFilter.overdueOnly ? { overdue: "1" } : {}),
+          ...(statFilter.dueSoonOnly ? { dueSoon: "1" } : {}),
+        }}
         projectProgress={Object.fromEntries(progressBySlug)}
         allProjectsProgress={allProjectsProgress}
         caption={t("captionTeam", {

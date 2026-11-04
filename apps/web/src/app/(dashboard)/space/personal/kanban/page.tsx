@@ -104,6 +104,11 @@ export default async function PersonalKanbanPage(
         basePath={moduleHref("personal", "kanban")}
         projects={projects}
         activeProjectSlug={activeProject?.slug}
+        statParams={{
+          ...(statFilter.status ? { status: statFilter.status } : {}),
+          ...(statFilter.overdueOnly ? { overdue: "1" } : {}),
+          ...(statFilter.dueSoonOnly ? { dueSoon: "1" } : {}),
+        }}
         caption={t("captionPersonal", { project: projectName, count: total })}
         todayCaption={tDate("todayCaption", {
           date: today,

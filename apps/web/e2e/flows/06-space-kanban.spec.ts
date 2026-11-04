@@ -366,4 +366,32 @@ test.describe("flow 6: 看板统计带", () => {
     await expect(todo.getByText(overdueTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(futureTask, { exact: true })).toBeVisible();
   });
+
+  test("激活已逾期视角后切换项目，统计参数保留", async ({ page }) => {
+    const username = uniqueUsername("e2e_kstat2");
+    const projectName = uniqueLabel("E2E kb stat keep");
+    const overdueTask = uniqueLabel("E2E kb stat keep overdue");
+
+    await registerUser(page, username);
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, { title: overdueTask, dueDate: "2020-01-01" });
+
+    await page.goto("/space/personal/kanban");
+    const overdueChip = page.locator('[data-filter="overdue"]');
+    await overdueChip.click();
+    await expect(page).toHaveURL(/\/space\/personal\/kanban\?overdue=1$/);
+
+    // 视角内细化：切到项目 A，已逾期视角必须跟着走（URL 仍带 overdue=1，chip 仍激活）。
+    await page.getByTestId(TEST_IDS.kanban.projectFilter).click();
+    await page
+      .getByRole("option", { name: new RegExp(`^${projectName}`) })
+      .click();
+
+    await expect(page).toHaveURL(
+      new RegExp(`project=${personalProjectSlug(projectName)}`),
+    );
+    await expect(page).toHaveURL(/overdue=1/);
+    await expect(overdueChip).toHaveAttribute("aria-pressed", "true");
+  });
 });

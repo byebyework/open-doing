@@ -44,9 +44,9 @@ const CHIP_CLASS =
 /**
  * 看板统计带（对照 `space-kanban-*.html` 的 `.kb-stats`）。
  *
- * 统计即筛选：点击 chip 写入对应 searchParam（再点取消），RSC 按新参数
- * 重新取数；激活 chip 以 aria-pressed 标记（原型同款描边高亮）。
- * chips 之间可叠加（AND），既有 project / assignee 筛选经 preserveParams 保留。
+ * 统计即筛选：点击 chip 切换视角，一次只激活一个（再点取消），RSC 按
+ * 新参数重新取数；激活 chip 以 aria-pressed 标记（原型同款描边高亮）。
+ * project / assignee 是视角内细化，经 preserveParams 保留。
  */
 export function KanbanStatStrip({
   stats,
