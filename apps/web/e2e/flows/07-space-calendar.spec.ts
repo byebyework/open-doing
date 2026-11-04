@@ -81,6 +81,9 @@ test.describe("flow 7: 空间级 Calendar", () => {
     await expect(page.getByTestId(TEST_IDS.tasks.statusToggle)).toHaveText(
       "标记为未完成",
     );
+    // 按钮文案是乐观翻转（changeStatus 先行 setStatus）；按钮重新可用才是
+    // Server Action 落库完成的信号，否则 goto 日历可能读到未提交的 done=false。
+    await expect(page.getByTestId(TEST_IDS.tasks.statusToggle)).toBeEnabled();
 
     await page.goto("/space/personal/calendar");
 
