@@ -16,7 +16,7 @@ The only application in the monorepo: pages + Server Actions + Route Handlers + 
 
 - Next.js App Router, React Server Components by default; mutations go through Server Actions (no public REST API — Route Handlers exist only for cron).
 - PostgreSQL via Drizzle ORM; schema at `src/server/db/schema.ts`, migrations in `drizzle/`.
-- UI is antd + Tailwind (preflight disabled in `globals.css`); theme is configured only in `src/app/theme.ts` — never create another `ConfigProvider`.
+- UI is the vendored shadcn/ui set (`src/components/ui/shadcn/`, Radix + cva) + Tailwind 4 (preflight enabled in `globals.css`); there is no runtime theme — colors come from design tokens in `src/app/tokens.css` (1:1 with the prototypes), and antd must not be reintroduced (a guard test pins this).
 - All user-visible copy lives in `src/i18n/messages/{zh,en}.json` (next-intl). Hardcoded CJK strings fail the cjk-guard test; new features must ship both locales.
 - "Today" is computed in Asia/Shanghai (`src/lib/today.ts`); RSCs pass `today` down as a prop — never read the local timezone in components.
 
@@ -28,7 +28,8 @@ features/       Domain modules: auth, users, teams, projects, tasks, kanban,
                 calendar, analysis, notifications, personal, dashboard.
                 Each has actions.ts (Server Actions) / service.ts (data access +
                 business rules) / components/
-components/     ui/ shared components, layout/ frame layout (AppShell etc.)
+components/     ui/ shared components (ConfirmModal, StatCard, … + vendored shadcn/
+                primitives in ui/shadcn/), layout/ frame layout (AppShell etc.)
 hooks/          Generic client hooks
 lib/            Pure utilities (slug, today, domain-failure, ...)
 server/         db client, auth/session, cron entry points
@@ -63,6 +64,6 @@ pnpm --filter @open-doing/web exec playwright install chromium   # first e2e run
 
 - Server Actions: validate input → check permissions (every action authorizes itself; centralized helpers in `features/teams`) → call service → return `ActionResult<T>` with field errors.
 - Business rules and data access live in feature `service.ts`, never in pages.
-- antd interactive components (Modal, message, Dropdown) only inside `"use client"` components; pages pass serializable props. Optimistic updates use the "sync props → state during render" pattern with `router.refresh()`.
+- Radix-based interactive components (Dialog, AlertDialog, DropdownMenu, Popover, Select, Sheet) only inside `"use client"` components; pages pass serializable props. Optimistic updates use the "sync props → state during render" pattern with `router.refresh()`. `ConfirmModal` does not auto-close on confirm — the consumer closes in its success branch; `loading` disables Esc and the cancel button.
 - Domain errors: service throws `<X>Error(zh fallback, field, { key, params })`; never display the constructor's Chinese directly — it is translated per request locale.
 - Routes use slugs for teams/projects and opaque IDs for task details. `personal` is a reserved spaceRef.

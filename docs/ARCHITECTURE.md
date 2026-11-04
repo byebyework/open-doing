@@ -55,10 +55,10 @@ packages/
 |---|---|---|
 | Framework | Next.js App Router | One app for pages + server logic; RSC reduces data-fetching boilerplate |
 | Language | TypeScript (strict) | Shared types across frontend and backend |
-| UI components | **Ant Design** | Complete component set for admin-style products (tables, forms; kanban can build on its drag capabilities) |
-| SSR styles | `@ant-design/nextjs-registry` | Collects cssinjs styles under App Router, avoids first-paint flicker |
-| Styling | **Tailwind CSS (preflight disabled)** | Handles layout/spacing/fine-tuning; disabling the reset avoids conflicts with antd |
-| Theme/locale | ConfigProvider: `zh_CN` language pack + dayjs locale, light theme | Consistent localization; brand colors customized via Design Tokens / CSS Variables |
+| UI components | **shadcn/ui (vendored) on Radix primitives** | Accessible headless behavior (dialog, dropdown, select, alert…) styled with Tailwind; vendored under `components/ui/shadcn/` with per-file adaptation notes |
+| Toasts | sonner | Single Toaster in root `providers.tsx`; position/shadow/icons aligned to the prototype `.toast` spec |
+| Styling | **Tailwind CSS 4 (preflight enabled)** | theme + preflight + utilities layers; utilities handle layout/spacing/fine-tuning |
+| Theme/locale | Design tokens in `tokens.css` (light only) + dayjs locale per request | No runtime theming (`theme.ts` removed); tokens stay 1:1 with the prototypes; locale switches next-intl + dayjs + `<html lang>` |
 | Database | PostgreSQL | Relational integrity, cascade deletes, unique constraints (username, UID) |
 | ORM | Drizzle | Lightweight, close to SQL, good type inference, built-in migration tooling |
 | Local database | Docker compose | Consistent environment, zero manual setup |
@@ -90,14 +90,15 @@ features/
 - **components/**: domain-specific components; reusable base components go in `components/ui`.
 - Data access functions and business rules (e.g. "a member cannot edit others' tasks") are centralized in each feature's server-side modules, never scattered in pages. Pages (RSC) fetch and assemble data; client components only handle interaction.
 
-### 4.1 UI Conventions (antd + Tailwind)
+### 4.1 UI Conventions (shadcn/ui + Tailwind 4)
 
-- **antd is the component baseline**: forms, tables, modals, menus, date pickers, etc. come from antd — do not build your own; `components/ui/` only contains antd-based wrappers and project-level composite components.
-- **Tailwind handles layout and fine-tuning**: page skeletons, spacing, flex/grid via Tailwind utilities; **preflight is disabled** (`globals.css` imports only `tailwindcss/theme` and `tailwindcss/utilities`, skipping the base reset) so reset styles do not pollute antd components.
-- **Client boundary**: antd interactive components (useMessage, Modal, interactive Table, etc.) may only be used in Client Components. Pages stay RSC for data fetching; antd interactions are pushed down into `"use client"` components that receive serializable data via props.
-- **Root layout**: wrap the app with `AntdRegistry` for SSR style collection; `ConfigProvider` injects `zh_CN` (with dayjs locale kept in sync); the theme is configured in one place, `theme.ts` (light theme; brand colors are adjusted here).
-- Style conflict rule: prefer antd Tokens and component props; Tailwind must not override antd component internals. For deep customization use antd token/className hooks, never global selectors.
-- Kanban drag-and-drop is implemented with `@dnd-kit/core` + `@dnd-kit/sortable` (cards themselves remain antd elements styled with design tokens).
+- **The vendored shadcn/ui set is the component baseline**: dialogs, dropdowns, selects, popovers, tabs, etc. come from `components/ui/shadcn/` (Radix primitives + cva + Tailwind) — do not build your own; each vendored file's header comment documents its adaptations (e.g. next-themes removed, sr-only copy routed through next-intl). `components/ui/` additionally holds project-level composites (ConfirmModal, StatCard, EmptyState, UserAvatar, …). **antd must not be reintroduced** — a guard test (`AtomsShadcn.test.tsx`) fails on any `from "antd"` import or hardcoded sr-only copy.
+- **Tailwind handles layout and fine-tuning**: page skeletons, spacing, flex/grid via Tailwind utilities; `globals.css` imports Tailwind 4's theme + preflight + utilities layers (preflight was re-enabled after the antd removal).
+- **Client boundary**: Radix interactive components (Dialog, AlertDialog, DropdownMenu, Popover, Select, Sheet, etc.) may only be used in Client Components. Pages stay RSC for data fetching; interactions are pushed down into `"use client"` components that receive serializable data via props.
+- **Root layout**: `providers.tsx` sets the request's dayjs locale and mounts the single sonner Toaster; there is no runtime theme — colors/spacing come from design tokens in `tokens.css`.
+- Style conflict rule: prefer token CSS variables (`var(--ink-900)`) over literal hex values; Tailwind must not override shadcn/Radix component internals — never global selectors.
+- Kanban drag-and-drop is implemented with `@dnd-kit/core` + `@dnd-kit/sortable` (cards are Tailwind-styled elements using design tokens).
+- Confirm semantics: `ConfirmModal` wraps Radix AlertDialog; the confirm button's default close is prevented, so **the consumer closes in its success branch** (failures keep the dialog and its input; `loading` disables Esc and the cancel button — antd `confirmLoading` semantics).
 
 ## 5. Routing Structure
 
@@ -161,7 +162,7 @@ app/
 ### 5.2 Navigation (AppShell / SpaceNav)
 
 - `AppShell` props: `{ nav, mobileNav, user, children }`.
-- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (Dashboard / Kanban / Calendar / Analysis / Settings + account group), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + antd Drawer).
+- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (Dashboard / Kanban / Calendar / Analysis / Settings + account group), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + Radix Sheet drawer).
 - The desktop sidebar and the mobile Drawer share the same navigation tree; `(dashboard)/layout.tsx` imports are adjusted accordingly.
 
 ### 5.3 Space-level Kanban
@@ -333,7 +334,7 @@ Per-request UI language resolves by the following priority (`getRequestLocale` i
 2. **Anonymous: cookie `od_locale`** (validated by `normalizeLocale`, invalid values fall back to zh);
 3. **Neither: fall back to `zh`**.
 
-The resolution drives three switches in sync: next-intl message catalog (`getRequestConfig` dynamically imports by locale), antd and dayjs locales (root Providers), and `<html lang>` (root layout, `LOCALE_HTML_LANG` maps zh→`zh-CN`, en→`en-US`). Missing any one of the three surfaces as a hydration error or mixed-language date components.
+The resolution drives three switches in sync: next-intl message catalog (`getRequestConfig` dynamically imports by locale), the dayjs global locale (root Providers), and `<html lang>` (root layout, `LOCALE_HTML_LANG` maps zh→`zh-CN`, en→`en-US`). Missing any one of the three surfaces as a hydration error or mixed-language date components.
 
 Error translation inside Server Actions goes through `standardFailuresForRequest()` (which picks a translator by request locale), using `failures.custom("<domain ns>.<key>", params)` to translate domain errors onto `field ?? "form"`; `lib/domain-failure.ts` provides the pure-function variant `domainFailureWith` with an injectable translator for unit testing. Convention details (the cjk-guard / messages-parity enforcement tests, notification `<b>` template parsing) are in the "Internationalization" section of the repo-root `AGENTS.md`.
 
