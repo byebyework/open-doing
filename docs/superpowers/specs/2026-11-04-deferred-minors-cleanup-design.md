@@ -49,6 +49,8 @@
 改法：
 - `AlertDialogAction` 的 `onClick` 改为 `e.preventDefault()` 后调 `onConfirm()`——Radix 不关闭，弹窗保持。
 - 关闭责任移到消费方：成功路径上父组件把 `open` 置 false（open 本就是父组件受控）。Esc/遮罩/取消仍走 `onCancel`。
+- **提交中封死侧门关闭**（builder check 后定的 call）：仅 `disabled` 取消钮不够——loading 期间 Esc / 遮罩点击仍会触发 `onOpenChange(false)`，失败丢输入的回归从侧门回来。给 `AlertDialogContent` 加 `onEscapeKeyDown` / `onInteractOutside`，`loading` 时 `preventDefault`（antd `confirmLoading` 同语义：阻止 mask/keyboard 关闭）。非 loading 态行为不变。
+- **全量补 submitting 闸门**（builder check 后定的 call）：阻止自动关闭后，没有 loading 闸门的消费方会出现双击双提交窗口（如解散团队触发两次）——这是本修复自身引入的回归，必须审计全部 12 个消费文件，异步 `onConfirm` 一律有 `useState` submitting 闸门（已有的如 DissolveTeamButton 保持，缺的补上）。
 - 扫描全部 12 个消费文件（TaskRowActions、PersonalProjectHeaderActions、TeamTaskRowActions、TeamProjectHeaderActions、CancelJoinRequestButton、JoinRequestList、JoinCodeSettings、LeaveTeamButton、DissolveTeamButton、TransferTeamButton、RemoveMemberButton、TaskDetailView），逐一确认成功回调里有关闭；漏的补上。
 - `loading` 语义由此变真：异步提交中确认钮禁用 + spinner，失败后回到可点状态。
 - **留给 builder 的注意点**：部分消费方 onConfirm 是同步 fire-and-forget（内部 await action + toast），保持该模式，只在 success 分支加关闭；不要把 onConfirm 改成返回 Promise 的契约。
@@ -92,6 +94,6 @@ vendored `sonner.tsx` 已对齐：position bottom-right、card bg/text/border to
 
 ## 验收
 
-- 全部 6 项在 ledger/commit 中闭环；`pnpm build && pnpm typecheck && pnpm lint` 干净；全量 vitest 绿；全量 e2e 绿。
+- 全部 6 项以 commit messages + 本设计文档记录闭环（plan-2 的 SDD ledger 是 git-ignored scratch、已随工作区清理，不回写历史文档）；`pnpm build && pnpm typecheck && pnpm lint` 干净；全量 vitest 绿；全量 e2e 绿。
 - ConfirmModal 失败路径有 e2e 钉住（弹窗保持 + 输入保留）。
 - 看板 URL 组合有测试钉住（统计参数跨 FilterBar 操作存活）。
