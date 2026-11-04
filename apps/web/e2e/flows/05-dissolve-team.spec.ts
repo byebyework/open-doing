@@ -55,4 +55,34 @@ test.describe("flow 5: 解散团队", () => {
       .click();
     await expect(page.getByRole("menuitem", { name: teamName })).toHaveCount(0);
   });
+
+  test("确认名称不符时弹窗保持打开且输入保留", async ({ page }) => {
+    const username = uniqueUsername("e2e_dismis");
+    const teamName = uniqueLabel("E2E keep modal");
+
+    await registerUser(page, username);
+    await page.goto("/teams/new");
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
+    await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
+      timeout: 30_000,
+    });
+
+    await page.getByTestId(TEST_IDS.teamDanger.dissolveTeamButton).click();
+    const dialog = page.getByRole("dialog");
+    await expect(dialog).toBeVisible();
+
+    // 名称不符 → toast 报错；弹窗必须保持打开且输入不丢（antd confirm 语义）。
+    const wrongName = uniqueLabel("Wrong name");
+    await dialog
+      .getByTestId(TEST_IDS.teamDanger.dissolveConfirmInput)
+      .fill(wrongName);
+    await dialog.getByTestId(TEST_IDS.teamDanger.dissolveConfirmButton).click();
+
+    await expect(page.locator("[data-sonner-toast]")).toBeVisible();
+    await expect(dialog).toBeVisible();
+    await expect(
+      dialog.getByTestId(TEST_IDS.teamDanger.dissolveConfirmInput),
+    ).toHaveValue(wrongName);
+  });
 });
