@@ -123,11 +123,17 @@ export async function resetJoinCode(
 
   const attempt = async (tx: DbClient): Promise<string> => {
     const code = generateJoinCode();
-    const [row] = await tx
+    // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+    await tx
       .update(teams)
       .set({ joinCode: code })
+      .where(eq(teams.id, input.teamId));
+
+    const [row] = await tx
+      .select({ joinCode: teams.joinCode })
+      .from(teams)
       .where(eq(teams.id, input.teamId))
-      .returning({ joinCode: teams.joinCode });
+      .limit(1);
 
     if (!row) {
       throw new JoinError("INVALID", "团队不存在或已失效", "form", { key: "teamNotFound" });
@@ -155,15 +161,23 @@ export async function setJoinCodeEnabled(
   const membership = await getMembership(input.teamId, input.actorId, client);
   assertCan(membership?.role ?? null, "team:invite");
 
-  const [row] = await client
-    .update(teams)
-    .set({ joinCodeEnabled: input.enabled })
-    .where(eq(teams.id, input.teamId))
-    .returning({ id: teams.id });
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+  await client.transaction(async (tx) => {
+    await tx
+      .update(teams)
+      .set({ joinCodeEnabled: input.enabled })
+      .where(eq(teams.id, input.teamId));
 
-  if (!row) {
-    throw new JoinError("INVALID", "团队不存在或已失效", "form", { key: "teamNotFound" });
-  }
+    const [row] = await tx
+      .select({ id: teams.id })
+      .from(teams)
+      .where(eq(teams.id, input.teamId))
+      .limit(1);
+
+    if (!row) {
+      throw new JoinError("INVALID", "团队不存在或已失效", "form", { key: "teamNotFound" });
+    }
+  });
 }
 
 export interface CreateJoinRequestInput {
@@ -224,10 +238,11 @@ export async function createJoinRequest(
   }
 
   const attemptInsert = async (tx: DbClient): Promise<TeamJoinRequest> => {
-    const [row] = await tx
+    // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
+    const [inserted] = await tx
       .insert(teamJoinRequests)
       .values({ teamId: teamRow.id, userId: input.actorId, status: "pending" })
-      .returning();
+      .$returningId();
 
     // 审批人 = 团队全部 owner/admin（member 不参与审批），申请与通知同事务。
     const reviewers = await tx
@@ -250,6 +265,12 @@ export async function createJoinRequest(
         tx,
       );
     }
+
+    const [row] = await tx
+      .select()
+      .from(teamJoinRequests)
+      .where(eq(teamJoinRequests.id, inserted!.id))
+      .limit(1);
 
     return toJoinRequest(row!);
   };
@@ -306,21 +327,31 @@ export async function respondToJoinRequest(
       throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
-    const [updated] = await tx
+    // 条件更新：并发第二次审批匹配不到行，整事务回滚。
+    // MySQL 无 RETURNING：以 affectedRows 判断是否命中，再在同一事务内回查。
+    const [result] = await tx
       .update(teamJoinRequests)
       .set({
         status: input.approve ? "approved" : "declined",
         respondedAt: new Date(),
         respondedById: input.actorId,
       })
-      // 条件更新：并发第二次审批匹配不到行，整事务回滚。
       .where(
         and(
           eq(teamJoinRequests.id, row.id),
           eq(teamJoinRequests.status, "pending"),
         ),
-      )
-      .returning();
+      );
+
+    if (result.affectedRows === 0) {
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
+    }
+
+    const [updated] = await tx
+      .select()
+      .from(teamJoinRequests)
+      .where(eq(teamJoinRequests.id, row.id))
+      .limit(1);
 
     if (!updated) {
       throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
@@ -389,7 +420,8 @@ export async function cancelJoinRequest(
       throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
     }
 
-    const [updated] = await tx
+    // MySQL 无 RETURNING：以 affectedRows 判断条件更新是否命中，再在同一事务内回查。
+    const [result] = await tx
       .update(teamJoinRequests)
       .set({ status: "cancelled" })
       .where(
@@ -398,8 +430,17 @@ export async function cancelJoinRequest(
           eq(teamJoinRequests.userId, input.actorId),
           eq(teamJoinRequests.status, "pending"),
         ),
-      )
-      .returning();
+      );
+
+    if (result.affectedRows === 0) {
+      throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });
+    }
+
+    const [updated] = await tx
+      .select()
+      .from(teamJoinRequests)
+      .where(eq(teamJoinRequests.id, row.id))
+      .limit(1);
 
     if (!updated) {
       throw new JoinError("INVALID", "加入申请不存在或已失效", "form", { key: "joinRequestInvalid" });

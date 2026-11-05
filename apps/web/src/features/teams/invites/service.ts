@@ -110,7 +110,8 @@ export async function createInvite(
   }
 
   const attemptInsert = async (tx: DbClient): Promise<TeamInvite> => {
-    const [row] = await tx
+    // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
+    const [inserted] = await tx
       .insert(teamInvites)
       .values({
         teamId: input.teamId,
@@ -118,7 +119,7 @@ export async function createInvite(
         invitedById: input.actorId,
         status: "pending",
       })
-      .returning();
+      .$returningId();
 
     // 邀请与通知同事务提交/回滚（INT-1 核验点）。
     await createNotification(
@@ -130,6 +131,12 @@ export async function createInvite(
       },
       tx,
     );
+
+    const [row] = await tx
+      .select()
+      .from(teamInvites)
+      .where(eq(teamInvites.id, inserted!.id))
+      .limit(1);
 
     return toInvite(row!);
   };
@@ -174,11 +181,17 @@ export async function rescindInvite(
       throw new InviteError("INVALID", "邀请不存在或已失效", "form", { key: "inviteInvalid" });
     }
 
-    const [updated] = await tx
+    // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+    await tx
       .update(teamInvites)
       .set({ status: "rescinded" })
+      .where(eq(teamInvites.id, row.id));
+
+    const [updated] = await tx
+      .select()
+      .from(teamInvites)
       .where(eq(teamInvites.id, row.id))
-      .returning();
+      .limit(1);
 
     await createNotification(
       {
@@ -229,11 +242,11 @@ export async function respondToInvite(
     }
 
     const respondedAt = new Date();
-    const [inviteRow] = await tx
+    // MySQL 无 RETURNING：更新结果本函数未使用，直接写入即可。
+    await tx
       .update(teamInvites)
       .set({ status: input.accept ? "accepted" : "declined", respondedAt })
-      .where(eq(teamInvites.id, row.id))
-      .returning();
+      .where(eq(teamInvites.id, row.id));
 
     let teamRow: typeof teams.$inferSelect | undefined;
     if (input.accept) {
@@ -316,7 +329,7 @@ export async function listReceivedInvites(
       invite: teamInvites,
       team: { id: teams.id, name: teams.name, slug: teams.slug },
       invitedBy: { id: users.id, username: users.username, uid: users.uid },
-      memberCount: sql<number>`(select count(*)::int from ${teamMemberships} where ${teamMemberships.teamId} = ${teams.id})`,
+      memberCount: sql<number>`(select count(*) from ${teamMemberships} where ${teamMemberships.teamId} = ${teams.id})`,
     })
     .from(teamInvites)
     .innerJoin(teams, eq(teams.id, teamInvites.teamId))

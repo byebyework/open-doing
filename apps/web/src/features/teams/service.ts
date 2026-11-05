@@ -129,16 +129,23 @@ export async function createTeam(
 
   const attemptInsert = async (tx: DbClient): Promise<Team> => {
     const slug = await nextFreeSlug(base, tx);
-    const [teamRow] = await tx
+    // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
+    const [inserted] = await tx
       .insert(teams)
       .values({ name, slug, ownerId: actorId, joinCode: generateJoinCode() })
-      .returning();
+      .$returningId();
 
     await tx.insert(teamMemberships).values({
-      teamId: teamRow!.id,
+      teamId: inserted!.id,
       userId: actorId,
       role: "owner",
     });
+
+    const [teamRow] = await tx
+      .select()
+      .from(teams)
+      .where(eq(teams.id, inserted!.id))
+      .limit(1);
 
     return toTeam(teamRow!);
   };
@@ -198,13 +205,18 @@ export async function renameTeam(
   const membership = await getMembership(input.teamId, input.actorId, client);
   assertCan(membership?.role ?? null, "team:rename");
 
-  const [row] = await client
-    .update(teams)
-    .set({ name })
-    .where(eq(teams.id, input.teamId))
-    .returning();
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+  return client.transaction(async (tx) => {
+    await tx.update(teams).set({ name }).where(eq(teams.id, input.teamId));
 
-  return toTeam(row!);
+    const [row] = await tx
+      .select()
+      .from(teams)
+      .where(eq(teams.id, input.teamId))
+      .limit(1);
+
+    return toTeam(row!);
+  });
 }
 
 /** 成员视图：成员关系 + 展示用的用户信息。 */
