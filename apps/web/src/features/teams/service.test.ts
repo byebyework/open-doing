@@ -132,6 +132,15 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
 
     const first = await createTeam({ name: "First Team" }, member.id, db);
     const second = await createTeam({ name: "Second Team" }, member.id, db);
+    // MySQL TIMESTAMP 秒级精度：同秒创建会并列，显式错开创建时间固定排序语义。
+    await db
+      .update(teams)
+      .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+      .where(eq(teams.id, first.id));
+    await db
+      .update(teams)
+      .set({ createdAt: new Date("2026-01-01T00:00:01Z") })
+      .where(eq(teams.id, second.id));
 
     const mine = await listTeamsForUser(member.id, db);
     expect(mine.map((team) => team.id)).toEqual([first.id, second.id]);
@@ -188,7 +197,15 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
     const owner = await createUser(db, "owner");
     const member = await createUser(db, "member");
     const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
-    await db.insert(teamMemberships).values({ teamId: team.id, userId: member.id, role: "member" });
+    // MySQL TIMESTAMP 默认秒级精度：两条成员关系若都取默认时间会并列，
+    // 排序不稳定。以 owner 的加入时间为基准显式错开一秒，固定夹具语义。
+    const ownerMembership = await getMembership(team.id, owner.id, db);
+    await db.insert(teamMemberships).values({
+      teamId: team.id,
+      userId: member.id,
+      role: "member",
+      joinedAt: new Date(new Date(ownerMembership!.joinedAt).getTime() + 1000),
+    });
 
     const members = await listMembers(team.id, db);
 
