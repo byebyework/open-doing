@@ -144,6 +144,14 @@ export async function createTeamProject(
   const name = validateName(input?.name);
   const description = validateDescription(input?.description);
 
+  // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
+  // 构造越界入参，故该不变量用普通 Error 兜底，不分配 i18n key。
+  const teamId: string | null = input.teamId;
+  const ownerId: string | null = null;
+  if ((teamId == null) === (ownerId == null)) {
+    throw new Error("project must belong to exactly one of team / owner");
+  }
+
   await requireManageRole(input.teamId, input.actorId, client);
 
   const slug = await generateUniqueSlug(name, async (candidate) => {
@@ -155,12 +163,21 @@ export async function createTeamProject(
     return Boolean(existing);
   });
 
-  const [row] = await client
-    .insert(projects)
-    .values({ teamId: input.teamId, name, slug, description })
-    .returning();
+  // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
+  return client.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(projects)
+      .values({ teamId: input.teamId, name, slug, description })
+      .$returningId();
 
-  return toProject(row!);
+    const [row] = await tx
+      .select()
+      .from(projects)
+      .where(eq(projects.id, inserted!.id))
+      .limit(1);
+
+    return toProject(row!);
+  });
 }
 
 /** 读取团队项目行（内部使用）；团队不匹配 / 不存在返回 undefined。 */
@@ -213,17 +230,25 @@ export async function updateTeamProject(
     return toProject(existing);
   }
 
-  const [row] = await client
-    .update(projects)
-    .set(changes)
-    .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)))
-    .returning();
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+  return client.transaction(async (tx) => {
+    await tx
+      .update(projects)
+      .set(changes)
+      .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)));
 
-  if (!row) {
-    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
-  }
+    const [row] = await tx
+      .select()
+      .from(projects)
+      .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)))
+      .limit(1);
 
-  return toProject(row);
+    if (!row) {
+      throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+    }
+
+    return toProject(row);
+  });
 }
 
 /**
@@ -237,12 +262,12 @@ export async function deleteTeamProject(
 ): Promise<void> {
   await requireManageRole(input.teamId, input.actorId, client);
 
-  const [row] = await client
+  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
+  const [result] = await client
     .delete(projects)
-    .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)))
-    .returning({ id: projects.id });
+    .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)));
 
-  if (!row) {
+  if (result.affectedRows === 0) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 }

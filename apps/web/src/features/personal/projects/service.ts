@@ -119,7 +119,7 @@ export async function getPersonalProjectBySlug(
  *
  * - 名称必填 1–50 字，描述不超过 500 字；
  * - slug 由名称 ASCII 化生成，查重范围限定为 `owner_id = userId`；
- * - 个人项目不设置 `team_id`，由数据库 CHECK 约束保证归属唯一。
+ * - 个人项目不设置 `team_id`，由服务层断言与数据库 CHECK 约束共同保证归属唯一。
  */
 export async function createPersonalProject(
   userId: string,
@@ -128,6 +128,14 @@ export async function createPersonalProject(
 ): Promise<Project> {
   const name = validateName(input?.name);
   const description = validateDescription(input?.description);
+
+  // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
+  // 构造越界入参，故该不变量用普通 Error 兜底，不分配 i18n key。
+  const teamId: string | null = null;
+  const ownerId: string | null = userId;
+  if ((teamId == null) === (ownerId == null)) {
+    throw new Error("project must belong to exactly one of team / owner");
+  }
 
   const slug = await generateUniqueSlug(name, async (candidate) => {
     const [existing] = await client
@@ -140,12 +148,21 @@ export async function createPersonalProject(
     return Boolean(existing);
   });
 
-  const [row] = await client
-    .insert(projects)
-    .values({ ownerId: userId, name, slug, description: description ?? null })
-    .returning();
+  // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
+  return client.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(projects)
+      .values({ ownerId: userId, name, slug, description: description ?? null })
+      .$returningId();
 
-  return toProject(row!);
+    const [row] = await tx
+      .select()
+      .from(projects)
+      .where(eq(projects.id, inserted!.id))
+      .limit(1);
+
+    return toProject(row!);
+  });
 }
 
 /** 读取本人项目行（内部使用）；不存在 / 非本人返回 undefined。 */
@@ -193,17 +210,25 @@ export async function updatePersonalProject(
     return toProject(existing);
   }
 
-  const [row] = await client
-    .update(projects)
-    .set(changes)
-    .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)))
-    .returning();
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+  return client.transaction(async (tx) => {
+    await tx
+      .update(projects)
+      .set(changes)
+      .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)));
 
-  if (!row) {
-    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
-  }
+    const [row] = await tx
+      .select()
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)))
+      .limit(1);
 
-  return toProject(row);
+    if (!row) {
+      throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+    }
+
+    return toProject(row);
+  });
 }
 
 /**
@@ -217,12 +242,12 @@ export async function deletePersonalProject(
   projectId: string,
   client: DbClient = db,
 ): Promise<void> {
-  const [row] = await client
+  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
+  const [result] = await client
     .delete(projects)
-    .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)))
-    .returning({ id: projects.id });
+    .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)));
 
-  if (!row) {
+  if (result.affectedRows === 0) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 }

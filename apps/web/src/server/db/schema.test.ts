@@ -342,4 +342,21 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
 
     expect(await db.select().from(teamJoinRequests)).toHaveLength(0);
   });
+
+  it("⑪ defaultNow() 写入的 created_at 回读接近当前 UTC 时刻", async () => {
+    const before = Date.now();
+    const user = await createUser("tz_default_now");
+    const after = Date.now();
+
+    const [row] = await db
+      .select({ createdAt: users.createdAt })
+      .from(users)
+      .where(eq(users.id, user.id));
+
+    // 旧缺陷（写入 −8h、读取 +8h）在纯往返断言下相互抵消，
+    // 只有依赖 defaultNow() 的回读同时暴露两个方向的时区映射错误。
+    const readback = row!.createdAt.getTime();
+    expect(readback).toBeGreaterThanOrEqual(before - 2000);
+    expect(readback).toBeLessThanOrEqual(after + 2000);
+  });
 });
