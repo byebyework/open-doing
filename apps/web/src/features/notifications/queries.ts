@@ -80,7 +80,7 @@ export async function getUnreadNotificationCount(
   client: DbClient = db,
 ): Promise<number> {
   const [row] = await client
-    .select({ count: sql<number>`count(*)::int` })
+    .select({ count: sql<number>`count(*)` })
     .from(notifications)
     .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
 
@@ -198,15 +198,26 @@ export async function markNotificationRead(
   input: { userId: string; notificationId: string },
   client: DbClient = db,
 ): Promise<boolean> {
-  const updated = await client
-    .update(notifications)
-    .set({ read: true })
-    .where(
-      and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)),
-    )
-    .returning({ id: notifications.id });
+  return client.transaction(async (tx) => {
+    // MySQL 无 RETURNING：条件更新后在同一事务内按主键回查，
+    // 以「行是否存在且属于本人」判定是否命中（已读行再次置读也返回 true）。
+    await tx
+      .update(notifications)
+      .set({ read: true })
+      .where(
+        and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)),
+      );
 
-  return updated.length > 0;
+    const [row] = await tx
+      .select({ id: notifications.id })
+      .from(notifications)
+      .where(
+        and(eq(notifications.id, input.notificationId), eq(notifications.userId, input.userId)),
+      )
+      .limit(1);
+
+    return Boolean(row);
+  });
 }
 
 /** 将本人全部未读通知置为已读，返回本次置已读条数。 */
@@ -214,13 +225,14 @@ export async function markAllNotificationsRead(
   userId: string,
   client: DbClient = db,
 ): Promise<number> {
-  const updated = await client
+  // MySQL 无 RETURNING：谓词限定 read = false，命中行必然由未读变为已读，
+  // 因此 affectedRows（变更行数）即本次置已读条数。
+  const [result] = await client
     .update(notifications)
     .set({ read: true })
-    .where(and(eq(notifications.userId, userId), eq(notifications.read, false)))
-    .returning({ id: notifications.id });
+    .where(and(eq(notifications.userId, userId), eq(notifications.read, false)));
 
-  return updated.length;
+  return result.affectedRows;
 }
 
 /** 将本人在指定团队下的团队邀请通知置为已读（响应邀请后的清理）。 */
