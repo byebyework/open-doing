@@ -264,7 +264,8 @@ export async function createPersonalTask(
     throw new DomainError("项目不存在或无权访问", "projectId", { key: "projectNotFound" });
   }
 
-  const [row] = await client
+  // MySQL 无 RETURNING：插入后取主键，再回查整行。
+  const [inserted] = await client
     .insert(tasks)
     .values({
       projectId,
@@ -276,7 +277,13 @@ export async function createPersonalTask(
       dueDate,
       createdById: userId,
     })
-    .returning();
+    .$returningId();
+
+  const [row] = await client
+    .select()
+    .from(tasks)
+    .where(eq(tasks.id, inserted!.id))
+    .limit(1);
 
   if (!row) {
     throw new DomainError("任务创建失败，请稍后重试", undefined, { key: "taskCreateFailed" });
@@ -455,23 +462,37 @@ export async function updatePersonalTask(
 
   changes.updatedAt = new Date();
 
-  const [row] = await client
-    .update(tasks)
-    .set(changes)
-    .where(
-      and(
-        eq(tasks.id, taskId),
-        eq(tasks.spaceType, "personal"),
-        eq(tasks.assigneeId, userId),
-      ),
-    )
-    .returning();
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+  return client.transaction(async (tx) => {
+    await tx
+      .update(tasks)
+      .set(changes)
+      .where(
+        and(
+          eq(tasks.id, taskId),
+          eq(tasks.spaceType, "personal"),
+          eq(tasks.assigneeId, userId),
+        ),
+      );
 
-  if (!row) {
-    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
-  }
+    const [row] = await tx
+      .select()
+      .from(tasks)
+      .where(
+        and(
+          eq(tasks.id, taskId),
+          eq(tasks.spaceType, "personal"),
+          eq(tasks.assigneeId, userId),
+        ),
+      )
+      .limit(1);
 
-  return toTask(row);
+    if (!row) {
+      throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+    }
+
+    return toTask(row);
+  });
 }
 
 /**
@@ -488,7 +509,8 @@ export async function deletePersonalTask(
     throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 
-  const [row] = await client
+  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
+  const [result] = await client
     .delete(tasks)
     .where(
       and(
@@ -496,10 +518,9 @@ export async function deletePersonalTask(
         eq(tasks.spaceType, "personal"),
         eq(tasks.assigneeId, userId),
       ),
-    )
-    .returning({ id: tasks.id });
+    );
 
-  if (!row) {
+  if (result.affectedRows === 0) {
     throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 }
@@ -514,10 +535,17 @@ export async function addPersonalSubtask(
   await requireOwnedPersonalTaskRow(userId, taskId, client);
   const validatedTitle = validateTitle(title, "子任务");
 
-  const [row] = await client
+  // MySQL 无 RETURNING：插入后取主键，再回查整行。
+  const [inserted] = await client
     .insert(subtasks)
     .values({ taskId, title: validatedTitle })
-    .returning();
+    .$returningId();
+
+  const [row] = await client
+    .select()
+    .from(subtasks)
+    .where(eq(subtasks.id, inserted!.id))
+    .limit(1);
 
   if (!row) {
     throw new DomainError("子任务创建失败，请稍后重试", undefined, { key: "subtaskCreateFailed" });
@@ -539,12 +567,12 @@ export async function removePersonalSubtask(
     throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
-  const [row] = await client
+  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
+  const [result] = await client
     .delete(subtasks)
-    .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)))
-    .returning({ id: subtasks.id });
+    .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)));
 
-  if (!row) {
+  if (result.affectedRows === 0) {
     throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 }
@@ -568,20 +596,28 @@ export async function togglePersonalSubtask(
     throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
-  const [row] = await client
-    .update(subtasks)
-    .set({
-      completed,
-      completedAt: completed ? new Date() : null,
-    })
-    .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)))
-    .returning();
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
+  return client.transaction(async (tx) => {
+    await tx
+      .update(subtasks)
+      .set({
+        completed,
+        completedAt: completed ? new Date() : null,
+      })
+      .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)));
 
-  if (!row) {
-    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
-  }
+    const [row] = await tx
+      .select()
+      .from(subtasks)
+      .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)))
+      .limit(1);
 
-  return toSubtask(row);
+    if (!row) {
+      throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
+    }
+
+    return toSubtask(row);
+  });
 }
 
 /** 新增评论（个人任务下即自我备注），内容 1–2000 字。 */
@@ -594,10 +630,17 @@ export async function addPersonalComment(
   await requireOwnedPersonalTaskRow(userId, taskId, client);
   const validatedContent = validateCommentContent(content);
 
-  const [row] = await client
+  // MySQL 无 RETURNING：插入后取主键，再回查整行。
+  const [inserted] = await client
     .insert(comments)
     .values({ taskId, authorId: userId, content: validatedContent })
-    .returning();
+    .$returningId();
+
+  const [row] = await client
+    .select()
+    .from(comments)
+    .where(eq(comments.id, inserted!.id))
+    .limit(1);
 
   if (!row) {
     throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
@@ -619,7 +662,8 @@ export async function deletePersonalComment(
     throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 
-  const [row] = await client
+  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
+  const [result] = await client
     .delete(comments)
     .where(
       and(
@@ -627,10 +671,9 @@ export async function deletePersonalComment(
         eq(comments.taskId, taskId),
         eq(comments.authorId, userId),
       ),
-    )
-    .returning({ id: comments.id });
+    );
 
-  if (!row) {
+  if (result.affectedRows === 0) {
     throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 }
