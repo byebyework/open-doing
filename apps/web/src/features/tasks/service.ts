@@ -1,7 +1,7 @@
 import type { Comment, Subtask, Task, TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias } from "drizzle-orm/mysql-core";
 
 import type { TaskDetailModel } from "@/components/ui/task-detail/types";
 import {
