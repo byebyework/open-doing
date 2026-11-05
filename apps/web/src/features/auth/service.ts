@@ -165,15 +165,22 @@ export async function registerUser(
 
   for (let attempt = 1; attempt <= MAX_UID_ATTEMPTS; attempt += 1) {
     try {
-      const [row] = await client
+      // MySQL 无 RETURNING：先取应用层生成的 UUID，再在同一 client 上回查。
+      const [inserted] = await client
         .insert(users)
         .values({ uid: generateUid(), username, passwordHash })
-        .returning({
+        .$returningId();
+
+      const [row] = await client
+        .select({
           id: users.id,
           uid: users.uid,
           username: users.username,
           createdAt: users.createdAt,
-        });
+        })
+        .from(users)
+        .where(eq(users.id, inserted!.id))
+        .limit(1);
 
       return toUser(row!);
     } catch (error) {

@@ -128,14 +128,22 @@ export async function updateUserLanguage(
   input: { userId: string; language: AppLocale },
   client: DbClient = db,
 ): Promise<AppLocale> {
-  const [row] = await client
-    .update(users)
-    .set({ language: input.language })
-    .where(eq(users.id, input.userId))
-    .returning({ language: users.language });
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查，保持原语义（原子返回持久化值）。
+  return client.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({ language: input.language })
+      .where(eq(users.id, input.userId));
 
-  if (!row) throw new DomainError("user not found");
-  return row.language as AppLocale;
+    const [row] = await tx
+      .select({ language: users.language })
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
+
+    if (!row) throw new DomainError("user not found");
+    return row.language as AppLocale;
+  });
 }
 
 /**
@@ -163,12 +171,20 @@ export async function updateReminderPrefs(
     return getReminderPrefs(input.userId, client);
   }
 
-  const [row] = await client
-    .update(users)
-    .set(patch)
-    .where(eq(users.id, input.userId))
-    .returning(reminderPrefsColumns);
+  // MySQL 无 RETURNING：写入后在同一事务内按主键回查更新后的全量偏好。
+  return client.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set(patch)
+      .where(eq(users.id, input.userId));
 
-  if (!row) throw new Error("user not found");
-  return row;
+    const [row] = await tx
+      .select(reminderPrefsColumns)
+      .from(users)
+      .where(eq(users.id, input.userId))
+      .limit(1);
+
+    if (!row) throw new Error("user not found");
+    return row;
+  });
 }
