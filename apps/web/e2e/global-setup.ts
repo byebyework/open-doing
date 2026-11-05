@@ -7,13 +7,14 @@ import mysql from "mysql2/promise";
 
 import { E2E_DATABASE_URL, assertE2EDatabaseUrl } from "./utils/env";
 
-/** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）。 */
+/** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）；必须与 schema.ts 的业务表保持一致，并与 src/server/db/testing.ts 的列表逐表同步。 */
 const TRUNCATE_TABLES = [
   "notifications",
   "comments",
   "subtasks",
   "tasks",
   "team_invites",
+  "team_join_requests",
   "team_memberships",
   "projects",
   "teams",

@@ -9,7 +9,7 @@ import type { DbClient } from "./client";
 /** 迁移目录：apps/web/drizzle（相对本文件定位，不依赖执行 cwd）。 */
 const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../../drizzle", import.meta.url));
 
-/** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）。 */
+/** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）；必须与 schema.ts 的业务表保持一致，并与 e2e/global-setup.ts 的列表逐表同步。 */
 const TRUNCATE_TABLES = [
   "notifications",
   "comments",
