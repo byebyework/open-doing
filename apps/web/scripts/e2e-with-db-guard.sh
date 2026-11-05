@@ -9,8 +9,8 @@
 #   pnpm --filter @open-doing/web test:e2e
 #   pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts
 #
-# 连接 PostgreSQL 的顺序：本机 `psql`（PGPASSWORD）→ docker compose 的
-# `postgres` 服务（`docker compose exec`）。两库名固定为开发库与测试库。
+# 连接 MySQL 的顺序：本机 `mysql` 客户端（MYSQL_PWD）→ docker compose 的
+# `mysql` 服务（`docker compose exec`）。两库名固定为开发库与测试库。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -18,33 +18,34 @@ WEB_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ROOT_DIR="$(cd "$WEB_DIR/../.." && pwd)"
 COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 
-POSTGRES_USER="${POSTGRES_USER:-open-doing}"
-POSTGRES_PASSWORD="${POSTGRES_PASSWORD:-open-doing}"
-POSTGRES_HOST="${POSTGRES_HOST:-localhost}"
-POSTGRES_PORT="${POSTGRES_PORT:-5433}"
+MYSQL_USER="${MYSQL_USER:-open-doing}"
+MYSQL_PASSWORD="${MYSQL_PASSWORD:-open-doing}"
+MYSQL_HOST="${MYSQL_HOST:-localhost}"
+MYSQL_PORT="${MYSQL_PORT:-3307}"
 
 USE_DOCKER=0
-if ! command -v psql >/dev/null 2>&1; then
-  if [[ -n "$(docker compose -f "$COMPOSE_FILE" ps -q postgres 2>/dev/null || true)" ]]; then
+if ! command -v mysql >/dev/null 2>&1; then
+  if [[ -n "$(docker compose -f "$COMPOSE_FILE" ps -q mysql 2>/dev/null || true)" ]]; then
     USE_DOCKER=1
   else
-    echo "[e2e] 找不到 psql，且 docker compose 的 postgres 服务未运行；" >&2
-    echo "[e2e] 请先执行 docker compose up -d --wait，或安装 psql。" >&2
+    echo "[e2e] 找不到 mysql 客户端，且 docker compose 的 mysql 服务未运行；" >&2
+    echo "[e2e] 请先执行 docker compose up -d --wait，或安装 mysql 客户端。" >&2
     exit 1
   fi
 fi
 
-psql_exec() {
+mysql_exec() {
   local db="$1"
   shift
   # stdin 固定为 /dev/null：`docker compose exec -T` 会把 stdin 转发给容器，
   # 若继承调用方的 here-string，会提前耗尽逐表循环的输入。
+  # 密码走 MYSQL_PWD（与原来的 PGPASSWORD 对应），避免命令行 `-p` 的告警刷屏。
   if [[ "$USE_DOCKER" -eq 1 ]]; then
-    docker compose -f "$COMPOSE_FILE" exec -T postgres \
-      psql -U "$POSTGRES_USER" -d "$db" "$@" </dev/null
+    docker compose -f "$COMPOSE_FILE" exec -T -e MYSQL_PWD="$MYSQL_PASSWORD" mysql \
+      mysql -u "$MYSQL_USER" -D "$db" -N -B "$@" </dev/null
   else
-    PGPASSWORD="$POSTGRES_PASSWORD" psql \
-      -h "$POSTGRES_HOST" -p "$POSTGRES_PORT" -U "$POSTGRES_USER" -d "$db" \
+    MYSQL_PWD="$MYSQL_PASSWORD" mysql \
+      -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -D "$db" -N -B \
       "$@" </dev/null
   fi
 }
@@ -54,12 +55,12 @@ snapshot_db() {
   local db="$1"
   local tables table row_count result=""
 
-  tables="$(psql_exec "$db" -tAc \
-    "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename")"
+  tables="$(mysql_exec "$db" -e \
+    "SELECT table_name FROM information_schema.tables WHERE table_schema = DATABASE() ORDER BY table_name")"
 
   while IFS= read -r table; do
     [[ -z "$table" ]] && continue
-    row_count="$(psql_exec "$db" -tAc "SELECT count(*) FROM \"$table\"")"
+    row_count="$(mysql_exec "$db" -e "SELECT count(*) FROM \`$table\`")"
     result+="${table}=${row_count};"
   done <<<"$tables"
 
