@@ -183,7 +183,8 @@ async function seedBoard(db: DbClient) {
       },
       {
         // 零散个人任务（不属于任何项目）。显式 createdAt 使其与「无截止」
-        // （默认 now）在 nulls last 组内按 createdAt desc 稳定排序。
+        // （默认 now）在无截止组（due_date 为 null，排在最后）内按 createdAt
+        // desc 稳定排序。
         spaceType: "personal",
         projectId: null,
         title: "零散任务",
@@ -620,8 +621,8 @@ async function seedTeamBoard(db: DbClient) {
         createdById: alice.id,
       },
       {
-        // 未指派任务；显式 createdAt 使其与「无截止」（默认 now）在 nulls last
-        // 组内按 createdAt desc 稳定排序。
+        // 未指派任务；显式 createdAt 使其与「无截止」（默认 now）在无截止组
+        // （due_date 为 null，排在最后）内按 createdAt desc 稳定排序。
         spaceType: "team",
         projectId: retention.id,
         title: "未指派任务",

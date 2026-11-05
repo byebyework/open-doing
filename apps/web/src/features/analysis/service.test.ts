@@ -686,8 +686,8 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     const member = await createUser(db, "member");
     // 上海 2026-10-15 00:30 = UTC 2026-10-14T16:30Z；
     // 上海 2026-10-16 00:30 = UTC 2026-10-15T16:30Z。
-    // 若 SQL 漏掉 `AT TIME ZONE 'Asia/Shanghai'`（会话时区 UTC），两条会
-    // 各自提前一天落到 10-14 / 10-15。
+    // 若会话时区不是 +08:00（如容器默认 UTC），两条会各自提前一天落到
+    // 10-14 / 10-15。
     await createTask(db, {
       title: "跨 UTC 边界完成",
       createdById: member.id,
@@ -959,8 +959,8 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
 
     // 本周一边界：上海 2026-10-26 00:00 整计入。
     await seedDone("本周一零点整", shanghai("2026-10-26", "00:00:00"));
-    // 上海 00:30 = UTC 前一日 16:30：若漏掉 `AT TIME ZONE 'Asia/Shanghai'`
-    // 且会话时区为 UTC，这条会被错判到上周。
+    // 上海 00:30 = UTC 前一日 16:30：若会话时区为 UTC（未固定 +08:00），
+    // 这条会被错判到上周。
     await seedDone("本周一凌晨", shanghai("2026-10-26", "00:30:00"));
     // 上周日深夜：上周起点之前，不计数。
     await seedDone("上周日深夜", shanghai("2026-10-25", "23:59:59"));

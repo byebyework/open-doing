@@ -173,7 +173,7 @@ async function requireAssignableMember(
 }
 
 /**
- * 发通知并吞掉唯一索引撞车（23505）。
+ * 发通知并吞掉唯一索引撞车（MySQL `ER_DUP_ENTRY`）。
  *
  * 通知表 `(user_id, task_id, type)` 部分唯一索引保证同一任务同类通知只留
  * 一条；重复触发（例如多人先后评论）不应让业务写入失败。嵌套事务即

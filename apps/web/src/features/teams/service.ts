@@ -91,7 +91,7 @@ function validateName(name: unknown): string {
  * 在给定 client 内为 base slug 找一个空闲计数后缀。
  *
  * 先按 `like(base + '%')` 扫描已有 slug 取空闲计数，再由外层
- * 唯一约束 23505 重试兜底并发竞态。`RESERVED_SPACE_SLUGS`
+ * 唯一约束冲突（MySQL `ER_DUP_ENTRY`）重试兜底并发竞态。`RESERVED_SPACE_SLUGS`
  * （如 `personal`）视同已占用，团队不会占用空间路由保留字。
  */
 async function nextFreeSlug(base: string, client: DbClient): Promise<string> {

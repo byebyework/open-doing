@@ -107,7 +107,7 @@ describe.skipIf(!hasTestDatabase)("邀请 service", () => {
       createInvite({ teamId: team.id, actorId: owner.id, uid: outsider.uid }, db),
     ).rejects.toMatchObject({ code: "PENDING_EXISTS" });
 
-    // 数据库兜底：直接插入第二条 pending 应触发 23505。
+    // 数据库兜底：直接插入第二条 pending 应触发唯一约束冲突。
     await expect(
       db.insert(teamInvites).values({
         teamId: team.id,

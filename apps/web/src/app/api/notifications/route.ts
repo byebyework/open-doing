@@ -12,7 +12,7 @@ const MAX_LIMIT = 100;
  * 解析 `?limit=`：仅接受 1..100 的整数。
  *
  * 缺失、非法（含小数/非数字）或越界时一律回落默认值——入口层兜底
- * `listNotifications` 不校验 limit 的缺口（负数/0 会直接触发 Postgres 错误）。
+ * `listNotifications` 不校验 limit 的缺口（负数会直接触发数据库错误）。
  */
 function parseLimit(raw: string | null): number {
   if (raw === null) {
