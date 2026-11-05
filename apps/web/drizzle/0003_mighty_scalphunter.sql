@@ -1,1 +1,0 @@
-ALTER TABLE "users" ADD COLUMN "language" text DEFAULT 'zh' NOT NULL;

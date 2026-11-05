@@ -1,33 +1,12 @@
 {
   "version": "7",
-  "dialect": "postgresql",
+  "dialect": "mysql",
   "entries": [
     {
       "idx": 0,
-      "version": "7",
-      "when": 1792682151688,
-      "tag": "0000_init",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1793113997470,
-      "tag": "0001_keen_marvel_zombies",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1793509646018,
-      "tag": "0002_bouncy_cloak",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1793530493388,
-      "tag": "0003_mighty_scalphunter",
+      "version": "5",
+      "when": 1793889172073,
+      "tag": "0000_orange_luckman",
       "breakpoints": true
     }
   ]

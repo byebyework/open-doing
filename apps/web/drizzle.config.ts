@@ -8,12 +8,12 @@ import { defineConfig } from "drizzle-kit";
  * `pnpm --filter @open-doing/web db:generate | db:migrate` 均读取本文件。
  */
 export default defineConfig({
-  dialect: "postgresql",
+  dialect: "mysql",
   schema: "./src/server/db/schema.ts",
   out: "./drizzle",
   dbCredentials: {
     url:
       process.env.DATABASE_URL ||
-      "postgres://open-doing:open-doing@localhost:5433/open_doing",
+      "mysql://open-doing:open-doing@localhost:3307/open_doing",
   },
 });
