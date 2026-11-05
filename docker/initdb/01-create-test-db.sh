@@ -3,6 +3,4 @@
 # 该脚本仅在容器初始化空数据目录时执行一次。
 set -e
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-  CREATE DATABASE open_doing_test;
-EOSQL
+mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "CREATE DATABASE IF NOT EXISTS open_doing_test CHARACTER SET utf8mb4 COLLATE utf8mb4_0900_ai_ci; GRANT ALL PRIVILEGES ON \`open\\_doing\\_test\`.* TO 'open-doing'@'%';"

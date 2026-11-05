@@ -1,28 +1,30 @@
 name: open-doing
 
-# 本地开发只需要 PostgreSQL；Next.js 在宿主机用 pnpm dev 直接运行
+# 本地开发只需要 MySQL；Next.js 在宿主机用 pnpm dev 直接运行
 # （编译走原生 APFS，避开 macOS 容器内 Turbopack 编译过慢的问题）。
 # 完整流程：docker compose up -d --wait → pnpm db:migrate → pnpm dev
 services:
-  postgres:
-    image: postgres:17-alpine
+  mysql:
+    image: mysql:8.0
     restart: unless-stopped
     environment:
-      POSTGRES_USER: open-doing
-      POSTGRES_PASSWORD: open-doing
-      POSTGRES_DB: open_doing
+      MYSQL_ROOT_PASSWORD: open-doing
+      MYSQL_USER: open-doing
+      MYSQL_PASSWORD: open-doing
+      MYSQL_DATABASE: open_doing
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_0900_ai_ci
     ports:
-      # 默认 5433，与 apps/web/.env.local 的 DATABASE_URL 一致；5432 常被
-      # ssh 隧道 / VSCode Remote 转发占用，故不用 5432。可用 POSTGRES_PORT 覆盖。
-      - "${POSTGRES_PORT:-5433}:5432"
+      # 默认 3307，与 apps/web/.env.local 的 DATABASE_URL 一致；MySQL 默认的
+      # 3306 常被本机已有实例占用，故不用 3306。可用 MYSQL_PORT 覆盖。
+      - "${MYSQL_PORT:-3307}:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
       - ./docker/initdb:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U open-doing -d open_doing"]
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uopen-doing -popen-doing"]
       interval: 5s
       timeout: 5s
       retries: 10
 
 volumes:
-  postgres_data:
+  mysql_data:
