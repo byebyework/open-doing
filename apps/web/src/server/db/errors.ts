@@ -4,7 +4,7 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * 收集错误链（drizzle 会把驱动错误包在 DrizzleQueryError.cause 中），
- * 便于统一识别 PostgreSQL 约束错误。
+ * 便于统一识别 MySQL 约束错误。
  */
 export function errorChain(error: unknown): Record<string, unknown>[] {
   const chain: Record<string, unknown>[] = [];
@@ -18,11 +18,11 @@ export function errorChain(error: unknown): Record<string, unknown>[] {
   return chain;
 }
 
-/** PostgreSQL 唯一约束冲突（23505）。 */
+/** MySQL 唯一约束冲突（ER_DUP_ENTRY，errno 1062）。 */
 export function isUniqueViolation(error: unknown): boolean {
   return errorChain(error).some((item) => {
-    if (item.code === "23505") return true;
+    if (item.errno === 1062 || item.code === "ER_DUP_ENTRY") return true;
     const message = typeof item.message === "string" ? item.message : "";
-    return message.includes("duplicate key value violates unique constraint");
+    return message.includes("Duplicate entry");
   });
 }
