@@ -4,7 +4,7 @@ This file provides guidance to AI coding agents (Claude Code, CodeBuddy, etc.) w
 
 ## Project Overview
 
-Open Doing: a personal + team task and project management system. Monolithic Next.js (App Router, React, Turbopack) + PostgreSQL + Drizzle ORM + vendored shadcn/ui (Radix primitives) + Tailwind CSS 4. The UI is fully localized (zh/en via next-intl, no URL locale prefix). Pages are RSC by default; write operations go through Server Actions. After login, the app is organized by spaces: the personal space and each team space share the same Dashboard / Kanban / Calendar / Analysis / Settings module navigation, with routes unified as `/space/{spaceRef}/{module}` (`spaceRef` = `personal` or a team slug).
+Open Doing: a personal + team task and project management system. Monolithic Next.js (App Router, React, Turbopack) + MySQL 8.0 + Drizzle ORM + vendored shadcn/ui (Radix primitives) + Tailwind CSS 4. The UI is fully localized (zh/en via next-intl, no URL locale prefix). Pages are RSC by default; write operations go through Server Actions. After login, the app is organized by spaces: the personal space and each team space share the same Dashboard / Kanban / Calendar / Analysis / Settings module navigation, with routes unified as `/space/{spaceRef}/{module}` (`spaceRef` = `personal` or a team slug).
 
 Authoritative docs (read the relevant section before changing code):
 
@@ -19,7 +19,7 @@ Frozen contracts (e.g. `AppShell`, the import relationships in `(dashboard)/layo
 ## Build and Test Commands (repo root)
 
 ```bash
-docker compose up -d --wait   # Start PostgreSQL (dev db open_doing + test db open_doing_test + e2e db open_doing_e2e)
+docker compose up -d --wait   # Start MySQL 8.0 (dev db open_doing + test db open_doing_test + e2e db open_doing_e2e, host port 3307)
 pnpm install
 cp .env.example apps/web/.env.local   # Next.js resolves env from apps/web, not the repo root
 pnpm dev                      # web app, http://localhost:3000
@@ -87,7 +87,7 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 
 ### Date semantics
 
-"Today" is always computed in Asia/Shanghai (`apps/web/src/lib/today.ts`, same convention as the notification cron). RSCs pass `today` as a prop to client components for overdue/due-soon checks, guaranteeing server/client render consistency; do not use the local timezone to get the current date inside components. `due_date` is a Postgres `date` type.
+"Today" is always computed in Asia/Shanghai (`apps/web/src/lib/today.ts`, same convention as the notification cron). RSCs pass `today` as a prop to client components for overdue/due-soon checks, guaranteeing server/client render consistency; do not use the local timezone to get the current date inside components. `due_date` is a MySQL `date` type.
 
 ### Database
 
@@ -136,7 +136,7 @@ Commit messages follow Conventional Commits:
 
 ## Deployment Notes
 
-- The app is a single Next.js deployment (`apps/web`); PostgreSQL is the only external service.
+- The app is a single Next.js deployment (`apps/web`); MySQL 8.0 is the only external service.
 - Database schema changes are applied via Drizzle migrations (`pnpm db:generate` then `pnpm db:migrate`); migrations are replayable on an empty database.
 - Env vars are resolved from `apps/web` (Next.js), not the repo root — configure production env accordingly.
 - Sample/seed data (`pnpm db:seed`) is for development only; never run it against production.

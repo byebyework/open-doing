@@ -234,6 +234,7 @@ v1 只做系统内通知（应用内消息/未读角标），不发邮件。触�
 - Monorepo（pnpm workspaces）：`apps/web`（Next.js 16，App Router，React 19，TypeScript）、`packages/types`（共享领域模型，目前为初步骨架，需按本文档在实现阶段修订）。
 - **UI：Ant Design v6**（App Router 下配 `@ant-design/nextjs-registry` 做 SSR 样式收集）+ **Tailwind CSS 4** 承担布局/微调，关闭 Tailwind preflight；中文 `zh_CN` 语言包，亮色主题，品牌色通过 Design Token 定制。
 - **数据库：PostgreSQL + Drizzle ORM**；本地开发用 Docker 启动 PostgreSQL。
+- 迁移说明（2026-11）：实现已迁到 MySQL 8.0（Drizzle ORM + mysql2 驱动），其余技术上下文保留立项时原样。
 - 领域类型定义见 `packages/types/src/index.ts`，数据库 schema 应与之一致。
 
 ## 12. 留给实现者的决定

@@ -9,7 +9,7 @@ This document describes the target architecture and how the system is built. Wha
 A monolithic web application (no microservices):
 
 - **Next.js (App Router, React, Turbopack)** hosts pages, Server Actions, and Route Handlers in one app.
-- **PostgreSQL** is the only persistent store; **Drizzle ORM** handles schema, migrations, and queries.
+- **MySQL 8.0** is the only persistent store; **Drizzle ORM** handles schema, migrations, and queries.
 - Scheduled scans (due-soon/overdue notifications) run through a protected Route Handler triggered by an external cron — no separate worker process.
 - No email sending, no third-party services; no external dependencies other than the database and cron.
 
@@ -23,7 +23,7 @@ apps/web (Next.js)
   └── server/         Infrastructure: db, auth, session
   │
   ▼
-PostgreSQL (Docker for local development)
+MySQL 8.0 (Docker for local development)
 ```
 
 ## 2. Monorepo Layout
@@ -59,7 +59,7 @@ packages/
 | Toasts | sonner | Single Toaster in root `providers.tsx`; position/shadow/icons aligned to the prototype `.toast` spec |
 | Styling | **Tailwind CSS 4 (preflight enabled)** | theme + preflight + utilities layers; utilities handle layout/spacing/fine-tuning |
 | Theme/locale | Design tokens in `tokens.css` (light only) + dayjs locale per request | No runtime theming (`theme.ts` removed); tokens stay 1:1 with the prototypes; locale switches next-intl + dayjs + `<html lang>` |
-| Database | PostgreSQL | Relational integrity, cascade deletes, unique constraints (username, UID) |
+| Database | MySQL 8.0 | Relational integrity, cascade deletes, unique constraints (username, UID) |
 | ORM | Drizzle | Lightweight, close to SQL, good type inference, built-in migration tooling |
 | Local database | Docker compose | Consistent environment, zero manual setup |
 | Auth | Username + password; stateless HS256 signature via jose in an httpOnly cookie (`od_session`, sameSite lax, 30 days, payload `{ userId }`) + `@node-rs/argon2` (Argon2id) | No sessions table: no DB lookup on validation, no session cleanup job; Argon2id resists GPU cracking with fast native performance; signing key from `SESSION_SECRET` |
@@ -308,7 +308,7 @@ Pure computation lives in `@open-doing/types`; the server only fetches data:
 - Task progress: with subtasks → completed subtasks / total subtasks; without → status mapping 0 / 0.5 / 1.
 - Project progress: equal-weight average of all the project's tasks, empty project 0 (same for team and personal projects); team progress: equal-weight average across the team's projects, 0 when there are none; personal projects do not participate.
 - Dashboard aggregations are computed in the database (SQL aggregation of task/subtask counts); the app layer applies the same semantics rather than pulling whole tables into memory.
-- `due_date` uses the Postgres `date` type. Overdue: `current date (Asia/Shanghai) > due_date and status != done`; due soon: `due_date IN (today, tomorrow) and not completed`. Session and database connections consistently use UTC+8 semantics.
+- `due_date` uses the MySQL `date` type. Overdue: `current date (Asia/Shanghai) > due_date and status != done`; due soon: `due_date IN (today, tomorrow) and not completed`. Session and database connections consistently use UTC+8 semantics.
 
 ## 9. Notifications
 
@@ -343,10 +343,10 @@ Error translation inside Server Actions goes through `standardFailuresForRequest
 Environment variables required by `apps/web` (`.env.local`, not committed):
 
 ```
-DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open-doing
+DATABASE_URL=mysql://open-doing:open-doing@localhost:3307/open_doing
 SESSION_SECRET=...
 CRON_SECRET=...
 ```
 
-- `docker-compose.yml` at the repo root starts the local PostgreSQL.
+- `docker-compose.yml` at the repo root starts the local MySQL 8.0 (host port 3307, overridable via `MYSQL_PORT`).
 - Drizzle config and migration files live in the web package (`src/server/db/` + `drizzle/`), run via `pnpm --filter @open-doing/web db:generate / db:migrate`.
