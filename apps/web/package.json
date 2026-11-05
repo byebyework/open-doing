@@ -39,6 +39,7 @@
     "drizzle-orm": "^0.45.4",
     "jose": "^6.2.13",
     "lucide-react": "^1.66.0",
+    "mysql2": "^3.24.6",
     "next": "16.4.2",
     "next-intl": "^4.14.9",
     "postgres": "^3.4.9",
