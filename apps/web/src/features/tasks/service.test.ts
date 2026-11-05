@@ -604,10 +604,20 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         db,
       );
       await addTeamSubtask({ teamId: team.id, taskId: first.id, actorId: owner.id, title: "子" }, db);
-      await createTeamTask(
+      const second = await createTeamTask(
         { teamId: team.id, projectId: project.id, actorId: owner.id, title: "第二" },
         db,
       );
+
+      // MySQL TIMESTAMP 秒级精度：同秒创建会并列，显式错开创建时间固定排序语义。
+      await db
+        .update(tasks)
+        .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+        .where(eq(tasks.id, first.id));
+      await db
+        .update(tasks)
+        .set({ createdAt: new Date("2026-01-01T00:00:01Z") })
+        .where(eq(tasks.id, second.id));
 
       const rows = await listTeamProjectTasks(
         { teamId: team.id, projectId: project.id, actorId: owner.id },
@@ -670,7 +680,19 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         { teamId: team.id, taskId: task.id, actorId: owner.id, title: "已完成" },
         db,
       );
-      await addTeamSubtask({ teamId: team.id, taskId: task.id, actorId: owner.id, title: "未完成" }, db);
+      const pending = await addTeamSubtask(
+        { teamId: team.id, taskId: task.id, actorId: owner.id, title: "未完成" },
+        db,
+      );
+      // MySQL TIMESTAMP 秒级精度：同秒创建会并列，显式错开创建时间固定排序语义。
+      await db
+        .update(subtasks)
+        .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+        .where(eq(subtasks.id, done.id));
+      await db
+        .update(subtasks)
+        .set({ createdAt: new Date("2026-01-01T00:00:01Z") })
+        .where(eq(subtasks.id, pending.id));
       await toggleTeamSubtask(
         { teamId: team.id, taskId: task.id, actorId: owner.id, subtaskId: done.id, completed: true },
         db,
