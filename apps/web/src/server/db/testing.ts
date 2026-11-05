@@ -9,6 +9,19 @@ import type { DbClient } from "./client";
 /** 迁移目录：apps/web/drizzle（相对本文件定位，不依赖执行 cwd）。 */
 const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../../drizzle", import.meta.url));
 
+/** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）。 */
+const TRUNCATE_TABLES = [
+  "notifications",
+  "comments",
+  "subtasks",
+  "tasks",
+  "team_invites",
+  "team_memberships",
+  "projects",
+  "teams",
+  "users",
+] as const;
+
 let pool: Pool | null = null;
 let testDb: DbClient | null = null;
 
@@ -21,7 +34,13 @@ function getTestDb(): DbClient {
   if (!testDb) {
     // 连接数固定为 1：TRUNCATE 前设置的 FOREIGN_KEY_CHECKS 是会话级变量，
     // 单连接池保证 SET、TRUNCATE、恢复 SET 落在同一个会话里。
-    pool = mysql.createPool({ uri: url, connectionLimit: 1 });
+    // 时区与 client.ts 保持一致：`timezone` 只影响 JS Date 编解码，会话时区
+    // 仍需显式 `SET time_zone`，否则 mysql:8.0 容器的 SYSTEM=UTC 会让
+    // TIMESTAMP 与测试里的 Date 断言相差 8 小时。
+    pool = mysql.createPool({ uri: url, connectionLimit: 1, timezone: "+08:00" });
+    pool.on("connection", (conn) => {
+      void conn.query("SET time_zone = '+08:00'");
+    });
     testDb = drizzle(pool, { schema, mode: "default" });
   }
 
@@ -43,18 +62,11 @@ export async function setupTestDb(): Promise<DbClient> {
 
   await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
   try {
-    await db.execute(sql`
-      TRUNCATE TABLE
-        notifications,
-        comments,
-        subtasks,
-        tasks,
-        team_invites,
-        team_memberships,
-        projects,
-        teams,
-        users
-    `);
+    // MySQL 的 TRUNCATE 一次只能截断一张表（PG 的多表写法在这里是语法错误）；
+    // 表名为静态常量，不存在注入面。
+    for (const table of TRUNCATE_TABLES) {
+      await db.execute(sql.raw(`TRUNCATE TABLE \`${table}\``));
+    }
   } finally {
     // 失败时也务必恢复外键检查，避免后续用例在关闭约束的会话里跑。
     await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);

@@ -7,6 +7,19 @@ import mysql from "mysql2/promise";
 
 import { E2E_DATABASE_URL, assertE2EDatabaseUrl } from "./utils/env";
 
+/** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）。 */
+const TRUNCATE_TABLES = [
+  "notifications",
+  "comments",
+  "subtasks",
+  "tasks",
+  "team_invites",
+  "team_memberships",
+  "projects",
+  "teams",
+  "users",
+] as const;
+
 /**
  * Playwright 全局准备：
  * 1. 先断言 DATABASE_URL 的库名恰好是 `open_doing_e2e`（否则抛错阻止清库）；
@@ -19,7 +32,16 @@ export default async function globalSetup(): Promise<void> {
   assertE2EDatabaseUrl(E2E_DATABASE_URL);
 
   // 单连接：FOREIGN_KEY_CHECKS 是会话级变量，单连接保证 SET/TRUNCATE 同会话。
-  const pool = mysql.createPool({ uri: E2E_DATABASE_URL, connectionLimit: 1 });
+  // 时区与 client.ts 保持一致：`timezone` 只影响 JS Date 编解码，会话时区
+  // 仍需显式 `SET time_zone`（容器默认 SYSTEM=UTC，否则差 8 小时）。
+  const pool = mysql.createPool({
+    uri: E2E_DATABASE_URL,
+    connectionLimit: 1,
+    timezone: "+08:00",
+  });
+  pool.on("connection", (conn) => {
+    void conn.query("SET time_zone = '+08:00'");
+  });
   try {
     const db = drizzle(pool);
 
@@ -29,18 +51,11 @@ export default async function globalSetup(): Promise<void> {
 
     await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0`);
     try {
-      await db.execute(sql`
-        TRUNCATE TABLE
-          notifications,
-          comments,
-          subtasks,
-          tasks,
-          team_invites,
-          team_memberships,
-          projects,
-          teams,
-          users
-      `);
+      // MySQL 的 TRUNCATE 一次只能截断一张表（PG 的多表写法在这里是语法错误）；
+      // 表名为静态常量，不存在注入面。
+      for (const table of TRUNCATE_TABLES) {
+        await db.execute(sql.raw(`TRUNCATE TABLE \`${table}\``));
+      }
     } finally {
       await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
     }
