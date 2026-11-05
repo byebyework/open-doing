@@ -260,8 +260,24 @@ describe.skipIf(!hasTestDatabase)("团队项目 service", () => {
     const { owner, team } = await setupTeam(db);
     const other = await setupTeam(db);
 
-    await createTeamProject({ teamId: team.id, actorId: owner.id, name: "Alpha" }, db);
-    await createTeamProject({ teamId: other.team.id, actorId: other.owner.id, name: "Beta" }, db);
+    const alpha = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Alpha" },
+      db,
+    );
+    const beta = await createTeamProject(
+      { teamId: other.team.id, actorId: other.owner.id, name: "Beta" },
+      db,
+    );
+
+    // MySQL TIMESTAMP 秒级精度：同秒创建会并列，显式错开创建时间固定排序语义。
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+      .where(eq(projects.id, alpha.id));
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-01-01T00:00:01Z") })
+      .where(eq(projects.id, beta.id));
 
     expect((await listTeamProjects(team.id, db)).map((p) => p.name)).toEqual(["Alpha"]);
     expect((await listTeamProjectsForTeams([team.id, other.team.id], db)).map((p) => p.name)).toEqual([
