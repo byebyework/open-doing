@@ -32,7 +32,6 @@ import {
   index,
   mysqlTable,
   text,
-  timestamp,
   unique,
   uniqueIndex,
   varchar,
@@ -58,6 +57,38 @@ const identifierVarchar = (name: string) =>
     },
   })(name);
 
+/**
+ * 时间戳列：`timestamp`（无时区），按会话时区（+08:00）双向解释。
+ *
+ * mysql-core 内置 `timestamp` 的 mapToDriverValue 输出 UTC 墙钟字符串
+ * （`toISOString()`），而所有连接（client / testing / e2e global-setup）
+ * 都固定会话时区 `+08:00`，MySQL 会把该 UTC 墙钟误读为 +08:00 本地时间，
+ * 导致显式写入的时刻早 8 小时；反向读取时服务端输出 +08:00 墙钟字符串
+ * 又被内置 mapFromDriverValue 当作 UTC 解析，defaultNow 回读的时刻晚
+ * 8 小时。这里改为显式双向映射：写入按 +08:00 墙钟格式化、读取按
+ * +08:00 解析，与会话时区保持一致。
+ */
+const tzTimestamp = (name: string) =>
+  customType<{ data: Date; driverData: string }>({
+    dataType() {
+      return "timestamp";
+    },
+    // 注意：mysql-core customType 的映射钩子名为 toDriver / fromDriver
+    // （不是内置列的 mapToDriverValue / mapFromDriverValue，拼错会被静默跳过）。
+    toDriver(value: Date): string {
+      // 写入：按 Asia/Shanghai（+08:00）墙钟格式化，与会话时区一致。
+      return new Date(value.getTime() + 8 * 3_600_000)
+        .toISOString()
+        .slice(0, 19)
+        .replace("T", " ");
+    },
+    fromDriver(value: string): Date {
+      // 读取：drizzle 的 mysql2 会话对 TIMESTAMP/DATETIME 强制 typeCast 为
+      // 字符串（会话墙钟），按 +08:00 解析回时刻。
+      return new Date(value.replace(" ", "T") + "+08:00");
+    },
+  })(name);
+
 /** UUID 主键：`char(36)` + 应用层生成。 */
 const uuidPk = () =>
   char("id", { length: 36 })
@@ -78,7 +109,7 @@ export const users = mysqlTable("users", {
   overdueReminderEnabled: boolean("overdue_reminder_enabled").notNull().default(true),
   // 个人设置：界面语言（'zh' | 'en'），默认中文；账号级偏好，登录后每请求生效。
   language: identifierVarchar("language").notNull().default("zh"),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
 });
 
 /** 团队：slug 全局唯一；join_code 由应用层生成（见文件头决策 7）。 */
@@ -93,7 +124,7 @@ export const teams = mysqlTable(
     ownerId: uuidRef("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
   },
   (t) => [
     // 独立唯一索引（非列级 .unique()），与 PostgreSQL 迁移中的表级索引名一致。
@@ -113,7 +144,7 @@ export const teamMemberships = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     role: identifierVarchar("role").$type<"owner" | "admin" | "member">().notNull(),
-    joinedAt: timestamp("joined_at").notNull().defaultNow(),
+    joinedAt: tzTimestamp("joined_at").notNull().default(sql`(now())`),
   },
   (t) => [
     unique("team_memberships_team_id_user_id_unique").on(t.teamId, t.userId),
@@ -140,8 +171,8 @@ export const teamInvites = mysqlTable(
       .$type<"pending" | "accepted" | "declined" | "rescinded">()
       .notNull()
       .default("pending"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    respondedAt: timestamp("responded_at"),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    respondedAt: tzTimestamp("responded_at"),
     // 生成列：pending 时为 'pending'，终态为 NULL，使唯一索引只约束 pending。
     // MySQL 索引不支持 TEXT 列（除非前缀长度），故用 varchar。
     pendingScope: varchar("pending_scope", { length: 255 }).generatedAlwaysAs(
@@ -169,8 +200,8 @@ export const teamJoinRequests = mysqlTable(
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     status: identifierVarchar("status").$type<TeamJoinStatus>().notNull().default("pending"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    respondedAt: timestamp("responded_at"),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    respondedAt: tzTimestamp("responded_at"),
     respondedById: uuidRef("responded_by_id").references(() => users.id, {
       onDelete: "cascade",
     }),
@@ -200,7 +231,7 @@ export const projects = mysqlTable(
     name: identifierVarchar("name").notNull(),
     slug: identifierVarchar("slug").notNull(),
     description: text("description"),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
   },
   (t) => [
     check(
@@ -232,8 +263,8 @@ export const tasks = mysqlTable(
     createdById: uuidRef("created_by_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
-    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    updatedAt: tzTimestamp("updated_at").notNull().default(sql`(now())`),
   },
   (t) => [
     index("tasks_assignee_id_idx").on(t.assigneeId),
@@ -250,8 +281,8 @@ export const subtasks = mysqlTable("subtasks", {
     .references(() => tasks.id, { onDelete: "cascade" }),
   title: varchar("title", { length: 500 }).notNull(),
   completed: boolean("completed").notNull().default(false),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  completedAt: timestamp("completed_at"),
+  createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+  completedAt: tzTimestamp("completed_at"),
 });
 
 /** 任务评论：个人任务下即自我备注。 */
@@ -264,7 +295,7 @@ export const comments = mysqlTable("comments", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
+  createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
 });
 
 /** 系统内通知：task_id 非空时同一 (user, task, type) 幂等。 */
@@ -281,7 +312,7 @@ export const notifications = mysqlTable(
     projectId: uuidRef("project_id").references(() => projects.id, { onDelete: "cascade" }),
     taskId: uuidRef("task_id").references(() => tasks.id, { onDelete: "cascade" }),
     actorId: uuidRef("actor_id").references(() => users.id, { onDelete: "cascade" }),
-    createdAt: timestamp("created_at").notNull().defaultNow(),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
   },
   (t) => [
     // N-3 幂等投递依赖：同一用户、同一任务、同一类型只保留一条。
