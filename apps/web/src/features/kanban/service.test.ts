@@ -77,23 +77,21 @@ const RECENT_START = new Date("2026-10-15T00:00:00+08:00");
 const OLDER_START = new Date("2026-10-14T00:00:00+08:00");
 
 async function createUser(db: DbClient, username: string) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, username: users.username });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, username };
 }
 
 async function createPersonalProject(
   db: DbClient,
   input: { ownerId: string; name: string; slug: string },
 ) {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(projects)
-    .values({ ownerId: input.ownerId, name: input.name, slug: input.slug })
-    .returning();
-  return row!;
+    .values({ id, ownerId: input.ownerId, name: input.name, slug: input.slug });
+  return { id, ...input };
 }
 
 /**
@@ -120,23 +118,23 @@ async function seedBoard(db: DbClient) {
     slug: "life",
   });
 
-  const [team] = await db
-    .insert(teams)
-    .values({
-      name: "增长突击队",
-      slug: "growth-squad",
-      ownerId: other.id,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
-  const [teamProject] = await db
-    .insert(projects)
-    .values({ teamId: team!.id, name: "增长突击队项目", slug: "growth-project" })
-    .returning();
+  const team = { id: crypto.randomUUID(), slug: "growth-squad" };
+  await db.insert(teams).values({
+    id: team.id,
+    name: "增长突击队",
+    slug: team.slug,
+    ownerId: other.id,
+    joinCode: generateJoinCode(),
+  });
+  const teamProject = { id: crypto.randomUUID(), slug: "growth-project" };
+  await db.insert(projects).values({
+    id: teamProject.id,
+    teamId: team.id,
+    name: "增长突击队项目",
+    slug: teamProject.slug,
+  });
 
-  const inserted = await db
-    .insert(tasks)
-    .values([
+  const inserted = ([
       // ---- todo：排序覆盖逾期（两条升序）→ 今天 → 未来 → 无截止 ----
       {
         spaceType: "personal",
@@ -262,8 +260,11 @@ async function seedBoard(db: DbClient) {
         assigneeId: member.id,
         createdById: other.id,
       },
-    ])
-    .returning({ id: tasks.id, title: tasks.title });
+    ] satisfies (typeof tasks.$inferInsert)[]).map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+    }));
+  await db.insert(tasks).values(inserted);
 
   const idByTitle = new Map(inserted.map((row) => [row.title, row.id]));
 
@@ -490,27 +491,26 @@ async function createTeam(
   db: DbClient,
   input: { ownerId: string; name: string; slug: string },
 ) {
-  const [row] = await db
-    .insert(teams)
-    .values({
-      name: input.name,
-      slug: input.slug,
-      ownerId: input.ownerId,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
-  return row!;
+  const id = crypto.randomUUID();
+  await db.insert(teams).values({
+    id,
+    name: input.name,
+    slug: input.slug,
+    ownerId: input.ownerId,
+    joinCode: generateJoinCode(),
+  });
+  return { id, ...input };
 }
 
 async function createTeamProject(
   db: DbClient,
   input: { teamId: string; name: string; slug: string },
 ) {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(projects)
-    .values({ teamId: input.teamId, name: input.name, slug: input.slug })
-    .returning();
-  return row!;
+    .values({ id, teamId: input.teamId, name: input.name, slug: input.slug });
+  return { id, ...input };
 }
 
 /**
@@ -562,9 +562,7 @@ async function seedTeamBoard(db: DbClient) {
     slug: "personal-project",
   });
 
-  const inserted = await db
-    .insert(tasks)
-    .values([
+  const inserted = ([
       // ---- todo：排序覆盖逾期（两条升序）→ 今天 → 未来 → 无截止 / 未指派 ----
       {
         spaceType: "team",
@@ -713,8 +711,11 @@ async function seedTeamBoard(db: DbClient) {
         assigneeId: alice.id,
         createdById: alice.id,
       },
-    ])
-    .returning({ id: tasks.id, title: tasks.title });
+    ] satisfies (typeof tasks.$inferInsert)[]).map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+    }));
+  await db.insert(tasks).values(inserted);
 
   const idByTitle = new Map(inserted.map((row) => [row.title, row.id]));
 

@@ -35,12 +35,10 @@ const WEEK_START = "2026-10-19";
 const BASE_TIME = new Date("2026-10-01T00:00:00Z").getTime();
 
 async function createUser(db: DbClient, username: string) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, username: users.username });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, username };
 }
 
 /** 造一队：团队 + 项目；member 可选加入成员关系。 */
@@ -48,27 +46,26 @@ async function createTeam(
   db: DbClient,
   input: { ownerId: string; name: string; slug: string; memberIds?: string[] },
 ) {
-  const [team] = await db
-    .insert(teams)
-    .values({
-      name: input.name,
-      slug: input.slug,
-      ownerId: input.ownerId,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
-  const [project] = await db
+  const teamId = crypto.randomUUID();
+  await db.insert(teams).values({
+    id: teamId,
+    name: input.name,
+    slug: input.slug,
+    ownerId: input.ownerId,
+    joinCode: generateJoinCode(),
+  });
+  const projectId = crypto.randomUUID();
+  await db
     .insert(projects)
-    .values({ teamId: team!.id, name: `${input.name}项目`, slug: `${input.slug}-project` })
-    .returning();
+    .values({ id: projectId, teamId, name: `${input.name}项目`, slug: `${input.slug}-project` });
 
   if (input.memberIds?.length) {
     await db.insert(teamMemberships).values(
-      input.memberIds.map((userId) => ({ teamId: team!.id, userId, role: "member" as const })),
+      input.memberIds.map((userId) => ({ teamId, userId, role: "member" as const })),
     );
   }
 
-  return { team: team!, project: project! };
+  return { team: { id: teamId }, project: { id: projectId } };
 }
 
 /** 统计用例数据：覆盖进行中 / 临期 / 逾期 / 本周完成及各类排除项。 */
@@ -154,14 +151,19 @@ async function seedLists(db: DbClient) {
   const member = await createUser(db, "member");
   const other = await createUser(db, "other");
 
-  const [personalProject] = await db
+  const personalProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ ownerId: member.id, name: "读书笔记", slug: "reading-notes" })
-    .returning();
-  const [otherPersonalProject] = await db
+    .values({ id: personalProject.id, ownerId: member.id, name: "读书笔记", slug: "reading-notes" });
+  const otherPersonalProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ ownerId: other.id, name: "别人的个人项目", slug: "secret-notes" })
-    .returning();
+    .values({
+      id: otherPersonalProject.id,
+      ownerId: other.id,
+      name: "别人的个人项目",
+      slug: "secret-notes",
+    });
 
   const { team, project: teamProject } = await createTeam(db, {
     ownerId: other.id,
@@ -176,9 +178,7 @@ async function seedLists(db: DbClient) {
     slug: "outside-team",
   });
 
-  const inserted = await db
-    .insert(tasks)
-    .values([
+  const taskValues = ([
       // 个人：有日期在前升序，无日期最后；同日按 createdAt 降序。
       {
         spaceType: "personal",
@@ -265,10 +265,13 @@ async function seedLists(db: DbClient) {
         assigneeId: other.id,
         createdById: other.id,
       },
-    ])
-    .returning({ id: tasks.id, title: tasks.title });
+    ] satisfies (typeof tasks.$inferInsert)[]).map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+    }));
 
-  const idByTitle = new Map(inserted.map((row) => [row.title, row.id]));
+  await db.insert(tasks).values(taskValues);
+  const idByTitle = new Map(taskValues.map((row) => [row.title, row.id]));
   const projectTaskId = idByTitle.get("项目任务B")!;
 
   // 5 个子任务，3 个已完成 → 3/5。
@@ -495,7 +498,7 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
   });
 
   it("listCrossSpaceProjects：个人项目在前，团队项目带团队名，他人 / 非成员团队项目不出现", async () => {
-    const { member, personalProject, teamProject, otherPersonalProject, foreignTeamProject } =
+    const { member, team, personalProject, teamProject, otherPersonalProject, foreignTeamProject } =
       await seedLists(db);
 
     const options = await listCrossSpaceProjects(member.id, db);
@@ -511,7 +514,7 @@ describe.skipIf(!hasTestDatabase)("我的任务聚合查询", () => {
       projectId: teamProject.id,
       projectName: "增长突击队项目",
       projectSlug: "growth-squad-project",
-      teamId: teamProject.teamId,
+      teamId: team.id,
       teamName: "增长突击队",
     });
 

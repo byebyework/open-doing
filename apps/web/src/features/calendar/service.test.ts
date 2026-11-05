@@ -52,50 +52,40 @@ const TODAY = "2026-10-01";
 const MONTH = "2026-10";
 
 async function createUser(db: DbClient, username: string) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, username: users.username });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, username };
 }
 
 async function createPersonalProject(
   db: DbClient,
   input: { ownerId: string; name: string; slug: string },
 ) {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(projects)
-    .values({ ownerId: input.ownerId, name: input.name, slug: input.slug })
-    .returning();
-  return row!;
+    .values({ id, ownerId: input.ownerId, name: input.name, slug: input.slug });
+  return { id, ...input };
 }
 
 async function createTeam(
   db: DbClient,
   input: { ownerId: string; name: string; slug: string },
 ) {
-  const [row] = await db
-    .insert(teams)
-    .values({
-      name: input.name,
-      slug: input.slug,
-      ownerId: input.ownerId,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
-  return row!;
+  const id = crypto.randomUUID();
+  const joinCode = generateJoinCode();
+  await db.insert(teams).values({ id, ...input, joinCode });
+  return { id, ...input, joinCode };
 }
 
 async function createTeamProject(
   db: DbClient,
   input: { teamId: string; name: string; slug: string },
 ) {
-  const [row] = await db
-    .insert(projects)
-    .values({ teamId: input.teamId, name: input.name, slug: input.slug })
-    .returning();
-  return row!;
+  const id = crypto.randomUUID();
+  await db.insert(projects).values({ id, ...input });
+  return { id, ...input };
 }
 
 /**

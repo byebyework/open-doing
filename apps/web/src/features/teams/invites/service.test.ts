@@ -26,12 +26,10 @@ if (!hasTestDatabase) {
 }
 
 async function createUser(db: DbClient, username: string): Promise<{ id: string; uid: string }> {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, uid: users.uid });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, uid };
 }
 
 /** 上下文：owner + admin + member + 外部待邀请人。 */

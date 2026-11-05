@@ -36,12 +36,10 @@ if (!hasTestDatabase) {
 }
 
 async function createUser(db: DbClient, username: string): Promise<{ id: string; uid: string }> {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, uid: users.uid });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, uid };
 }
 
 /**
@@ -62,75 +60,75 @@ async function seedTeam(db: DbClient) {
     { teamId: team.id, userId: member.id, role: "member" },
   ]);
 
-  const [teamProject] = await db
+  const teamProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ teamId: team.id, name: "团队项目", slug: "team-project" })
-    .returning();
+    .values({ id: teamProject.id, teamId: team.id, name: "团队项目", slug: "team-project" });
 
   // 另一个团队（outsider 创建）及其项目：member 的任务不应被清空。
   const otherTeam = await createTeam({ name: "外部团队" }, outsider.id, db);
-  const [otherProject] = await db
+  const otherProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ teamId: otherTeam.id, name: "外部项目", slug: "other-project" })
-    .returning();
+    .values({ id: otherProject.id, teamId: otherTeam.id, name: "外部项目", slug: "other-project" });
 
   // 个人项目：同样不应被清空。
-  const [personalProject] = await db
+  const personalProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ ownerId: member.id, name: "个人项目", slug: "personal-project" })
-    .returning();
+    .values({
+      id: personalProject.id,
+      ownerId: member.id,
+      name: "个人项目",
+      slug: "personal-project",
+    });
 
-  const [teamTask] = await db
-    .insert(tasks)
-    .values({
-      projectId: teamProject!.id,
-      spaceType: "team",
-      title: "团队任务",
-      assigneeId: member.id,
-      createdById: owner.id,
-    })
-    .returning();
+  const teamTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: teamTask.id,
+    projectId: teamProject.id,
+    spaceType: "team",
+    title: "团队任务",
+    assigneeId: member.id,
+    createdById: owner.id,
+  });
   // 同团队项目内其他成员的任务：只清目标成员，不能误伤。
-  const [peerTask] = await db
-    .insert(tasks)
-    .values({
-      projectId: teamProject!.id,
-      spaceType: "team",
-      title: "管理员任务",
-      assigneeId: admin.id,
-      createdById: owner.id,
-    })
-    .returning();
-  const [otherTeamTask] = await db
-    .insert(tasks)
-    .values({
-      projectId: otherProject!.id,
-      spaceType: "team",
-      title: "外部团队任务",
-      assigneeId: member.id,
-      createdById: outsider.id,
-    })
-    .returning();
-  const [personalTask] = await db
-    .insert(tasks)
-    .values({
-      projectId: personalProject!.id,
-      spaceType: "personal",
-      title: "个人任务",
-      assigneeId: member.id,
-      createdById: member.id,
-    })
-    .returning();
-  const [looseTask] = await db
-    .insert(tasks)
-    .values({
-      projectId: null,
-      spaceType: "personal",
-      title: "零散个人任务",
-      assigneeId: member.id,
-      createdById: member.id,
-    })
-    .returning();
+  const peerTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: peerTask.id,
+    projectId: teamProject.id,
+    spaceType: "team",
+    title: "管理员任务",
+    assigneeId: admin.id,
+    createdById: owner.id,
+  });
+  const otherTeamTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: otherTeamTask.id,
+    projectId: otherProject.id,
+    spaceType: "team",
+    title: "外部团队任务",
+    assigneeId: member.id,
+    createdById: outsider.id,
+  });
+  const personalTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: personalTask.id,
+    projectId: personalProject.id,
+    spaceType: "personal",
+    title: "个人任务",
+    assigneeId: member.id,
+    createdById: member.id,
+  });
+  const looseTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: looseTask.id,
+    projectId: null,
+    spaceType: "personal",
+    title: "零散个人任务",
+    assigneeId: member.id,
+    createdById: member.id,
+  });
 
   return {
     owner,
@@ -299,43 +297,39 @@ async function seedDissolvableTeam(db: DbClient) {
     { teamId: team.id, userId: member.id, role: "member" },
   ]);
 
-  const [project] = await db
+  const project = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ teamId: team.id, name: "待删项目", slug: "dissolve-project" })
-    .returning();
-  const [task] = await db
-    .insert(tasks)
-    .values({
-      projectId: project!.id,
-      spaceType: "team",
-      title: "待删任务",
-      assigneeId: member.id,
-      createdById: owner.id,
-    })
-    .returning();
-  const [subtask] = await db
-    .insert(subtasks)
-    .values({ taskId: task!.id, title: "待删子任务" })
-    .returning();
-  const [comment] = await db
+    .values({ id: project.id, teamId: team.id, name: "待删项目", slug: "dissolve-project" });
+  const task = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: task.id,
+    projectId: project.id,
+    spaceType: "team",
+    title: "待删任务",
+    assigneeId: member.id,
+    createdById: owner.id,
+  });
+  const subtask = { id: crypto.randomUUID() };
+  await db.insert(subtasks).values({ id: subtask.id, taskId: task.id, title: "待删子任务" });
+  const comment = { id: crypto.randomUUID() };
+  await db
     .insert(comments)
-    .values({ taskId: task!.id, authorId: member.id, content: "待删评论" })
-    .returning();
-  const [invite] = await db
+    .values({ id: comment.id, taskId: task.id, authorId: member.id, content: "待删评论" });
+  const invite = { id: crypto.randomUUID() };
+  await db
     .insert(teamInvites)
-    .values({ teamId: team.id, inviteeId: outsider.id, invitedById: owner.id })
-    .returning();
-  const [notification] = await db
-    .insert(notifications)
-    .values({
-      userId: outsider.id,
-      type: "team_invite",
-      teamId: team.id,
-      projectId: project!.id,
-      taskId: task!.id,
-      actorId: owner.id,
-    })
-    .returning();
+    .values({ id: invite.id, teamId: team.id, inviteeId: outsider.id, invitedById: owner.id });
+  const notification = { id: crypto.randomUUID() };
+  await db.insert(notifications).values({
+    id: notification.id,
+    userId: outsider.id,
+    type: "team_invite",
+    teamId: team.id,
+    projectId: project.id,
+    taskId: task.id,
+    actorId: owner.id,
+  });
 
   return {
     owner,

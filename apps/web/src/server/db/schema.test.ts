@@ -44,25 +44,24 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
   });
 
   async function createUser(username: string) {
-    const [row] = await db
-      .insert(users)
-      .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-      .returning({ id: users.id, uid: users.uid });
-    return row;
+    const id = crypto.randomUUID();
+    const uid = generateUid();
+    await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+    return { id, uid };
   }
 
   async function createTeam(ownerId: string) {
     teamSeq += 1;
-    const [row] = await db
-      .insert(teams)
-      .values({
-        name: `测试团队 ${teamSeq}`,
-        slug: `test-team-${teamSeq}`,
-        ownerId,
-        joinCode: generateJoinCode(),
-      })
-      .returning({ id: teams.id, joinCode: teams.joinCode });
-    return row;
+    const id = crypto.randomUUID();
+    const joinCode = generateJoinCode();
+    await db.insert(teams).values({
+      id,
+      name: `测试团队 ${teamSeq}`,
+      slug: `test-team-${teamSeq}`,
+      ownerId,
+      joinCode,
+    });
+    return { id, joinCode };
   }
 
   async function createTask(input: {
@@ -71,18 +70,17 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     projectId?: string | null;
     spaceType?: "personal" | "team";
   }) {
-    const [row] = await db
-      .insert(tasks)
-      .values({
-        projectId: input.projectId ?? null,
-        spaceType: input.spaceType ?? "personal",
-        title: "测试任务",
-        status: "todo",
-        assigneeId: input.assigneeId ?? null,
-        createdById: input.createdById,
-      })
-      .returning({ id: tasks.id });
-    return row;
+    const id = crypto.randomUUID();
+    await db.insert(tasks).values({
+      id,
+      projectId: input.projectId ?? null,
+      spaceType: input.spaceType ?? "personal",
+      title: "测试任务",
+      status: "todo",
+      assigneeId: input.assigneeId ?? null,
+      createdById: input.createdById,
+    });
+    return { id };
   }
 
   it("① username / uid 唯一约束拒绝重复", async () => {
@@ -95,6 +93,19 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     await expect(
       db.insert(users).values({ uid: user.uid, username: "bob", passwordHash: "hash" }),
     ).rejects.toThrow();
+  });
+
+  it("用户名区分大小写（与 PG 精确匹配语义一致）", async () => {
+    await createUser("alice");
+    const second = await createUser("Alice");
+
+    const [row] = await db
+      .select({ username: users.username })
+      .from(users)
+      .where(eq(users.id, second.id));
+    expect(row!.username).toBe("Alice");
+
+    await expect(createUser("alice")).rejects.toThrow();
   });
 
   it("② projects 的 CHECK 拒绝 teamId / ownerId 双填或双空", async () => {
@@ -119,18 +130,18 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     const invitee = await createUser(`invitee_${userSeq}`);
     const team = await createTeam(inviter.id);
 
-    const [invite] = await db
-      .insert(teamInvites)
-      .values({
-        teamId: team.id,
-        inviteeId: invitee.id,
-        invitedById: inviter.id,
-        status: "pending",
-      })
-      .returning({ id: teamInvites.id });
+    const inviteId = crypto.randomUUID();
+    await db.insert(teamInvites).values({
+      id: inviteId,
+      teamId: team.id,
+      inviteeId: invitee.id,
+      invitedById: inviter.id,
+      status: "pending",
+    });
 
     await expect(
       db.insert(teamInvites).values({
+        id: crypto.randomUUID(),
         teamId: team.id,
         inviteeId: invitee.id,
         invitedById: inviter.id,
@@ -139,9 +150,10 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     ).rejects.toThrow();
 
     // 非 pending 记录不占用部分唯一索引，可再次发起 pending 邀请。
-    await db.update(teamInvites).set({ status: "declined" }).where(eq(teamInvites.id, invite.id));
+    await db.update(teamInvites).set({ status: "declined" }).where(eq(teamInvites.id, inviteId));
     await expect(
       db.insert(teamInvites).values({
+        id: crypto.randomUUID(),
         teamId: team.id,
         inviteeId: invitee.id,
         invitedById: inviter.id,
@@ -177,16 +189,35 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
         taskId: task.id,
       }),
     ).resolves.toBeDefined();
+
+    // task_id 为 NULL 的行不占用唯一索引（MySQL 唯一索引 NULL 互不相等），
+    // 同 (user, type) 可写入多条。
+    await expect(
+      db.insert(notifications).values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        type: "team_invite",
+        taskId: null,
+      }),
+    ).resolves.toBeDefined();
+    await expect(
+      db.insert(notifications).values({
+        id: crypto.randomUUID(),
+        userId: user.id,
+        type: "team_invite",
+        taskId: null,
+      }),
+    ).resolves.toBeDefined();
   });
 
   it("⑤ 删除项目级联清空 tasks / subtasks / comments / notifications", async () => {
     userSeq += 1;
     const owner = await createUser(`cascade_project_${userSeq}`);
     const team = await createTeam(owner.id);
-    const [project] = await db
+    const project = { id: crypto.randomUUID() };
+    await db
       .insert(projects)
-      .values({ teamId: team.id, name: "级联项目", slug: "cascade-project" })
-      .returning({ id: projects.id });
+      .values({ id: project.id, teamId: team.id, name: "级联项目", slug: "cascade-project" });
 
     const task = await createTask({
       createdById: owner.id,
@@ -276,22 +307,26 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     const applicant = await createUser(`join_request_user_${userSeq}`);
     const team = await createTeam(owner.id);
 
-    const [request] = await db
+    const requestId = crypto.randomUUID();
+    await db
       .insert(teamJoinRequests)
-      .values({ teamId: team.id, userId: applicant.id })
-      .returning({ id: teamJoinRequests.id });
+      .values({ id: requestId, teamId: team.id, userId: applicant.id });
 
     await expect(
-      db.insert(teamJoinRequests).values({ teamId: team.id, userId: applicant.id }),
+      db
+        .insert(teamJoinRequests)
+        .values({ id: crypto.randomUUID(), teamId: team.id, userId: applicant.id }),
     ).rejects.toThrow();
 
     // 终态不占用部分唯一索引，申请人可再次发起 pending 申请。
     await db
       .update(teamJoinRequests)
       .set({ status: "declined", respondedAt: new Date(), respondedById: owner.id })
-      .where(eq(teamJoinRequests.id, request.id));
+      .where(eq(teamJoinRequests.id, requestId));
     await expect(
-      db.insert(teamJoinRequests).values({ teamId: team.id, userId: applicant.id }),
+      db
+        .insert(teamJoinRequests)
+        .values({ id: crypto.randomUUID(), teamId: team.id, userId: applicant.id }),
     ).resolves.toBeDefined();
   });
 

@@ -44,11 +44,11 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
   });
 
   async function createUser(username = `user_${(userSeq += 1)}`) {
-    const [row] = await db
+    const id = crypto.randomUUID();
+    await db
       .insert(users)
-      .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-      .returning({ id: users.id });
-    return row!.id;
+      .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+    return id;
   }
 
   it("创建任务：默认字段齐全，assignee=创建人且 spaceType='personal'", async () => {
@@ -336,19 +336,19 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
     });
 
     // 防御性用例：即便库里出现他人评论，本人也不可删除。
-    const [foreign] = await db
+    const foreignId = crypto.randomUUID();
+    await db
       .insert(comments)
-      .values({ taskId: task.id, authorId: other, content: "他人评论" })
-      .returning({ id: comments.id });
+      .values({ id: foreignId, taskId: task.id, authorId: other, content: "他人评论" });
 
     await expect(
-      deletePersonalComment(owner, task.id, foreign!.id, db),
+      deletePersonalComment(owner, task.id, foreignId, db),
     ).rejects.toBeInstanceOf(DomainError);
     expect(await db.select().from(comments)).toHaveLength(2);
 
     await deletePersonalComment(owner, task.id, comment.id, db);
     expect((await db.select().from(comments)).map((row) => row.id)).toEqual([
-      foreign!.id,
+      foreignId,
     ]);
   });
 

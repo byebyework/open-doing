@@ -16,6 +16,7 @@ const TRUNCATE_TABLES = [
   "subtasks",
   "tasks",
   "team_invites",
+  "team_join_requests",
   "team_memberships",
   "projects",
   "teams",

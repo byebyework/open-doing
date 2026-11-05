@@ -26,12 +26,10 @@ if (!hasTestDatabase) {
 }
 
 async function createUser(db: DbClient, username: string) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, uid: users.uid, username: users.username });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, uid, username };
 }
 
 /** 造数上下文：owner + member、一团队（含项目/任务），以及 member 的个人任务。 */
@@ -39,40 +37,37 @@ async function seed(db: DbClient) {
   const owner = await createUser(db, "owner");
   const member = await createUser(db, "member");
 
-  const [team] = await db
-    .insert(teams)
-    .values({
-      name: "增长突击队",
-      slug: "growth-squad",
-      ownerId: owner.id,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
-  const [teamProject] = await db
+  const team = { id: crypto.randomUUID() };
+  await db.insert(teams).values({
+    id: team.id,
+    name: "增长突击队",
+    slug: "growth-squad",
+    ownerId: owner.id,
+    joinCode: generateJoinCode(),
+  });
+  const teamProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ teamId: team!.id, name: "官网改版", slug: "website-revamp" })
-    .returning();
-  const [teamTask] = await db
-    .insert(tasks)
-    .values({
-      projectId: teamProject!.id,
-      spaceType: "team",
-      title: "上线落地页",
-      createdById: owner.id,
-      assigneeId: member.id,
-    })
-    .returning();
-  const [personalTask] = await db
-    .insert(tasks)
-    .values({
-      spaceType: "personal",
-      title: "写周报",
-      createdById: member.id,
-      assigneeId: member.id,
-    })
-    .returning();
+    .values({ id: teamProject.id, teamId: team.id, name: "官网改版", slug: "website-revamp" });
+  const teamTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: teamTask.id,
+    projectId: teamProject.id,
+    spaceType: "team",
+    title: "上线落地页",
+    createdById: owner.id,
+    assigneeId: member.id,
+  });
+  const personalTask = { id: crypto.randomUUID() };
+  await db.insert(tasks).values({
+    id: personalTask.id,
+    spaceType: "personal",
+    title: "写周报",
+    createdById: member.id,
+    assigneeId: member.id,
+  });
 
-  return { owner, member, team: team!, teamProject: teamProject!, teamTask: teamTask!, personalTask: personalTask! };
+  return { owner, member, team, teamProject, teamTask, personalTask };
 }
 
 describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
@@ -248,19 +243,18 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
 
   it("markTeamInviteNotificationsRead：只置团队邀请通知为已读", async () => {
     const { owner, member, team, personalTask } = await seed(db);
-    const [otherTeam] = await db
-      .insert(teams)
-      .values({
-        name: "效率工程部",
-        slug: "efficiency-lab",
-        ownerId: owner.id,
-        joinCode: generateJoinCode(),
-      })
-      .returning();
+    const otherTeam = { id: crypto.randomUUID() };
+    await db.insert(teams).values({
+      id: otherTeam.id,
+      name: "效率工程部",
+      slug: "efficiency-lab",
+      ownerId: owner.id,
+      joinCode: generateJoinCode(),
+    });
 
     await createNotification({ userId: member.id, type: "team_invite", teamId: team.id, actorId: owner.id }, db);
     await createNotification(
-      { userId: member.id, type: "team_invite", teamId: otherTeam!.id, actorId: owner.id },
+      { userId: member.id, type: "team_invite", teamId: otherTeam.id, actorId: owner.id },
       db,
     );
     await createNotification({ userId: member.id, type: "task_overdue", taskId: personalTask.id }, db);

@@ -28,12 +28,10 @@ const TODAY = "2026-10-24";
 const BASE_TIME = new Date("2026-10-01T00:00:00Z").getTime();
 
 async function createUser(db: DbClient, username: string) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, username: users.username });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, username };
 }
 
 /**
@@ -49,18 +47,17 @@ async function seed(db: DbClient) {
   const member = await createUser(db, "member");
   const outsider = await createUser(db, "outsider");
 
-  const [team] = await db
-    .insert(teams)
-    .values({
-      name: "增长突击队",
-      slug: "growth-squad",
-      ownerId: owner.id,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
+  const team = { id: crypto.randomUUID(), slug: "growth-squad" };
+  await db.insert(teams).values({
+    id: team.id,
+    name: "增长突击队",
+    slug: team.slug,
+    ownerId: owner.id,
+    joinCode: generateJoinCode(),
+  });
   await db.insert(teamMemberships).values([
     {
-      teamId: team!.id,
+      teamId: team.id,
       userId: owner.id,
       role: "owner",
       joinedAt: new Date(BASE_TIME),
@@ -79,34 +76,33 @@ async function seed(db: DbClient) {
     },
   ]);
 
-  const projectRows = await db
-    .insert(projects)
-    .values([
-      {
-        teamId: team!.id,
-        name: "进度项目",
-        slug: "progress-project",
-        createdAt: new Date(BASE_TIME + 1000),
-      },
-      {
-        teamId: team!.id,
-        name: "风险项目",
-        slug: "risk-project",
-        createdAt: new Date(BASE_TIME + 2000),
-      },
-      {
-        teamId: team!.id,
-        name: "空项目",
-        slug: "empty-project",
-        createdAt: new Date(BASE_TIME + 3000),
-      },
-    ])
-    .returning({ id: projects.id, name: projects.name, slug: projects.slug });
+  const projectRows = ([
+    {
+      teamId: team.id,
+      name: "进度项目",
+      slug: "progress-project",
+      createdAt: new Date(BASE_TIME + 1000),
+    },
+    {
+      teamId: team.id,
+      name: "风险项目",
+      slug: "risk-project",
+      createdAt: new Date(BASE_TIME + 2000),
+    },
+    {
+      teamId: team.id,
+      name: "空项目",
+      slug: "empty-project",
+      createdAt: new Date(BASE_TIME + 3000),
+    },
+  ] satisfies (typeof projects.$inferInsert)[]).map((row) => ({
+    ...row,
+    id: crypto.randomUUID(),
+  }));
+  await db.insert(projects).values(projectRows);
   const [progressProject, riskProject, emptyProject] = projectRows;
 
-  const taskRows = await db
-    .insert(tasks)
-    .values([
+  const taskRows = ([
       // 进度项目：两个任务进度 1/5=0.2、3/5=0.6，项目进度应为 0.4。
       {
         spaceType: "team",
@@ -196,8 +192,11 @@ async function seed(db: DbClient) {
         createdById: owner.id,
         createdAt: new Date(BASE_TIME + 9000),
       },
-    ])
-    .returning({ id: tasks.id, title: tasks.title });
+    ] satisfies (typeof tasks.$inferInsert)[]).map((row) => ({
+      ...row,
+      id: crypto.randomUUID(),
+    }));
+  await db.insert(tasks).values(taskRows);
   const idByTitle = new Map(taskRows.map((row) => [row.title, row.id]));
 
   // 进度项目两个任务的子任务：1/5 与 3/5。
@@ -217,28 +216,27 @@ async function seed(db: DbClient) {
   ]);
 
   // 外部团队：同名成员也在其中负责逾期任务，用于验证按 teamId 隔离。
-  const [otherTeam] = await db
-    .insert(teams)
-    .values({
-      name: "外部团队",
-      slug: "outside-team",
-      ownerId: outsider.id,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
+  const otherTeam = { id: crypto.randomUUID() };
+  await db.insert(teams).values({
+    id: otherTeam.id,
+    name: "外部团队",
+    slug: "outside-team",
+    ownerId: outsider.id,
+    joinCode: generateJoinCode(),
+  });
   await db.insert(teamMemberships).values({
-    teamId: otherTeam!.id,
+    teamId: otherTeam.id,
     userId: member.id,
     role: "member",
     joinedAt: new Date(BASE_TIME + 1000),
   });
-  const [otherProject] = await db
+  const otherProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ teamId: otherTeam!.id, name: "外部项目", slug: "outside-project" })
-    .returning();
+    .values({ id: otherProject.id, teamId: otherTeam.id, name: "外部项目", slug: "outside-project" });
   await db.insert(tasks).values({
     spaceType: "team",
-    projectId: otherProject!.id,
+    projectId: otherProject.id,
     title: "外部团队逾期",
     status: "todo",
     dueDate: "2026-10-01",
@@ -588,21 +586,20 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
 
   it("空团队：无项目、无任务时统计全为 0，成员负载为空", async () => {
     const owner = await createUser(db, "empty-owner");
-    const [team] = await db
-      .insert(teams)
-      .values({
-        name: "空团队",
-        slug: "empty-team",
-        ownerId: owner.id,
-        joinCode: generateJoinCode(),
-      })
-      .returning();
+    const team = { id: crypto.randomUUID(), slug: "empty-team" };
+    await db.insert(teams).values({
+      id: team.id,
+      name: "空团队",
+      slug: team.slug,
+      ownerId: owner.id,
+      joinCode: generateJoinCode(),
+    });
     await db
       .insert(teamMemberships)
-      .values({ teamId: team!.id, userId: owner.id, role: "owner" });
+      .values({ teamId: team.id, userId: owner.id, role: "owner" });
 
     const overview = await getTeamOverview(
-      { teamId: team!.id, teamSlug: team!.slug, today: TODAY },
+      { teamId: team.id, teamSlug: team.slug, today: TODAY },
       db,
     );
 

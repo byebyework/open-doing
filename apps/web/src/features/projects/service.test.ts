@@ -36,11 +36,11 @@ if (!hasTestDatabase) {
 
 /** 直插用户，避免每个用例都走 argon2 哈希。 */
 async function createUser(db: DbClient, username: string): Promise<{ id: string }> {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(users)
-    .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-    .returning({ id: users.id });
-  return row!;
+    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+  return { id };
 }
 
 /** 同一用例内多次建团队时用户名需唯一，用递增序号兜底。 */
@@ -206,18 +206,19 @@ describe.skipIf(!hasTestDatabase)("团队项目 service", () => {
       db,
     );
 
-    const [task] = await db
+    const task = { id: crypto.randomUUID() };
+    await db
       .insert(tasks)
       .values({
+        id: task.id,
         projectId: project.id,
         spaceType: "team",
         title: "任务",
         assigneeId: owner.id,
         createdById: owner.id,
-      })
-      .returning();
-    await db.insert(subtasks).values({ taskId: task!.id, title: "子任务" });
-    await db.insert(comments).values({ taskId: task!.id, authorId: owner.id, content: "评论" });
+      });
+    await db.insert(subtasks).values({ taskId: task.id, title: "子任务" });
+    await db.insert(comments).values({ taskId: task.id, authorId: owner.id, content: "评论" });
     await db.insert(notifications).values({
       userId: owner.id,
       type: "task_assigned",

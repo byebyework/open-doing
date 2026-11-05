@@ -45,11 +45,11 @@ if (!hasTestDatabase) {
 
 /** 用户夹具：故意不写提醒开关列，让数据库默认值生效。 */
 async function createUser(db: DbClient, username: string) {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(users)
-    .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-    .returning({ id: users.id });
-  return row!;
+    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+  return { id };
 }
 
 /** 不存在的用户 ID（合法 UUID，但库里没有此用户）。 */

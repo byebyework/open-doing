@@ -26,11 +26,11 @@ if (!hasTestDatabase) {
 
 /** 直插用户，避免每个用例都走 argon2 哈希。 */
 async function createUser(db: DbClient, username: string): Promise<{ id: string }> {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(users)
-    .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-    .returning({ id: users.id });
-  return row!;
+    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+  return { id };
 }
 
 describe.skipIf(!hasTestDatabase)("团队 service", () => {

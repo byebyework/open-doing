@@ -64,52 +64,42 @@ function shanghai(day: string, time = "10:00:00"): Date {
 }
 
 async function createUser(db: DbClient, username: string) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
-    .insert(users)
-    .values({ uid, username, passwordHash: "test-hash" })
-    .returning({ id: users.id, username: users.username });
-  return row!;
+  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  return { id, username };
 }
 
 async function createPersonalProject(
   db: DbClient,
   input: { ownerId: string; name: string; slug: string },
 ) {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(projects)
-    .values({ ownerId: input.ownerId, name: input.name, slug: input.slug })
-    .returning({ id: projects.id });
-  return row!;
+    .values({ id, ownerId: input.ownerId, name: input.name, slug: input.slug });
+  return { id };
 }
 
 async function createTeam(db: DbClient, input: { ownerId: string; name: string; slug: string }) {
-  const [row] = await db
-    .insert(teams)
-    .values({
-      name: input.name,
-      slug: input.slug,
-      ownerId: input.ownerId,
-      joinCode: generateJoinCode(),
-    })
-    .returning({ id: teams.id, slug: teams.slug });
-  return row!;
+  const id = crypto.randomUUID();
+  await db.insert(teams).values({ id, ...input, joinCode: generateJoinCode() });
+  return { id, slug: input.slug };
 }
 
 async function createTeamProject(
   db: DbClient,
   input: { teamId: string; name: string; slug: string; createdAt?: Date },
 ) {
-  const [row] = await db
-    .insert(projects)
-    .values({
-      teamId: input.teamId,
-      name: input.name,
-      slug: input.slug,
-      ...(input.createdAt ? { createdAt: input.createdAt } : {}),
-    })
-    .returning({ id: projects.id });
-  return row!;
+  const id = crypto.randomUUID();
+  await db.insert(projects).values({
+    id,
+    teamId: input.teamId,
+    name: input.name,
+    slug: input.slug,
+    ...(input.createdAt ? { createdAt: input.createdAt } : {}),
+  });
+  return { id };
 }
 
 /** 团队成员关系夹具：joinedAt 显式给定，保证 `listMembers` 的排序稳定。 */
@@ -145,23 +135,22 @@ async function createTask(
     updatedAt: Date;
   },
 ) {
-  const [row] = await db
-    .insert(tasks)
-    .values({
-      spaceType: input.spaceType ?? "personal",
-      projectId: input.projectId ?? null,
-      title: input.title,
-      status: input.status ?? "todo",
-      dueDate: input.dueDate ?? null,
-      // 显式 `null` 表示未指派；只有省略字段时才回落到创建人。
-      assigneeId:
-        input.assigneeId === undefined ? input.createdById : input.assigneeId,
-      createdById: input.createdById,
-      createdAt: input.createdAt,
-      updatedAt: input.updatedAt,
-    })
-    .returning({ id: tasks.id });
-  return row!;
+  const id = crypto.randomUUID();
+  await db.insert(tasks).values({
+    id,
+    spaceType: input.spaceType ?? "personal",
+    projectId: input.projectId ?? null,
+    title: input.title,
+    status: input.status ?? "todo",
+    dueDate: input.dueDate ?? null,
+    // 显式 `null` 表示未指派；只有省略字段时才回落到创建人。
+    assigneeId:
+      input.assigneeId === undefined ? input.createdById : input.assigneeId,
+    createdById: input.createdById,
+    createdAt: input.createdAt,
+    updatedAt: input.updatedAt,
+  });
+  return { id };
 }
 
 describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {

@@ -31,12 +31,12 @@ async function createUser(
     overdueReminderEnabled?: boolean;
   } = {},
 ) {
+  const id = crypto.randomUUID();
   const uid = generateUid();
-  const [row] = await db
+  await db
     .insert(users)
-    .values({ uid, username, passwordHash: "test-hash", ...prefs })
-    .returning();
-  return row!;
+    .values({ id, uid, username, passwordHash: "test-hash", ...prefs });
+  return { id };
 }
 
 /** 造数上下文：owner + assignee（可指定提醒开关），一个团队项目。 */
@@ -50,21 +50,20 @@ async function seed(
   const owner = await createUser(db, "owner");
   const assignee = await createUser(db, "assignee", assigneePrefs);
 
-  const [team] = await db
-    .insert(teams)
-    .values({
-      name: "增长突击队",
-      slug: "growth-squad",
-      ownerId: owner.id,
-      joinCode: generateJoinCode(),
-    })
-    .returning();
-  const [teamProject] = await db
+  const team = { id: crypto.randomUUID() };
+  await db.insert(teams).values({
+    id: team.id,
+    name: "增长突击队",
+    slug: "growth-squad",
+    ownerId: owner.id,
+    joinCode: generateJoinCode(),
+  });
+  const teamProject = { id: crypto.randomUUID() };
+  await db
     .insert(projects)
-    .values({ teamId: team!.id, name: "官网改版", slug: "website-revamp" })
-    .returning();
+    .values({ id: teamProject.id, teamId: team.id, name: "官网改版", slug: "website-revamp" });
 
-  return { owner, assignee, team: team!, teamProject: teamProject! };
+  return { owner, assignee, team, teamProject };
 }
 
 /** 插入一条任务，默认是「未完成、团队项目、指派给 assignee」。 */
@@ -80,19 +79,18 @@ async function createTask(
     dueDate?: string | null;
   },
 ) {
-  const [row] = await db
-    .insert(tasks)
-    .values({
-      projectId: input.projectId ?? null,
-      spaceType: input.spaceType ?? "team",
-      title: input.title ?? "任务",
-      status: input.status ?? "todo",
-      assigneeId: input.assigneeId,
-      dueDate: input.dueDate,
-      createdById: input.createdById,
-    })
-    .returning();
-  return row!;
+  const id = crypto.randomUUID();
+  await db.insert(tasks).values({
+    id,
+    projectId: input.projectId ?? null,
+    spaceType: input.spaceType ?? "team",
+    title: input.title ?? "任务",
+    status: input.status ?? "todo",
+    assigneeId: input.assigneeId,
+    dueDate: input.dueDate,
+    createdById: input.createdById,
+  });
+  return { id };
 }
 
 async function listUserNotifications(db: DbClient, userId: string) {

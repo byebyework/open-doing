@@ -45,11 +45,11 @@ async function createUser(
   db: DbClient,
   username: string,
 ): Promise<{ id: string; username: string }> {
-  const [row] = await db
+  const id = crypto.randomUUID();
+  await db
     .insert(users)
-    .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-    .returning({ id: users.id, username: users.username });
-  return row!;
+    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+  return { id, username };
 }
 
 /** 同一用例内多次建团队时用户名需唯一，用递增序号兜底。 */
@@ -567,18 +567,17 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
 
     it("个人任务不能被团队详情查到", async () => {
       const { owner, team } = await setupTeamWithProject(db);
-      const [personalTask] = await db
-        .insert(tasks)
-        .values({
-          spaceType: "personal",
-          title: "个人任务",
-          assigneeId: owner.id,
-          createdById: owner.id,
-        })
-        .returning();
+      const personalTask = { id: crypto.randomUUID() };
+      await db.insert(tasks).values({
+        id: personalTask.id,
+        spaceType: "personal",
+        title: "个人任务",
+        assigneeId: owner.id,
+        createdById: owner.id,
+      });
 
       await expect(
-        getTeamTaskDetail({ teamId: team.id, taskId: personalTask!.id, actorId: owner.id }, db),
+        getTeamTaskDetail({ teamId: team.id, taskId: personalTask.id, actorId: owner.id }, db),
       ).resolves.toBeNull();
     });
 
@@ -627,32 +626,31 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       const member = await createUser(db, uniqueName("member"));
       await addMember(db, team.id, member.id, "member");
 
-      const [row] = await db
-        .insert(tasks)
-        .values({
-          projectId: project.id,
-          spaceType: "team",
-          title: "孤儿任务",
-          assigneeId: null,
-          createdById: owner.id,
-        })
-        .returning();
+      const row = { id: crypto.randomUUID() };
+      await db.insert(tasks).values({
+        id: row.id,
+        projectId: project.id,
+        spaceType: "team",
+        title: "孤儿任务",
+        assigneeId: null,
+        createdById: owner.id,
+      });
 
       const rows = await listTeamProjectTasks(
         { teamId: team.id, projectId: project.id, actorId: owner.id },
         db,
       );
-      expect(rows.find((item) => item.id === row!.id)!.assigneeName).toBeNull();
+      expect(rows.find((item) => item.id === row.id)!.assigneeName).toBeNull();
 
       await expect(
         updateTeamTask(
-          { teamId: team.id, taskId: row!.id, actorId: member.id, title: "认领" },
+          { teamId: team.id, taskId: row.id, actorId: member.id, title: "认领" },
           db,
         ),
       ).rejects.toBeInstanceOf(TaskPermissionError);
 
       const updated = await updateTeamTask(
-        { teamId: team.id, taskId: row!.id, actorId: owner.id, assigneeId: member.id },
+        { teamId: team.id, taskId: row.id, actorId: owner.id, assigneeId: member.id },
         db,
       );
       expect(updated.assigneeId).toBe(member.id);

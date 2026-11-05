@@ -38,11 +38,11 @@ describe.skipIf(!hasTestDatabase)("个人项目 service", () => {
   });
 
   async function createUser(username = `user_${(userSeq += 1)}`) {
-    const [row] = await db
+    const id = crypto.randomUUID();
+    await db
       .insert(users)
-      .values({ uid: generateUid(), username, passwordHash: "test-hash" })
-      .returning({ id: users.id });
-    return row!.id;
+      .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+    return id;
   }
 
   it("创建项目：返回映射后的 Project，slug 唯一且日期为 ISO 字符串", async () => {
@@ -154,19 +154,20 @@ describe.skipIf(!hasTestDatabase)("个人项目 service", () => {
     const userId = await createUser();
     const project = await createPersonalProject(userId, { name: "Cascade" }, db);
 
-    const [task] = await db
+    const task = { id: crypto.randomUUID() };
+    await db
       .insert(tasks)
       .values({
+        id: task.id,
         projectId: project.id,
         spaceType: "personal",
         title: "项目内任务",
         status: "todo",
         assigneeId: userId,
         createdById: userId,
-      })
-      .returning({ id: tasks.id });
+      });
 
-    await db.insert(subtasks).values({ taskId: task!.id, title: "子任务" });
+    await db.insert(subtasks).values({ taskId: task.id, title: "子任务" });
     await db
       .insert(comments)
       .values({ taskId: task!.id, authorId: userId, content: "备注" });
