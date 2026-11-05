@@ -39,7 +39,11 @@ export interface MyTaskStats {
  * 统计本人在全部空间的四项任务指标。
  *
  * 选择「一条多 count 聚合 SQL」而非四条独立 count：只扫描一次 `tasks` 表，
- * 用 `count(*) FILTER (WHERE ...)` 在同一次聚合中分别计数。
+ * 用 `sum(case when ... then 1 else 0 end)` 在同一次聚合中分别计数
+ * （MySQL 无 `count(*) FILTER`）。
+ *
+ * `sum(...)` 在 MySQL 返回 DECIMAL（mysql2 映射为字符串），空集合上返回
+ * NULL；统一 `cast(... as signed)` + `coalesce(0)` 还原 PG 的 number / 0 语义。
  */
 export async function getMyTaskStats(
   input: { userId: string; today: string; weekStart: string },
@@ -50,19 +54,20 @@ export async function getMyTaskStats(
 
   const [row] = await client
     .select({
-      inProgress: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress'))::int`,
+      inProgress: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'in_progress' then 1 else 0 end) as signed), 0)`,
       // 进行中按空间拆分（个人 / 团队），供 Dashboard 卡片 delta 展示。
-      inProgressPersonal: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'personal'))::int`,
-      inProgressTeam: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'team'))::int`,
+      inProgressPersonal: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'personal' then 1 else 0 end) as signed), 0)`,
+      inProgressTeam: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'in_progress' and ${tasks.spaceType} = 'team' then 1 else 0 end) as signed), 0)`,
       // 临期：未完成且截止日期为今天或明天。
-      dueSoon: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} in (${today}::date, ${tomorrow}::date)))::int`,
+      dueSoon: sql<number>`coalesce(cast(sum(case when ${tasks.status} <> 'done' and ${tasks.dueDate} in (${today}, ${tomorrow}) then 1 else 0 end) as signed), 0)`,
       // 今天到期的未完成任务（dueSoon 的子集；卡 delta 需要不封顶的精确值）。
-      dueToday: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} = ${today}::date))::int`,
+      dueToday: sql<number>`coalesce(cast(sum(case when ${tasks.status} <> 'done' and ${tasks.dueDate} = ${today} then 1 else 0 end) as signed), 0)`,
       // 逾期：未完成且截止日期早于今天（当天不算逾期）。
-      overdue: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today}::date))::int`,
+      overdue: sql<number>`coalesce(cast(sum(case when ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today} then 1 else 0 end) as signed), 0)`,
       // 本周完成：以 updatedAt 归入本周（周一为起点）。`weekStart` 是上海本地
-      // 日历日，显式按 Asia/Shanghai 换算为 timestamptz，避免跟随数据库会话时区。
-      doneThisWeek: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.updatedAt} >= (${weekStart}::timestamp AT TIME ZONE 'Asia/Shanghai')))::int`,
+      // 日历日；驱动把会话时区固定为 +08:00，裸日期参数与 timestamp 列按
+      // 「当天零点」比较，即为上海周一起点。
+      doneThisWeek: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'done' and ${tasks.updatedAt} >= ${weekStart} then 1 else 0 end) as signed), 0)`,
     })
     .from(tasks)
     .where(eq(tasks.assigneeId, userId));
@@ -131,7 +136,7 @@ export interface TodayBoard {
  * 条件是 `assigneeId = userId and status <> 'done' and dueDate <= today`：
  * 个人 + 指派给我的团队任务天然都被 assignee 覆盖，不区分空间。
  * 列表按截止日期升序（逾期在前，今天最后）；本查询已排除空截止日期，
- * 无需 `nulls last`。count 与列表复用同一 where，各一条 SQL 并行执行。
+ * 无需额外的 NULL 排序处理。count 与列表复用同一 where，各一条 SQL 并行执行。
  */
 export async function getTodayBoard(
   input: { userId: string; today: string; limit?: number },
@@ -148,8 +153,8 @@ export async function getTodayBoard(
   const subtaskStats = client
     .select({
       taskId: subtasks.taskId,
-      subtaskCount: sql<number>`count(*)::int`.as("subtask_count"),
-      completedSubtaskCount: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+      subtaskCount: sql<number>`count(*)`.as("subtask_count"),
+      completedSubtaskCount: sql<number>`coalesce(cast(sum(case when ${subtasks.completed} then 1 else 0 end) as signed), 0)`.as(
         "completed_subtask_count",
       ),
     })
@@ -171,8 +176,8 @@ export async function getTodayBoard(
         teamName: teams.name,
         teamSlug: teams.slug,
         spaceType: tasks.spaceType,
-        subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)::int`,
-        completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)::int`,
+        subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)`,
+        completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)`,
       })
       .from(tasks)
       .leftJoin(projects, eq(tasks.projectId, projects.id))
@@ -182,7 +187,7 @@ export async function getTodayBoard(
       .orderBy(asc(tasks.dueDate), desc(tasks.createdAt))
       .limit(limit),
     client
-      .select({ total: sql<number>`count(*)::int` })
+      .select({ total: sql<number>`count(*)` })
       .from(tasks)
       .where(condition),
   ]);

@@ -125,18 +125,18 @@ export interface TeamSpaceAnalysis {
 }
 
 /**
- * 上海日历日文本：`timestamptz → 上海本地日期 → YYYY-MM-DD`。
+ * 上海日历日文本：`timestamp → 上海本地日期 → YYYY-MM-DD`。
  *
  * 完成日 = `updated_at` 的上海日历日（M3 代理口径，与 Calendar / 通知同源）；
- * 显式 `AT TIME ZONE 'Asia/Shanghai'`，不跟随数据库会话时区。SQL 侧先物化成
- * 日期字符串再进 TS 分桶，避免 JS `Date` 的时区漂移。
+ * 驱动把会话时区固定为 +08:00，因此 `date()` 直接得到上海日历日，不跟随
+ * 其他时区。SQL 侧先物化成日期字符串再进 TS 分桶，避免 JS `Date` 的时区漂移。
  */
-const completedDay = sql<string>`(${tasks.updatedAt} AT TIME ZONE 'Asia/Shanghai')::date::text`;
+const completedDay = sql<string>`cast(date(${tasks.updatedAt}) as char)`;
 
 /** 创建日的上海日历日文本，口径同 `completedDay`。 */
-const createdDay = sql<string>`(${tasks.createdAt} AT TIME ZONE 'Asia/Shanghai')::date::text`;
+const createdDay = sql<string>`cast(date(${tasks.createdAt}) as char)`;
 
-/** 单条 `count(*) FILTER` 聚合的原始行。 */
+/** 统计卡多聚合查询的原始行。 */
 interface StatsRow {
   inProgress: number;
   doneThisMonth: number;
@@ -212,7 +212,7 @@ export async function getPersonalSpaceAnalysis(
           projectId: tasks.projectId,
           projectName: projects.name,
           spaceType: tasks.spaceType,
-          doneCount: sql<number>`count(*)::int`,
+          doneCount: sql<number>`count(*)`,
         })
         .from(tasks)
         .leftJoin(projects, eq(tasks.projectId, projects.id))
@@ -304,16 +304,16 @@ export async function getTeamSpaceAnalysis(
   ] = await Promise.all([
     getTeamOverview({ teamId, teamSlug, today }, client),
     client
-      .select({ count: sql<number>`count(*)::int` })
+      .select({ count: sql<number>`count(*)` })
       .from(tasks)
       .innerJoin(projects, eq(tasks.projectId, projects.id))
       .where(
         and(
           scope,
           eq(tasks.status, "done"),
-          // `weekStart` 是上海本地日历日，显式换算为 timestamptz，
-          // 不跟随数据库会话时区（沿 `getMyTaskStats` 的注释口径）。
-          sql`${tasks.updatedAt} >= (${weekStart}::timestamp AT TIME ZONE 'Asia/Shanghai')`,
+          // `weekStart` 是上海本地日历日；会话时区固定 +08:00，裸日期参数与
+          // timestamp 列按「当天零点」比较，即为上海周一起点。
+          sql`${tasks.updatedAt} >= ${weekStart}`,
         ),
       ),
     client
@@ -348,7 +348,9 @@ export async function getTeamSpaceAnalysis(
         and(
           scope,
           eq(tasks.status, "in_progress"),
-          sql`${tasks.updatedAt} < (${zombieCutoff}::timestamp AT TIME ZONE 'Asia/Shanghai')`,
+          // `zombieCutoff` 是 today-14 的上海日历日；裸日期参数比较即
+          // 「today-14 上海零点」，当天任意时刻更新都不算僵尸。
+          sql`${tasks.updatedAt} < ${zombieCutoff}`,
         ),
       )
       .orderBy(asc(tasks.updatedAt))
@@ -454,12 +456,15 @@ function toThroughput(
 }
 
 /**
- * 统计卡：一条 `count(*) FILTER (WHERE ...)` 聚合（沿 `getMyTaskStats` 写法）。
+ * 统计卡：一条多 `sum(case when ... then 1 else 0 end)` 聚合
+ * （MySQL 无 `count(*) FILTER`；沿 `getMyTaskStats` 写法）。
  *
  * - `doneThisMonth`：done 且上海完成日 ≥ 本月 1 日；
  * - `overdue`：未完成且截止日早于今天（当天不算逾期）；
  * - 按时率分母：done + 有截止日期 + 完成日 ∈ `[today - 29, today]`；
  *   分子额外要求完成日 ≤ 截止日。
+ *
+ * `sum(...)` 的 DECIMAL 字符串 / NULL 语义用 cast + coalesce 归一成 number。
  */
 async function selectStats(
   client: DbClient,
@@ -470,11 +475,13 @@ async function selectStats(
 ): Promise<StatsRow | undefined> {
   const [row] = await client
     .select({
-      inProgress: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress'))::int`,
-      doneThisMonth: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${completedDay} >= ${monthStart}))::int`,
-      overdue: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today}::date))::int`,
-      onTimeDenominator: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.dueDate} is not null and ${completedDay} >= ${onTimeStart} and ${completedDay} <= ${today}))::int`,
-      onTimeCount: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.dueDate} is not null and ${completedDay} >= ${onTimeStart} and ${completedDay} <= ${today} and ${completedDay} <= ${tasks.dueDate}::text))::int`,
+      inProgress: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'in_progress' then 1 else 0 end) as signed), 0)`,
+      doneThisMonth: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'done' and ${completedDay} >= ${monthStart} then 1 else 0 end) as signed), 0)`,
+      overdue: sql<number>`coalesce(cast(sum(case when ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today} then 1 else 0 end) as signed), 0)`,
+      onTimeDenominator: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'done' and ${tasks.dueDate} is not null and ${completedDay} >= ${onTimeStart} and ${completedDay} <= ${today} then 1 else 0 end) as signed), 0)`,
+      // `completedDay` 已是 `YYYY-MM-DD` 字符串，与 date 列同格式，
+      // 可直接做字典序比较。
+      onTimeCount: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'done' and ${tasks.dueDate} is not null and ${completedDay} >= ${onTimeStart} and ${completedDay} <= ${today} and ${completedDay} <= ${tasks.dueDate} then 1 else 0 end) as signed), 0)`,
     })
     .from(tasks)
     .where(eq(tasks.assigneeId, userId));
