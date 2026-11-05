@@ -24,10 +24,10 @@
 import type { TaskStatus } from "@open-doing/types";
 import { hash } from "@node-rs/argon2";
 import { eq, or } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
-import { migrate } from "drizzle-orm/postgres-js/migrator";
+import { drizzle } from "drizzle-orm/mysql2";
+import { migrate } from "drizzle-orm/mysql2/migrator";
 import { fileURLToPath } from "node:url";
-import postgres from "postgres";
+import mysql from "mysql2/promise";
 
 import { generateJoinCode } from "../../lib/join-code";
 import { todayInShanghai } from "../../lib/today";
@@ -501,9 +501,18 @@ async function seed(): Promise<void> {
     );
   }
 
-  // 忽略迁移重放时 PostgreSQL 的 "already exists, skipping" 通知，保持输出简洁。
-  const sqlClient = postgres(databaseUrl, { max: 1, onnotice: () => {} });
-  const db = drizzle(sqlClient, { schema });
+  // 连接数固定为 1：seed 全程串行执行，单连接同时保证会话时区设置与
+  // 事务落在同一个会话里。`timezone` 只影响 mysql2 对 JS Date 的编解码，
+  // 会话时区仍需显式 `SET time_zone`（与 client.ts / testing.ts 一致）。
+  const pool = mysql.createPool({
+    uri: databaseUrl,
+    connectionLimit: 1,
+    timezone: "+08:00",
+  });
+  pool.on("connection", (conn) => {
+    void conn.query("SET time_zone = '+08:00'");
+  });
+  const db = drizzle(pool, { schema, mode: "default" });
 
   try {
     // 与 testing.ts 相同的迁移重放方式：空库也能直接 seed。
@@ -535,9 +544,11 @@ async function seed(): Promise<void> {
             createdAt: timestampFromOffset(today, -30, 9),
           })),
         )
-        .returning({ id: users.id, username: users.username });
+        .$returningId();
+      // MySQL 无 RETURNING：`$returningId` 按 values 顺序返回生成的主键，
+      // 这里用同一顺序的 SEED_USERS 建立用户名 → ID 映射。
       const userIdByName = new Map(
-        userRows.map((row) => [row.username, row.id] as const),
+        SEED_USERS.map((user, index) => [user.username, userRows[index]!.id] as const),
       );
 
       const [team] = await tx
@@ -549,7 +560,7 @@ async function seed(): Promise<void> {
           ownerId: requireId(userIdByName, "周牧"),
           createdAt: timestampFromOffset(today, -21, 10),
         })
-        .returning({ id: teams.id });
+        .$returningId();
       if (!team) throw new Error("seed 内部错误：团队创建失败");
 
       await tx.insert(teamMemberships).values(
@@ -573,7 +584,7 @@ async function seed(): Promise<void> {
             createdAt: timestampFromOffset(today, -20, 10),
           })),
         )
-        .returning({ id: projects.id, slug: projects.slug });
+        .$returningId();
 
       const personalProjectRows = await tx
         .insert(projects)
@@ -587,16 +598,18 @@ async function seed(): Promise<void> {
             createdAt: timestampFromOffset(today, -18, 10),
           })),
         )
-        .returning({ id: projects.id, slug: projects.slug });
+        .$returningId();
 
+      // MySQL 无 RETURNING：两次批量插入的 `$returningId` 结果都按 values
+      // 顺序返回，因此可直接用 SEED 项目列表的下标建立 key → ID 映射。
       const projectIdByKey = new Map<string, string>();
-      for (const project of TEAM_PROJECTS) {
-        const row = teamProjectRows.find((candidate) => candidate.slug === project.slug);
+      for (const [index, project] of TEAM_PROJECTS.entries()) {
+        const row = teamProjectRows[index];
         if (!row) throw new Error(`seed 内部错误：团队项目 ${project.slug} 创建失败`);
         projectIdByKey.set(project.key, row.id);
       }
-      for (const project of PERSONAL_PROJECTS) {
-        const row = personalProjectRows.find((candidate) => candidate.slug === project.slug);
+      for (const [index, project] of PERSONAL_PROJECTS.entries()) {
+        const row = personalProjectRows[index];
         if (!row) throw new Error(`seed 内部错误：个人项目 ${project.slug} 创建失败`);
         projectIdByKey.set(project.key, row.id);
       }
@@ -640,7 +653,7 @@ async function seed(): Promise<void> {
             createdAt,
             updatedAt,
           })
-          .returning({ id: tasks.id });
+          .$returningId();
         if (!task) throw new Error(`seed 内部错误：任务「${seedTask.title}」创建失败`);
         taskCount += 1;
 
@@ -692,7 +705,7 @@ async function seed(): Promise<void> {
     );
     console.log("登录账号：林夏（doing_x7k2m9），密码：seed-password。");
   } finally {
-    await sqlClient.end({ timeout: 5 });
+    await pool.end();
   }
 }
 
