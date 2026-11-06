@@ -3,6 +3,7 @@
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import {
   Select,
   SelectContent,
@@ -68,6 +69,7 @@ export function SpaceKanbanFilterBar({
   const router = useRouter();
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
+  const tDate = useTranslations("date");
 
   /** 选项文案：有进度时按原型追加 `· NN%`。 */
   function optionLabel(name: string, slug?: string): string {
@@ -138,9 +140,24 @@ export function SpaceKanbanFilterBar({
         </Tabs>
       ) : null}
 
-      <span className="text-[12.5px] text-[var(--ink-500)]">{caption}</span>
+      {/* 实时筛选状态常驻触发器摘要（SSR 可见），解释性口径放进弹层。 */}
+      <HintBadge
+        ariaLabel={t("captionHintAria")}
+        summary={caption}
+        title={t("captionHintTitle")}
+        items={
+          variant === "team"
+            ? [t("captionHintScope"), t("captionHintScopeTeam"), t("captionHintCount")]
+            : [t("captionHintScope"), t("captionHintCount")]
+        }
+      />
       <span className="flex-1" />
-      <span className="text-[12.5px] text-[var(--ink-400)]">{todayCaption}</span>
+      <HintBadge
+        ariaLabel={tDate("todayHintAria")}
+        summary={todayCaption}
+        title={tDate("todayHintTitle")}
+        items={[tDate("todayHintItem")]}
+      />
     </div>
   );
 }

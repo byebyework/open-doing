@@ -27,13 +27,24 @@ if (!hasTestDatabase) {
 const TODAY = "2026-10-24";
 const BASE_TIME = new Date("2026-10-01T00:00:00Z").getTime();
 
-async function createUser(db: DbClient, username: string) {
+async function createUser(
+  db: DbClient,
+  username: string,
+  profile: { email?: string } = {},
+) {
   const id = crypto.randomUUID();
   const uid = generateUid();
   const nickname = `nick-${username}`;
   await db
     .insert(users)
-    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+    .values({
+      id,
+      uid,
+      username,
+      nickname,
+      passwordHash: "test-hash",
+      email: profile.email ?? null,
+    });
   return { id, username, nickname };
 }
 
@@ -46,7 +57,7 @@ async function createUser(db: DbClient, username: string) {
  */
 async function seed(db: DbClient) {
   const owner = await createUser(db, "owner");
-  const admin = await createUser(db, "admin");
+  const admin = await createUser(db, "admin", { email: "admin@example.com" });
   const member = await createUser(db, "member");
   const outsider = await createUser(db, "outsider");
 
@@ -391,6 +402,12 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
       "nick-owner",
       "nick-admin",
       "nick-member",
+    ]);
+    // 成员卡片展示邮箱：已填写原样下发，未填写为 null（客户端不渲染该行）。
+    expect(members.map((item) => item.email)).toEqual([
+      null,
+      "admin@example.com",
+      null,
     ]);
 
     const byName = new Map(members.map((item) => [item.username, item]));

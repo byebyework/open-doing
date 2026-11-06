@@ -48,7 +48,8 @@ export function HintBadge({
           type="button"
           aria-label={ariaLabel}
           className={cn(
-            "inline-flex cursor-pointer items-center gap-1.5 rounded-[var(--radius-4)] px-1 py-0.5 text-[12px] text-[var(--ink-500)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--ink-900)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
+            // 最小 24px 命中区域（token --space-5），纯图标态也满足 WCAG 目标尺寸。
+            "inline-flex min-h-[var(--space-5)] min-w-[var(--space-5)] cursor-pointer items-center justify-center gap-1.5 rounded-[var(--radius-4)] px-1 text-[12px] leading-[1.5] text-[var(--ink-500)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--ink-900)] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40",
             className,
           )}
         >
@@ -61,7 +62,7 @@ export function HintBadge({
         align="start"
         sideOffset={6}
         aria-label={title ?? ariaLabel}
-        className="w-auto max-w-[320px] shadow-[var(--shadow-popover)]!"
+        className="flex w-auto max-w-[320px] flex-col gap-[var(--space-2)] shadow-[var(--shadow-popover)]!"
       >
         {title ? (
           <h3 className="m-0 text-[13px] leading-snug font-semibold text-[var(--ink-900)]">

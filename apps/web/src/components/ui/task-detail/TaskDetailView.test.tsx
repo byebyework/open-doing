@@ -81,6 +81,20 @@ describe("TaskDetailView 状态控件权限门", () => {
   });
 });
 
+describe("TaskDetailView 负责人信息处邮箱", () => {
+  it("责任人填写邮箱时渲染在负责人信息处", () => {
+    const html = render(readOnly, { assigneeEmail: "owner@example.com" });
+
+    expect(html).toContain("owner@example.com");
+  });
+
+  it("责任人未填写邮箱时不渲染邮箱行", () => {
+    const html = render(readOnly, { assigneeEmail: null });
+
+    expect(html).not.toContain("owner@example.com");
+  });
+});
+
 describe("TaskDetailView 子任务权限门", () => {
   const subtask = {
     id: "55555555-5555-5555-5555-555555555555",

@@ -9,6 +9,7 @@ import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import { Alert } from "@/components/ui/shadcn/alert";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
@@ -378,13 +379,17 @@ export function RegisterForm() {
           ) : null}
         </div>
 
-        <div className="mb-5 flex gap-2 rounded-lg bg-[#eaf5ff] px-4 py-3 text-[12.5px] leading-[1.5] text-[#0b6fb8]">
-          <span aria-hidden="true">ℹ</span>
-          <span>
+        {/* UID 信息块收敛为 ⓘ 徽章：GA 摘要 + 弹层保留原有文案与示例格式。 */}
+        <div className="mb-5 flex justify-end">
+          <HintBadge
+            ariaLabel={t("uidHintAria")}
+            summary={t("uidHintSummary")}
+            title={t("uidHintTitle")}
+          >
             {t("uidHintBefore")}{" "}
             <b className="font-mono">doing_xxxx</b>{" "}
             {t("uidHintAfter")}
-          </span>
+          </HintBadge>
         </div>
 
         <Button

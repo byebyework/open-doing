@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import { Alert } from "@/components/ui/shadcn/alert";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { requireUser } from "@/features/auth/session";
@@ -24,19 +26,22 @@ export async function generateMetadata(): Promise<Metadata> {
 const CARD_CLASS =
   "rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]";
 
-/** 卡片头部：左侧标题、右侧说明（对照原型 `.card-header`）。 */
+/** 卡片头部：左侧标题（可带 ⓘ 说明徽章）、右侧说明（对照原型 `.card-header`）。 */
 function SettingsCardHeader({
   title,
   caption,
+  hint,
 }: {
   title: string;
   caption: string;
+  hint?: ReactNode;
 }) {
   return (
     <div className="mb-4 flex items-center gap-3">
       <h2 className="flex-1 text-[16px] font-semibold text-[var(--ink-900)]">
         {title}
       </h2>
+      {hint}
       <span className="text-right text-[12px] text-[color:var(--color-text-muted)]">{caption}</span>
     </div>
   );
@@ -92,10 +97,15 @@ export default async function PersonalSettingsPage() {
           <SettingsCardHeader
             title={t("reminders")}
             caption={t("remindersCaption")}
+            hint={
+              // 提醒说明收敛为 ⓘ 徽章；remindersDisabledAlert 属警示内容，保持直显。
+              <HintBadge
+                ariaLabel={t("remindersHintAria")}
+                title={t("reminders")}
+                items={[t("remindersHint")]}
+              />
+            }
           />
-          <p className="-mt-2 mb-1 text-[12px] text-[color:var(--color-text-muted)]">
-            {t("remindersHint")}
-          </p>
 
           <ReminderToggleList prefs={prefs} />
 
@@ -107,10 +117,17 @@ export default async function PersonalSettingsPage() {
         </section>
 
         <section className={CARD_CLASS}>
-          <SettingsCardHeader title={t("projectOrdering")} caption={t("projectOrderingCaption")} />
-          <p className="-mt-2 mb-1 text-[12px] text-[color:var(--color-text-muted)]">
-            {t("projectOrderingHint")}
-          </p>
+          <SettingsCardHeader
+            title={t("projectOrdering")}
+            caption={t("projectOrderingCaption")}
+            hint={
+              <HintBadge
+                ariaLabel={t("projectOrderingHintAria")}
+                title={t("projectOrdering")}
+                items={[t("projectOrderingHint"), t("orderingScopeAlert")]}
+              />
+            }
+          />
 
           <div className="flex items-center gap-4 py-[15px]">
             <div className="min-w-0 flex-1 leading-[1.45]">
@@ -128,10 +145,6 @@ export default async function PersonalSettingsPage() {
               {t("currentRule")}
             </Badge>
           </div>
-
-          <Alert variant="info" className="mt-4">
-            {t("orderingScopeAlert")}
-          </Alert>
         </section>
       </div>
     </div>

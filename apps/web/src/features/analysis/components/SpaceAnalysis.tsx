@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import { StatCard } from "@/components/ui/StatCard";
 import {
   HEALTH_COLOR_RULES,
@@ -256,11 +257,22 @@ async function PersonalBody({
       <section className={`${CARD_CLASS} mt-5`}>
         <CardHeader
           title={t("trendTitle")}
-          caption={t("captionDone", {
-            range,
-            grain: unit === "day" ? t("grainDay") : t("grainWeek"),
-            count: completionTotal,
-          })}
+          caption={
+            <HintBadge
+              ariaLabel={t("captionDoneHintAria")}
+              summary={t("captionDone", {
+                range,
+                grain: unit === "day" ? t("grainDay") : t("grainWeek"),
+                count: completionTotal,
+              })}
+              title={t("captionDoneHintTitle")}
+              items={[
+                t("captionDoneHintItemDate"),
+                t("captionDoneHintItemRange"),
+                t("captionDoneHintItemWeek"),
+              ]}
+            />
+          }
         />
         <div className="mt-3">
           <TrendChart
@@ -288,14 +300,19 @@ async function PersonalBody({
               </span>
             }
           />
-          <div className="mt-1 text-[12px] text-[var(--ink-500)]">
-            {t("captionFlow", {
-              range,
-              grain: unit === "day" ? t("grainDay") : t("grainWeek"),
-              created: createdTotal,
-              completed: completedTotal,
-              backlog: signedDiff(createdTotal - completedTotal),
-            })}
+          <div className="mt-1">
+            <HintBadge
+              ariaLabel={t("captionFlowHintAria")}
+              summary={t("captionFlow", {
+                range,
+                grain: unit === "day" ? t("grainDay") : t("grainWeek"),
+                created: createdTotal,
+                completed: completedTotal,
+                backlog: signedDiff(createdTotal - completedTotal),
+              })}
+              title={t("captionFlowHintTitle")}
+              items={[t("captionFlowHintItem")]}
+            />
           </div>
           <div className="mt-3">
             <TrendChart
@@ -312,7 +329,17 @@ async function PersonalBody({
         <section className={CARD_CLASS}>
           <CardHeader
             title={t("futureTitle")}
-            caption={t("captionFuture", { count: futureDueTotal })}
+            caption={
+              <HintBadge
+                ariaLabel={t("captionFutureHintAria")}
+                summary={t("captionFuture", { count: futureDueTotal })}
+                title={t("captionFutureHintTitle")}
+                items={[
+                  t("captionFutureHintItem"),
+                  t("captionFutureHintItemRange"),
+                ]}
+              />
+            }
           />
           <div className="mt-3">
             <TrendChart
@@ -323,7 +350,6 @@ async function PersonalBody({
               todayIndex={0}
             />
           </div>
-          <InfoCallout className="mt-3">{t("futureHint")}</InfoCallout>
         </section>
       </div>
 
@@ -343,7 +369,19 @@ async function PersonalBody({
         </div>
       </section>
 
-      <InfoCallout className="mt-4">{t("personalFooterNote")}</InfoCallout>
+      <div className="mt-4 flex justify-end">
+        <HintBadge
+          ariaLabel={t("footerHintAria")}
+          summary={t("personalFooterHintSummary")}
+          title={t("personalFooterHintTitle")}
+          items={[
+            t("onTimeHintItem"),
+            t("captionDoneHintItemDate"),
+            t("captionDoneHintItemRange"),
+            t("captionDoneHintItemWeek"),
+          ]}
+        />
+      </div>
     </>
   );
 }
@@ -436,11 +474,22 @@ async function TeamBody({
       <section className={`${CARD_CLASS} mt-5`}>
         <CardHeader
           title={t("throughputTitle")}
-          caption={t("captionDone", {
-            range,
-            grain: unit === "day" ? t("grainDay") : t("grainWeek"),
-            count: throughputTotal,
-          })}
+          caption={
+            <HintBadge
+              ariaLabel={t("captionDoneHintAria")}
+              summary={t("captionDone", {
+                range,
+                grain: unit === "day" ? t("grainDay") : t("grainWeek"),
+                count: throughputTotal,
+              })}
+              title={t("captionDoneHintTitle")}
+              items={[
+                t("captionDoneHintItemDate"),
+                t("captionDoneHintItemRange"),
+                t("captionDoneHintItemWeek"),
+              ]}
+            />
+          }
         />
         <div className="mt-3">
           <TrendChart
@@ -633,7 +682,20 @@ async function TeamBody({
         </div>
       </section>
 
-      <InfoCallout className="mt-4">{t("teamFooterNote")}</InfoCallout>
+      <div className="mt-4 flex justify-end">
+        <HintBadge
+          ariaLabel={t("footerHintAria")}
+          summary={t("teamFooterHintSummary")}
+          title={t("teamFooterHintTitle")}
+          items={[
+            t("captionDoneHintItemDate"),
+            t("memberLoadHintItem"),
+            t("zombieHintItem"),
+            t("captionDoneHintItemRange"),
+            t("captionDoneHintItemWeek"),
+          ]}
+        />
+      </div>
     </>
   );
 }

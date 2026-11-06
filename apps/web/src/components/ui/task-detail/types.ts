@@ -26,6 +26,11 @@ export interface TaskDetailModel {
   status: TaskStatus;
   assigneeId: string | null;
   assigneeName: string | null;
+  /**
+   * 责任人邮箱（可选扩展）：团队详情由调用方填充，用于「负责人信息处」展示；
+   * 未填写或已移除成员时为 null / undefined，不渲染该行。
+   */
+  assigneeEmail?: string | null;
   dueDate?: string;
   createdAt: string;
   updatedAt: string;
@@ -98,7 +103,7 @@ export interface TaskDetailViewProps {
    * 为 true 且同时提供 `onAssign` 时渲染责任人选择器；个人页不传，
    * 行为零变化。
    */
-  assigneeOptions?: { id: string; name: string }[];
+  assigneeOptions?: { id: string; name: string; email?: string | null }[];
   /**
    * 改派回调（J-5 加法扩展）。失败时应抛出，组件据此回滚选中值；
    * 提示文案由调用方负责。

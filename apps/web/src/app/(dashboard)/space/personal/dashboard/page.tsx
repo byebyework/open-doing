@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
 import {
@@ -122,14 +123,14 @@ export default async function PersonalDashboardPage() {
         todayCount={stats.dueToday}
       />
 
-      <div
-        className="mt-4 flex gap-2 rounded-lg px-3 py-2.5 text-[12.5px]"
-        style={{ background: "rgba(13,153,255,0.1)", color: "#0b6fb8" }}
-      >
-        <span aria-hidden="true" className="flex-none">
-          ℹ
-        </span>
-        <span>{t("listCallout")}</span>
+      {/* 列表口径说明收敛为 ⓘ 徽章（触发摘要短句，明细在弹层）。 */}
+      <div className="mt-4 flex justify-end">
+        <HintBadge
+          ariaLabel={t("listHintAria")}
+          summary={t("listHintSummary")}
+          title={t("listHintTitle")}
+          items={[t("listHintItem1"), t("listHintItem2")]}
+        />
       </div>
     </div>
   );

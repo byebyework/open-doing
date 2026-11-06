@@ -104,6 +104,12 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
                 <div className="truncate text-[13.5px] font-medium text-[var(--ink-900)]">
                   {displayName(member)}
                 </div>
+                {/* 成员卡片展示邮箱（规格 §1）；未填写时不占行高。 */}
+                {member.email ? (
+                  <div className="truncate text-[12px] text-[var(--ink-400)]">
+                    {member.email}
+                  </div>
+                ) : null}
                 <LoadSummary member={member} />
               </div>
               <span className="shrink-0 whitespace-nowrap text-[12px] text-[var(--ink-500)]">

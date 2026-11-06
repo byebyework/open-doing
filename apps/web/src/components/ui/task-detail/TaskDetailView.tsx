@@ -443,6 +443,14 @@ export function TaskDetailView({
       ]
     : [];
 
+  // 负责人邮箱（规格 §1「负责人信息处展示邮箱」）：改派后优先取目标选项的
+  // 邮箱，未改派时回退读模型；未填写邮箱不渲染。
+  const assigneeEmail = !assigneeId
+    ? null
+    : assigneeId === task.assigneeId
+      ? task.assigneeEmail ?? null
+      : assigneeChoices.find((option) => option.id === assigneeId)?.email ?? null;
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <Link
@@ -569,32 +577,39 @@ export function TaskDetailView({
               permissions.canAssign &&
               assigneeOptions &&
               onAssign ? (
-                <Select
-                  value={assigneeId ?? undefined}
-                  onValueChange={(value) => {
-                    void handleAssign(value);
-                  }}
-                  disabled={assigneePending}
-                >
-                  <SelectTrigger
-                    className="h-8 w-[170px]"
-                    aria-label={t("assigneeLabel")}
-                    data-testid="task-assignee-select"
+                <div className="flex min-w-0 flex-col gap-0.5">
+                  <Select
+                    value={assigneeId ?? undefined}
+                    onValueChange={(value) => {
+                      void handleAssign(value);
+                    }}
+                    disabled={assigneePending}
                   >
-                    <SelectValue placeholder={t("unassigned")} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {assigneeChoices.map((option) => (
-                      <SelectItem
-                        key={option.id}
-                        value={option.id}
-                        disabled={option.id === assigneeId}
-                      >
-                        {option.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                    <SelectTrigger
+                      className="h-8 w-[170px]"
+                      aria-label={t("assigneeLabel")}
+                      data-testid="task-assignee-select"
+                    >
+                      <SelectValue placeholder={t("unassigned")} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {assigneeChoices.map((option) => (
+                        <SelectItem
+                          key={option.id}
+                          value={option.id}
+                          disabled={option.id === assigneeId}
+                        >
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {assigneeEmail ? (
+                    <span className="break-all text-[12px] font-normal text-[var(--ink-400)]">
+                      {assigneeEmail}
+                    </span>
+                  ) : null}
+                </div>
               ) : task.assigneeName ? (
                 <>
                   {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
@@ -603,9 +618,14 @@ export function TaskDetailView({
                     name={task.assigneeName}
                     size={24}
                   />
-                  <span className="min-w-0 break-words">
-                    {task.assigneeName}
-                  </span>
+                  <div className="min-w-0">
+                    <div className="break-words">{task.assigneeName}</div>
+                    {assigneeEmail ? (
+                      <div className="break-all text-[12px] font-normal text-[var(--ink-400)]">
+                        {assigneeEmail}
+                      </div>
+                    ) : null}
+                  </div>
                 </>
               ) : (
                 <span className="font-normal text-[var(--ink-400)]">

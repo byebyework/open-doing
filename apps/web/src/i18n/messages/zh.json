@@ -38,7 +38,9 @@
     "languageCaption": "选择界面显示语言。",
     "languageChanged": "语言已切换",
     "langZh": "简体中文",
-    "langEn": "English"
+    "langEn": "English",
+    "remindersHintAria": "任务提醒说明",
+    "projectOrderingHintAria": "项目排序说明"
   },
   "common": {
     "save": "保存",
@@ -78,7 +80,10 @@
     "weekdaySat": "周六",
     "dueToday": "今天到期",
     "dueTomorrow": "明天到期",
-    "todayCaption": "基准日期 {date}（{weekday}）"
+    "todayCaption": "基准日期 {date}（{weekday}）",
+    "todayHintAria": "基准日期说明",
+    "todayHintTitle": "基准日期",
+    "todayHintItem": "「今天」统一按 Asia/Shanghai（中国标准时间）计算，逾期与临期判定以它为准。"
   },
   "auth": {
     "signIn": "登录",
@@ -141,7 +146,13 @@
     "hasAccount": "已有账号？",
     "signInInstead": "直接登录",
     "newPasswordMinLength": "新密码至少 {min} 位",
-    "uidGenerationFailed": "系统繁忙，请稍后重试"
+    "uidGenerationFailed": "系统繁忙，请稍后重试",
+    "uidHintAria": "UID 说明",
+    "uidHintSummary": "什么是 UID？",
+    "uidHintTitle": "专属 UID",
+    "noPasswordRecoveryAria": "密码找回说明",
+    "noPasswordRecoveryTitle": "密码找回",
+    "noPasswordRecoveryDetail": "v1 不提供自助找回；如忘记密码，请联系团队管理员协助重置。"
   },
   "users": {
     "profile": {
@@ -456,7 +467,12 @@
     "dangerZoneTitle": "危险操作",
     "leaveTeamDesc": "退出后你负责的任务将变为未指派，由管理员重新分配。",
     "transferTeamDesc": "转让后受让人成为所有者，你将变为管理员；团队内容不受影响。",
-    "dissolveTeamDesc": "仅所有者可操作；将永久删除团队下全部项目、任务、评论与通知。"
+    "dissolveTeamDesc": "仅所有者可操作；将永久删除团队下全部项目、任务、评论与通知。",
+    "inviteMembersHintAria": "邀请成员说明",
+    "joinCodeSectionHintAria": "凭码加入说明",
+    "leaveTeamHintAria": "退出团队说明",
+    "transferTeamHintAria": "转让团队说明",
+    "dissolveTeamHintAria": "解散团队说明"
   },
   "personal": {
     "space": "个人空间",
@@ -516,7 +532,6 @@
     "overdueHintNone": "暂无逾期",
     "statDoneThisWeek": "本周已完成",
     "statDoneThisWeekHint": "自本周一（{date}）以来",
-    "listCallout": "列表只保留「今天该看的」：截止早于今天的逾期任务置顶；已勾选完成的任务即从列表消失。想按状态或项目翻看全部任务，去「看板」。",
     "teamSubtitle": "项目健康度、重要节点与成员负载，数据自任务自动聚合；任务全景看「看板」。",
     "statProjects": "在册项目",
     "statProjectsHint": "团队全部项目",
@@ -535,7 +550,6 @@
     "emptyProjectsDescription": "团队创建项目并添加任务后，这里会自动聚合健康度。",
     "memberLoadTitle": "成员负载",
     "memberLoadHint": "进行中任务数 · 点击成员查看其项目任务",
-    "unassignedCallout": "未指派任务 {count} 项 · 完整列表与指派引导已移至 {link}（空间级看板）。",
     "loadInProgress": "进行中 {count} 项",
     "loadDueSoon": "临期 {count} 项",
     "loadOverdue": "已逾期 {count} 项",
@@ -565,7 +579,18 @@
     "sourcePersonalWithProject": "个人 · {name}",
     "dueOverdueBadge": "截止 {date} · 已逾期 {days} 天",
     "updateFailed": "更新失败，请重试",
-    "moreTasksFooter": "还有 {count} 项未完成任务（含未来截止）· 前往看板查看全部 →"
+    "moreTasksFooter": "还有 {count} 项未完成任务（含未来截止）· 前往看板查看全部 →",
+    "listHintAria": "列表口径说明",
+    "listHintSummary": "只保留今天该看的",
+    "listHintTitle": "今天列表口径",
+    "listHintItem1": "截止早于今天的逾期任务置顶；勾选完成后即从列表消失。",
+    "listHintItem2": "想按状态或项目翻看全部任务，去「看板」。",
+    "unassignedHintAria": "未指派任务说明",
+    "unassignedHintSummary": "未指派任务 {count} 项",
+    "unassignedHintTitle": "未指派任务",
+    "unassignedHintLead": "完整列表与指派引导已移至 ",
+    "unassignedHintLink": "看板",
+    "unassignedHintTail": "（空间级看板）。"
   },
   "kanban": {
     "kanban": "看板",
@@ -574,7 +599,6 @@
     "newProjectButton": "＋ 新建项目",
     "filterByProject": "按项目筛选",
     "allProjects": "全部项目",
-    "statsCaption": "口径：已完成按近 7 天 · 即将到期为 3 天内 · 点击数字即筛选",
     "statTodo": "待开始",
     "statInProgress": "进行中",
     "statDone": "已完成",
@@ -606,7 +630,18 @@
     "overdueShort": "{date} · 已逾期 {days} 天",
     "dueTodayShort": "今天到期",
     "dueTomorrowShort": "明天到期",
-    "personalFallback": "个人"
+    "personalFallback": "个人",
+    "statsHintAria": "统计口径说明",
+    "statsHintSummary": "统计口径",
+    "statsHintTitle": "统计口径",
+    "statsHintDone": "已完成按近 7 天统计。",
+    "statsHintDueSoon": "即将到期为 3 天内。",
+    "statsHintClick": "点击数字即按该口径筛选。",
+    "captionHintAria": "筛选状态说明",
+    "captionHintTitle": "筛选状态",
+    "captionHintScope": "项目与指派筛选同时生效。",
+    "captionHintCount": "计数随筛选即时更新。",
+    "captionHintScopeTeam": "团队看板只统计未完成任务。"
   },
   "calendar": {
     "calendar": "日历",
@@ -630,14 +665,16 @@
     "upcomingHint": "本周之后 · 本月以内",
     "upcomingEmpty": "本月暂无即将到期的任务",
     "collapse": "收起",
-    "upcomingMore": "查看本月其余 {count} 项 →"
+    "upcomingMore": "查看本月其余 {count} 项 →",
+    "teamHintAria": "团队日历说明",
+    "teamHintSummary": "未指派任务也会显示",
+    "teamHintTitle": "团队日历",
+    "teamHintClick": "点击任务可查看详情并切换状态。"
   },
   "analysis": {
     "analysis": "分析",
     "personalSubtitle": "完成节奏、积压涨消与截止分布——回顾你这段时间的推进；今天的待办看仪表盘。",
     "teamSubtitle": "吞吐、成员负载与项目健康度——看清团队的推进节奏；今天的风险看仪表盘。",
-    "personalFooterNote": "口径说明：完成日按任务最近一次状态更新时间近似（与日历、通知同口径）；「按时率」只统计有截止日期的已完成任务，无截止日期不进分母；时间范围只影响趋势区块，顶部统计卡恒为当前快照。切换「近 90 天」时柱状图改为按周聚合。",
-    "teamFooterNote": "口径说明：完成日按任务最近一次状态更新时间近似（与日历、通知同口径）；成员负载为当前快照（进行中任务数），不随 range 变化；僵尸任务 = 进行中且超过 14 天未更新。时间范围只影响趋势区块，顶部统计卡恒为当前快照。切换「近 90 天」时柱状图改为按周聚合。",
     "rangeGroupAria": "时间范围",
     "rangeDays": "近 {range} 天",
     "grainDay": "日",
@@ -661,7 +698,6 @@
     "captionFuture": "未来 14 天 · 按日 · 共 {count} 项",
     "valueDue": "{value} 项到期",
     "none": "无",
-    "futureHint": "含个人与指派给你的团队任务；逾期任务不计入未来分布，看上方「当前逾期」。",
     "projectCompareTitle": "项目对比",
     "projectCompareCaption": "近 {range} 天完成任务数 · 含个人与团队项目",
     "projectCompareEmpty": "暂无项目完成数据。",
@@ -690,7 +726,27 @@
     "chartDoneValue": "完成 {value}",
     "chartCreatedValue": "新增 {value}",
     "chartUnchanged": "无变化",
-    "chartEmpty": "无完成"
+    "chartEmpty": "无完成",
+    "captionDoneHintAria": "完成趋势口径说明",
+    "captionDoneHintTitle": "完成趋势口径",
+    "captionDoneHintItemDate": "完成日按任务最近一次状态更新时间近似（与日历、通知同口径）。",
+    "captionDoneHintItemRange": "时间范围只影响趋势区块，顶部统计卡恒为当前快照。",
+    "captionDoneHintItemWeek": "切换「近 90 天」时柱状图改为按周聚合。",
+    "captionFlowHintAria": "新增与完成口径说明",
+    "captionFlowHintTitle": "新增 vs 完成口径",
+    "captionFlowHintItem": "积压 = 新增数 − 完成数；负数表示积压在缩小。",
+    "captionFutureHintAria": "未来截止分布说明",
+    "captionFutureHintTitle": "未来截止分布",
+    "captionFutureHintItem": "含个人与指派给你的团队任务。",
+    "captionFutureHintItemRange": "逾期任务不计入未来分布，看上方「当前逾期」。",
+    "onTimeHintItem": "「按时率」只统计有截止日期的已完成任务，无截止日期不进分母。",
+    "memberLoadHintItem": "成员负载为当前快照（进行中任务数），不随时间范围变化。",
+    "zombieHintItem": "僵尸任务 = 进行中且超过 14 天未更新。",
+    "footerHintAria": "口径说明",
+    "personalFooterHintSummary": "口径说明",
+    "personalFooterHintTitle": "个人分析口径",
+    "teamFooterHintSummary": "口径说明",
+    "teamFooterHintTitle": "团队分析口径"
   },
   "notifications": {
     "notifications": "通知",

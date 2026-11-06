@@ -703,6 +703,11 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         db,
       );
       await addTeamComment({ teamId: team.id, taskId: task.id, actorId: owner.id, content: "评论" }, db);
+      // 负责人信息处邮箱：详情读模型随责任人一并下发。
+      await db
+        .update(users)
+        .set({ email: "member@example.com" })
+        .where(eq(users.id, member.id));
 
       const detail = await getTeamTaskDetail(
         { teamId: team.id, taskId: task.id, actorId: member.id },
@@ -713,6 +718,7 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         id: task.id,
         spaceType: "team",
         assigneeName: member.nickname,
+        assigneeEmail: "member@example.com",
         creatorName: owner.nickname,
         subtasks: [
           expect.objectContaining({ title: "已完成", completed: true }),

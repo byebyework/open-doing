@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import { Alert } from "@/components/ui/shadcn/alert";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
@@ -141,7 +142,13 @@ export function LoginForm() {
         </div>
 
         <div className="-mt-1 mb-4 flex justify-end">
-          <span className="text-[12px] text-[var(--ink-400)]">{t("noPasswordRecovery")}</span>
+          {/* 密码找回说明收敛为 ⓘ 徽章：摘要常驻，明细点开可见。 */}
+          <HintBadge
+            ariaLabel={t("noPasswordRecoveryAria")}
+            summary={t("noPasswordRecovery")}
+            title={t("noPasswordRecoveryTitle")}
+            items={[t("noPasswordRecoveryDetail")]}
+          />
         </div>
 
         <Button

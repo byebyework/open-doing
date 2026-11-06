@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import dayjs from "dayjs";
 
 import { requireUser } from "@/features/auth/session";
+import { HintBadge } from "@/components/ui/HintBadge";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { can, getMembership } from "@/features/teams/permissions";
@@ -86,8 +87,14 @@ export default async function TeamSettingsPage(
 
       {canManage ? (
         <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[var(--ink-900)]">{t("inviteMembersTitle")}</h2>
-          <p className="mb-4 text-[13px] text-[var(--ink-500)]">{t("inviteMembersHint")}</p>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-[15px] font-bold text-[var(--ink-900)]">{t("inviteMembersTitle")}</h2>
+            <HintBadge
+              ariaLabel={t("inviteMembersHintAria")}
+              title={t("inviteMembersTitle")}
+              items={[t("inviteMembersHint")]}
+            />
+          </div>
 
           <InviteMemberForm teamId={team.id} />
 
@@ -123,8 +130,14 @@ export default async function TeamSettingsPage(
 
       {canManage && joinSettings ? (
         <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-          <h2 className="mb-1 text-[15px] font-bold text-[var(--ink-900)]">{t("joinByCode")}</h2>
-          <p className="mb-4 text-[13px] text-[var(--ink-500)]">{t("joinCodeSectionHint")}</p>
+          <div className="mb-4 flex items-center gap-2">
+            <h2 className="text-[15px] font-bold text-[var(--ink-900)]">{t("joinByCode")}</h2>
+            <HintBadge
+              ariaLabel={t("joinCodeSectionHintAria")}
+              title={t("joinByCode")}
+              items={[t("joinCodeSectionHint")]}
+            />
+          </div>
 
           <JoinCodeSettings
             teamId={team.id}
@@ -160,9 +173,13 @@ export default async function TeamSettingsPage(
         {canLeave ? (
           <div className="flex items-center gap-4 py-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[var(--ink-900)]">{t("leaveTeam")}</div>
-              <div className="mt-1 text-[13px] text-[var(--ink-500)]">
-                {t("leaveTeamDesc")}
+              <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--ink-900)]">
+                {t("leaveTeam")}
+                <HintBadge
+                  ariaLabel={t("leaveTeamHintAria")}
+                  title={t("leaveTeam")}
+                  items={[t("leaveTeamDesc")]}
+                />
               </div>
             </div>
             <div className="flex-none">
@@ -174,9 +191,13 @@ export default async function TeamSettingsPage(
         {canTransfer ? (
           <div className={canLeave ? "flex items-center gap-4 border-t border-[var(--border-default)] py-3" : "flex items-center gap-4 py-3"}>
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[var(--ink-900)]">{t("transferTeam")}</div>
-              <div className="mt-1 text-[13px] text-[var(--ink-500)]">
-                {t("transferTeamDesc")}
+              <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--ink-900)]">
+                {t("transferTeam")}
+                <HintBadge
+                  ariaLabel={t("transferTeamHintAria")}
+                  title={t("transferTeam")}
+                  items={[t("transferTeamDesc")]}
+                />
               </div>
             </div>
             <div className="flex-none">
@@ -188,9 +209,13 @@ export default async function TeamSettingsPage(
         {canDissolve ? (
           <div className="flex items-center gap-4 border-t border-[var(--border-default)] py-3">
             <div className="min-w-0 flex-1">
-              <div className="text-[14px] font-semibold text-[var(--ink-900)]">{t("dissolveTeam")}</div>
-              <div className="mt-1 text-[13px] text-[var(--ink-500)]">
-                {t("dissolveTeamDesc")}
+              <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--ink-900)]">
+                {t("dissolveTeam")}
+                <HintBadge
+                  ariaLabel={t("dissolveTeamHintAria")}
+                  title={t("dissolveTeam")}
+                  items={[t("dissolveTeamDesc")]}
+                />
               </div>
             </div>
             <div className="flex-none">

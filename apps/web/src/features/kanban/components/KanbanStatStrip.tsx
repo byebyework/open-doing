@@ -6,6 +6,8 @@ import { useRouter } from "next/navigation";
 
 import type { TaskStatus } from "@open-doing/types";
 
+import { HintBadge } from "@/components/ui/HintBadge";
+
 import type { KanbanStats } from "../service";
 
 /** 统计带入参（RSC 传入统计数与激活态，点击行为下沉到本客户端组件）。 */
@@ -125,8 +127,18 @@ export function KanbanStatStrip({
 
   return (
     <div className="mt-5">
-      <div className="mb-2 text-right text-[12px] text-[var(--ink-500)]">
-        {t("statsCaption")}
+      {/* 口径说明收敛为 ⓘ 徽章：静态说明，触发器只留短摘要。 */}
+      <div className="mb-2 flex justify-end">
+        <HintBadge
+          ariaLabel={t("statsHintAria")}
+          summary={t("statsHintSummary")}
+          title={t("statsHintTitle")}
+          items={[
+            t("statsHintDone"),
+            t("statsHintDueSoon"),
+            t("statsHintClick"),
+          ]}
+        />
       </div>
       <div className="grid grid-cols-2 gap-3 min-[481px]:grid-cols-3 min-[861px]:grid-cols-5">
         {chips.map((chip) => {

@@ -58,6 +58,7 @@ export default async function TeamTaskDetailPage({
   const assigneeOptions = memberList.map(({ user: member }) => ({
     id: member.id,
     name: displayName(member),
+    email: member.email,
   }));
 
   const permissionInput = {

@@ -38,7 +38,9 @@
     "languageCaption": "Choose the language of the interface.",
     "languageChanged": "Language updated",
     "langZh": "简体中文",
-    "langEn": "English"
+    "langEn": "English",
+    "remindersHintAria": "Task reminder explanation",
+    "projectOrderingHintAria": "Project ordering explanation"
   },
   "common": {
     "save": "Save",
@@ -78,7 +80,10 @@
     "weekdaySat": "Sat",
     "dueToday": "Due today",
     "dueTomorrow": "Due tomorrow",
-    "todayCaption": "Reference date {date} ({weekday})"
+    "todayCaption": "Reference date {date} ({weekday})",
+    "todayHintAria": "Reference date explanation",
+    "todayHintTitle": "Reference date",
+    "todayHintItem": "Today is always computed in Asia/Shanghai (China Standard Time); overdue and due-soon checks follow it."
   },
   "auth": {
     "signIn": "Sign in",
@@ -141,7 +146,13 @@
     "hasAccount": "Already have an account?",
     "signInInstead": "Sign in instead",
     "newPasswordMinLength": "New password must be at least {min} characters",
-    "uidGenerationFailed": "System busy, please try again later"
+    "uidGenerationFailed": "System busy, please try again later",
+    "uidHintAria": "UID explanation",
+    "uidHintSummary": "What is a UID?",
+    "uidHintTitle": "Your UID",
+    "noPasswordRecoveryAria": "Password recovery note",
+    "noPasswordRecoveryTitle": "Password recovery",
+    "noPasswordRecoveryDetail": "V1 has no self-service recovery; if you forget your password, ask a team admin to help reset it."
   },
   "users": {
     "profile": {
@@ -456,7 +467,12 @@
     "dangerZoneTitle": "Danger zone",
     "leaveTeamDesc": "After you leave, tasks assigned to you become unassigned for an admin to reassign.",
     "transferTeamDesc": "After the transfer the grantee becomes the owner and you become an admin; team content is unaffected.",
-    "dissolveTeamDesc": "Owner only; permanently deletes all projects, tasks, comments and notifications in the team."
+    "dissolveTeamDesc": "Owner only; permanently deletes all projects, tasks, comments and notifications in the team.",
+    "inviteMembersHintAria": "Invite members explanation",
+    "joinCodeSectionHintAria": "Join by code explanation",
+    "leaveTeamHintAria": "Leave team explanation",
+    "transferTeamHintAria": "Transfer team explanation",
+    "dissolveTeamHintAria": "Dissolve team explanation"
   },
   "personal": {
     "space": "Personal space",
@@ -516,7 +532,6 @@
     "overdueHintNone": "Nothing overdue",
     "statDoneThisWeek": "Done this week",
     "statDoneThisWeekHint": "Since Monday ({date})",
-    "listCallout": "This list only keeps what matters today: overdue tasks are pinned on top, and checked-off tasks disappear. Browse everything by status or project in Kanban.",
     "teamSubtitle": "Project health, milestones, and member workload, aggregated from tasks automatically. See the full picture in Kanban.",
     "statProjects": "Projects",
     "statProjectsHint": "All team projects",
@@ -535,7 +550,6 @@
     "emptyProjectsDescription": "Once the team creates projects and adds tasks, health will show up here.",
     "memberLoadTitle": "Member workload",
     "memberLoadHint": "In-progress tasks · click a member to see their project tasks",
-    "unassignedCallout": "{count} unassigned tasks · The full list and assignment guidance moved to {link} (space-level board).",
     "loadInProgress": "{count} in progress",
     "loadDueSoon": "{count} due soon",
     "loadOverdue": "{count} overdue",
@@ -565,7 +579,18 @@
     "sourcePersonalWithProject": "Personal · {name}",
     "dueOverdueBadge": "Due {date} · {days} days overdue",
     "updateFailed": "Update failed, please try again",
-    "moreTasksFooter": "{count} more unfinished tasks (incl. future due dates) · View all in Kanban →"
+    "moreTasksFooter": "{count} more unfinished tasks (incl. future due dates) · View all in Kanban →",
+    "listHintAria": "List scope explanation",
+    "listHintSummary": "Only what matters today",
+    "listHintTitle": "Today list scope",
+    "listHintItem1": "Overdue tasks due before today stay on top; once checked complete they disappear from the list.",
+    "listHintItem2": "To browse all tasks by status or project, go to the Kanban board.",
+    "unassignedHintAria": "Unassigned tasks explanation",
+    "unassignedHintSummary": "Unassigned tasks: {count}",
+    "unassignedHintTitle": "Unassigned tasks",
+    "unassignedHintLead": "The full list and assignment guidance now live in the ",
+    "unassignedHintLink": "Kanban board",
+    "unassignedHintTail": " (space-level board)."
   },
   "kanban": {
     "kanban": "Kanban",
@@ -574,7 +599,6 @@
     "newProjectButton": "＋ New project",
     "filterByProject": "Filter by project",
     "allProjects": "All projects",
-    "statsCaption": "Done counts the last 7 days · due soon means within 3 days · click a number to filter",
     "statTodo": "To do",
     "statInProgress": "In progress",
     "statDone": "Done",
@@ -606,7 +630,18 @@
     "overdueShort": "{date} · {days} days overdue",
     "dueTodayShort": "Due today",
     "dueTomorrowShort": "Due tomorrow",
-    "personalFallback": "Personal"
+    "personalFallback": "Personal",
+    "statsHintAria": "Statistics scope explanation",
+    "statsHintSummary": "Stat scope",
+    "statsHintTitle": "Stat scope",
+    "statsHintDone": "Done counts cover the last 7 days.",
+    "statsHintDueSoon": "Due soon means within 3 days.",
+    "statsHintClick": "Click a number to filter by that stat.",
+    "captionHintAria": "Filter status explanation",
+    "captionHintTitle": "Filter status",
+    "captionHintScope": "Project and assignee filters apply together.",
+    "captionHintCount": "Counts update instantly with the filters.",
+    "captionHintScopeTeam": "The team board counts unfinished tasks only."
   },
   "calendar": {
     "calendar": "Calendar",
@@ -630,14 +665,16 @@
     "upcomingHint": "After this week · within this month",
     "upcomingEmpty": "Nothing due later this month",
     "collapse": "Collapse",
-    "upcomingMore": "Show {count} more this month →"
+    "upcomingMore": "Show {count} more this month →",
+    "teamHintAria": "Team calendar explanation",
+    "teamHintSummary": "Unassigned tasks shown too",
+    "teamHintTitle": "Team calendar",
+    "teamHintClick": "Click a task to view details and change its status."
   },
   "analysis": {
     "analysis": "Analysis",
     "personalSubtitle": "Completion pace, backlog drift, and due-date spread — review how you've been moving; today's todos live in Dashboard.",
     "teamSubtitle": "Throughput, member workload, and project health — see the team's pace; today's risks live in Dashboard.",
-    "personalFooterNote": "Method notes: completion dates approximate the task's last status update (same as Calendar and notifications); On-time rate only counts completed tasks that had due dates — tasks without due dates are excluded from the denominator; the time range only affects trend blocks, the stat cards are always the current snapshot. Switching to \"Last 90 days\" switches the bar charts to weekly buckets.",
-    "teamFooterNote": "Method notes: completion dates approximate the task's last status update (same as Calendar and notifications); member workload is a current snapshot (in-progress task count) and doesn't change with the range; stale tasks = in progress and untouched for over 14 days. The time range only affects trend blocks, the stat cards are always the current snapshot. Switching to \"Last 90 days\" switches the bar charts to weekly buckets.",
     "rangeGroupAria": "Time range",
     "rangeDays": "Last {range} days",
     "grainDay": "day",
@@ -661,7 +698,6 @@
     "captionFuture": "Next 14 days · by day · {count} total",
     "valueDue": "{value} due",
     "none": "None",
-    "futureHint": "Personal tasks plus team tasks assigned to you; overdue tasks are not counted here — see \"Currently overdue\" above.",
     "projectCompareTitle": "Project comparison",
     "projectCompareCaption": "Tasks completed in the last {range} days · personal and team projects",
     "projectCompareEmpty": "No project completion data yet.",
@@ -690,7 +726,27 @@
     "chartDoneValue": "{value} completed",
     "chartCreatedValue": "{value} created",
     "chartUnchanged": "No change",
-    "chartEmpty": "No completions"
+    "chartEmpty": "No completions",
+    "captionDoneHintAria": "Completion trend scope explanation",
+    "captionDoneHintTitle": "Completion trend scope",
+    "captionDoneHintItemDate": "Completion dates approximate the task's last status update (same rule as the calendar and notifications).",
+    "captionDoneHintItemRange": "The time range only affects trend sections; the top stat cards always show the current snapshot.",
+    "captionDoneHintItemWeek": "Switching to the last 90 days aggregates bars by week.",
+    "captionFlowHintAria": "Created vs completed scope explanation",
+    "captionFlowHintTitle": "Created vs completed scope",
+    "captionFlowHintItem": "Backlog = created − completed; a negative value means the backlog is shrinking.",
+    "captionFutureHintAria": "Future due distribution explanation",
+    "captionFutureHintTitle": "Future due distribution",
+    "captionFutureHintItem": "Includes personal tasks and team tasks assigned to you.",
+    "captionFutureHintItemRange": "Overdue tasks are excluded; see the Current overdue stat above.",
+    "onTimeHintItem": "On-time rate counts only completed tasks with a due date; tasks without one are not in the denominator.",
+    "memberLoadHintItem": "Member load is a current snapshot (in-progress task count) and does not change with the time range.",
+    "zombieHintItem": "Zombie tasks are in progress and untouched for more than 14 days.",
+    "footerHintAria": "Methodology notes",
+    "personalFooterHintSummary": "Method notes",
+    "personalFooterHintTitle": "Personal analysis notes",
+    "teamFooterHintSummary": "Method notes",
+    "teamFooterHintTitle": "Team analysis notes"
   },
   "notifications": {
     "notifications": "Notifications",

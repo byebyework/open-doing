@@ -737,6 +737,7 @@ export async function getTeamTaskDetail(
       projectName: projects.name,
       assigneeUsername: users.username,
       assigneeNickname: users.nickname,
+      assigneeEmail: users.email,
       creatorUsername: creators.username,
       creatorNickname: creators.nickname,
     })
@@ -785,6 +786,8 @@ export async function getTeamTaskDetail(
     assigneeId: task.assigneeId,
     // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。
     assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
+    // 负责人信息处展示邮箱（选填资料，未填为 null 时不渲染）。
+    assigneeEmail: row.assigneeEmail ?? null,
     dueDate: task.dueDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),

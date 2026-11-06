@@ -8,6 +8,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { DayPicker, type DayProps } from "react-day-picker";
 
+import { HintBadge } from "@/components/ui/HintBadge";
 import {
   WEEKDAY_KEYS,
   daysBetween,
@@ -476,7 +477,6 @@ export function SpaceCalendar({
   const locale = useLocale();
   const tDate = useTranslations("date");
   const tCalendar = useTranslations("calendar");
-  const tTasks = useTranslations("tasks");
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
 
   /** 月网格按 dueDate 索引（`data.items` 已覆 42 天窗口）。 */
@@ -586,22 +586,25 @@ export function SpaceCalendar({
             </span>
           ) : null
         ) : (
-          <span className="flex flex-wrap items-center gap-1.5 text-[12px] text-[var(--ink-500)]">
-            <span className="inline-flex items-center gap-1 rounded-full bg-[rgba(13,153,255,0.1)] px-2 py-0.5 text-[11px] font-medium text-[#0d99ff]">
-              <span className="h-1.5 w-1.5 rounded-full bg-current" />
-              {tTasks("unassigned")}
-            </span>
-            {tCalendar("teamHint")}
-          </span>
+          // 未指派任务上日历的说明收敛为 ⓘ 徽章，触发器保留短摘要。
+          <HintBadge
+            ariaLabel={tCalendar("teamHintAria")}
+            summary={tCalendar("teamHintSummary")}
+            title={tCalendar("teamHintTitle")}
+            items={[tCalendar("teamHint"), tCalendar("teamHintClick")]}
+          />
         )}
 
         <span className="flex-1" />
-        <span className="text-[12px] text-[var(--ink-400)]">
-          {tDate("todayCaption", {
+        <HintBadge
+          ariaLabel={tDate("todayHintAria")}
+          summary={tDate("todayCaption", {
             date: today,
             weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
           })}
-        </span>
+          title={tDate("todayHintTitle")}
+          items={[tDate("todayHintItem")]}
+        />
       </div>
 
       <div className="flex flex-col items-stretch gap-4 min-[861px]:flex-row min-[861px]:items-start">

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/ui/EmptyState";
+import { HintBadge } from "@/components/ui/HintBadge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
@@ -187,19 +188,25 @@ export default async function TeamDashboardPage(
         </div>
         <MemberLoadList members={overview.members} today={today} />
 
-        <div
-          className="mt-3 flex gap-2 rounded-lg px-3 py-2.5 text-[12.5px]"
-          style={{ background: "rgba(13,153,255,0.1)", color: "#0b6fb8" }}
-        >
-          <span aria-hidden="true" className="flex-none">
-            ℹ
-          </span>
-          <span>
-            {t("unassignedCallout", {
+        {/* 未指派信息块收敛为 ⓘ 徽章：触发摘要保留实时计数，
+            完整说明与 Kanban 跳转留在弹层。 */}
+        <div className="mt-3 flex justify-end">
+          <HintBadge
+            ariaLabel={t("unassignedHintAria")}
+            summary={t("unassignedHintSummary", {
               count: overview.unassigned.length,
-              link: "Kanban",
             })}
-          </span>
+            title={t("unassignedHintTitle")}
+          >
+            {t("unassignedHintLead")}
+            <Link
+              href={moduleHref(team.slug, "kanban")}
+              className="font-medium underline underline-offset-2"
+            >
+              {t("unassignedHintLink")}
+            </Link>
+            {t("unassignedHintTail")}
+          </HintBadge>
         </div>
       </section>
     </div>

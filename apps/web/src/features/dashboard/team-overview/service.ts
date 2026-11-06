@@ -63,6 +63,8 @@ export interface MemberLoad {
   username: string;
   /** 展示名候选：UI 侧用 `displayName(member)` 解析（username 仅用于登录）。 */
   nickname: string | null;
+  /** 成员邮箱（规格 §1「成员卡片展示邮箱」）；未填写为 null，不渲染该行。 */
+  email: string | null;
   inProgress: number;
   dueSoon: number;
   overdue: number;
@@ -269,6 +271,7 @@ export async function getTeamOverview(
     userId: user.id,
     username: user.username,
     nickname: user.nickname,
+    email: user.email,
     inProgress: 0,
     dueSoon: 0,
     overdue: 0,

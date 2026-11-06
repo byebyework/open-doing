@@ -52,8 +52,8 @@ export interface TeamTaskDetailClientProps {
   currentUserId: string;
   /** 服务端按角色计算的权限位。 */
   permissions: TaskDetailPermissions;
-  /** 团队成员（责任人选择器选项）。 */
-  assigneeOptions: { id: string; name: string }[];
+  /** 团队成员（责任人选择器选项）；email 选填，用于负责人信息处展示。 */
+  assigneeOptions: { id: string; name: string; email?: string | null }[];
 }
 
 /**
