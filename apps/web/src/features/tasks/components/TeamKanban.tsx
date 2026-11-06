@@ -191,8 +191,9 @@ function TeamKanbanCard({
         <div className="mt-2.5 flex items-center gap-2">
           {assigneeName ? (
             <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
+              {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
               <UserAvatar
-                userId={task.assigneeId ?? assigneeName}
+                userId={task.assigneeId ?? ""}
                 name={assigneeName}
                 size={22}
               />

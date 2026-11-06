@@ -597,8 +597,9 @@ export function TaskDetailView({
                 </Select>
               ) : task.assigneeName ? (
                 <>
+                  {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
                   <UserAvatar
-                    userId={task.assigneeId ?? task.assigneeName}
+                    userId={task.assigneeId ?? ""}
                     name={task.assigneeName}
                     size={24}
                   />

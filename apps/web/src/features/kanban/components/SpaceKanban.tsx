@@ -390,8 +390,9 @@ function SpaceKanbanCard({
           {variant === "team" ? (
             card.assigneeName ? (
               <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
+                {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
                 <UserAvatar
-                  userId={card.assigneeId ?? card.assigneeName}
+                  userId={card.assigneeId ?? ""}
                   name={card.assigneeName}
                   size={22}
                 />

@@ -348,8 +348,9 @@ export function TeamProjectTaskTable({
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {assigneeName ? (
                           <span className="flex items-center gap-2 text-[13px] text-[var(--ink-900)]">
+                            {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
                             <UserAvatar
-                              userId={task.assigneeId ?? assigneeName}
+                              userId={task.assigneeId ?? ""}
                               name={assigneeName}
                               size={26}
                             />

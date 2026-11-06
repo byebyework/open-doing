@@ -8,6 +8,7 @@
 export const TEST_IDS = {
   auth: {
     usernameInput: "auth-username-input",
+    nicknameInput: "auth-nickname-input",
     passwordInput: "auth-password-input",
     passwordConfirmInput: "auth-password-confirm-input",
     submitButton: "auth-submit-button",
