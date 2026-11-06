@@ -10,7 +10,7 @@ import {
 import type { DomainErrorI18n } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import { db, type DbClient } from "@/server/db/client";
-import { errorChain, isUniqueViolation } from "@/server/db/errors";
+import { isUniqueViolation, uniqueViolationKey } from "@/server/db/errors";
 import { users } from "@/server/db/schema";
 
 import {
@@ -131,15 +131,7 @@ function validateRegistration(input: AuthInput): { username: string; password: s
 
 /** 冲突是否发生在 users.username（其余唯一冲突按 UID 碰撞处理并重试）。 */
 function isUsernameConflict(error: unknown): boolean {
-  return errorChain(error).some((item) => {
-    const constraint =
-      typeof item.constraint_name === "string" ? item.constraint_name : "";
-    const message = typeof item.message === "string" ? item.message : "";
-    return (
-      constraint === "users_username_unique" ||
-      message.includes("users_username_unique")
-    );
-  });
+  return uniqueViolationKey(error) === "users_username_unique";
 }
 
 /**
