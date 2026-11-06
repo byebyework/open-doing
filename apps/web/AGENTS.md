@@ -15,7 +15,7 @@ The only application in the monorepo: pages + Server Actions + Route Handlers + 
 ## Quick facts
 
 - Next.js App Router, React Server Components by default; mutations go through Server Actions (no public REST API — Route Handlers exist only for cron).
-- PostgreSQL via Drizzle ORM; schema at `src/server/db/schema.ts`, migrations in `drizzle/`.
+- MySQL 8.0 via Drizzle ORM; schema at `src/server/db/schema.ts`, migrations in `drizzle/`. Timestamps use the custom `tzTimestamp` type (+08:00 wall strings both directions) — do not swap it for drizzle's built-in `timestamp()` (it maps UTC and skews 8h).
 - UI is the vendored shadcn/ui set (`src/components/ui/shadcn/`, Radix + cva) + Tailwind 4 (preflight enabled in `globals.css`); there is no runtime theme — colors come from design tokens in `src/app/tokens.css` (1:1 with the prototypes), and antd must not be reintroduced (a guard test pins this).
 - All user-visible copy lives in `src/i18n/messages/{zh,en}.json` (next-intl). Hardcoded CJK strings fail the cjk-guard test; new features must ship both locales.
 - "Today" is computed in Asia/Shanghai (`src/lib/today.ts`); RSCs pass `today` down as a prop — never read the local timezone in components.

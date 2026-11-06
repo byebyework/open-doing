@@ -248,7 +248,9 @@ team_invites
   id, team_id -> teams.id, invitee_id -> users.id, invited_by_id -> users.id
   status        pending | accepted | declined | rescinded
   created_at, responded_at
-  UNIQUE(team_id, invitee_id) WHERE status = 'pending'   -- partial unique index
+  UNIQUE(team_id, invitee_id, pending_scope)   -- generated column pending_scope is 'pending'
+                                               -- while status = 'pending', else NULL; NULL rows
+                                               -- are exempt from the unique index (MySQL semantics)
 
 projects
   id, name, slug, description, created_at
@@ -288,7 +290,7 @@ Key constraints and behavior:
 - Personal-space data: tasks with `space_type = 'personal'` (`project_id` may point to the owner's personal project or be null) and personal projects with `owner_id = self` are accessible only by the owner (see §7); personal-project tasks always have `assignee_id` = the owner.
 - **Cascade deletes**: deleting a project (team or personal) → its tasks/subtasks/comments and related notifications; dissolving a team → its projects, memberships, invites, notifications. Backed by database foreign keys `ON DELETE CASCADE`, with a second confirmation in the app layer.
 - Removing a member / leaving: only deletes `team_memberships`, **not tasks**; their `assignee_id` is nulled.
-- The partial unique index prevents multiple pending invites for the same person.
+- The `pending_scope` unique index prevents multiple pending invites for the same person (same pattern on `team_join_requests`); identifier columns (username, uid, slug, join_code, status, …) use `utf8mb4_bin` to keep PostgreSQL's exact-match (case-sensitive) semantics.
 
 ## 7. Permission Model (enforcement points)
 
