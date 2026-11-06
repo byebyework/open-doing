@@ -1,5 +1,7 @@
+import { createHash } from "node:crypto";
+
 import { hash, verify } from "@node-rs/argon2";
-import type { User } from "@open-doing/types";
+import type { Gender, User } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 
 import {
@@ -33,15 +35,31 @@ export {
 /** UID 唯一约束冲突时的最大重试次数（含首次插入）。 */
 const MAX_UID_ATTEMPTS = 5;
 
+/** 昵称最大长度（与 users.nickname 的 varchar(50) 一致）。 */
+const NICKNAME_MAX_LENGTH = 50;
+
+/** 可选资料字段格式（空值在归一化阶段转 null，不参与校验）。 */
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_PATTERN = /^[+\-0-9]{7,20}$/;
+
+const EMAIL_TAKEN_MESSAGE = "邮箱已被使用";
+const PHONE_TAKEN_MESSAGE = "手机号已被使用";
+
 export type AuthErrorCode =
   | "VALIDATION"
   | "USERNAME_TAKEN"
+  | "EMAIL_TAKEN"
+  | "PHONE_TAKEN"
   | "INVALID_CREDENTIALS"
   | "UID_GENERATION_FAILED";
 
 export type AuthErrorField =
   | "username"
   | "password"
+  | "nickname"
+  | "gender"
+  | "email"
+  | "phone"
   | "oldPassword"
   | "newPassword"
   | "form";
@@ -75,6 +93,14 @@ export class AuthError extends Error {
 export interface AuthInput {
   username: string;
   password: string;
+  /** 昵称：trim 后最长为 50 字符；空/未传时按 uid 生成默认昵称。 */
+  nickname?: string;
+  /** 性别：仅接受 "male" | "female" | "secret"；空/未传时为 null。 */
+  gender?: string;
+  /** 邮箱：trim + 小写；空字符串归一化为 null。 */
+  email?: string;
+  /** 手机号：trim；空字符串归一化为 null。 */
+  phone?: string;
 }
 
 function normalizeUsername(value: unknown): string {
@@ -85,14 +111,45 @@ function normalizePassword(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
 
+/** 可选文本字段：非字符串视为未填，统一 trim。 */
+function normalizeOptionalText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isGender(value: string): value is Gender {
+  return value === "male" || value === "female" || value === "secret";
+}
+
+/**
+ * 由 uid 生成默认昵称：`user_` + sha256(uid) 的前 5 位小写十六进制。
+ *
+ * 昵称列不参与唯一约束，故不保证全局唯一；仅用于注册未填昵称时的展示名。
+ */
+export function generateNickname(uid: string): string {
+  return `user_${createHash("sha256").update(uid).digest("hex").slice(0, 5)}`;
+}
+
 function invalidCredentials(): AuthError {
   return new AuthError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE, "form", {
     key: "invalidCredentials",
   });
 }
 
-/** 注册入参校验：用户名 2–20 字符，密码至少 8 位。 */
-function validateRegistration(input: AuthInput): { username: string; password: string } {
+/**
+ * 注册入参校验与归一化。
+ *
+ * 用户名 2–20 字符，密码至少 8 位；昵称 ≤50 字符，性别限枚举，
+ * 邮箱/手机号按格式校验。可选资料的空字符串一律归一化为 null
+ * （否则第二个空邮箱会撞上 users.email 的唯一索引）。
+ */
+function validateRegistration(input: AuthInput): {
+  username: string;
+  password: string;
+  nickname: string | null;
+  gender: Gender | null;
+  email: string | null;
+  phone: string | null;
+} {
   const username = normalizeUsername(input?.username);
   const password = normalizePassword(input?.password);
 
@@ -126,26 +183,66 @@ function validateRegistration(input: AuthInput): { username: string; password: s
     );
   }
 
-  return { username, password };
-}
+  const nickname = normalizeOptionalText(input?.nickname);
+  if (nickname.length > NICKNAME_MAX_LENGTH) {
+    throw new AuthError(
+      "VALIDATION",
+      `昵称最多 ${NICKNAME_MAX_LENGTH} 个字符`,
+      "nickname",
+      { key: "nicknameMaxLength", params: { max: NICKNAME_MAX_LENGTH } },
+    );
+  }
 
-/** 冲突是否发生在 users.username（其余唯一冲突按 UID 碰撞处理并重试）。 */
-function isUsernameConflict(error: unknown): boolean {
-  return uniqueViolationKey(error) === "users_username_unique";
+  const genderValue = normalizeOptionalText(input?.gender);
+  let gender: Gender | null = null;
+  if (genderValue) {
+    if (!isGender(genderValue)) {
+      throw new AuthError("VALIDATION", "性别取值不合法", "gender", {
+        key: "genderInvalid",
+      });
+    }
+    gender = genderValue;
+  }
+
+  const emailValue = normalizeOptionalText(input?.email).toLowerCase();
+  if (emailValue && !EMAIL_PATTERN.test(emailValue)) {
+    throw new AuthError("VALIDATION", "邮箱格式不正确", "email", {
+      key: "emailInvalid",
+    });
+  }
+
+  const phoneValue = normalizeOptionalText(input?.phone);
+  if (phoneValue && !PHONE_PATTERN.test(phoneValue)) {
+    throw new AuthError("VALIDATION", "手机号格式不正确", "phone", {
+      key: "phoneInvalid",
+    });
+  }
+
+  return {
+    username,
+    password,
+    nickname: nickname || null,
+    gender,
+    email: emailValue || null,
+    phone: phoneValue || null,
+  };
 }
 
 /**
  * 注册用户。
  *
  * - 用户名查重给出友好错误；并发竞态由数据库唯一约束兜底；
+ * - 可选资料（昵称/性别/邮箱/手机号）归一化后落库，未填昵称按 uid 生成；
  * - 密码用 @node-rs/argon2（默认 Argon2id）哈希，绝不明文落库；
+ * - 邮箱/手机号唯一冲突按索引名分派为对应字段错误；
  * - UID 碰撞依赖 `users.uid` 唯一约束重新生成，最多尝试 5 次。
  */
 export async function registerUser(
   input: AuthInput,
   client: DbClient = db,
 ): Promise<User> {
-  const { username, password } = validateRegistration(input);
+  const { username, password, nickname, gender, email, phone } =
+    validateRegistration(input);
 
   if (await usernameExists(username, client)) {
     throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
@@ -158,9 +255,18 @@ export async function registerUser(
   for (let attempt = 1; attempt <= MAX_UID_ATTEMPTS; attempt += 1) {
     try {
       // MySQL 无 RETURNING：先取应用层生成的 UUID，再在同一 client 上回查。
+      const uid = generateUid();
       const [inserted] = await client
         .insert(users)
-        .values({ uid: generateUid(), username, passwordHash })
+        .values({
+          uid,
+          username,
+          passwordHash,
+          nickname: nickname ?? generateNickname(uid),
+          gender,
+          email,
+          phone,
+        })
         .$returningId();
 
       const [row] = await client
@@ -182,12 +288,25 @@ export async function registerUser(
     } catch (error) {
       if (!isUniqueViolation(error)) throw error;
 
-      if (isUsernameConflict(error)) {
+      // 唯一冲突按被违反的索引分派；先分派业务唯一键，再解释为 UID 碰撞。
+      const key = uniqueViolationKey(error);
+
+      if (key === "users_username_unique") {
         throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
           key: "usernameTaken",
         });
       }
-      // 其余唯一冲突只可能来自 UID：重新生成后重试。
+      if (key === "users_email_unique") {
+        throw new AuthError("EMAIL_TAKEN", EMAIL_TAKEN_MESSAGE, "email", {
+          key: "emailTaken",
+        });
+      }
+      if (key === "users_phone_unique") {
+        throw new AuthError("PHONE_TAKEN", PHONE_TAKEN_MESSAGE, "phone", {
+          key: "phoneTaken",
+        });
+      }
+      // key 为 null：其余唯一冲突只可能来自 UID，重新生成后重试。
     }
   }
 

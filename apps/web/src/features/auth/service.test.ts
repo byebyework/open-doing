@@ -8,7 +8,13 @@ import type { DbClient } from "@/server/db/client";
 import { users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
-import { AuthError, changePassword, login, registerUser } from "./service";
+import {
+  AuthError,
+  changePassword,
+  generateNickname,
+  login,
+  registerUser,
+} from "./service";
 
 /**
  * 包装真实 generateUid，默认走真实随机；UID 碰撞用例用
@@ -104,6 +110,146 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     await expect(registerUser({ username: "alice", password: "short" }, db)).rejects.toMatchObject({
       code: "VALIDATION",
       field: "password",
+    });
+  });
+
+  describe("注册资料字段", () => {
+    it("email / phone 传空字符串时落库为 null", async () => {
+      const user = await registerUser(
+        { username: "alice", password: "password123", email: "", phone: "" },
+        db,
+      );
+
+      expect(user.email).toBeNull();
+      expect(user.phone).toBeNull();
+    });
+
+    it("email 会 trim 并转为小写", async () => {
+      const user = await registerUser(
+        { username: "alice", password: "password123", email: "A@B.COM " },
+        db,
+      );
+
+      expect(user.email).toBe("a@b.com");
+    });
+
+    it("非法 gender：VALIDATION / field gender / key genderInvalid", async () => {
+      const error = await registerUser(
+        { username: "alice", password: "password123", gender: "other" },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "VALIDATION",
+        field: "gender",
+        i18n: { key: "genderInvalid" },
+      });
+    });
+
+    it("非法 phone：VALIDATION / field phone / key phoneInvalid", async () => {
+      const error = await registerUser(
+        { username: "alice", password: "password123", phone: "123" },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "VALIDATION",
+        field: "phone",
+        i18n: { key: "phoneInvalid" },
+      });
+    });
+
+    it("非法 email：VALIDATION / field email / key emailInvalid", async () => {
+      const error = await registerUser(
+        { username: "alice", password: "password123", email: "not-an-email" },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "VALIDATION",
+        field: "email",
+        i18n: { key: "emailInvalid" },
+      });
+    });
+
+    it("nickname 超过 50 字符：VALIDATION / field nickname / key nicknameMaxLength", async () => {
+      const error = await registerUser(
+        { username: "alice", password: "password123", nickname: "x".repeat(51) },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "VALIDATION",
+        field: "nickname",
+        i18n: { key: "nicknameMaxLength" },
+      });
+    });
+
+    it("未传 nickname 时按 uid 生成默认昵称", async () => {
+      const user = await registerUser({ username: "alice", password: "password123" }, db);
+
+      expect(user.nickname).toBe(generateNickname(user.uid));
+    });
+
+    it("传入 nickname 时 trim 后作为昵称落库", async () => {
+      const user = await registerUser(
+        { username: "alice", password: "password123", nickname: "  阿岚  " },
+        db,
+      );
+
+      expect(user.nickname).toBe("阿岚");
+    });
+
+    it("邮箱重复：抛出 EMAIL_TAKEN 字段错误，而不是 UID_GENERATION_FAILED", async () => {
+      await registerUser(
+        { username: "owner", password: "password123", email: "taken@test.com" },
+        db,
+      );
+
+      const error = await registerUser(
+        { username: "second", password: "password123", email: "taken@test.com" },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "EMAIL_TAKEN",
+        field: "email",
+        i18n: { key: "emailTaken" },
+      });
+      expect((error as AuthError).code).not.toBe("UID_GENERATION_FAILED");
+    });
+
+    it("手机号重复：抛出 PHONE_TAKEN 字段错误，而不是 UID_GENERATION_FAILED", async () => {
+      await registerUser(
+        { username: "owner", password: "password123", phone: "+8613800000000" },
+        db,
+      );
+
+      const error = await registerUser(
+        { username: "second", password: "password123", phone: "+8613800000000" },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "PHONE_TAKEN",
+        field: "phone",
+        i18n: { key: "phoneTaken" },
+      });
+      expect((error as AuthError).code).not.toBe("UID_GENERATION_FAILED");
+    });
+
+    it("generateNickname：user_ + 5 位小写十六进制，且结果确定", () => {
+      const first = generateNickname("doing_x7k2m9");
+      const second = generateNickname("doing_x7k2m9");
+
+      expect(first).toBe(second);
+      expect(first).toMatch(/^user_[0-9a-f]{5}$/);
     });
   });
 
