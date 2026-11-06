@@ -59,4 +59,38 @@ describe("uniqueViolationKey", () => {
 
     expect(uniqueViolationKey(error)).toBeNull();
   });
+
+  it("非驱动错误的 message 提到已知索引名 → null（不匹配包装层 SQL/参数噪音）", () => {
+    expect(uniqueViolationKey({ message: "users_email_unique is already used" })).toBeNull();
+    expect(
+      uniqueViolationKey({
+        message:
+          "Failed query: insert into `users` (`email`) values (?)\nparams: users_email_unique@example.com",
+      }),
+    ).toBeNull();
+  });
+
+  it("Drizzle 包装层参数含索引名时不误报，仍识别 cause 的真实冲突", () => {
+    const wrapper = {
+      message:
+        "Failed query: insert into `users` (`email`) values (?)\nparams: users_email_unique@example.com",
+      cause: duplicateEntry({
+        message: "Duplicate entry '13800000000' for key 'users.users_phone_unique'",
+      }),
+    };
+
+    expect(uniqueViolationKey(wrapper)).toBe("users_phone_unique");
+  });
+
+  it("包装层参数含「Duplicate entry」+ 索引名也不当作驱动错误", () => {
+    const wrapper = {
+      message:
+        "Failed query: insert into `users` (`username`) values (?)\nparams: Duplicate entry users_username_unique",
+      cause: duplicateEntry({
+        message: "Duplicate entry 'a@example.com' for key 'users.users_email_unique'",
+      }),
+    };
+
+    expect(uniqueViolationKey(wrapper)).toBe("users_email_unique");
+  });
 });
