@@ -21,6 +21,13 @@ const ROLE_KEYS: Record<MemberView["membership"]["role"], "roleOwner" | "roleAdm
   member: "roleMember",
 };
 
+/** 性别取值 -> i18n key（口径与注册 / 个人资料表单一致）。 */
+const GENDER_KEYS: Record<NonNullable<MemberView["user"]["gender"]>, "genderMale" | "genderFemale" | "genderSecret"> = {
+  male: "genderMale",
+  female: "genderFemale",
+  secret: "genderSecret",
+};
+
 export interface MemberListProps {
   members: MemberView[];
   /** 传入团队 slug 且 canManage 为真时，渲染移除操作列。 */
@@ -47,15 +54,18 @@ export async function MemberList({
   const actionTeamSlug = canManage ? teamSlug : undefined;
 
   return (
-    // 窄屏（375px）沿用仓库既有的「卡内横滚」模式：成员 / UID / 加入时间
-    // 三列在卡片内横向滚动，页面本身不横向溢出。
+    // 窄屏（375px）沿用仓库既有的「卡内横滚」模式：成员 / UID / 资料 / 加入时间
+    // 等列在卡片内横向滚动，页面本身不横向溢出。
     <div className="min-w-0 overflow-x-auto">
       <table className="w-full border-collapse text-[13px]">
         <thead>
           <tr className="text-left text-[var(--ink-400)]">
             <th className="pb-2 font-medium">{t("colMember")}</th>
             <th className="pb-2 font-medium">{t("colRole")}</th>
-            <th className="pb-2 font-medium">{t("colJoinedAt")}</th>
+            <th className="whitespace-nowrap pb-2 font-medium">{t("memberGender")}</th>
+            <th className="whitespace-nowrap pb-2 font-medium">{t("memberEmail")}</th>
+            <th className="whitespace-nowrap pb-2 font-medium">{t("memberPhone")}</th>
+            <th className="whitespace-nowrap pb-2 font-medium">{t("colJoinedAt")}</th>
             {actionTeamSlug ? <th className="pb-2 text-right font-medium">{t("colActions")}</th> : null}
           </tr>
         </thead>
@@ -79,7 +89,12 @@ export async function MemberList({
                     {t(ROLE_KEYS[membership.role])}
                   </Badge>
                 </td>
-                <td className="py-2.5 text-[var(--ink-500)]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
+                <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">
+                  {user.gender ? t(GENDER_KEYS[user.gender]) : "—"}
+                </td>
+                <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{user.email ?? "—"}</td>
+                <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{user.phone ?? "—"}</td>
+                <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
                 {actionTeamSlug ? (
                   <td className="py-2.5 text-right">
                     {membership.role === "owner" || membership.userId === currentUserId ? null : (

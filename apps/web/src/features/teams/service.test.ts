@@ -1,3 +1,4 @@
+import { displayName, type Gender } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
@@ -24,11 +25,12 @@ if (!hasTestDatabase) {
   );
 }
 
-/** 直插用户，避免每个用例都走 argon2 哈希。 */
+/** 直插用户，避免每个用例都走 argon2 哈希。可选资料默认留空（null）。 */
 async function createUser(
   db: DbClient,
   username: string,
   nickname: string | null = null,
+  profile: { gender?: Gender; email?: string; phone?: string } = {},
 ): Promise<{ id: string }> {
   const id = crypto.randomUUID();
   await db
@@ -38,6 +40,9 @@ async function createUser(
       uid: generateUid(),
       username,
       nickname,
+      gender: profile.gender ?? null,
+      email: profile.email ?? null,
+      phone: profile.phone ?? null,
       passwordHash: "test-hash",
     });
   return { id };
@@ -203,24 +208,54 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
     ).rejects.toMatchObject({ code: "VALIDATION", field: "name" });
   });
 
-  it("listMembers：返回成员视图并按加入时间升序", async () => {
-    const owner = await createUser(db, "owner", "林夏");
-    const member = await createUser(db, "member", "阿周");
+  it("listMembers：返回成员视图（含性别/邮箱/电话与展示名）并按加入时间升序", async () => {
+    const owner = await createUser(db, "owner", "林夏", {
+      gender: "female",
+      email: "linxia@example.com",
+      phone: "13800138000",
+    });
+    const member = await createUser(db, "member", "阿周", {
+      gender: "male",
+      email: "azhou@example.com",
+      phone: "13900139000",
+    });
+    const blank = await createUser(db, "blank");
     const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
     // MySQL TIMESTAMP 默认秒级精度：两条成员关系若都取默认时间会并列，
-    // 排序不稳定。以 owner 的加入时间为基准显式错开一秒，固定夹具语义。
+    // 排序不稳定。以 owner 的加入时间为基准逐条错开一秒，固定夹具语义。
     const ownerMembership = await getMembership(team.id, owner.id, db);
-    await db.insert(teamMemberships).values({
-      teamId: team.id,
-      userId: member.id,
-      role: "member",
-      joinedAt: new Date(new Date(ownerMembership!.joinedAt).getTime() + 1000),
-    });
+    const ownerJoinedAt = new Date(ownerMembership!.joinedAt).getTime();
+    await db.insert(teamMemberships).values([
+      {
+        teamId: team.id,
+        userId: member.id,
+        role: "member",
+        joinedAt: new Date(ownerJoinedAt + 1000),
+      },
+      {
+        teamId: team.id,
+        userId: blank.id,
+        role: "member",
+        joinedAt: new Date(ownerJoinedAt + 2000),
+      },
+    ]);
 
     const members = await listMembers(team.id, db);
 
-    expect(members.map((view) => view.user.username)).toEqual(["owner", "member"]);
-    expect(members.map((view) => view.user.nickname)).toEqual(["林夏", "阿周"]);
+    expect(members.map((view) => view.user.username)).toEqual(["owner", "member", "blank"]);
+    expect(members.map((view) => view.user.nickname)).toEqual(["林夏", "阿周", null]);
+    expect(members.map((view) => displayName(view.user))).toEqual(["林夏", "阿周", "blank"]);
+    expect(members.map((view) => view.user.gender)).toEqual(["female", "male", null]);
+    expect(members.map((view) => view.user.email)).toEqual([
+      "linxia@example.com",
+      "azhou@example.com",
+      null,
+    ]);
+    expect(members.map((view) => view.user.phone)).toEqual([
+      "13800138000",
+      "13900139000",
+      null,
+    ]);
     expect(members[0]).toMatchObject({
       membership: { role: "owner", teamId: team.id },
       user: {
@@ -228,6 +263,9 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
         username: "owner",
         nickname: "林夏",
         uid: expect.stringMatching(/^doing_/),
+        gender: "female",
+        email: "linxia@example.com",
+        phone: "13800138000",
       },
     });
   });

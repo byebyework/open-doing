@@ -1,5 +1,5 @@
 import { asc, eq, like } from "drizzle-orm";
-import type { Team, TeamMembership } from "@open-doing/types";
+import type { Gender, Team, TeamMembership } from "@open-doing/types";
 
 import { generateJoinCode } from "@/lib/join-code";
 import type { DomainErrorI18n } from "@/lib/domain-error";
@@ -228,6 +228,10 @@ export interface MemberView {
     username: string;
     /** 展示名候选：UI 侧用 `displayName(user)` 解析（username 仅用于登录）。 */
     nickname: string | null;
+    /** 可选资料：未填写为 null，成员表以「—」占位。 */
+    gender: Gender | null;
+    email: string | null;
+    phone: string | null;
   };
 }
 
@@ -244,6 +248,9 @@ export async function listMembers(
         uid: users.uid,
         username: users.username,
         nickname: users.nickname,
+        gender: users.gender,
+        email: users.email,
+        phone: users.phone,
       },
     })
     .from(teamMemberships)
