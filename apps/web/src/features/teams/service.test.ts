@@ -25,11 +25,21 @@ if (!hasTestDatabase) {
 }
 
 /** 直插用户，避免每个用例都走 argon2 哈希。 */
-async function createUser(db: DbClient, username: string): Promise<{ id: string }> {
+async function createUser(
+  db: DbClient,
+  username: string,
+  nickname: string | null = null,
+): Promise<{ id: string }> {
   const id = crypto.randomUUID();
   await db
     .insert(users)
-    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+    .values({
+      id,
+      uid: generateUid(),
+      username,
+      nickname,
+      passwordHash: "test-hash",
+    });
   return { id };
 }
 
@@ -194,8 +204,8 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
   });
 
   it("listMembers：返回成员视图并按加入时间升序", async () => {
-    const owner = await createUser(db, "owner");
-    const member = await createUser(db, "member");
+    const owner = await createUser(db, "owner", "林夏");
+    const member = await createUser(db, "member", "阿周");
     const team = await createTeam({ name: "Growth Squad" }, owner.id, db);
     // MySQL TIMESTAMP 默认秒级精度：两条成员关系若都取默认时间会并列，
     // 排序不稳定。以 owner 的加入时间为基准显式错开一秒，固定夹具语义。
@@ -210,9 +220,15 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
     const members = await listMembers(team.id, db);
 
     expect(members.map((view) => view.user.username)).toEqual(["owner", "member"]);
+    expect(members.map((view) => view.user.nickname)).toEqual(["林夏", "阿周"]);
     expect(members[0]).toMatchObject({
       membership: { role: "owner", teamId: team.id },
-      user: { id: owner.id, username: "owner", uid: expect.stringMatching(/^doing_/) },
+      user: {
+        id: owner.id,
+        username: "owner",
+        nickname: "林夏",
+        uid: expect.stringMatching(/^doing_/),
+      },
     });
   });
 });

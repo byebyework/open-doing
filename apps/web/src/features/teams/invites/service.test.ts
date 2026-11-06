@@ -25,10 +25,16 @@ if (!hasTestDatabase) {
   );
 }
 
-async function createUser(db: DbClient, username: string): Promise<{ id: string; uid: string }> {
+async function createUser(
+  db: DbClient,
+  username: string,
+  nickname: string | null = null,
+): Promise<{ id: string; uid: string }> {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
   return { id, uid };
 }
 
@@ -37,7 +43,7 @@ async function seedTeam(db: DbClient) {
   const owner = await createUser(db, "owner");
   const admin = await createUser(db, "admin");
   const member = await createUser(db, "member");
-  const outsider = await createUser(db, "outsider");
+  const outsider = await createUser(db, "outsider", "外部人");
 
   const team = await createTeam({ name: "增长突击队" }, owner.id, db);
   await db.insert(teamMemberships).values([
@@ -173,7 +179,12 @@ describe.skipIf(!hasTestDatabase)("邀请 service", () => {
     expect(sent).toHaveLength(1);
     expect(sent[0]).toMatchObject({
       invite: { id: invite.id, status: "pending" },
-      invitee: { id: outsider.id, uid: outsider.uid, username: "outsider" },
+      invitee: {
+        id: outsider.id,
+        uid: outsider.uid,
+        username: "outsider",
+        nickname: "外部人",
+      },
     });
   });
 

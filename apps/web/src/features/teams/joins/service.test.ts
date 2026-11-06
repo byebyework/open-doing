@@ -37,10 +37,13 @@ if (!hasTestDatabase) {
 async function createUser(
   db: DbClient,
   username: string,
+  nickname: string | null = null,
 ): Promise<{ id: string; uid: string }> {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
   return { id, uid };
 }
 
@@ -510,7 +513,7 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
 
   it("listTeamJoinRequests：全状态、createdAt 升序、带申请人信息与 ISO 时间", async () => {
     const { owner, outsider, team } = await seedTeam(db);
-    const second = await createUser(db, "second");
+    const second = await createUser(db, "second", "阿二");
 
     await db.insert(teamJoinRequests).values([
       {
@@ -532,6 +535,7 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
     const list = await listTeamJoinRequests(team.id, db);
 
     expect(list.map((view) => view.user.username)).toEqual(["second", "outsider"]);
+    expect(list.map((view) => view.user.nickname)).toEqual(["阿二", null]);
     expect(list[0]).toMatchObject({
       request: {
         userId: second.id,
@@ -540,7 +544,12 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
         respondedAt: "2026-01-03T00:00:00.000Z",
         respondedById: owner.id,
       },
-      user: { id: second.id, uid: second.uid, username: "second" },
+      user: {
+        id: second.id,
+        uid: second.uid,
+        username: "second",
+        nickname: "阿二",
+      },
     });
     expect(list[1]).toMatchObject({
       request: { status: "pending", createdAt: "2026-01-02T00:00:00.000Z" },

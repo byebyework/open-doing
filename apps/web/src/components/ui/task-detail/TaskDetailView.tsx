@@ -597,7 +597,11 @@ export function TaskDetailView({
                 </Select>
               ) : task.assigneeName ? (
                 <>
-                  <UserAvatar username={task.assigneeName} size={24} />
+                  <UserAvatar
+                    userId={task.assigneeId ?? task.assigneeName}
+                    name={task.assigneeName}
+                    size={24}
+                  />
                   <span className="min-w-0 break-words">
                     {task.assigneeName}
                   </span>

@@ -1,6 +1,6 @@
 "use client";
 
-import type { User } from "@open-doing/types";
+import { displayName, type User } from "@open-doing/types";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
@@ -101,10 +101,10 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
             <button
               type="button"
               data-testid="user-menu-button"
-              aria-label={t("currentUserAria", { name: user.username })}
+              aria-label={t("currentUserAria", { name: displayName(user) })}
               className="cursor-pointer rounded-full border-0 bg-transparent p-0"
             >
-              <UserAvatar username={user.username} size={30} />
+              <UserAvatar userId={user.id} name={displayName(user)} size={30} />
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">

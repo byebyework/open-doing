@@ -1,3 +1,4 @@
+import { displayName } from "@open-doing/types";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -60,7 +61,7 @@ export default async function TeamSettingsPage(
     .filter(({ membership: memberMembership }) => memberMembership.role !== "owner")
     .map(({ user: memberUser }) => ({
       userId: memberUser.id,
-      username: memberUser.username,
+      name: displayName(memberUser),
       uid: memberUser.uid,
     }));
 
@@ -107,8 +108,8 @@ export default async function TeamSettingsPage(
                 >
                   {t("pendingTag")}
                 </Badge>
-                <UserAvatar username={invitee.username} />
-                <span className="text-[13px] font-medium text-[var(--ink-900)]">{invitee.username}</span>
+                <UserAvatar userId={invitee.id} name={displayName(invitee)} />
+                <span className="text-[13px] font-medium text-[var(--ink-900)]">{displayName(invitee)}</span>
                 <span className="font-mono text-[12px] text-[var(--ink-400)]">{invitee.uid}</span>
                 <span className="ml-auto text-[12px] text-[var(--ink-400)]">
                   {t("sentAtLine", { time: dayjs(invite.createdAt).format("MM-DD HH:mm") })}

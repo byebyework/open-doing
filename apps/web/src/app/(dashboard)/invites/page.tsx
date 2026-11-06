@@ -1,3 +1,4 @@
+import { displayName } from "@open-doing/types";
 import type { Metadata } from "next";
 import Link from "next/link";
 import dayjs from "dayjs";
@@ -92,8 +93,12 @@ export default async function InvitesPage() {
                     <div className="truncate text-[14px] font-bold text-[var(--ink-900)]">{team.name}</div>
                     <div className="mt-0.5 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-0.5 text-[12px] text-[var(--ink-400)]">
                       <span>{t("inviter")}</span>
-                      <UserAvatar username={invitedBy.username} size={20} />
-                      <span className="text-[var(--ink-500)]">{invitedBy.username}</span>
+                      <UserAvatar
+                        userId={invitedBy.id}
+                        name={displayName(invitedBy)}
+                        size={20}
+                      />
+                      <span className="text-[var(--ink-500)]">{displayName(invitedBy)}</span>
                       <span className="font-mono">{invitedBy.uid}</span>
                       <span>·</span>
                       <span>{t("teamMemberCount", { count: memberCount })}</span>

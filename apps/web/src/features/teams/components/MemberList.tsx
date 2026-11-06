@@ -1,3 +1,4 @@
+import { displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
 import dayjs from "dayjs";
 
@@ -65,8 +66,8 @@ export async function MemberList({
               <tr key={membership.id} className="border-t border-[#eceef0]">
                 <td className="py-2.5">
                   <span className="flex items-center gap-2.5">
-                    <UserAvatar username={user.username} />
-                    <span className="font-medium text-[var(--ink-900)]">{user.username}</span>
+                    <UserAvatar userId={user.id} name={displayName(user)} />
+                    <span className="font-medium text-[var(--ink-900)]">{displayName(user)}</span>
                     <span className="font-mono text-[12px] text-[var(--ink-400)]">{user.uid}</span>
                   </span>
                 </td>
@@ -85,7 +86,7 @@ export async function MemberList({
                       <RemoveMemberButton
                         teamSlug={actionTeamSlug}
                         targetUserId={user.id}
-                        targetUsername={user.username}
+                        targetName={displayName(user)}
                       />
                     )}
                   </td>

@@ -1,5 +1,6 @@
 "use client";
 
+import { displayName } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 import Link from "next/link";
@@ -98,10 +99,10 @@ export function MemberLoadList({ members, today }: MemberLoadListProps) {
               onClick={() => setExpandedUserId(expanded ? null : member.userId)}
               className="flex w-full min-w-0 items-center gap-3 py-3 text-left hover:bg-[#f4f5f7]"
             >
-              <UserAvatar username={member.username} />
+              <UserAvatar userId={member.userId} name={displayName(member)} />
               <div className="min-w-0 flex-1">
                 <div className="truncate text-[13.5px] font-medium text-[var(--ink-900)]">
-                  {member.username}
+                  {displayName(member)}
                 </div>
                 <LoadSummary member={member} />
               </div>

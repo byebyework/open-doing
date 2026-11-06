@@ -191,7 +191,11 @@ function TeamKanbanCard({
         <div className="mt-2.5 flex items-center gap-2">
           {assigneeName ? (
             <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
-              <UserAvatar username={assigneeName} size={22} />
+              <UserAvatar
+                userId={task.assigneeId ?? assigneeName}
+                name={assigneeName}
+                size={22}
+              />
               <span className="truncate">{assigneeName}</span>
             </span>
           ) : (

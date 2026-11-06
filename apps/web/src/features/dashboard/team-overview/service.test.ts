@@ -30,8 +30,11 @@ const BASE_TIME = new Date("2026-10-01T00:00:00Z").getTime();
 async function createUser(db: DbClient, username: string) {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
-  return { id, username };
+  const nickname = `nick-${username}`;
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+  return { id, username, nickname };
 }
 
 /**
@@ -383,6 +386,12 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
 
     // 成员按加入时间升序；外部团队用户不出现。
     expect(members.map((item) => item.username)).toEqual(["owner", "admin", "member"]);
+    // 展示名候选与用户名一并下发，客户端用 displayName 解析。
+    expect(members.map((item) => item.nickname)).toEqual([
+      "nick-owner",
+      "nick-admin",
+      "nick-member",
+    ]);
 
     const byName = new Map(members.map((item) => [item.username, item]));
     // 进行中 = 全部 status='in_progress'（「成员逾期」也在进行中），
@@ -616,6 +625,7 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
     expect(overview.members).toHaveLength(1);
     expect(overview.members[0]).toMatchObject({
       username: "empty-owner",
+      nickname: "nick-empty-owner",
       inProgress: 0,
       dueSoon: 0,
       overdue: 0,

@@ -390,7 +390,11 @@ function SpaceKanbanCard({
           {variant === "team" ? (
             card.assigneeName ? (
               <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
-                <UserAvatar username={card.assigneeName} size={22} />
+                <UserAvatar
+                  userId={card.assigneeId ?? card.assigneeName}
+                  name={card.assigneeName}
+                  size={22}
+                />
                 <span className="truncate">{card.assigneeName}</span>
               </span>
             ) : (

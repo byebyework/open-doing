@@ -1,3 +1,4 @@
+import { displayName } from "@open-doing/types";
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/features/auth/session";
@@ -56,7 +57,7 @@ export default async function TeamTaskDetailPage({
   const memberList = await listMembers(team.id);
   const assigneeOptions = memberList.map(({ user: member }) => ({
     id: member.id,
-    name: member.username,
+    name: displayName(member),
   }));
 
   const permissionInput = {

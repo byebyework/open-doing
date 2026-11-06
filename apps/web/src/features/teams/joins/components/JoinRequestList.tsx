@@ -1,5 +1,6 @@
 "use client";
 
+import { displayName } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
@@ -87,9 +88,9 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
             key={`${teamId}:${request.id}`}
             className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-[#eceef0] py-2.5 first:border-t-0"
           >
-            <UserAvatar username={user.username} />
+            <UserAvatar userId={user.id} name={displayName(user)} />
             <span className="max-w-[180px] truncate text-[13px] font-medium text-[var(--ink-900)]">
-              {user.username}
+              {displayName(user)}
             </span>
             <span className="max-w-[160px] truncate font-mono text-[12px] text-[var(--ink-400)]">
               {user.uid}
@@ -101,7 +102,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
               <Button
                 size="sm"
                 disabled={busy && submittingId !== request.id}
-                aria-label={t("approveAria", { name: user.username })}
+                aria-label={t("approveAria", { name: displayName(user) })}
                 onClick={() => respond(request.id, true)}
               >
                 {submittingId === request.id ? (
@@ -114,7 +115,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
                 size="sm"
                 className="text-destructive hover:text-destructive"
                 disabled={busy}
-                aria-label={t("declineAria", { name: user.username })}
+                aria-label={t("declineAria", { name: displayName(user) })}
                 onClick={() => setDeclining({ request, user })}
               >
                 {t("decline")}
@@ -142,9 +143,9 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
             >
               {t(resultKey)}
             </Badge>
-            <UserAvatar username={user.username} />
+            <UserAvatar userId={user.id} name={displayName(user)} />
             <span className="max-w-[180px] truncate text-[13px] font-medium text-[var(--ink-900)]">
-              {user.username}
+              {displayName(user)}
             </span>
             <span className="max-w-[160px] truncate font-mono text-[12px] text-[var(--ink-400)]">
               {user.uid}
@@ -161,7 +162,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
         title={t("declineJoinTitle")}
         content={
           declining
-            ? t("declineJoinConfirm", { name: declining.user.username })
+            ? t("declineJoinConfirm", { name: displayName(declining.user) })
             : null
         }
         confirmText={t("decline")}

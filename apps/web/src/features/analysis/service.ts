@@ -108,6 +108,8 @@ export interface ProjectHealthRow {
 export interface TeamMemberLoadRow {
   userId: string;
   username: string;
+  /** 展示名候选：UI 侧用 `displayName(member)` 解析（username 仅用于登录）。 */
+  nickname: string | null;
   inProgress: number;
   dueSoon: number;
   overdue: number;
@@ -338,7 +340,8 @@ export async function getTeamSpaceAnalysis(
         id: tasks.id,
         title: tasks.title,
         projectName: projects.name,
-        assigneeName: users.username,
+        assigneeUsername: users.username,
+        assigneeNickname: users.nickname,
         updatedAt: tasks.updatedAt,
       })
       .from(tasks)
@@ -368,9 +371,10 @@ export async function getTeamSpaceAnalysis(
     },
     throughput: toThroughput(today, range, throughputRows),
     members: overview.members.map(
-      ({ userId, username, inProgress, dueSoon, overdue }) => ({
+      ({ userId, username, nickname, inProgress, dueSoon, overdue }) => ({
         userId,
         username,
+        nickname,
         inProgress,
         dueSoon,
         overdue,
@@ -398,7 +402,8 @@ export async function getTeamSpaceAnalysis(
       id: row.id,
       title: row.title,
       projectName: row.projectName,
-      assigneeName: row.assigneeName ?? null,
+      // 展示名：昵称优先，未填写回退到用户名。
+      assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
       // 按上海日历日计算停留天数：跨 UTC 日边界的更新不会多算一天。
       stalledDays: daysBetween(shanghaiDay(row.updatedAt), today),
     })),

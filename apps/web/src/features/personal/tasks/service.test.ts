@@ -43,11 +43,18 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
     await closeTestDb();
   });
 
-  async function createUser(username = `user_${(userSeq += 1)}`) {
+  async function createUser(
+    username = `user_${(userSeq += 1)}`,
+    nickname: string | null = null,
+  ) {
     const id = crypto.randomUUID();
-    await db
-      .insert(users)
-      .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+    await db.insert(users).values({
+      id,
+      uid: generateUid(),
+      username,
+      nickname,
+      passwordHash: "test-hash",
+    });
     return id;
   }
 
@@ -195,7 +202,8 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
   });
 
   it("详情组装：task 字段 + 子任务 + 评论 authorName + projectName + progress(3/5)", async () => {
-    const owner = await createUser("alice");
+    // 昵称与用户名区分：详情展示名必须优先取昵称。
+    const owner = await createUser("alice", "爱丽丝");
     const project = await createPersonalProject(owner, { name: "读书" }, db);
     const task = await createPersonalTask(
       owner,
@@ -235,7 +243,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       description: "第一章",
       status: "todo",
       assigneeId: owner,
-      assigneeName: "alice",
+      assigneeName: "爱丽丝",
       dueDate: "2026-11-01",
       projectName: "读书",
       subtasks: expect.arrayContaining([
@@ -246,7 +254,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
           id: comment.id,
           taskId: task.id,
           authorId: owner,
-          authorName: "alice",
+          authorName: "爱丽丝",
           content: "记录一下",
         },
       ],

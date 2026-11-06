@@ -125,7 +125,11 @@ export async function listNotifications(
       : Promise.resolve([]),
     actorIds.length > 0
       ? client
-          .select({ id: users.id, username: users.username })
+          .select({
+            id: users.id,
+            username: users.username,
+            nickname: users.nickname,
+          })
           .from(users)
           .where(inArray(users.id, actorIds))
       : Promise.resolve([]),
@@ -175,7 +179,8 @@ export async function listNotifications(
       type: row.type,
       read: row.read,
       createdAt: row.createdAt.toISOString(),
-      actorName: actor?.username ?? null,
+      // 展示名：昵称优先，未填写回退到用户名（cron 通知没有触发者）。
+      actorName: actor ? (actor.nickname ?? actor.username) : null,
       teamName: team?.name ?? null,
       taskTitle: task?.title ?? null,
       href: buildNotificationHref({

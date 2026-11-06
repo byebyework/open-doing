@@ -79,8 +79,11 @@ const OLDER_START = new Date("2026-10-14T00:00:00+08:00");
 async function createUser(db: DbClient, username: string) {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
-  return { id, username };
+  const nickname = `nick-${username}`;
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+  return { id, username, nickname };
 }
 
 async function createPersonalProject(
@@ -796,11 +799,11 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
 
     expect(byTitle.get("逾期较早")).toMatchObject({
       assigneeId: alice.id,
-      assigneeName: "alice",
+      assigneeName: "nick-alice",
     });
     expect(byTitle.get("逾期较晚")).toMatchObject({
       assigneeId: bob.id,
-      assigneeName: "bob",
+      assigneeName: "nick-bob",
     });
     expect(byTitle.get("未指派任务")).toMatchObject({
       assigneeId: null,
@@ -850,12 +853,12 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
     expect(board.doneRecent[0]).toMatchObject({
       completedAt: new Date("2026-10-19T09:30:00+08:00").toISOString(),
       assigneeId: bob.id,
-      assigneeName: "bob",
+      assigneeName: "nick-bob",
     });
     expect(board.doneRecent[1]).toMatchObject({
       completedAt: RECENT_START.toISOString(),
       assigneeId: alice.id,
-      assigneeName: "alice",
+      assigneeName: "nick-alice",
     });
   });
 
@@ -895,7 +898,7 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
       status: "todo",
       completedAt: null,
       assigneeId: alice.id,
-      assigneeName: "alice",
+      assigneeName: "nick-alice",
     });
     expect(board.todo.find((card) => card.title === "未来到期")).toMatchObject({
       projectName: "留存项目",
@@ -943,7 +946,7 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
       projectName: "增长项目",
       status: "done",
       assigneeId: alice.id,
-      assigneeName: "alice",
+      assigneeName: "nick-alice",
     });
     // 窗口外未指派任务同样保留，assignee 字段为 null。
     expect(older[1]).toMatchObject({

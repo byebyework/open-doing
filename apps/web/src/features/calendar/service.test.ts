@@ -54,8 +54,11 @@ const MONTH = "2026-10";
 async function createUser(db: DbClient, username: string) {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
-  return { id, username };
+  const nickname = `nick-${username}`;
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+  return { id, username, nickname };
 }
 
 async function createPersonalProject(
@@ -623,11 +626,11 @@ describe.skipIf(!hasTestDatabase)("团队空间日历聚合", () => {
 
     expect(byTitle.get("团队周一")).toMatchObject({
       assigneeId: alice.id,
-      assigneeName: "alice",
+      assigneeName: alice.nickname,
     });
     expect(byTitle.get("团队月末")).toMatchObject({
       assigneeId: bob.id,
-      assigneeName: "bob",
+      assigneeName: bob.nickname,
     });
     expect(byTitle.get("团队未指派")).toMatchObject({
       assigneeId: null,

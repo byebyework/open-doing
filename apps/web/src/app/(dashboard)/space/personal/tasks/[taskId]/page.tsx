@@ -1,3 +1,4 @@
+import { displayName } from "@open-doing/types";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -41,7 +42,7 @@ export default async function PersonalTaskDetailPage({
 
   return (
     <TaskDetailClient
-      task={{ ...task, creatorName: user.username }}
+      task={{ ...task, creatorName: displayName(user) }}
       backHref={backHref}
       backLabel={task.projectId ? t("backToProject") : t("backToMyTasks")}
       currentUserId={user.id}

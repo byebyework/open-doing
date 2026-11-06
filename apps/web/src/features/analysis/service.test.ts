@@ -66,8 +66,11 @@ function shanghai(day: string, time = "10:00:00"): Date {
 async function createUser(db: DbClient, username: string) {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
-  return { id, username };
+  const nickname = `nick-${username}`;
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+  return { id, username, nickname };
 }
 
 async function createPersonalProject(
@@ -763,6 +766,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       {
         userId: owner.id,
         username: "林夏",
+        nickname: "nick-林夏",
         inProgress: 0,
         dueSoon: 0,
         overdue: 0,
@@ -877,6 +881,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       {
         userId: owner.id,
         username: "林夏",
+        nickname: "nick-林夏",
         inProgress: 1,
         dueSoon: 0,
         overdue: 1,
@@ -884,6 +889,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       {
         userId: member.id,
         username: "阿泽",
+        nickname: "nick-阿泽",
         inProgress: 1,
         dueSoon: 1,
         overdue: 0,
@@ -1241,14 +1247,14 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         id: z1.id,
         title: "停留十六天",
         projectName: "主项目",
-        assigneeName: "林夏",
+        assigneeName: "nick-林夏",
         stalledDays: 16,
       },
       {
         id: z4.id,
         title: "凌晨更新仍十五天",
         projectName: "主项目",
-        assigneeName: "阿泽",
+        assigneeName: "nick-阿泽",
         stalledDays: 15,
       },
       {
@@ -1262,7 +1268,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
         id: z2.id,
         title: "停留十五天",
         projectName: "主项目",
-        assigneeName: "林夏",
+        assigneeName: "nick-林夏",
         stalledDays: 15,
       },
     ]);

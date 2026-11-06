@@ -680,7 +680,11 @@ export async function listTeamProjectTasks(
   if (!project) return [];
 
   const rows = await client
-    .select({ task: tasks, assigneeName: users.username })
+    .select({
+      task: tasks,
+      assigneeUsername: users.username,
+      assigneeNickname: users.nickname,
+    })
     .from(tasks)
     .leftJoin(users, eq(tasks.assigneeId, users.id))
     .where(and(eq(tasks.projectId, projectId), eq(tasks.spaceType, "team")))
@@ -703,9 +707,10 @@ export async function listTeamProjectTasks(
     subtasksByTaskId.set(row.taskId, list);
   }
 
-  return rows.map(({ task, assigneeName }) => ({
+  return rows.map(({ task, assigneeUsername, assigneeNickname }) => ({
     ...toTask(task),
-    assigneeName: assigneeName ?? null,
+    // 展示名：昵称优先，未填写（或被移除成员）回退到用户名。
+    assigneeName: assigneeNickname ?? assigneeUsername ?? null,
     subtasks: subtasksByTaskId.get(task.id) ?? [],
   }));
 }
@@ -730,8 +735,10 @@ export async function getTeamTaskDetail(
     .select({
       task: tasks,
       projectName: projects.name,
-      assigneeName: users.username,
-      creatorName: creators.username,
+      assigneeUsername: users.username,
+      assigneeNickname: users.nickname,
+      creatorUsername: creators.username,
+      creatorNickname: creators.nickname,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
@@ -755,7 +762,11 @@ export async function getTeamTaskDetail(
     .orderBy(asc(subtasks.createdAt));
 
   const commentRows = await client
-    .select({ comment: comments, authorName: users.username })
+    .select({
+      comment: comments,
+      authorUsername: users.username,
+      authorNickname: users.nickname,
+    })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))
     .where(eq(comments.taskId, taskId))
@@ -772,24 +783,27 @@ export async function getTeamTaskDetail(
     description: task.description ?? undefined,
     status: task.status,
     assigneeId: task.assigneeId,
-    assigneeName: row.assigneeName ?? null,
+    // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。
+    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
     dueDate: task.dueDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
     projectName: row.projectName ?? null,
-    creatorName: row.creatorName ?? undefined,
+    creatorName: row.creatorNickname ?? row.creatorUsername ?? undefined,
     progress: getTaskProgress({
       status: task.status,
       subtasks: mappedSubtasks,
     }),
     subtasks: mappedSubtasks,
-    comments: commentRows.map(({ comment, authorName }) => ({
-      id: comment.id,
-      taskId: comment.taskId,
-      authorId: comment.authorId,
-      authorName,
-      content: comment.content,
-      createdAt: comment.createdAt.toISOString(),
-    })),
+    comments: commentRows.map(
+      ({ comment, authorUsername, authorNickname }) => ({
+        id: comment.id,
+        taskId: comment.taskId,
+        authorId: comment.authorId,
+        authorName: authorNickname ?? authorUsername,
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+      }),
+    ),
   };
 }

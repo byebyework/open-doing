@@ -1,4 +1,4 @@
-import { addDays } from "@open-doing/types";
+import { addDays, displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
@@ -380,9 +380,9 @@ async function TeamBody({
   );
   const memberRows = analysis.members.map((member) => ({
     key: member.userId,
-    name: member.username,
+    name: displayName(member),
     title: t("memberRowTitle", {
-      name: member.username,
+      name: displayName(member),
       count: member.inProgress,
     }),
     sub:

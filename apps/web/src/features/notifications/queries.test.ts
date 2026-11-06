@@ -25,16 +25,23 @@ if (!hasTestDatabase) {
   );
 }
 
-async function createUser(db: DbClient, username: string) {
+async function createUser(
+  db: DbClient,
+  username: string,
+  nickname: string | null = null,
+) {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
-  return { id, uid, username };
+  await db
+    .insert(users)
+    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+  return { id, uid, username, nickname };
 }
 
 /** 造数上下文：owner + member、一团队（含项目/任务），以及 member 的个人任务。 */
 async function seed(db: DbClient) {
-  const owner = await createUser(db, "owner");
+  // 触发者带昵称：通知读模型应解析出展示名（昵称优先）。
+  const owner = await createUser(db, "owner", "周牧");
   const member = await createUser(db, "member");
 
   const team = { id: crypto.randomUUID() };
@@ -150,7 +157,7 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
     ]);
   });
 
-  it("listNotifications：team_invite 条目带 /invites、团队名与触发者用户名", async () => {
+  it("listNotifications：team_invite 条目带 /invites、团队名与触发者展示名", async () => {
     const { owner, member, team } = await seed(db);
     await createNotification({ userId: member.id, type: "team_invite", teamId: team.id, actorId: owner.id }, db);
 
@@ -159,7 +166,7 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
     expect(item).toMatchObject({
       type: "team_invite",
       read: false,
-      actorName: "owner",
+      actorName: "周牧",
       teamName: "增长突击队",
       taskTitle: null,
       href: "/invites",
@@ -188,7 +195,7 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
     const byType = new Map(items.map((item) => [item.type, item]));
 
     expect(byType.get("task_assigned")).toMatchObject({
-      actorName: "owner",
+      actorName: "周牧",
       teamName: "增长突击队",
       taskTitle: "上线落地页",
       href: `/space/growth-squad/projects/website-revamp/tasks/${teamTask.id}`,

@@ -61,7 +61,8 @@ interface CalendarRow {
 /** 团队日历查询行：公共字段 + 指派人（未指派为 null）。 */
 interface TeamCalendarRow extends CalendarRow {
   assigneeId: string | null;
-  assigneeName: string | null;
+  assigneeUsername: string | null;
+  assigneeNickname: string | null;
 }
 
 /**
@@ -242,7 +243,8 @@ async function selectTeamCalendarRows(
       projectId: projects.id,
       projectName: projects.name,
       assigneeId: tasks.assigneeId,
-      assigneeName: users.username,
+      assigneeUsername: users.username,
+      assigneeNickname: users.nickname,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
@@ -312,6 +314,7 @@ function toTeamItem(row: TeamCalendarRow): CalendarTaskItem {
     projectId: row.projectId ?? null,
     projectName: row.projectName ?? "",
     assigneeId: row.assigneeId ?? null,
-    assigneeName: row.assigneeName ?? null,
+    // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。
+    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
   };
 }

@@ -40,16 +40,21 @@ if (!hasTestDatabase) {
   );
 }
 
-/** 直插用户，避免每个用例都走 argon2 哈希。 */
+/** 直插用户，避免每个用例都走 argon2 哈希；昵称与用户名区分，覆盖展示名规则。 */
 async function createUser(
   db: DbClient,
   username: string,
-): Promise<{ id: string; username: string }> {
+): Promise<{ id: string; username: string; nickname: string }> {
   const id = crypto.randomUUID();
-  await db
-    .insert(users)
-    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
-  return { id, username };
+  const nickname = `nick-${username}`;
+  await db.insert(users).values({
+    id,
+    uid: generateUid(),
+    username,
+    nickname,
+    passwordHash: "test-hash",
+  });
+  return { id, username, nickname };
 }
 
 /** 同一用例内多次建团队时用户名需唯一，用递增序号兜底。 */
@@ -61,7 +66,7 @@ function uniqueName(prefix: string): string {
 }
 
 interface TeamFixture {
-  owner: { id: string; username: string };
+  owner: { id: string; username: string; nickname: string };
   team: { id: string; slug: string };
   project: { id: string; slug: string };
 }
@@ -625,7 +630,7 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       );
 
       expect(rows.map((row) => row.title)).toEqual(["第一", "第二"]);
-      expect(rows[0]!.assigneeName).toBe(owner.username);
+      expect(rows[0]!.assigneeName).toBe(owner.nickname);
       expect(rows[0]!.subtasks).toHaveLength(1);
     });
   });
@@ -707,13 +712,13 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       expect(detail).toMatchObject({
         id: task.id,
         spaceType: "team",
-        assigneeName: member.username,
-        creatorName: owner.username,
+        assigneeName: member.nickname,
+        creatorName: owner.nickname,
         subtasks: [
           expect.objectContaining({ title: "已完成", completed: true }),
           expect.objectContaining({ title: "未完成", completed: false }),
         ],
-        comments: [expect.objectContaining({ content: "评论", authorName: owner.username })],
+        comments: [expect.objectContaining({ content: "评论", authorName: owner.nickname })],
       });
       expect(detail!.projectName).toBeTruthy();
       expect(detail!.progress).toBe(0.5);

@@ -20,7 +20,8 @@ import { transferTeamAction } from "../actions";
 /** 可转让成员（已排除当前 owner）。 */
 export interface TransferCandidate {
   userId: string;
-  username: string;
+  /** 展示名（`displayName(user)`）；用户名仅用于登录，不作为选项文案。 */
+  name: string;
   uid: string;
 }
 
@@ -105,7 +106,7 @@ export function TransferTeamButton({ teamSlug, candidates }: TransferTeamButtonP
               <SelectContent>
                 {candidates.map((candidate) => (
                   <SelectItem key={candidate.userId} value={candidate.userId}>
-                    {`${candidate.username}（${candidate.uid}）`}
+                    {`${candidate.name}（${candidate.uid}）`}
                   </SelectItem>
                 ))}
               </SelectContent>

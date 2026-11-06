@@ -1,13 +1,15 @@
 /** UserAvatar 入参。 */
 export interface UserAvatarProps {
-  /** 用户名：取首个字符作为头像文字。 */
-  username: string;
+  /** 用户 ID：只用于头像底色哈希，改名 / 改昵称都不影响颜色。 */
+  userId: string;
+  /** 展示名（调用方传 `displayName(user)`）：取首个字符作为头像文字。 */
+  name: string;
   /** 头像边长（px），默认 30。 */
   size?: number;
 }
 
 /** 6 个分类点缀色：5 个 accent + 品牌紫（与原型 av-* 类一致）。 */
-const ACCENT_COLORS = [
+export const ACCENT_COLORS = [
   "#ff7059", // coral
   "#ff9633", // tangerine
   "#48c997", // mint
@@ -17,35 +19,39 @@ const ACCENT_COLORS = [
 ] as const;
 
 /**
- * 用户名哈希（FNV-1a + 末尾混淆）。
+ * 用户 ID 哈希（FNV-1a + 末尾混淆）。
  *
- * 同一用户名恒定映射到同一颜色，并让短中文名的颜色分布更均匀。
+ * 同一用户恒定映射到同一颜色；以 userId 为种子，昵称变化不会让颜色漂移。
  */
-function hashUsername(username: string): number {
+function hashSeed(seed: string): number {
   let hash = 2166136261;
-  for (let i = 0; i < username.length; i += 1) {
-    hash ^= username.charCodeAt(i);
+  for (let i = 0; i < seed.length; i += 1) {
+    hash ^= seed.charCodeAt(i);
     hash = Math.imul(hash, 16777619) >>> 0;
   }
   hash ^= hash >>> 16;
   return hash >>> 0;
 }
 
+/** 由 userId 决定的头像点缀色（与展示名无关）。 */
+export function avatarColor(userId: string): string {
+  return ACCENT_COLORS[hashSeed(userId) % ACCENT_COLORS.length];
+}
+
 /**
- * 用户头像：用户名首字 + 由用户名哈希决定的点缀色圆形背景。
+ * 用户头像：展示名首字 + 由 userId 哈希决定的点缀色圆形背景。
  *
  * 纯展示组件（无交互），可在服务端组件中直接使用。
  */
-export function UserAvatar({ username, size = 30 }: UserAvatarProps) {
-  const firstChar = Array.from(username.trim())[0] ?? "?";
-  const backgroundColor =
-    ACCENT_COLORS[hashUsername(username) % ACCENT_COLORS.length];
+export function UserAvatar({ userId, name, size = 30 }: UserAvatarProps) {
+  const firstChar = Array.from(name.trim())[0] ?? "?";
+  const backgroundColor = avatarColor(userId);
 
   return (
     <span
       role="img"
-      aria-label={username}
-      title={username}
+      aria-label={name}
+      title={name}
       className="inline-grid shrink-0 select-none place-items-center rounded-full font-bold text-white"
       style={{
         width: size,

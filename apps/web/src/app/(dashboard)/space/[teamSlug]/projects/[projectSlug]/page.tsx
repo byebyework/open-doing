@@ -1,3 +1,4 @@
+import { displayName } from "@open-doing/types";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
@@ -62,7 +63,7 @@ export default async function TeamProjectPage({
   const projectOptions = projectList.map(({ id, name }) => ({ id, name }));
   const members = memberList.map(({ user: member }) => ({
     id: member.id,
-    name: member.username,
+    name: displayName(member),
   }));
   const participantCount = new Set(
     tasks.map((task) => task.assigneeId).filter((id): id is string => id !== null),

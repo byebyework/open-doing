@@ -222,7 +222,13 @@ export async function renameTeam(
 /** 成员视图：成员关系 + 展示用的用户信息。 */
 export interface MemberView {
   membership: TeamMembership;
-  user: { id: string; uid: string; username: string };
+  user: {
+    id: string;
+    uid: string;
+    username: string;
+    /** 展示名候选：UI 侧用 `displayName(user)` 解析（username 仅用于登录）。 */
+    nickname: string | null;
+  };
 }
 
 /** 团队成员只读列表，按加入时间升序。 */
@@ -237,6 +243,7 @@ export async function listMembers(
         id: users.id,
         uid: users.uid,
         username: users.username,
+        nickname: users.nickname,
       },
     })
     .from(teamMemberships)

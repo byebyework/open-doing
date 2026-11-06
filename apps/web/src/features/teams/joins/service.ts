@@ -76,7 +76,13 @@ export interface TeamJoinSettings {
 /** 审批队列项：申请 + 申请人展示信息。 */
 export interface TeamJoinRequestView {
   request: TeamJoinRequest;
-  user: { id: string; username: string; uid: string };
+  user: {
+    id: string;
+    username: string;
+    uid: string;
+    /** 展示名候选：UI 侧用 `displayName(user)` 解析（username 仅用于登录）。 */
+    nickname: string | null;
+  };
 }
 
 /** 「我的加入申请」项：申请 + 团队展示信息。 */
@@ -466,7 +472,12 @@ export async function listTeamJoinRequests(
   const rows = await client
     .select({
       request: teamJoinRequests,
-      user: { id: users.id, username: users.username, uid: users.uid },
+      user: {
+        id: users.id,
+        username: users.username,
+        uid: users.uid,
+        nickname: users.nickname,
+      },
     })
     .from(teamJoinRequests)
     .innerJoin(users, eq(users.id, teamJoinRequests.userId))

@@ -101,7 +101,8 @@ interface KanbanCardRow {
 /** 团队 done 卡对外字段（SQL 行）：卡片公共字段 + 指派人。 */
 interface TeamKanbanCardRow extends KanbanCardRow {
   assigneeId: string | null;
-  assigneeName: string | null;
+  assigneeUsername: string | null;
+  assigneeNickname: string | null;
 }
 
 /**
@@ -556,7 +557,8 @@ async function selectTeamCards(
       subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)`,
       updatedAt: tasks.updatedAt,
       assigneeId: tasks.assigneeId,
-      assigneeName: users.username,
+      assigneeUsername: users.username,
+      assigneeNickname: users.nickname,
     })
     // inner join 而非 left join：团队范围条件含 `projects.team_id`，团队任务
     // 必有项目（创建路径保证），join 类型只表达这一意图，与计数查询一致。
@@ -590,7 +592,8 @@ function toTeamCard(row: TeamKanbanCardRow): TeamKanbanCardItem {
   return {
     ...toCard(row),
     assigneeId: row.assigneeId ?? null,
-    assigneeName: row.assigneeName ?? null,
+    // 展示名：昵称优先，未填写（或个人任务 join 不到用户）回退到用户名。
+    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
   };
 }
 

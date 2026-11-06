@@ -108,7 +108,11 @@ export function CommentBox({
         <div className="flex flex-col gap-5">
           {comments.map((comment) => (
             <div key={comment.id} className="group flex gap-3">
-              <UserAvatar username={comment.authorName} size={30} />
+              <UserAvatar
+                userId={comment.authorId}
+                name={comment.authorName}
+                size={30}
+              />
 
               <div className="min-w-0 flex-1">
                 <div className="flex items-center gap-2">

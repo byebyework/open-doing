@@ -290,7 +290,13 @@ export async function respondToInvite(
 
 export interface SentInviteView {
   invite: TeamInvite;
-  invitee: { id: string; uid: string; username: string };
+  invitee: {
+    id: string;
+    uid: string;
+    username: string;
+    /** 展示名候选：UI 侧用 `displayName(invitee)` 解析（username 仅用于登录）。 */
+    nickname: string | null;
+  };
 }
 
 /** 团队已发出且待处理的邀请列表，按发出时间倒序。 */
@@ -301,7 +307,12 @@ export async function listPendingSentInvites(
   const rows = await client
     .select({
       invite: teamInvites,
-      invitee: { id: users.id, uid: users.uid, username: users.username },
+      invitee: {
+        id: users.id,
+        uid: users.uid,
+        username: users.username,
+        nickname: users.nickname,
+      },
     })
     .from(teamInvites)
     .innerJoin(users, eq(users.id, teamInvites.inviteeId))
@@ -314,7 +325,13 @@ export async function listPendingSentInvites(
 export interface ReceivedInviteView {
   invite: TeamInvite;
   team: { id: string; name: string; slug: string };
-  invitedBy: { id: string; username: string; uid: string };
+  invitedBy: {
+    id: string;
+    username: string;
+    uid: string;
+    /** 展示名候选：UI 侧用 `displayName(invitedBy)` 解析（username 仅用于登录）。 */
+    nickname: string | null;
+  };
   /** 邀请团队当前成员数（原型「团队 N 人」）。 */
   memberCount: number;
 }
@@ -328,7 +345,12 @@ export async function listReceivedInvites(
     .select({
       invite: teamInvites,
       team: { id: teams.id, name: teams.name, slug: teams.slug },
-      invitedBy: { id: users.id, username: users.username, uid: users.uid },
+      invitedBy: {
+        id: users.id,
+        username: users.username,
+        uid: users.uid,
+        nickname: users.nickname,
+      },
       memberCount: sql<number>`(select count(*) from ${teamMemberships} where ${teamMemberships.teamId} = ${teams.id})`,
     })
     .from(teamInvites)

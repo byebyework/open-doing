@@ -61,6 +61,8 @@ const MILESTONE_TASK_LIMIT = 10;
 export interface MemberLoad {
   userId: string;
   username: string;
+  /** 展示名候选：UI 侧用 `displayName(member)` 解析（username 仅用于登录）。 */
+  nickname: string | null;
   inProgress: number;
   dueSoon: number;
   overdue: number;
@@ -145,7 +147,8 @@ async function listTeamTaskSnapshots(
       status: tasks.status,
       dueDate: tasks.dueDate,
       assigneeId: tasks.assigneeId,
-      assigneeName: users.username,
+      assigneeUsername: users.username,
+      assigneeNickname: users.nickname,
       projectId: projects.id,
       projectName: projects.name,
       projectSlug: projects.slug,
@@ -168,7 +171,8 @@ async function listTeamTaskSnapshots(
     ...row,
     dueDate: row.dueDate ?? null,
     assigneeId: row.assigneeId ?? null,
-    assigneeName: row.assigneeName ?? null,
+    // 展示名：昵称优先，未填写（或个人空间任务）回退到用户名。
+    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
   }));
 }
 
@@ -264,6 +268,7 @@ export async function getTeamOverview(
   const memberLoads: MemberLoad[] = memberViews.map(({ user }) => ({
     userId: user.id,
     username: user.username,
+    nickname: user.nickname,
     inProgress: 0,
     dueSoon: 0,
     overdue: 0,

@@ -348,7 +348,11 @@ export function TeamProjectTaskTable({
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {assigneeName ? (
                           <span className="flex items-center gap-2 text-[13px] text-[var(--ink-900)]">
-                            <UserAvatar username={assigneeName} size={26} />
+                            <UserAvatar
+                              userId={task.assigneeId ?? assigneeName}
+                              name={assigneeName}
+                              size={26}
+                            />
                             {assigneeName}
                           </span>
                         ) : (

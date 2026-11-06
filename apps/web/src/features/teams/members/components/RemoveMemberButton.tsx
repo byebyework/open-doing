@@ -14,7 +14,7 @@ import { removeMemberAction } from "../actions";
 export interface RemoveMemberButtonProps {
   teamSlug: string;
   targetUserId: string;
-  targetUsername: string;
+  targetName: string;
 }
 
 /**
@@ -26,7 +26,7 @@ export interface RemoveMemberButtonProps {
 export function RemoveMemberButton({
   teamSlug,
   targetUserId,
-  targetUsername,
+  targetName,
 }: RemoveMemberButtonProps) {
   const router = useRouter();
   const t = useTranslations("teams");
@@ -70,7 +70,7 @@ export function RemoveMemberButton({
       <ConfirmModal
         open={open}
         title={t("removeMemberTitle")}
-        content={t("removeMemberConfirm", { name: targetUsername })}
+        content={t("removeMemberConfirm", { name: targetName })}
         confirmText={t("remove")}
         danger
         loading={submitting}

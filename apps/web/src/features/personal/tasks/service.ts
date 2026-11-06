@@ -359,7 +359,8 @@ export async function getPersonalTaskDetail(
     .select({
       task: tasks,
       projectName: projects.name,
-      assigneeName: users.username,
+      assigneeUsername: users.username,
+      assigneeNickname: users.nickname,
     })
     .from(tasks)
     .leftJoin(projects, eq(tasks.projectId, projects.id))
@@ -382,7 +383,11 @@ export async function getPersonalTaskDetail(
     .orderBy(asc(subtasks.createdAt));
 
   const commentRows = await client
-    .select({ comment: comments, authorName: users.username })
+    .select({
+      comment: comments,
+      authorUsername: users.username,
+      authorNickname: users.nickname,
+    })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))
     .where(eq(comments.taskId, taskId))
@@ -399,7 +404,8 @@ export async function getPersonalTaskDetail(
     description: task.description ?? undefined,
     status: task.status,
     assigneeId: task.assigneeId,
-    assigneeName: row.assigneeName ?? null,
+    // 展示名：昵称优先，未填写回退到用户名。
+    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
     dueDate: task.dueDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
@@ -409,14 +415,16 @@ export async function getPersonalTaskDetail(
       subtasks: mappedSubtasks,
     }),
     subtasks: mappedSubtasks,
-    comments: commentRows.map(({ comment, authorName }) => ({
-      id: comment.id,
-      taskId: comment.taskId,
-      authorId: comment.authorId,
-      authorName,
-      content: comment.content,
-      createdAt: comment.createdAt.toISOString(),
-    })),
+    comments: commentRows.map(
+      ({ comment, authorUsername, authorNickname }) => ({
+        id: comment.id,
+        taskId: comment.taskId,
+        authorId: comment.authorId,
+        authorName: authorNickname ?? authorUsername,
+        content: comment.content,
+        createdAt: comment.createdAt.toISOString(),
+      }),
+    ),
   };
 }
 
