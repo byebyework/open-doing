@@ -11,6 +11,9 @@
 /** 任务状态：手动切换 */
 export type TaskStatus = "todo" | "in_progress" | "done";
 
+/** 性别：可选资料，未填写为 null */
+export type Gender = "male" | "female" | "secret";
+
 /** 空间类型：个人空间或团队空间 */
 export type SpaceType = "personal" | "team";
 

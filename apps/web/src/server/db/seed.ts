@@ -540,6 +540,8 @@ async function seed(): Promise<void> {
           SEED_USERS.map((user) => ({
             uid: user.uid,
             username: user.username,
+            // 种子数据的展示名沿用原型里的用户名（如「林夏」）。
+            nickname: user.username,
             passwordHash,
             createdAt: timestampFromOffset(today, -30, 9),
           })),

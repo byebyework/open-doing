@@ -37,6 +37,7 @@ import {
   varchar,
 } from "drizzle-orm/mysql-core";
 import type {
+  Gender,
   NotificationType,
   SpaceType,
   TaskStatus,
@@ -98,12 +99,21 @@ const uuidPk = () =>
 /** UUID 外键列（可空性由调用方 `.notNull()` 决定）。 */
 const uuidRef = (name: string) => char(name, { length: 36 });
 
-/** 用户：用户名 + 密码登录，不收集邮箱；uid 仅用于邀请。 */
+/** 用户：用户名 + 密码登录；昵称 / 性别 / 邮箱 / 电话为可选资料；uid 仅用于邀请。 */
 export const users = mysqlTable("users", {
   id: uuidPk(),
   uid: identifierVarchar("uid").notNull().unique(),
   username: identifierVarchar("username").notNull().unique(),
   passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  // 展示名（可重复，不唯一）；为空时由应用层回退到 username。
+  nickname: varchar("nickname", { length: 50 }),
+  // 可选资料：NULL 表示未填写。
+  gender: identifierVarchar("gender").$type<Gender>(),
+  // 邮箱：全库唯一。这里**有意使用 MySQL 默认 collation**
+  // （utf8mb4_0900_ai_ci，大小写与重音均不敏感）——邮箱语义上大小写不敏感，
+  // 唯一约束需按此判重；写入前由应用层 lowercase 归一化。
+  email: varchar("email", { length: 255 }).unique(),
+  phone: varchar("phone", { length: 20 }).unique(),
   // 个人设置：临期 / 逾期提醒开关，默认开启；存量用户由 DEFAULT 回填。
   dueSoonReminderEnabled: boolean("due_soon_reminder_enabled").notNull().default(true),
   overdueReminderEnabled: boolean("overdue_reminder_enabled").notNull().default(true),

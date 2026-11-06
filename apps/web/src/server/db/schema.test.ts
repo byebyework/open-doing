@@ -1,4 +1,5 @@
 import { eq } from "drizzle-orm";
+import { getTableConfig } from "drizzle-orm/mysql-core";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
@@ -358,5 +359,36 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     const readback = row!.createdAt.getTime();
     expect(readback).toBeGreaterThanOrEqual(before - 2000);
     expect(readback).toBeLessThanOrEqual(after + 2000);
+  });
+});
+
+describe("users 表结构（schema 元数据）", () => {
+  it("⑫ 可空昵称 / 性别 / 邮箱 / 电话，email 与 phone 带约定命名的唯一索引", () => {
+    const { columns } = getTableConfig(users);
+    const byName = new Map(columns.map((column) => [column.name, column]));
+
+    const nickname = byName.get("nickname");
+    expect(nickname).toBeDefined();
+    expect(nickname!.notNull).toBe(false);
+    expect(nickname!.getSQLType()).toBe("varchar(50)");
+
+    const gender = byName.get("gender");
+    expect(gender).toBeDefined();
+    expect(gender!.notNull).toBe(false);
+    expect(gender!.getSQLType()).toBe("varchar(255) COLLATE utf8mb4_bin");
+
+    const email = byName.get("email");
+    expect(email).toBeDefined();
+    expect(email!.notNull).toBe(false);
+    expect(email!.getSQLType()).toBe("varchar(255)");
+    expect(email!.isUnique).toBe(true);
+    expect(email!.uniqueName).toBe("users_email_unique");
+
+    const phone = byName.get("phone");
+    expect(phone).toBeDefined();
+    expect(phone!.notNull).toBe(false);
+    expect(phone!.getSQLType()).toBe("varchar(20)");
+    expect(phone!.isUnique).toBe(true);
+    expect(phone!.uniqueName).toBe("users_phone_unique");
   });
 });
