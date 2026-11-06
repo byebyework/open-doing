@@ -21,6 +21,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
     "apps/web/src/features/auth/constants.ts",
     "apps/web/src/features/auth/service.ts",
   ].map((prefix) => ({ prefix, reason: "AuthError zh 兜底（constants 为 message 常量，均携带 i18n key）" })),
+  { prefix: "apps/web/src/features/users/service.ts", reason: "UserError zh 兜底（构造参数均携带 users.profile i18n key）" },
   { prefix: "apps/web/src/features/personal/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
   { prefix: "apps/web/src/features/personal/projects/service.ts", reason: "DomainError zh 兜底" },
   { prefix: "apps/web/src/features/projects/service.ts", reason: "DomainError zh 兜底" },

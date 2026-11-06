@@ -143,6 +143,29 @@
     "newPasswordMinLength": "新密码至少 {min} 位",
     "uidGenerationFailed": "系统繁忙，请稍后重试"
   },
+  "users": {
+    "profile": {
+      "title": "个人资料",
+      "description": "昵称、性别与联系方式，帮助队友更好地了解你。",
+      "nicknameLabel": "昵称",
+      "genderLabel": "性别",
+      "genderMale": "男",
+      "genderFemale": "女",
+      "genderSecret": "保密",
+      "emailLabel": "邮箱",
+      "emailPlaceholder": "选填，例如 name@example.com",
+      "phoneLabel": "电话",
+      "phonePlaceholder": "选填，例如 13800138000",
+      "saved": "个人资料已保存",
+      "saveFailed": "个人资料保存失败，请稍后重试",
+      "nicknameMaxLength": "昵称最多 {max} 个字符",
+      "genderInvalid": "性别取值不合法",
+      "emailInvalid": "邮箱格式不正确",
+      "phoneInvalid": "电话格式不正确",
+      "emailTaken": "邮箱已被使用",
+      "phoneTaken": "电话已被使用"
+    }
+  },
   "nav": {
     "space": "空间",
     "teamManagement": "团队管理",

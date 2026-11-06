@@ -1,3 +1,4 @@
+import type { Gender } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -8,7 +9,15 @@ import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { DomainError } from "@/lib/domain-error";
 
-import { getReminderPrefs, updateUserLanguage, updateReminderPrefs } from "./service";
+import { NICKNAME_MAX_LENGTH } from "./constants";
+import {
+  getProfile,
+  getReminderPrefs,
+  updateProfile,
+  updateUserLanguage,
+  updateReminderPrefs,
+  type UserProfile,
+} from "./service";
 
 /**
  * service 通过默认参数 `= db` 惰性消费 `@/server/db/client` 的 `db`；本用例沿用
@@ -182,5 +191,183 @@ describe.skipIf(!hasTestDatabase)("用户界面语言读写", () => {
     await expect(
       updateUserLanguage({ userId: MISSING_USER_ID, language: "en" }, db),
     ).rejects.toThrow(DomainError);
+  });
+});
+
+/** 带个人资料的夹具：显式写入四个可选列，便于断言读写结果。 */
+async function createProfileUser(
+  db: DbClient,
+  username: string,
+  profile: UserProfile = {
+    nickname: null,
+    gender: null,
+    email: null,
+    phone: null,
+  },
+) {
+  const id = crypto.randomUUID();
+  await db.insert(users).values({
+    id,
+    uid: generateUid(),
+    username,
+    passwordHash: "test-hash",
+    ...profile,
+  });
+  return { id };
+}
+
+describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    testDbRef.current = db;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("① getProfile 返回四个可选资料字段", async () => {
+    const user = await createProfileUser(db, "林夏", {
+      nickname: "阿岚",
+      gender: "female",
+      email: "lan@example.com",
+      phone: "13800138000",
+    });
+
+    await expect(getProfile(user.id, db)).resolves.toEqual({
+      nickname: "阿岚",
+      gender: "female",
+      email: "lan@example.com",
+      phone: "13800138000",
+    });
+  });
+
+  it("② updateProfile 归一化：trim、邮箱小写，空字符串归一化为 null", async () => {
+    const user = await createProfileUser(db, "林夏");
+
+    // 昵称 trim 后写入，邮箱 trim + 小写，电话 trim。
+    await expect(
+      updateProfile(
+        {
+          userId: user.id,
+          nickname: "  阿岚  ",
+          gender: "female",
+          email: "  LAN@Example.COM ",
+          phone: " +86-13800138000 ",
+        },
+        db,
+      ),
+    ).resolves.toEqual({
+      nickname: "阿岚",
+      gender: "female",
+      email: "lan@example.com",
+      phone: "+86-13800138000",
+    });
+
+    // 空字符串（等价于表单清空）= 归一化为 null；昵称空串不改变当前值。
+    await expect(
+      updateProfile(
+        {
+          userId: user.id,
+          nickname: "   ",
+          gender: "" as Gender,
+          email: "",
+          phone: "",
+        },
+        db,
+      ),
+    ).resolves.toEqual({
+      nickname: "阿岚",
+      gender: null,
+      email: null,
+      phone: null,
+    });
+  });
+
+  it("③ 非法性别 / 邮箱 / 电话 / 超长昵称抛 UserError（字段与 i18n key 正确）", async () => {
+    const user = await createProfileUser(db, "林夏");
+
+    await expect(
+      updateProfile({ userId: user.id, gender: "other" as Gender }, db),
+    ).rejects.toMatchObject({
+      name: "UserError",
+      field: "gender",
+      i18n: { key: "genderInvalid" },
+    });
+
+    await expect(
+      updateProfile({ userId: user.id, email: "not-an-email" }, db),
+    ).rejects.toMatchObject({
+      name: "UserError",
+      field: "email",
+      i18n: { key: "emailInvalid" },
+    });
+
+    await expect(
+      updateProfile({ userId: user.id, phone: "abc-123" }, db),
+    ).rejects.toMatchObject({
+      name: "UserError",
+      field: "phone",
+      i18n: { key: "phoneInvalid" },
+    });
+
+    await expect(
+      updateProfile(
+        { userId: user.id, nickname: "x".repeat(NICKNAME_MAX_LENGTH + 1) },
+        db,
+      ),
+    ).rejects.toMatchObject({
+      name: "UserError",
+      field: "nickname",
+      i18n: { key: "nicknameMaxLength", params: { max: NICKNAME_MAX_LENGTH } },
+    });
+  });
+
+  it("④ 邮箱与他人冲突时按唯一索引抛 emailTaken（不泄露数据库错误）", async () => {
+    await createProfileUser(db, "已有邮箱的用户", {
+      nickname: null,
+      gender: null,
+      email: "taken@example.com",
+      phone: null,
+    });
+    const user = await createProfileUser(db, "林夏");
+
+    // 大小写不同同样冲突：写入前 lowercase，且 MySQL 邮箱 collation 大小写不敏感。
+    await expect(
+      updateProfile({ userId: user.id, email: "TAKEN@example.com" }, db),
+    ).rejects.toMatchObject({
+      name: "UserError",
+      field: "email",
+      i18n: { key: "emailTaken" },
+    });
+
+    // 事务回滚：冲突值没有写进库。
+    await expect(getProfile(user.id, db)).resolves.toEqual({
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+    });
+  });
+
+  it("⑤ updateProfile 未传任何键时返回当前值", async () => {
+    const current: UserProfile = {
+      nickname: "阿岚",
+      gender: "secret",
+      email: "lan@example.com",
+      phone: "13800138000",
+    };
+    const user = await createProfileUser(db, "林夏", current);
+
+    await expect(updateProfile({ userId: user.id }, db)).resolves.toEqual(current);
+  });
+
+  it("⑥ 用户不存在时 getProfile 抛 UserError", async () => {
+    await expect(getProfile(MISSING_USER_ID, db)).rejects.toMatchObject({
+      name: "UserError",
+      field: "form",
+    });
   });
 });

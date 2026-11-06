@@ -6,8 +6,13 @@ import { Badge } from "@/components/ui/shadcn/badge";
 import { requireUser } from "@/features/auth/session";
 import { ChangePasswordForm } from "@/features/users/components/ChangePasswordForm";
 import { LanguageSetting } from "@/features/users/components/LanguageSetting";
+import { ProfileForm } from "@/features/users/components/ProfileForm";
 import { ReminderToggleList } from "@/features/users/components/ReminderToggleList";
-import { getReminderPrefs, getUserLanguage } from "@/features/users/service";
+import {
+  getProfile,
+  getReminderPrefs,
+  getUserLanguage,
+} from "@/features/users/service";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
@@ -40,15 +45,18 @@ function SettingsCardHeader({
 /**
  * 个人设置页（RSC，`/settings` 系统级路由）。
  *
- * 文案与版式对照 `docs/prototypes/space-settings-personal.html`：账户安全
- * （改密码）、任务提醒（临期 / 逾期开关，作用于 due-scan）、项目排序
- * （服务端按最近活动排序的静态说明）。交互下沉到 client 包装件。
+ * 文案与版式对照 `docs/prototypes/space-settings-personal.html`：个人资料
+ * （昵称 / 性别 / 邮箱 / 电话）、账户安全（改密码）、任务提醒（临期 /
+ * 逾期开关，作用于 due-scan）、项目排序（服务端按最近活动排序的静态
+ * 说明）。交互下沉到 client 包装件。
  */
 export default async function PersonalSettingsPage() {
   const user = await requireUser();
+  const profile = await getProfile(user.id);
   const prefs = await getReminderPrefs(user.id);
   const userLanguage = await getUserLanguage(user.id);
   const t = await getTranslations("settings");
+  const tProfile = await getTranslations("users.profile");
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[760px]">
@@ -62,6 +70,15 @@ export default async function PersonalSettingsPage() {
       </header>
 
       <div className="flex flex-col gap-4">
+        <section className={CARD_CLASS}>
+          <SettingsCardHeader
+            title={tProfile("title")}
+            caption={tProfile("description")}
+          />
+
+          <ProfileForm profile={profile} />
+        </section>
+
         <section className={CARD_CLASS}>
           <SettingsCardHeader
             title={t("accountSecurity")}

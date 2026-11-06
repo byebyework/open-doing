@@ -1,10 +1,17 @@
 import type { Gender, User } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 
-import { DomainError } from "@/lib/domain-error";
+import { DomainError, type DomainErrorI18n } from "@/lib/domain-error";
 import type { AppLocale } from "@/i18n/config";
 import { db, type DbClient } from "@/server/db/client";
+import { isUniqueViolation, uniqueViolationKey } from "@/server/db/errors";
 import { users } from "@/server/db/schema";
+
+import {
+  EMAIL_PATTERN,
+  NICKNAME_MAX_LENGTH,
+  PHONE_PATTERN,
+} from "./constants";
 
 /** users 表中可映射为领域模型的列。 */
 type UserRow = {
@@ -195,4 +202,175 @@ export async function updateReminderPrefs(
     if (!row) throw new Error("user not found");
     return row;
   });
+}
+
+/** 个人资料错误可落到的表单字段。 */
+export type UserErrorField = "nickname" | "gender" | "email" | "phone" | "form";
+
+/**
+ * 个人资料领域错误。
+ *
+ * 与 AuthError 同构：`message` 是 zh 兜底，`field` 供 Server Action 映射为
+ * 表单字段错误，`i18n` 携带 `{ key, params }` 供 action 按请求语言翻译
+ * （key 位于 `users.profile.*` 命名空间）。数据库细节不向客户端泄露。
+ */
+export class UserError extends Error {
+  readonly field: UserErrorField;
+  readonly i18n?: DomainErrorI18n;
+
+  constructor(
+    message: string,
+    field: UserErrorField = "form",
+    i18n?: DomainErrorI18n,
+  ) {
+    super(message);
+    this.name = "UserError";
+    this.field = field;
+    this.i18n = i18n;
+  }
+}
+
+/** 个人资料领域模型（可跨边界传递）：null 表示未填写。 */
+export interface UserProfile {
+  nickname: string | null;
+  gender: Gender | null;
+  email: string | null;
+  phone: string | null;
+}
+
+/** 只取四个可选资料列，避免把密码哈希等字段带出。 */
+const profileColumns = {
+  nickname: users.nickname,
+  gender: users.gender,
+  email: users.email,
+  phone: users.phone,
+} as const;
+
+/** 可选文本字段：非字符串视为未填，统一 trim。 */
+function normalizeOptionalText(value: unknown): string {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function isGender(value: string): value is Gender {
+  return value === "male" || value === "female" || value === "secret";
+}
+
+/**
+ * 读取用户个人资料；用户不存在时抛 UserError（个人设置在会话内必然对应真实用户）。
+ */
+export async function getProfile(
+  userId: string,
+  client: DbClient = db,
+): Promise<UserProfile> {
+  const [row] = await client
+    .select(profileColumns)
+    .from(users)
+    .where(eq(users.id, userId))
+    .limit(1);
+
+  if (!row) throw new UserError("user not found");
+  return row;
+}
+
+/**
+ * 校验并归一化需要写入的资料列。
+ *
+ * 契约（表单是唯一写入口）：
+ * - `nickname`：未传/`null`/空字符串 → **保持当前昵称**（不清空、不重新生成）；
+ *   非空则 trim 并校验长度 ≤50。
+ * - `gender` / `email` / `phone`：未传 → 保持当前值；显式 `null` 或空字符串
+ *   → 清空为 null；非空则 trim 后按枚举 / 邮箱 / 电话规则校验（邮箱小写）。
+ */
+function buildProfilePatch(input: Partial<UserProfile>): Partial<UserProfile> {
+  const patch: Partial<UserProfile> = {};
+
+  if (input.nickname !== undefined && input.nickname !== null) {
+    const nickname = normalizeOptionalText(input.nickname);
+    if (nickname.length > NICKNAME_MAX_LENGTH) {
+      throw new UserError(
+        `昵称最多 ${NICKNAME_MAX_LENGTH} 个字符`,
+        "nickname",
+        { key: "nicknameMaxLength", params: { max: NICKNAME_MAX_LENGTH } },
+      );
+    }
+    if (nickname) patch.nickname = nickname;
+  }
+
+  if (input.gender !== undefined) {
+    const gender = normalizeOptionalText(input.gender);
+    if (!gender) {
+      patch.gender = null;
+    } else if (!isGender(gender)) {
+      throw new UserError("性别取值不合法", "gender", { key: "genderInvalid" });
+    } else {
+      patch.gender = gender;
+    }
+  }
+
+  if (input.email !== undefined) {
+    const email = normalizeOptionalText(input.email).toLowerCase();
+    if (!email) {
+      patch.email = null;
+    } else if (!EMAIL_PATTERN.test(email)) {
+      throw new UserError("邮箱格式不正确", "email", { key: "emailInvalid" });
+    } else {
+      patch.email = email;
+    }
+  }
+
+  if (input.phone !== undefined) {
+    const phone = normalizeOptionalText(input.phone);
+    if (!phone) {
+      patch.phone = null;
+    } else if (!PHONE_PATTERN.test(phone)) {
+      throw new UserError("手机号格式不正确", "phone", { key: "phoneInvalid" });
+    } else {
+      patch.phone = phone;
+    }
+  }
+
+  return patch;
+}
+
+/**
+ * 更新用户个人资料并返回持久化值（只允许改当前会话用户自己的资料）。
+ *
+ * - 未传任何键：不执行空 SET，直接返回当前值；
+ * - 邮箱 / 电话冲突按唯一索引名分派为 `emailTaken` / `phoneTaken` 字段错误；
+ * - MySQL 无 RETURNING：写入后在同一事务内回查，保证返回值与落库一致。
+ */
+export async function updateProfile(
+  input: { userId: string } & Partial<UserProfile>,
+  client: DbClient = db,
+): Promise<UserProfile> {
+  const patch = buildProfilePatch(input);
+  if (Object.keys(patch).length === 0) {
+    return getProfile(input.userId, client);
+  }
+
+  try {
+    return await client.transaction(async (tx) => {
+      await tx.update(users).set(patch).where(eq(users.id, input.userId));
+
+      const [row] = await tx
+        .select(profileColumns)
+        .from(users)
+        .where(eq(users.id, input.userId))
+        .limit(1);
+
+      if (!row) throw new UserError("user not found");
+      return row;
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      const key = uniqueViolationKey(error);
+      if (key === "users_email_unique") {
+        throw new UserError("邮箱已被使用", "email", { key: "emailTaken" });
+      }
+      if (key === "users_phone_unique") {
+        throw new UserError("手机号已被使用", "phone", { key: "phoneTaken" });
+      }
+    }
+    throw error;
+  }
 }

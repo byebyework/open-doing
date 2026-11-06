@@ -143,6 +143,29 @@
     "newPasswordMinLength": "New password must be at least {min} characters",
     "uidGenerationFailed": "System busy, please try again later"
   },
+  "users": {
+    "profile": {
+      "title": "Profile",
+      "description": "Nickname, gender and contact details help teammates get to know you.",
+      "nicknameLabel": "Nickname",
+      "genderLabel": "Gender",
+      "genderMale": "Male",
+      "genderFemale": "Female",
+      "genderSecret": "Private",
+      "emailLabel": "Email",
+      "emailPlaceholder": "Optional, e.g. name@example.com",
+      "phoneLabel": "Phone",
+      "phonePlaceholder": "Optional, e.g. 13800138000",
+      "saved": "Profile saved",
+      "saveFailed": "Failed to save profile, please try again later",
+      "nicknameMaxLength": "Nickname must be at most {max} characters",
+      "genderInvalid": "Invalid gender value",
+      "emailInvalid": "Invalid email format",
+      "phoneInvalid": "Invalid phone number format",
+      "emailTaken": "Email already in use",
+      "phoneTaken": "Phone number already in use"
+    }
+  },
   "nav": {
     "space": "Space",
     "teamManagement": "Team management",
