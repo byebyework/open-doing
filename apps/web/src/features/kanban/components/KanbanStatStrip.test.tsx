@@ -58,10 +58,10 @@ describe("KanbanStatStrip（统计即筛选）", () => {
     expect(html).toContain(">3<");
 
     // 口径说明收敛为 HintBadge：SSR 只可见触发器摘要与可访问名，
-    // 明细（已完成按近 7 天…）留在 Portal 内，点开前不落文档。
+    // 明细（已完成只统计近 7 天完成的任务…）留在 Portal 内，点开前不落文档。
     expect(html).toContain('aria-label="统计口径说明"');
     expect(html).toContain("统计口径");
-    expect(html).not.toContain("已完成按近 7 天");
+    expect(html).not.toContain("已完成只统计近 7 天完成的任务");
   });
 
   it("aria-pressed 标记激活 chip（status:todo 激活、其余未激活）", () => {

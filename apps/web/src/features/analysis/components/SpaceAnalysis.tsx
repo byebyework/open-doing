@@ -433,17 +433,13 @@ async function TeamBody({
     max: maxLoad,
   }));
 
-  const projectNames = analysis.projectHealth
-    .map((project) => project.projectName)
-    .join(" · ");
-
   return (
     <>
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
           label={tDashboard("statProjects")}
           value={stats.projectCount}
-          hint={projectNames || tDashboard("statProjectsHint")}
+          hint={t("enrolledSummary", { count: stats.projectCount })}
         />
         <StatCard
           label={tDashboard("statOverallProgress")}

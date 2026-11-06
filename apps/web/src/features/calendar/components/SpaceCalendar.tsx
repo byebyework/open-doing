@@ -5,7 +5,7 @@ import { enUS, zhCN } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { DayPicker, type DayProps } from "react-day-picker";
 
 import { HintBadge } from "@/components/ui/HintBadge";
@@ -479,6 +479,40 @@ export function SpaceCalendar({
   const tCalendar = useTranslations("calendar");
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
 
+  /**
+   * 月网格横向滚动：窄视口下 42 格（7 列 × 6 行）无法被压到容器宽度内，
+   * 卡片内改为横向滚动；仅当还能继续向右滚动时，右缘叠加渐变阴影作为
+   * 「还有列未露出」的滚动暗示（滚到最右即隐藏）。
+   */
+  const gridScrollRef = useRef<HTMLDivElement>(null);
+  const gridContentRef = useRef<HTMLDivElement>(null);
+  const [showGridRightShadow, setShowGridRightShadow] = useState(false);
+
+  const updateGridScrollShadow = useCallback(() => {
+    const element = gridScrollRef.current;
+
+    if (!element) return;
+
+    setShowGridRightShadow(
+      element.scrollLeft + element.clientWidth < element.scrollWidth - 1,
+    );
+  }, []);
+
+  useEffect(() => {
+    const element = gridScrollRef.current;
+
+    if (!element) return;
+
+    updateGridScrollShadow();
+    // 容器 / 内容尺寸变化（字体加载、窗口缩放、翻月后内容重排）都要重新判定。
+    const observer = new ResizeObserver(updateGridScrollShadow);
+
+    observer.observe(element);
+    if (gridContentRef.current) observer.observe(gridContentRef.current);
+
+    return () => observer.disconnect();
+  }, [updateGridScrollShadow]);
+
   /** 月网格按 dueDate 索引（`data.items` 已覆 42 天窗口）。 */
   const itemsByDate = useMemo(() => indexTasksByDate(data.items), [data.items]);
 
@@ -655,29 +689,57 @@ export function SpaceCalendar({
 
           {/* 卡片只包住星期表头 + 网格本体。 */}
           <div className="overflow-hidden rounded-xl border border-[var(--border-default)] bg-white">
-            <DayPicker
-              month={monthAnchor(month)}
-              onMonthChange={(date) => {
-                router.push(`${basePath}?month=${dateKey(date).slice(0, 7)}`);
-              }}
-              hideNavigation
-              showOutsideDays
-              fixedWeeks
-              weekStartsOn={1}
-              locale={locale === "zh" ? zhCN : enUS}
-              formatters={{
-                formatWeekdayName: (date) => weekdayLabels[date.getDay()] ?? "",
-              }}
-              classNames={{
-                months: "w-full",
-                month: "w-full",
-                month_grid: "w-full border-collapse",
-                weekdays: "border-b border-b-[var(--border-default)] bg-[#f4f5f7]",
-                weekday: "text-center text-[11px] font-normal text-[var(--ink-400)]",
-                day: "p-0",
-              }}
-              components={dayPickerComponents}
-            />
+            <div className="relative">
+              {/* 窄视口下 7 列 × 6 行在卡内横向滚动，最右列始终可到达。 */}
+              <div
+                ref={gridScrollRef}
+                data-testid="calendar-grid-scroll"
+                onScroll={updateGridScrollShadow}
+                className="overflow-x-auto"
+              >
+                <div ref={gridContentRef} className="min-w-[560px]">
+                  <DayPicker
+                    month={monthAnchor(month)}
+                    onMonthChange={(date) => {
+                      router.push(`${basePath}?month=${dateKey(date).slice(0, 7)}`);
+                    }}
+                    hideNavigation
+                    showOutsideDays
+                    fixedWeeks
+                    weekStartsOn={1}
+                    locale={locale === "zh" ? zhCN : enUS}
+                    formatters={{
+                      formatWeekdayName: (date) =>
+                        weekdayLabels[date.getDay()] ?? "",
+                    }}
+                    classNames={{
+                      months: "w-full",
+                      month: "w-full",
+                      month_grid: "w-full border-collapse",
+                      weekdays:
+                        "border-b border-b-[var(--border-default)] bg-[#f4f5f7]",
+                      weekday:
+                        "text-center text-[11px] font-normal text-[var(--ink-400)]",
+                      day: "p-0",
+                    }}
+                    components={dayPickerComponents}
+                  />
+                </div>
+              </div>
+
+              {/* 右缘滚动阴影：颜色由 ink token 经 color-mix 取 alpha，不落字面色值。 */}
+              {showGridRightShadow ? (
+                <div
+                  aria-hidden="true"
+                  data-testid="calendar-scroll-shadow"
+                  className="pointer-events-none absolute inset-y-0 right-0 w-10"
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(to left, color-mix(in srgb, var(--ink-900) 16%, transparent), transparent)",
+                  }}
+                />
+              ) : null}
+            </div>
           </div>
         </div>
 

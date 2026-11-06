@@ -229,6 +229,9 @@ test.describe("flow 8: 空间级 Analysis", () => {
     await expectStatValue(page, "本周完成", "1");
     // 昨天截止的任务已完成，未来截止的任务未到期：没有逾期。
     await expectStatValue(page, "当前逾期", "0");
+    // 「在册项目」副标题收敛为短计数行，不再罗列项目名（避免长列表溢出）。
+    await expect(statCard(page, "在册项目")).toContainText("共 1 个项目");
+    await expect(statCard(page, "在册项目")).not.toContainText(projectName);
 
     // 吞吐：今天所在桶非零（柱高 > 0 时才会带「完成 1」的悬停文案）。
     const throughput = sectionByHeading(page, "吞吐");
