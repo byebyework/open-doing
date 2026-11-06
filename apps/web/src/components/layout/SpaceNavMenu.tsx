@@ -144,17 +144,25 @@ function InvitesIcon() {
   );
 }
 
-/** 当前空间五模块（顺序与原型侧栏一致）。 */
-const MODULES: {
+/** 导航项：模块 + i18n 标签 key + 图标（顺序与原型侧栏一致）。 */
+interface SpaceNavModule {
   module: SpaceModule;
-  labelKey: "dashboard" | "kanban" | "calendar" | "analysis" | "settingsLabel";
+  labelKey: "dashboard" | "kanban" | "calendar" | "analysis" | "teamManagement";
   Icon: ComponentType;
-}[] = [
+}
+
+/** 个人空间四模块：个人设置已上移为系统级 `/settings`，不再出现在空间导航。 */
+const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
   { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
-  { module: "settings", labelKey: "settingsLabel", Icon: SettingsIcon },
+];
+
+/** 团队空间五模块：末项「团队管理」沿用团队 settings 路由（路径不变）。 */
+const TEAM_MODULES: SpaceNavModule[] = [
+  ...PERSONAL_MODULES,
+  { module: "settings", labelKey: "teamManagement", Icon: SettingsIcon },
 ];
 
 /** SpaceNavMenu 入参。 */
@@ -196,7 +204,8 @@ export function resolveSpaceLabel(
  * 统一空间导航菜单（v1.1 M2 新 IA）。
  *
  * 结构对照原型 `space-dashboard-*.html` 侧栏：
- * - 当前空间名作为分组标题，下挂 Dashboard / Kanban / Calendar / Analysis / 设置；
+ * - 当前空间名作为分组标题；个人空间 4 项（Dashboard / Kanban / Calendar /
+ *   Analysis），团队空间额外第 5 项「团队管理」（团队的 settings 路由）；
  * - 「账号」分组待处理邀请入口，pending 数 > 0 时显示红色角标；
  * - 未登录（`data.loggedIn === false`）整体不渲染。
  */
@@ -208,6 +217,8 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
   if (!data.loggedIn) return null;
 
   const { spaceRef, module: activeModule } = resolveSpaceLocation(pathname);
+  // 个人空间 4 项、团队空间 5 项；未知 slug 按团队渲染（团队管理路由仍可 404）。
+  const modules = spaceRef === "personal" ? PERSONAL_MODULES : TEAM_MODULES;
   const spaceLabel = resolveSpaceLabel(spaceRef, data.teams) ?? t("personalSpace");
   const invitesActive =
     pathname === invitesHref() || pathname.startsWith(`${invitesHref()}/`);
@@ -216,7 +227,7 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
     <>
       <div className="flex flex-col">
         <div className={NAV_GROUP_LABEL}>{spaceLabel}</div>
-        {MODULES.map(({ module, labelKey, Icon }) => {
+        {modules.map(({ module, labelKey, Icon }) => {
           const active = activeModule === module;
 
           return (

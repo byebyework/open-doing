@@ -41,6 +41,11 @@ export function teamSettingsHref(teamSlug: string): string {
   return `/space/${teamSlug}/settings`;
 }
 
+/** 个人设置入口（系统级路由，不隶属于任何空间）。 */
+export function personalSettingsHref(): string {
+  return "/settings";
+}
+
 export function invitesHref(): string {
   return "/invites";
 }

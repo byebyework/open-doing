@@ -18,7 +18,7 @@ export interface SidebarProps {
  *
  * 本组件为 server component：读取当前用户及其团队，把可序列化的团队
  * `{ slug, name }` 交给 `SpaceSwitcher` 渲染真实切换菜单。
- * 导航内容（当前空间五模块 + 账号分组）由 `SpaceNav` 负责，
+ * 导航内容（当前空间模块 + 账号分组）由 `SpaceNav` 负责，
  * 本组件只提供顺序与滚动容器。
  * ≤860px 整体隐藏（移动端入口由 `MobileNav` 提供）。
  */

@@ -538,7 +538,7 @@ test.describe("375px 无横向溢出", () => {
       },
       "/space/[teamSlug]/settings": async (page) => {
         await expect(
-          page.getByRole("heading", { name: "团队设置", level: 1 }),
+          page.getByRole("heading", { name: "团队管理", level: 1 }),
         ).toBeVisible();
         // 成员表 + 已发出邀请行：375px 下最容易溢出的两处长内容。
         await expect(page.getByText(`成员（1）`)).toBeVisible();

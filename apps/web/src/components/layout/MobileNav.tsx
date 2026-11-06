@@ -45,7 +45,8 @@ function MenuIcon() {
  * 移动端导航入口（<861px）。
  *
  * 顶栏汉堡按钮打开 shadcn Sheet（左侧抽屉），内容与桌面侧栏同源：
- * 品牌行 → 空间切换器 → 五模块 + 账号分组（`SpaceNavMenu`）。
+ * 品牌行 → 空间切换器 → 模块导航（个人 4 项 / 团队 5 项）+ 账号分组
+ * （`SpaceNavMenu`）。
  * 路由变化（点击任一导航项）时在渲染期同步关闭抽屉，
  * 沿用项目既有的「渲染期同步 props → state」写法，避免 effect 中 setState。
  */

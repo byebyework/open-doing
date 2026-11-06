@@ -88,6 +88,7 @@ export const TEST_IDS = {
     spaceSwitcherTrigger: "space-switcher-trigger",
     notificationBellButton: "notification-bell-button",
     userMenuButton: "user-menu-button",
+    userMenuSettings: "user-menu-settings",
   },
   misc: {
     notFoundMessage: "not-found-message",

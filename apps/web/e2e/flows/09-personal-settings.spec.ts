@@ -12,10 +12,11 @@ import {
 } from "../utils/flows";
 
 /**
- * 关键流 9：个人空间设置（v1.1 M6，`/space/personal/settings`）。
+ * 关键流 9：个人设置（v1.1 M6，现为系统级 `/settings`）。
  *
- * 覆盖（对照实现计划的 Task 6）：
- * 1. 侧栏「设置」进入设置页，三个区块标题 + 两个提醒 Switch 默认开启；
+ * 覆盖（对照实现计划的 Task 6 / UX 调整 Task 7）：
+ * 1. 顶栏用户菜单「个人设置」进入设置页，三个区块标题 + 两个提醒 Switch
+ *    默认开启；旧路由 `/space/personal/settings` 已移除（直接访问 404）；
  * 2. 改密码全流程：旧密码错误落在字段错误；正确改密后 toast 且保持登录；
  *    登出后旧密码登录失败、新密码成功；
  * 3. 关闭「临期提醒」后刷新仍为关（持久化）；
@@ -31,12 +32,13 @@ test.describe.configure({ timeout: 120_000 });
 const SECTION_TITLES = ["账户安全", "任务提醒", "项目排序"] as const;
 
 test.describe("flow 9: 个人空间设置", () => {
-  test("侧栏进入设置页，三区块与默认开启的开关", async ({ page }) => {
+  test("用户菜单进入设置页，三区块与默认开启的开关", async ({ page }) => {
     await registerUser(page, uniqueUsername("e2e_st1"));
 
-    // 从侧栏「设置」进入新页面（M4 起挂着的 404 链接在本里程碑修复）。
-    await page.getByRole("link", { name: "设置", exact: true }).click();
-    await expect(page).toHaveURL(/\/space\/personal\/settings$/, {
+    // 个人设置入口在顶栏用户菜单（个人空间导航已不再渲染「设置」项）。
+    await page.getByTestId(TEST_IDS.shell.userMenuButton).click();
+    await page.getByTestId(TEST_IDS.shell.userMenuSettings).click();
+    await expect(page).toHaveURL(/\/settings$/, {
       timeout: 30_000,
     });
     await expect(
@@ -56,6 +58,10 @@ test.describe("flow 9: 个人空间设置", () => {
     await expect(
       page.getByTestId(TEST_IDS.settings.overdueSwitch),
     ).toHaveAttribute("aria-checked", "true");
+
+    // 旧路由直接移除（需求方指定，不做重定向）：访问即 404。
+    const oldRouteResponse = await page.goto("/space/personal/settings");
+    expect(oldRouteResponse?.status()).toBe(404);
   });
 
   test("改密码：旧密码错误提示、成功 toast、登出后新密码生效", async ({
@@ -65,7 +71,7 @@ test.describe("flow 9: 个人空间设置", () => {
     const newPassword = "e2e-new-password-456";
 
     await registerUser(page, username);
-    await page.goto("/space/personal/settings");
+    await page.goto("/settings");
 
     const oldPasswordInput = page.getByTestId(TEST_IDS.settings.oldPasswordInput);
     const newPasswordInput = page.getByTestId(TEST_IDS.settings.newPasswordInput);
@@ -99,7 +105,7 @@ test.describe("flow 9: 个人空间设置", () => {
     await oldPasswordInput.fill(E2E_PASSWORD);
     await page.getByTestId(TEST_IDS.settings.updatePasswordButton).click();
     await expect(page.getByText("密码已更新")).toBeVisible();
-    await expect(page).toHaveURL(/\/space\/personal\/settings$/);
+    await expect(page).toHaveURL(/\/settings$/);
     await expect(
       page.getByRole("heading", { name: "设置", level: 1 }),
     ).toBeVisible();
@@ -126,7 +132,7 @@ test.describe("flow 9: 个人空间设置", () => {
 
   test("关闭临期提醒后刷新仍为关", async ({ page }) => {
     await registerUser(page, uniqueUsername("e2e_st3"));
-    await page.goto("/space/personal/settings");
+    await page.goto("/settings");
 
     const dueSoonSwitch = page.getByTestId(TEST_IDS.settings.dueSoonSwitch);
     await expect(dueSoonSwitch).toHaveAttribute("aria-checked", "true");
@@ -135,7 +141,7 @@ test.describe("flow 9: 个人空间设置", () => {
     const saved = page.waitForResponse(
       (response) =>
         response.request().method() === "POST" &&
-        response.url().includes("/space/personal/settings"),
+        response.url().includes("/settings"),
     );
     await dueSoonSwitch.click();
     await saved;

@@ -1,6 +1,7 @@
 "use client";
 
 import { displayName, type User } from "@open-doing/types";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
@@ -15,6 +16,25 @@ import {
 import { Input } from "@/components/ui/shadcn/input";
 import { logoutAction } from "@/features/auth/actions";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
+import { personalSettingsHref } from "@/lib/routes";
+
+/** 个人设置图标（齿轮，与空间导航的同款图标一致）。 */
+function SettingsIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="3" />
+      <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.15.35.23.72.23 1.09" />
+    </svg>
+  );
+}
 
 /** Topbar 入参。 */
 export interface TopbarProps {
@@ -94,7 +114,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
       {/* 通知入口占位：N-2 替换实现，路径不变 */}
       <NotificationBell />
 
-      {/* 用户头像区：点击打开用户菜单（v1 仅退出登录） */}
+      {/* 用户头像区：点击打开用户菜单（个人设置 / 退出登录） */}
       {user ? (
         <DropdownMenu>
           <DropdownMenuTrigger asChild disabled={loggingOut}>
@@ -108,6 +128,16 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
             </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
+            {/* 个人设置入口（系统级 /settings，与退出登录并列）。 */}
+            <DropdownMenuItem asChild>
+              <Link
+                href={personalSettingsHref()}
+                data-testid="user-menu-settings"
+              >
+                <SettingsIcon />
+                {t("personalSettings")}
+              </Link>
+            </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
               onSelect={() => {

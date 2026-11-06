@@ -37,7 +37,7 @@ test.describe("flow 12: 英文界面冒烟", () => {
     await registerUser(page, username);
 
     // ===== 设置页切英文 =====
-    await page.goto("/space/personal/settings");
+    await page.goto("/settings");
     await page.getByTestId(TEST_IDS.settings.languageSelect).click();
     await page.getByRole("option", { name: "English" }).click();
 
@@ -139,7 +139,7 @@ test.describe("flow 12: 英文界面冒烟", () => {
     expect(language).toBe("en");
 
     // ===== 切回简体中文 =====
-    await page.goto("/space/personal/settings");
+    await page.goto("/settings");
     await page.getByTestId(TEST_IDS.settings.languageSelect).click();
     await page.getByRole("option", { name: "简体中文" }).click();
     await expect(

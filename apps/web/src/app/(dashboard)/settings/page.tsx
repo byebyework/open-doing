@@ -12,7 +12,7 @@ import { getReminderPrefs, getUserLanguage } from "@/features/users/service";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
 
-  return { title: t("settingsTitle") };
+  return { title: t("personalSettingsTitle") };
 }
 
 /** 卡片外壳：与团队设置页保持一致的描边、圆角与阴影。 */
@@ -38,7 +38,7 @@ function SettingsCardHeader({
 }
 
 /**
- * 个人空间设置页（RSC）。
+ * 个人设置页（RSC，`/settings` 系统级路由）。
  *
  * 文案与版式对照 `docs/prototypes/space-settings-personal.html`：账户安全
  * （改密码）、任务提醒（临期 / 逾期开关，作用于 due-scan）、项目排序

@@ -11,7 +11,8 @@ import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
  * 2. 保留字：团队名为 "Personal" 时 slug 不占用 `personal`，
  *    `/space/personal/dashboard` 仍是个人 Dashboard（Task 2 行为）；
  * 3. 移动端（375px）：汉堡按钮打开 Sheet 抽屉（与桌面同源导航树），
- *    经抽屉内 Kanban 项跳转并断言页面渲染，随后可关闭抽屉。
+ *    个人空间 4 模块、团队空间第 5 项为「团队管理」，经抽屉内 Kanban
+ *    项跳转并断言页面渲染，随后可关闭抽屉。
  *
  * 切换器选择器对照 `SpaceSwitcher.tsx`：aside 内唯一按钮为触发器，
  * Radix DropdownMenu 菜单渲染在 body portal 中，按 menuitem 文本定位；
@@ -149,7 +150,7 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     await expect(hamburger).toBeVisible();
     await expect(hamburger).toHaveAttribute("aria-expanded", "false");
 
-    // 打开 Drawer：与桌面同源导航树（切换器 + 五模块 + 账号分组）。
+    // 打开 Drawer：与桌面同源导航树（切换器 + 模块 + 账号分组）。
     await hamburger.click();
     await expect(hamburger).toHaveAttribute("aria-expanded", "true");
 
@@ -158,17 +159,15 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     await expect(
       drawer.getByRole("button", { name: /个人空间/ }),
     ).toBeVisible();
-    for (const label of [
-      "仪表盘",
-      "看板",
-      "日历",
-      "分析",
-      "设置",
-    ]) {
+    // 个人空间只有 4 个模块：个人设置已上移至顶栏用户菜单（/settings）。
+    for (const label of ["仪表盘", "看板", "日历", "分析"]) {
       await expect(
         drawer.getByRole("link", { name: label, exact: true }),
       ).toBeVisible();
     }
+    await expect(
+      drawer.getByRole("link", { name: "设置", exact: true }),
+    ).toHaveCount(0);
     await expect(
       drawer.getByRole("link", { name: "待处理邀请" }),
     ).toBeVisible();
@@ -187,6 +186,23 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     // sr-only 文案已走 i18n：zh 为「关闭」，随 locale 翻译）。
     await hamburger.click();
     await expect(drawer).toBeVisible();
+    await drawer.getByRole("button", { name: "关闭" }).click();
+    await expect(drawer).toBeHidden();
+
+    // 团队空间的 Drawer 有第 5 项「团队管理」（沿用团队 settings 路由）；
+    // 建团后落在团队管理页，页面标题与抽屉末项同步切换。
+    await createTeam(page, uniqueLabel("E2E mobile team"));
+    await expect(
+      page.getByRole("heading", { name: "团队管理", level: 1 }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await hamburger.click();
+    await expect(drawer).toBeVisible();
+    for (const label of ["仪表盘", "看板", "日历", "分析", "团队管理"]) {
+      await expect(
+        drawer.getByRole("link", { name: label, exact: true }),
+      ).toBeVisible();
+    }
     await drawer.getByRole("button", { name: "关闭" }).click();
     await expect(drawer).toBeHidden();
   });
