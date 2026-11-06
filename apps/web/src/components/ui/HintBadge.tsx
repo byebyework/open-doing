@@ -61,7 +61,7 @@ export function HintBadge({
         align="start"
         sideOffset={6}
         aria-label={title ?? ariaLabel}
-        className="w-auto max-w-[320px] shadow-[var(--shadow-popover)]"
+        className="w-auto max-w-[320px] shadow-[var(--shadow-popover)]!"
       >
         {title ? (
           <h3 className="m-0 text-[13px] leading-snug font-semibold text-[var(--ink-900)]">
@@ -70,8 +70,8 @@ export function HintBadge({
         ) : null}
         {items?.length ? (
           <ul className="m-0 list-disc space-y-1 pl-4 text-[12px] leading-[1.6] text-[var(--ink-500)] marker:text-[var(--ink-400)]">
-            {items.map((item) => (
-              <li key={item}>{item}</li>
+            {items.map((item, index) => (
+              <li key={index}>{item}</li>
             ))}
           </ul>
         ) : null}
