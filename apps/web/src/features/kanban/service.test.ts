@@ -1042,6 +1042,10 @@ function asUser(row: { id: string; username: string }): User {
     id: row.id,
     uid: "doing_test_user",
     username: row.username,
+    nickname: null,
+    gender: null,
+    email: null,
+    phone: null,
     createdAt: "2026-01-01T00:00:00.000Z",
   };
 }

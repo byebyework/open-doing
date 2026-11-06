@@ -29,14 +29,30 @@ export type NotificationType =
   | "task_commented"
   | "task_changed_by_admin";
 
-/** 用户：仅用户名 + 密码登录，不收集邮箱 */
+/** 用户：用户名 + 密码登录；昵称 / 性别 / 邮箱 / 电话为可选资料，uid 仅用于邀请 */
 export interface User {
   id: string;
   /** 展示用 UID，格式 `doing_xxxx`，仅用于邀请 */
   uid: string;
-  /** 用户名，同时作为显示名 */
+  /** 用户名：仅用于登录与唯一标识，不再作为展示名 */
   username: string;
+  /** 昵称：展示名，可重复；未填写时为 null，展示时回退到 username */
+  nickname: string | null;
+  /** 性别：可选资料，未填写为 null */
+  gender: Gender | null;
+  /** 邮箱：可选资料，全库唯一，未填写为 null */
+  email: string | null;
+  /** 电话：可选资料，全库唯一，未填写为 null */
+  phone: string | null;
   createdAt: string;
+}
+
+/** 展示名：昵称优先；昵称为空时回退到用户名（用户名仅用于登录）。 */
+export function displayName(user: {
+  nickname: string | null;
+  username: string;
+}): string {
+  return user.nickname ?? user.username;
 }
 
 /** 团队 */

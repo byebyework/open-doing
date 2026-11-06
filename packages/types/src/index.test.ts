@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   aggregateProjectProgress,
+  displayName,
   getTaskProgress,
   isDueSoon,
   isOverdue,
@@ -92,5 +93,15 @@ describe("isOverdue / isDueSoon（today = 2026-10-21）", () => {
 describe("isDueSoon 跨月边界（today = 2026-10-31）", () => {
   it("2026-11-01 为明天：临期", () => {
     expect(isDueSoon("2026-11-01", "in_progress", "2026-10-31")).toBe(true);
+  });
+});
+
+describe("displayName", () => {
+  it("已设置昵称时使用昵称", () => {
+    expect(displayName({ nickname: "阿岚", username: "u1" })).toBe("阿岚");
+  });
+
+  it("昵称为空时回退到用户名", () => {
+    expect(displayName({ nickname: null, username: "u1" })).toBe("u1");
   });
 });

@@ -76,7 +76,16 @@ describe("团队项目 actions", () => {
   });
 
   it("权限错误：映射为 form「没有权限执行该操作」", async () => {
-    mockGetCurrentUser.mockResolvedValue({ id: "u1", uid: "doing_x", username: "alice", createdAt: "" });
+    mockGetCurrentUser.mockResolvedValue({
+      id: "u1",
+      uid: "doing_x",
+      username: "alice",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      createdAt: "",
+    });
     mockCreate.mockRejectedValue(new TeamPermissionError("team:manage_projects"));
 
     await expect(
@@ -85,7 +94,16 @@ describe("团队项目 actions", () => {
   });
 
   it("领域错误：按字段映射", async () => {
-    mockGetCurrentUser.mockResolvedValue({ id: "u1", uid: "doing_x", username: "alice", createdAt: "" });
+    mockGetCurrentUser.mockResolvedValue({
+      id: "u1",
+      uid: "doing_x",
+      username: "alice",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      createdAt: "",
+    });
     mockCreate.mockRejectedValue(new DomainError("请输入项目名称", "name"));
 
     await expect(
@@ -94,7 +112,16 @@ describe("团队项目 actions", () => {
   });
 
   it("未知异常：只返回通用文案", async () => {
-    mockGetCurrentUser.mockResolvedValue({ id: "u1", uid: "doing_x", username: "alice", createdAt: "" });
+    mockGetCurrentUser.mockResolvedValue({
+      id: "u1",
+      uid: "doing_x",
+      username: "alice",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      createdAt: "",
+    });
     mockDelete.mockRejectedValue(new Error("boom"));
 
     await expect(
@@ -103,7 +130,16 @@ describe("团队项目 actions", () => {
   });
 
   it("成功：返回 ok 与数据", async () => {
-    mockGetCurrentUser.mockResolvedValue({ id: "u1", uid: "doing_x", username: "alice", createdAt: "" });
+    mockGetCurrentUser.mockResolvedValue({
+      id: "u1",
+      uid: "doing_x",
+      username: "alice",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      createdAt: "",
+    });
     mockCreate.mockResolvedValue(fakeProject);
     mockUpdate.mockResolvedValue(fakeProject);
     mockDelete.mockResolvedValue(undefined);

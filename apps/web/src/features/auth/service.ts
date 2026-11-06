@@ -176,6 +176,10 @@ export async function registerUser(
           id: users.id,
           uid: users.uid,
           username: users.username,
+          nickname: users.nickname,
+          gender: users.gender,
+          email: users.email,
+          phone: users.phone,
           createdAt: users.createdAt,
         })
         .from(users)

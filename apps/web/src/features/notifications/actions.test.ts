@@ -37,6 +37,10 @@ const fakeUser = {
   id: "00000000-0000-0000-0000-000000000001",
   uid: "doing_x7k2m9",
   username: "member",
+  nickname: null,
+  gender: null,
+  email: null,
+  phone: null,
   createdAt: "2026-10-01T00:00:00.000Z",
 };
 

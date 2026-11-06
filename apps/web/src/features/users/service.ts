@@ -1,4 +1,4 @@
-import type { User } from "@open-doing/types";
+import type { Gender, User } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
@@ -11,6 +11,10 @@ type UserRow = {
   id: string;
   uid: string;
   username: string;
+  nickname: string | null;
+  gender: Gender | null;
+  email: string | null;
+  phone: string | null;
   createdAt: Date;
 };
 
@@ -20,6 +24,10 @@ export function toUser(row: UserRow): User {
     id: row.id,
     uid: row.uid,
     username: row.username,
+    nickname: row.nickname,
+    gender: row.gender,
+    email: row.email,
+    phone: row.phone,
     createdAt: row.createdAt.toISOString(),
   };
 }

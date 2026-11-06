@@ -99,6 +99,10 @@ const sessionUser = {
   id: MEMBER_ID,
   uid: "doing_member",
   username: "alice",
+  nickname: null,
+  gender: null,
+  email: null,
+  phone: null,
   createdAt: "",
 };
 
