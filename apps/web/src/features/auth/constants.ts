@@ -12,6 +12,13 @@ export const USERNAME_MAX_LENGTH = 20;
 /** 密码最短 8 位。 */
 export const PASSWORD_MIN_LENGTH = 8;
 
+/** 昵称最大长度（与 users.nickname 的 varchar(50) 一致）。 */
+export const NICKNAME_MAX_LENGTH = 50;
+
+/** 可选资料格式：注册表单与服务端校验共用同一规则。 */
+export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+export const PHONE_PATTERN = /^[+\-0-9]{7,20}$/;
+
 export const USERNAME_TAKEN_MESSAGE = "用户名已存在";
 /** 登录失败恒定文案：不区分“用户不存在”与“密码错误”，避免枚举用户名。 */
 export const INVALID_CREDENTIALS_MESSAGE = "用户名或密码错误";

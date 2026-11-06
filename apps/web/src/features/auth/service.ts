@@ -16,8 +16,11 @@ import { isUniqueViolation, uniqueViolationKey } from "@/server/db/errors";
 import { users } from "@/server/db/schema";
 
 import {
+  EMAIL_PATTERN,
   INVALID_CREDENTIALS_MESSAGE,
+  NICKNAME_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
+  PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
   USERNAME_TAKEN_MESSAGE,
@@ -34,13 +37,6 @@ export {
 
 /** UID 唯一约束冲突时的最大重试次数（含首次插入）。 */
 const MAX_UID_ATTEMPTS = 5;
-
-/** 昵称最大长度（与 users.nickname 的 varchar(50) 一致）。 */
-const NICKNAME_MAX_LENGTH = 50;
-
-/** 可选资料字段格式（空值在归一化阶段转 null，不参与校验）。 */
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const PHONE_PATTERN = /^[+\-0-9]{7,20}$/;
 
 const EMAIL_TAKEN_MESSAGE = "邮箱已被使用";
 const PHONE_TAKEN_MESSAGE = "手机号已被使用";
