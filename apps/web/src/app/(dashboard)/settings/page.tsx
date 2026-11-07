@@ -12,6 +12,7 @@ import { ChangePasswordForm } from "@/features/users/components/ChangePasswordFo
 import { LanguageSetting } from "@/features/users/components/LanguageSetting";
 import { ProfileForm } from "@/features/users/components/ProfileForm";
 import { ReminderToggleList } from "@/features/users/components/ReminderToggleList";
+import { UidCopyField } from "@/features/users/components/UidCopyField";
 import {
   getProfile,
   getReminderPrefs,
@@ -65,7 +66,8 @@ export default async function PersonalSettingsPage() {
   const tProfile = await getTranslations("users.profile");
 
   return (
-    <div className="mx-auto w-full min-w-0 max-w-[760px]">
+    // 单列收窄：容器贴合表单内容宽（~600px），输入框全宽填满卡片，避免右侧留白。
+    <div className="mx-auto w-full min-w-0 max-w-[600px]">
       <PageHeader className="mb-6" title={t("title")} subtitle={t("subtitle")} />
 
       <div className="flex flex-col gap-4">
@@ -74,6 +76,9 @@ export default async function PersonalSettingsPage() {
             title={tProfile("title")}
             caption={tProfile("description")}
           />
+
+          {/* Doing ID 只读展示：邀请页文案承诺「在个人资料中可随时查看 UID」，在此兑现。 */}
+          <UidCopyField uid={user.uid} />
 
           <ProfileForm profile={profile} />
         </section>

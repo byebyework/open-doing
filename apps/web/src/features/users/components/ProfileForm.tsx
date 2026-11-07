@@ -131,7 +131,7 @@ export function ProfileForm({ profile }: ProfileFormProps) {
   });
 
   return (
-    <div className="max-w-[460px]">
+    <div>
       {formError ? (
         <Alert variant="destructive" role="alert" className="mb-4">
           {formError}
