@@ -48,6 +48,8 @@ export const TEST_IDS = {
     nextMonth: "calendar-next-month",
     today: "calendar-today",
     weekCard: "calendar-week-card",
+    gridScroll: "calendar-grid-scroll",
+    scrollShadow: "calendar-scroll-shadow",
   },
   analysis: {
     range: (value: 7 | 30 | 90) => `analysis-range-${value}`,

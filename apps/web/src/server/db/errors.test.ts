@@ -93,4 +93,21 @@ describe("uniqueViolationKey", () => {
 
     expect(uniqueViolationKey(wrapper)).toBe("users_email_unique");
   });
+
+  it("重复值内嵌另一个索引名时按 for key 归属，不做子串误判", () => {
+    const error = duplicateEntry({
+      message:
+        "Duplicate entry 'users_email_unique@x.com' for key 'users.users_phone_unique'",
+    });
+
+    expect(uniqueViolationKey(error)).toBe("users_phone_unique");
+  });
+
+  it("驱动错误 message 无 for key 段 → null", () => {
+    expect(
+      uniqueViolationKey(
+        duplicateEntry({ message: "Duplicate entry 'some value'" }),
+      ),
+    ).toBeNull();
+  });
 });

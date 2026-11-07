@@ -587,5 +587,47 @@ test.describe("375px 无横向溢出", () => {
         await assertNoPageOverflow(page, route.name, route.exemptions ?? []);
       });
     }
+
+    /**
+     * 团队 Calendar 的 P4 滚动修复响应式守卫。
+     *
+     * 375px 下 7 列月网格（内容 min-w-[560px]）必须在卡内横向滚动且
+     * 「最后一列始终可到达」，同时页面本身不横向溢出。断言保持容忍：
+     * 仅当 `scrollWidth > clientWidth`（确有溢出）时才校验滚动行为，
+     * 避免后续样式调整让窄视口不再溢出时用例反而失败。
+     */
+    test("375px 无横向溢出：/space/[teamSlug]/calendar（月网格卡内横滚）", async ({
+      page,
+    }) => {
+      await loginSharedAccount(page);
+      await page.goto(`${data.teamPath}/calendar`);
+      await expect(
+        page.getByRole("heading", { name: "日历", level: 1 }),
+      ).toBeVisible();
+      const grid = page.getByTestId(TEST_IDS.calendar.gridScroll);
+      await expect(grid).toBeVisible();
+      await assertNoPageOverflow(page, "/space/[teamSlug]/calendar");
+
+      const { scrollWidth, clientWidth } = await grid.evaluate((element) => ({
+        scrollWidth: element.scrollWidth,
+        clientWidth: element.clientWidth,
+      }));
+      if (scrollWidth <= clientWidth) return;
+
+      // 确有溢出：右缘滚动阴影提示可滚；滚到最右能到达最后一列，阴影消失。
+      await expect(page.getByTestId(TEST_IDS.calendar.scrollShadow)).toBeVisible();
+      await grid.evaluate((element) => {
+        element.scrollLeft = element.scrollWidth;
+      });
+      const { scrollLeft, maxScrollLeft } = await grid.evaluate((element) => ({
+        scrollLeft: element.scrollLeft,
+        maxScrollLeft: element.scrollWidth - element.clientWidth,
+      }));
+      expect(
+        scrollLeft,
+        "375px 下月网格滚到最右应能到达最后一列",
+      ).toBeGreaterThanOrEqual(maxScrollLeft - 1);
+      await expect(page.getByTestId(TEST_IDS.calendar.scrollShadow)).toBeHidden();
+    });
   });
 });

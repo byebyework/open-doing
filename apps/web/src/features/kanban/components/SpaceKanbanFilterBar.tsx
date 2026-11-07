@@ -141,16 +141,20 @@ export function SpaceKanbanFilterBar({
       ) : null}
 
       {/* 实时筛选状态常驻触发器摘要（SSR 可见），解释性口径放进弹层。 */}
-      <HintBadge
-        ariaLabel={t("captionHintAria")}
-        summary={caption}
-        title={t("captionHintTitle")}
-        items={
-          variant === "team"
-            ? [t("captionHintScope"), t("captionHintScopeTeam"), t("captionHintCount")]
-            : [t("captionHintScope"), t("captionHintCount")]
-        }
-      />
+      {/* 项目名可能很长：容器限制最大宽度，摘要 span 省略号截断，
+          避免在 375px 等窄视口下把筛选条（乃至页面）撑出横向溢出。 */}
+      <div className="min-w-0 max-w-full [&>button]:max-w-full [&_span]:truncate">
+        <HintBadge
+          ariaLabel={t("captionHintAria")}
+          summary={caption}
+          title={t("captionHintTitle")}
+          items={
+            variant === "team"
+              ? [t("captionHintScope"), t("captionHintScopeTeam"), t("captionHintCount")]
+              : [t("captionHintScope"), t("captionHintCount")]
+          }
+        />
+      </div>
       <span className="flex-1" />
       <HintBadge
         ariaLabel={tDate("todayHintAria")}

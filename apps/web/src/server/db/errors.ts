@@ -52,12 +52,18 @@ function isDriverDuplicate(item: Record<string, unknown>): boolean {
   return item.errno === 1062 || item.code === "ER_DUP_ENTRY";
 }
 
+/** MySQL 驱动 message 的 `for key 'xxx'` 段（可带 `库名.` 前缀）。 */
+const DRIVER_KEY_PATTERN = /for key '(?:\w+\.)?(\w+)'/;
+
 /**
  * 从 MySQL 唯一约束错误中提取被违反的索引名。
  *
  * 先从错误链任意一项的 `constraint_name` 精确匹配（驱动字段，安全）；
- * 再仅对**驱动错误**（携带 errno/code）的 message 做子串匹配（MySQL 的
- * message 形如 `Duplicate entry 'x' for key 'users.users_email_unique'`）。
+ * 再仅对**驱动错误**（携带 errno/code）的 message 用正则提取 `for key '...'`
+ * 里的索引名后精确匹配（MySQL 的 message 形如
+ * `Duplicate entry 'x' for key 'users.users_email_unique'`）。按索引名提取
+ * 而非子串查找：重复的**值**本身可能恰好包含另一个索引名（如手机号
+ * `users_email_unique@x.com`），子串匹配会误归属。
  * Drizzle 包装层的 message 内嵌 SQL 与用户参数，因此不参与 message 匹配，
  * 避免参数里的索引名造成误报。不属于 `UniqueKey` 的唯一冲突（如
  * `users_uid_unique`）返回 `null`，由调用方按自身语义处理（例如 UID 碰撞
@@ -76,7 +82,9 @@ export function uniqueViolationKey(error: unknown): UniqueKey | null {
   for (const item of chain) {
     if (!isDriverDuplicate(item)) continue;
     const message = typeof item.message === "string" ? item.message : "";
-    const match = UNIQUE_KEYS.find((key) => message.includes(key));
+    const index = DRIVER_KEY_PATTERN.exec(message)?.[1];
+    if (index === undefined) continue;
+    const match = UNIQUE_KEYS.find((key) => key === index);
     if (match) return match;
   }
 
