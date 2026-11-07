@@ -64,23 +64,30 @@ export function normalizeTaskDescription(value: unknown): string | null {
 }
 
 /**
- * 截止日期只接受 `YYYY-MM-DD`（可在日历中真实存在）或空值。
+ * 任务日期字段（截止 / 开始）只接受 `YYYY-MM-DD`（可在日历中真实存在）或空值。
  *
- * 空字符串 / null / undefined 统一存 null。
+ * 空字符串 / null / undefined 统一存 null。两个入口共用同一套格式与真实日期校验。
  */
-export function validateTaskDueDate(value: unknown): string | null {
+function validateTaskDateString(
+  value: unknown,
+  field: "dueDate" | "startDate",
+): string | null {
+  const label = field === "dueDate" ? "截止日期" : "开始时间";
+  const formatKey = field === "dueDate" ? "dueDateFormat" : "startDateFormat";
+  const invalidKey = field === "dueDate" ? "dueDateInvalid" : "startDateInvalid";
+
   if (value === undefined || value === null) return null;
   if (typeof value !== "string") {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
+    throw new DomainError(`${label}格式应为 YYYY-MM-DD`, field, { key: formatKey });
   }
 
-  const dueDate = value.trim();
-  if (!dueDate) return null;
-  if (!DUE_DATE_PATTERN.test(dueDate)) {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
+  const dateValue = value.trim();
+  if (!dateValue) return null;
+  if (!DUE_DATE_PATTERN.test(dateValue)) {
+    throw new DomainError(`${label}格式应为 YYYY-MM-DD`, field, { key: formatKey });
   }
 
-  const [year, month, day] = dueDate.split("-").map(Number);
+  const [year, month, day] = dateValue.split("-").map(Number);
   const parsed = new Date(Date.UTC(year!, month! - 1, day!));
   const isRealDate =
     parsed.getUTCFullYear() === year &&
@@ -88,10 +95,32 @@ export function validateTaskDueDate(value: unknown): string | null {
     parsed.getUTCDate() === day;
 
   if (!isRealDate) {
-    throw new DomainError("截止日期不是有效日期", "dueDate", { key: "dueDateInvalid" });
+    throw new DomainError(`${label}不是有效日期`, field, { key: invalidKey });
   }
 
-  return dueDate;
+  return dateValue;
+}
+
+/** 截止日期只接受 `YYYY-MM-DD` 或空值（空字符串 / null / undefined 统一存 null）。 */
+export function validateTaskDueDate(value: unknown): string | null {
+  return validateTaskDateString(value, "dueDate");
+}
+
+/** 开始日期只接受 `YYYY-MM-DD` 或空值（空字符串 / null / undefined 统一存 null）。 */
+export function validateTaskStartDate(value: unknown): string | null {
+  return validateTaskDateString(value, "startDate");
+}
+
+/** 开始时间不得晚于截止时间（两者都有值时）。 */
+export function assertStartNotAfterTaskDue(
+  startDate: string | null,
+  dueDate: string | null,
+): void {
+  if (startDate && dueDate && startDate > dueDate) {
+    throw new DomainError("开始时间不能晚于截止时间", "startDate", {
+      key: "startAfterDue",
+    });
+  }
 }
 
 /** 状态只允许三态，防止外部传入任意字符串。 */

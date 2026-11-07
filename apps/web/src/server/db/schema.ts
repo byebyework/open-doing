@@ -270,6 +270,8 @@ export const tasks = mysqlTable(
     // 成员被移除/退出时置空，不删除任务。
     assigneeId: uuidRef("assignee_id").references(() => users.id, { onDelete: "set null" }),
     dueDate: date("due_date", { mode: "string" }),
+    // 开始日期（按天，与 due_date 同粒度）；可空，晚于 due_date 在服务层校验拦截。
+    startDate: date("start_date", { mode: "string" }),
     createdById: uuidRef("created_by_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),

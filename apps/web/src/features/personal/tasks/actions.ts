@@ -70,13 +70,14 @@ export async function createPersonalTaskAction(
   }
 }
 
-/** 更新个人任务（标题 / 描述 / 截止日期 / 状态；状态仅经此手动流转）。 */
+/** 更新个人任务（标题 / 描述 / 截止日期 / 开始时间 / 状态；状态仅经此手动流转）。 */
 export async function updatePersonalTaskAction(
   taskId: string,
   input: {
     title?: string;
     description?: string;
     dueDate?: string | null;
+    startDate?: string | null;
     status?: TaskStatus;
   },
 ): Promise<ActionResult<Task>> {

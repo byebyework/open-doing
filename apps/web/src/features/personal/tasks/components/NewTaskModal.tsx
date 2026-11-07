@@ -39,6 +39,8 @@ export interface NewTaskModalProps {
   projects: { id: string; name: string }[];
   /** 默认选中的项目；缺省或不在列表中时选中「不属于项目」。 */
   defaultProjectId?: string | null;
+  /** 预填的截止日期（`YYYY-MM-DD`；日历格子「+」入口按所点日期预填）。 */
+  defaultDueDate?: string | null;
   /** 创建成功后回调（由调用方关闭弹窗并刷新数据）。 */
   onSuccess: () => void;
   /** 取消 / 关闭。 */
@@ -60,6 +62,7 @@ export function NewTaskModal({
   open,
   projects,
   defaultProjectId,
+  defaultDueDate,
   onSuccess,
   onCancel,
 }: NewTaskModalProps) {
@@ -83,9 +86,12 @@ export function NewTaskModal({
       .max(200, t("titleTooLong", { max: 200 })),
     projectId: z.string(),
     dueDate: z.string(),
+    startDate: z.string(),
     description: z.string(),
   });
   type FormValues = z.infer<typeof schema>;
+
+  const dueDateDefault = defaultDueDate ?? "";
 
   const {
     register,
@@ -100,7 +106,8 @@ export function NewTaskModal({
     defaultValues: {
       title: "",
       projectId: defaultProject,
-      dueDate: "",
+      dueDate: dueDateDefault,
+      startDate: "",
       description: "",
     },
   });
@@ -111,12 +118,13 @@ export function NewTaskModal({
       reset({
         title: "",
         projectId: defaultProject,
-        dueDate: "",
+        dueDate: dueDateDefault,
+        startDate: "",
         description: "",
       });
       setFormError(null);
     }
-  }, [open, reset, defaultProject]);
+  }, [open, reset, defaultProject, dueDateDefault]);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -127,6 +135,7 @@ export function NewTaskModal({
         title: values.title,
         description: values.description ?? "",
         dueDate: values.dueDate.trim() ? values.dueDate : null,
+        startDate: values.startDate.trim() ? values.startDate : null,
         projectId: values.projectId === NO_PROJECT ? null : values.projectId,
       });
 
@@ -208,16 +217,41 @@ export function NewTaskModal({
             </Select>
           </div>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="personal-task-due-date">{t("dueDateLabel")}</Label>
-            <Input
-              id="personal-task-due-date"
-              type="date"
-              className="max-w-[220px]"
-              data-testid="task-due-date-input"
-              disabled={submitting}
-              {...register("dueDate")}
-            />
+          {/* 开始 / 截止同行排布（两列）。 */}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="personal-task-start-date">{t("startDateLabel")}</Label>
+              <Input
+                id="personal-task-start-date"
+                type="date"
+                data-testid="task-start-date-input"
+                aria-invalid={errors.startDate ? true : undefined}
+                disabled={submitting}
+                {...register("startDate")}
+              />
+              {errors.startDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.startDate.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="personal-task-due-date">{t("dueDateLabel")}</Label>
+              <Input
+                id="personal-task-due-date"
+                type="date"
+                data-testid="task-due-date-input"
+                aria-invalid={errors.dueDate ? true : undefined}
+                disabled={submitting}
+                {...register("dueDate")}
+              />
+              {errors.dueDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.dueDate.message}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="mb-4 flex flex-col gap-2">

@@ -32,6 +32,8 @@ export interface TaskDetailModel {
    */
   assigneeEmail?: string | null;
   dueDate?: string;
+  /** 开始日期（按天，`YYYY-MM-DD`）；可选扩展，缺省不渲染该行。 */
+  startDate?: string;
   createdAt: string;
   updatedAt: string;
   projectName: string | null;
@@ -63,6 +65,7 @@ export interface TaskDetailViewActions {
     title: string;
     description?: string;
     dueDate?: string | null;
+    startDate?: string | null;
   }) => Promise<void>;
   deleteTask: () => Promise<void>;
   addComment: (content: string) => Promise<void>;

@@ -32,6 +32,8 @@ export interface PersonalTaskInput {
   title: string;
   description?: string;
   dueDate?: string | null;
+  /** 开始日期（`YYYY-MM-DD`，可空）；与 dueDate 同粒度，不得晚于截止日期。 */
+  startDate?: string | null;
   projectId?: string | null;
 }
 
@@ -67,6 +69,7 @@ function toTask(row: TaskRow): Task {
     status: row.status,
     assigneeId: row.assigneeId,
     dueDate: row.dueDate ?? undefined,
+    startDate: row.startDate ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -125,23 +128,27 @@ function normalizeDescription(value: unknown): string | null {
 }
 
 /**
- * 截止日期只接受 `YYYY-MM-DD`（可在日历中真实存在）或空值。
+ * 日期字段（截止 / 开始）只接受 `YYYY-MM-DD`（可在日历中真实存在）或空值。
  *
- * 空字符串 / null / undefined 统一存 null。
+ * 空字符串 / null / undefined 统一存 null。两个入口共用同一套格式与真实日期校验。
  */
-function validateDueDate(value: unknown): string | null {
+function validateDateString(value: unknown, field: "dueDate" | "startDate"): string | null {
+  const label = field === "dueDate" ? "截止日期" : "开始时间";
+  const formatKey = field === "dueDate" ? "dueDateFormat" : "startDateFormat";
+  const invalidKey = field === "dueDate" ? "dueDateInvalid" : "startDateInvalid";
+
   if (value === undefined || value === null) return null;
   if (typeof value !== "string") {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
+    throw new DomainError(`${label}格式应为 YYYY-MM-DD`, field, { key: formatKey });
   }
 
-  const dueDate = value.trim();
-  if (!dueDate) return null;
-  if (!DUE_DATE_PATTERN.test(dueDate)) {
-    throw new DomainError("截止日期格式应为 YYYY-MM-DD", "dueDate", { key: "dueDateFormat" });
+  const dateValue = value.trim();
+  if (!dateValue) return null;
+  if (!DUE_DATE_PATTERN.test(dateValue)) {
+    throw new DomainError(`${label}格式应为 YYYY-MM-DD`, field, { key: formatKey });
   }
 
-  const [year, month, day] = dueDate.split("-").map(Number);
+  const [year, month, day] = dateValue.split("-").map(Number);
   const parsed = new Date(Date.UTC(year!, month! - 1, day!));
   const isRealDate =
     parsed.getUTCFullYear() === year &&
@@ -149,10 +156,30 @@ function validateDueDate(value: unknown): string | null {
     parsed.getUTCDate() === day;
 
   if (!isRealDate) {
-    throw new DomainError("截止日期不是有效日期", "dueDate", { key: "dueDateInvalid" });
+    throw new DomainError(`${label}不是有效日期`, field, { key: invalidKey });
   }
 
-  return dueDate;
+  return dateValue;
+}
+
+function validateDueDate(value: unknown): string | null {
+  return validateDateString(value, "dueDate");
+}
+
+function validateStartDate(value: unknown): string | null {
+  return validateDateString(value, "startDate");
+}
+
+/** 开始时间不得晚于截止时间（两者都有值时）。 */
+function assertStartNotAfterDue(
+  startDate: string | null,
+  dueDate: string | null,
+): void {
+  if (startDate && dueDate && startDate > dueDate) {
+    throw new DomainError("开始时间不能晚于截止时间", "startDate", {
+      key: "startAfterDue",
+    });
+  }
 }
 
 /** 状态只允许三态，防止外部传入任意字符串。 */
@@ -258,7 +285,10 @@ export async function createPersonalTask(
   const title = validateTitle(input?.title, "任务");
   const description = normalizeDescription(input?.description);
   const dueDate = validateDueDate(input?.dueDate);
+  const startDate = validateStartDate(input?.startDate);
   const projectId = normalizeProjectId(input?.projectId);
+
+  assertStartNotAfterDue(startDate, dueDate);
 
   if (projectId && !(await isOwnedPersonalProject(userId, projectId, client))) {
     throw new DomainError("项目不存在或无权访问", "projectId", { key: "projectNotFound" });
@@ -275,6 +305,7 @@ export async function createPersonalTask(
       status: "todo",
       assigneeId: userId,
       dueDate,
+      startDate,
       createdById: userId,
     })
     .$returningId();
@@ -407,6 +438,7 @@ export async function getPersonalTaskDetail(
     // 展示名：昵称优先，未填写回退到用户名。
     assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
     dueDate: task.dueDate ?? undefined,
+    startDate: task.startDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
     projectName: row.projectName ?? null,
@@ -432,7 +464,7 @@ export async function getPersonalTaskDetail(
  * 更新个人任务。
  *
  * 状态只能经此手动流转；未传字段保持不变，更新时刷新 `updatedAt`。
- * 传空描述会清空描述，`dueDate: null` 会清空截止日期。
+ * 传空描述会清空描述，`dueDate: null` / `startDate: null` 会清空对应日期。
  */
 export async function updatePersonalTask(
   userId: string,
@@ -441,6 +473,7 @@ export async function updatePersonalTask(
     title?: string;
     description?: string;
     dueDate?: string | null;
+    startDate?: string | null;
     status?: TaskStatus;
   },
   client: DbClient = db,
@@ -448,7 +481,10 @@ export async function updatePersonalTask(
   const existing = await requireOwnedPersonalTaskRow(userId, taskId, client);
 
   const changes: Partial<
-    Pick<TaskRow, "title" | "description" | "dueDate" | "status" | "updatedAt">
+    Pick<
+      TaskRow,
+      "title" | "description" | "dueDate" | "startDate" | "status" | "updatedAt"
+    >
   > = {};
 
   if (input?.title !== undefined) {
@@ -460,9 +496,18 @@ export async function updatePersonalTask(
   if (input?.dueDate !== undefined) {
     changes.dueDate = validateDueDate(input.dueDate);
   }
+  if (input?.startDate !== undefined) {
+    changes.startDate = validateStartDate(input.startDate);
+  }
   if (input?.status !== undefined) {
     changes.status = validateStatus(input.status);
   }
+
+  // 与新值组合出最终日期对，校验开始不晚于截止。
+  assertStartNotAfterDue(
+    changes.startDate ?? (existing.startDate ?? null),
+    changes.dueDate ?? (existing.dueDate ?? null),
+  );
 
   if (Object.keys(changes).length === 0) {
     return toTask(existing);

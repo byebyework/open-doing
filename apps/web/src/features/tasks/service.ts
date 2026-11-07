@@ -11,10 +11,12 @@ import {
 import { getMembership, type TeamRole } from "@/features/teams/permissions";
 import { DomainError } from "@/lib/domain-error";
 import {
+  assertStartNotAfterTaskDue,
   isUuid,
   normalizeTaskDescription,
   validateCommentContent,
   validateTaskDueDate,
+  validateTaskStartDate,
   validateTaskStatus,
   validateTaskTitle,
 } from "@/lib/task-fields";
@@ -65,6 +67,7 @@ function toTask(row: TaskRow): Task {
     status: row.status,
     assigneeId: row.assigneeId,
     dueDate: row.dueDate ?? undefined,
+    startDate: row.startDate ?? undefined,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -225,6 +228,7 @@ export async function createTeamTask(
     title: string;
     description?: string;
     dueDate?: string | null;
+    startDate?: string | null;
     assigneeId?: string | null;
   },
   client: DbClient = db,
@@ -233,6 +237,8 @@ export async function createTeamTask(
   const title = validateTaskTitle(input?.title);
   const description = normalizeTaskDescription(input?.description);
   const dueDate = validateTaskDueDate(input?.dueDate);
+  const startDate = validateTaskStartDate(input?.startDate);
+  assertStartNotAfterTaskDue(startDate, dueDate);
   const assigneeId = input.assigneeId ?? actorId;
 
   return client.transaction(async (tx) => {
@@ -251,6 +257,7 @@ export async function createTeamTask(
         status: "todo",
         assigneeId,
         dueDate,
+        startDate,
         createdById: actorId,
       })
       .$returningId();
@@ -288,6 +295,8 @@ export interface UpdateTeamTaskInput {
   title?: string;
   description?: string;
   dueDate?: string | null;
+  /** 开始日期；`null` 清空。作为内容字段纳入 `task:edit` 权限判定。 */
+  startDate?: string | null;
   status?: TaskStatus;
   assigneeId?: string;
 }
@@ -313,6 +322,7 @@ export async function updateTeamTask(
       | "title"
       | "description"
       | "dueDate"
+      | "startDate"
       | "status"
       | "assigneeId"
       | "updatedAt"
@@ -347,6 +357,14 @@ export async function updateTeamTask(
       hasValueChange = true;
     }
   }
+  if (input.startDate !== undefined) {
+    hasContentChange = true;
+    const startDate = validateTaskStartDate(input.startDate);
+    if ((startDate ?? null) !== (existing.task.startDate ?? null)) {
+      changes.startDate = startDate;
+      hasValueChange = true;
+    }
+  }
   if (input.status !== undefined) {
     hasContentChange = true;
     const status = validateTaskStatus(input.status);
@@ -355,6 +373,12 @@ export async function updateTeamTask(
       hasValueChange = true;
     }
   }
+
+  // 与新值组合出最终日期对，校验开始不晚于截止。
+  assertStartNotAfterTaskDue(
+    (changes.startDate ?? existing.task.startDate ?? null) as string | null,
+    (changes.dueDate ?? existing.task.dueDate ?? null) as string | null,
+  );
 
   if (hasContentChange) {
     assertCanEditTask({
@@ -789,6 +813,7 @@ export async function getTeamTaskDetail(
     // 负责人信息处展示邮箱（选填资料，未填为 null 时不渲染）。
     assigneeEmail: row.assigneeEmail ?? null,
     dueDate: task.dueDate ?? undefined,
+    startDate: task.startDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
     projectName: row.projectName ?? null,

@@ -152,6 +152,7 @@ function EditTaskModal({
       .max(200, t("titleTooLong", { max: 200 })),
     description: z.string(),
     dueDate: z.string(),
+    startDate: z.string(),
   });
   type EditTaskFormValues = z.infer<typeof schema>;
 
@@ -166,6 +167,7 @@ function EditTaskModal({
       title: task.title,
       description: task.description ?? "",
       dueDate: task.dueDate ?? "",
+      startDate: task.startDate ?? "",
     },
   });
 
@@ -176,9 +178,10 @@ function EditTaskModal({
         title: task.title,
         description: task.description ?? "",
         dueDate: task.dueDate ?? "",
+        startDate: task.startDate ?? "",
       });
     }
-  }, [open, reset, task.title, task.description, task.dueDate]);
+  }, [open, reset, task.title, task.description, task.dueDate, task.startDate]);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -188,6 +191,7 @@ function EditTaskModal({
         title: values.title,
         description: values.description ?? "",
         dueDate: values.dueDate.trim() ? values.dueDate : null,
+        startDate: values.startDate.trim() ? values.startDate : null,
       });
       onCancel();
     } catch {
@@ -225,15 +229,39 @@ function EditTaskModal({
             ) : null}
           </div>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="edit-task-due-date">{t("dueDateLabel")}</Label>
-            <Input
-              id="edit-task-due-date"
-              type="date"
-              className="max-w-[220px]"
-              disabled={submitting}
-              {...register("dueDate")}
-            />
+          {/* 开始 / 截止同行排布（两列）。 */}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-task-start-date">{t("startDateLabel")}</Label>
+              <Input
+                id="edit-task-start-date"
+                type="date"
+                aria-invalid={errors.startDate ? true : undefined}
+                disabled={submitting}
+                {...register("startDate")}
+              />
+              {errors.startDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.startDate.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="edit-task-due-date">{t("dueDateLabel")}</Label>
+              <Input
+                id="edit-task-due-date"
+                type="date"
+                aria-invalid={errors.dueDate ? true : undefined}
+                disabled={submitting}
+                {...register("dueDate")}
+              />
+              {errors.dueDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.dueDate.message}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="mb-4 flex flex-col gap-2">
@@ -631,6 +659,14 @@ export function TaskDetailView({
                 <span className="font-normal text-[var(--ink-400)]">
                   {t("unassigned")}
                 </span>
+              )}
+            </MetaRow>
+
+            <MetaRow label={t("startDateLabel")}>
+              {task.startDate ? (
+                <span>{shortDate(task.startDate)}</span>
+              ) : (
+                <span className="font-normal text-[var(--ink-400)]">—</span>
               )}
             </MetaRow>
 

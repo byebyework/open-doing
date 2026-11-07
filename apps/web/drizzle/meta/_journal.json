@@ -15,6 +15,13 @@
       "when": 1793975976348,
       "tag": "0001_tiny_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1794054586357,
+      "tag": "0002_great_chat",
+      "breakpoints": true
     }
   ]
 }

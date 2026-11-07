@@ -129,6 +129,7 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
           actorId: member.id,
           title: "  写周报  ",
           description: "  本周进展  ",
+          startDate: "2026-10-28",
           dueDate: "2026-10-30",
         },
         db,
@@ -141,6 +142,7 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         description: "本周进展",
         status: "todo",
         assigneeId: member.id,
+        startDate: "2026-10-28",
         dueDate: "2026-10-30",
       });
       expect(await countNotifications(db, task.id, "task_assigned")).toBe(0);
@@ -728,6 +730,64 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       });
       expect(detail!.projectName).toBeTruthy();
       expect(detail!.progress).toBe(0.5);
+    });
+  });
+
+  describe("开始时间校验", () => {
+    it("创建：格式非法与开始晚于截止都按字段 startDate 拒绝", async () => {
+      const { owner, team, project } = await setupTeamWithProject(db);
+
+      await expect(
+        createTeamTask(
+          { teamId: team.id, projectId: project.id, actorId: owner.id, title: "格式", startDate: "2026/10/28" },
+          db,
+        ),
+      ).rejects.toMatchObject({ field: "startDate" });
+      await expect(
+        createTeamTask(
+          {
+            teamId: team.id,
+            projectId: project.id,
+            actorId: owner.id,
+            title: "晚于截止",
+            startDate: "2026-11-02",
+            dueDate: "2026-11-01",
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({ field: "startDate" });
+      expect(await db.select().from(tasks)).toHaveLength(0);
+    });
+
+    it("更新：把截止时间改早于已有开始时间被拦截，同时提前开始时间则放行", async () => {
+      const { owner, team, project } = await setupTeamWithProject(db);
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "日期联动",
+          startDate: "2026-10-01",
+          dueDate: "2026-10-31",
+        },
+        db,
+      );
+
+      await expect(
+        updateTeamTask({ teamId: team.id, taskId: task.id, actorId: owner.id, dueDate: "2026-09-30" }, db),
+      ).rejects.toMatchObject({ field: "startDate" });
+
+      const updated = await updateTeamTask(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          startDate: "2026-09-01",
+          dueDate: "2026-09-30",
+        },
+        db,
+      );
+      expect(updated).toMatchObject({ startDate: "2026-09-01", dueDate: "2026-09-30" });
     });
   });
 });

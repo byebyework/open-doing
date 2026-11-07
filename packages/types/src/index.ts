@@ -131,6 +131,8 @@ export interface Task {
   assigneeId: string | null;
   /** 截止日期，`YYYY-MM-DD` */
   dueDate?: string;
+  /** 开始日期，`YYYY-MM-DD`；可空（按天排程，不早于校验在服务层） */
+  startDate?: string;
   createdAt: string;
   updatedAt: string;
 }

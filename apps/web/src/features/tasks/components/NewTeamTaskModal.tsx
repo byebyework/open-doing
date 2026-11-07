@@ -44,6 +44,8 @@ export interface NewTeamTaskModalProps {
   members: { id: string; name: string }[];
   /** 默认责任人（通常为当前用户）。 */
   defaultAssigneeId?: string | null;
+  /** 预填的截止日期（`YYYY-MM-DD`；日历格子「+」入口按所点日期预填）。 */
+  defaultDueDate?: string | null;
   /** 创建成功后回调（由调用方关闭弹窗并刷新数据）。 */
   onSuccess: () => void;
   /** 取消 / 关闭。 */
@@ -65,6 +67,7 @@ export function NewTeamTaskModal({
   defaultProjectId,
   members,
   defaultAssigneeId,
+  defaultDueDate,
   onSuccess,
   onCancel,
 }: NewTeamTaskModalProps) {
@@ -85,6 +88,8 @@ export function NewTeamTaskModal({
       ? defaultAssigneeId
       : (members[0]?.id ?? "");
 
+  const dueDateDefault = defaultDueDate ?? "";
+
   // zod schema 在组件内构建：必填文案取自 next-intl。
   const schema = z.object({
     title: z
@@ -95,6 +100,7 @@ export function NewTeamTaskModal({
     projectId: z.string().min(1, t("projectRequired")),
     assigneeId: z.string(),
     dueDate: z.string(),
+    startDate: z.string(),
     description: z.string(),
   });
   type FormValues = z.infer<typeof schema>;
@@ -113,7 +119,8 @@ export function NewTeamTaskModal({
       title: "",
       projectId: defaultProject,
       assigneeId: defaultAssignee,
-      dueDate: "",
+      dueDate: dueDateDefault,
+      startDate: "",
       description: "",
     },
   });
@@ -125,12 +132,13 @@ export function NewTeamTaskModal({
         title: "",
         projectId: defaultProject,
         assigneeId: defaultAssignee,
-        dueDate: "",
+        dueDate: dueDateDefault,
+        startDate: "",
         description: "",
       });
       setFormError(null);
     }
-  }, [open, reset, defaultProject, defaultAssignee]);
+  }, [open, reset, defaultProject, defaultAssignee, dueDateDefault]);
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -143,6 +151,7 @@ export function NewTeamTaskModal({
         title: values.title,
         description: values.description ?? "",
         dueDate: values.dueDate.trim() ? values.dueDate : null,
+        startDate: values.startDate.trim() ? values.startDate : null,
         assigneeId: values.assigneeId || null,
       });
 
@@ -260,16 +269,41 @@ export function NewTeamTaskModal({
             <p className="text-[12.5px] text-[var(--ink-400)]">{t("assigneeHelp")}</p>
           </div>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="team-task-due-date">{t("dueDateLabel")}</Label>
-            <Input
-              id="team-task-due-date"
-              type="date"
-              className="max-w-[220px]"
-              data-testid="task-due-date-input"
-              disabled={submitting}
-              {...register("dueDate")}
-            />
+          {/* 开始 / 截止同行排布（两列）。 */}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="team-task-start-date">{t("startDateLabel")}</Label>
+              <Input
+                id="team-task-start-date"
+                type="date"
+                data-testid="task-start-date-input"
+                aria-invalid={errors.startDate ? true : undefined}
+                disabled={submitting}
+                {...register("startDate")}
+              />
+              {errors.startDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.startDate.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="team-task-due-date">{t("dueDateLabel")}</Label>
+              <Input
+                id="team-task-due-date"
+                type="date"
+                data-testid="task-due-date-input"
+                aria-invalid={errors.dueDate ? true : undefined}
+                disabled={submitting}
+                {...register("dueDate")}
+              />
+              {errors.dueDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.dueDate.message}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="mb-4 flex flex-col gap-2">

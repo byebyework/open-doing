@@ -126,6 +126,7 @@ export function NewTaskModal({
       .max(200, t("titleTooLong", { max: 200 })),
     projectId: z.string(),
     dueDate: z.string(),
+    startDate: z.string(),
     description: z.string(),
   });
   type FormValues = z.infer<typeof schema>;
@@ -144,6 +145,7 @@ export function NewTaskModal({
       title: "",
       projectId: NO_PROJECT,
       dueDate: "",
+      startDate: "",
       description: "",
     },
   });
@@ -155,6 +157,7 @@ export function NewTaskModal({
         title: "",
         projectId: NO_PROJECT,
         dueDate: "",
+        startDate: "",
         description: "",
       });
       setFormError(null);
@@ -178,6 +181,7 @@ export function NewTaskModal({
               (project) => project.projectId === selectedProjectId,
             ) ?? null);
       const dueDate = values.dueDate.trim() ? values.dueDate : null;
+      const startDate = values.startDate.trim() ? values.startDate : null;
       const description = values.description ?? "";
 
       const result =
@@ -188,12 +192,14 @@ export function NewTaskModal({
               title: values.title,
               description,
               dueDate,
+              startDate,
             })
           : await createPersonalTaskAction({
               projectId: selectedProjectId,
               title: values.title,
               description,
               dueDate,
+              startDate,
             });
 
       if (!result.ok) {
@@ -277,15 +283,39 @@ export function NewTaskModal({
             </Select>
           </div>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="dashboard-task-due-date">{t("dueDateLabel")}</Label>
-            <Input
-              id="dashboard-task-due-date"
-              type="date"
-              className="max-w-[220px]"
-              disabled={submitting}
-              {...register("dueDate")}
-            />
+          {/* 开始 / 截止同行排布（两列）。 */}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="dashboard-task-start-date">{t("startDateLabel")}</Label>
+              <Input
+                id="dashboard-task-start-date"
+                type="date"
+                aria-invalid={errors.startDate ? true : undefined}
+                disabled={submitting}
+                {...register("startDate")}
+              />
+              {errors.startDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.startDate.message}
+                </p>
+              ) : null}
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="dashboard-task-due-date">{t("dueDateLabel")}</Label>
+              <Input
+                id="dashboard-task-due-date"
+                type="date"
+                aria-invalid={errors.dueDate ? true : undefined}
+                disabled={submitting}
+                {...register("dueDate")}
+              />
+              {errors.dueDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.dueDate.message}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <div className="mb-4 flex flex-col gap-2">

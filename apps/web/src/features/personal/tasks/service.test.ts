@@ -67,6 +67,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       {
         title: "  读完《项目管理实战》  ",
         description: "第 4–6 章",
+        startDate: "2026-10-28",
         dueDate: "2026-11-01",
         projectId: project.id,
       },
@@ -80,6 +81,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       description: "第 4–6 章",
       status: "todo",
       assigneeId: userId,
+      startDate: "2026-10-28",
       dueDate: "2026-11-01",
     });
     expect(Number.isNaN(Date.parse(task.createdAt))).toBe(false);
@@ -92,6 +94,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       assigneeId: userId,
       createdById: userId,
       status: "todo",
+      startDate: "2026-10-28",
       dueDate: "2026-11-01",
     });
 
@@ -284,7 +287,12 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
     const userId = await createUser();
     const task = await createPersonalTask(
       userId,
-      { title: "旧标题", description: "旧描述", dueDate: "2026-10-30" },
+      {
+        title: "旧标题",
+        description: "旧描述",
+        startDate: "2026-10-28",
+        dueDate: "2026-10-30",
+      },
       db,
     );
 
@@ -299,6 +307,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       {
         title: "新标题",
         description: "新描述",
+        startDate: "2026-12-01",
         dueDate: "2026-12-31",
         status: "done",
       },
@@ -309,6 +318,7 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       id: task.id,
       title: "新标题",
       description: "新描述",
+      startDate: "2026-12-01",
       dueDate: "2026-12-31",
       status: "done",
     });
@@ -319,11 +329,35 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
     const cleared = await updatePersonalTask(
       userId,
       task.id,
-      { description: "   ", dueDate: null },
+      { description: "   ", dueDate: null, startDate: null },
       db,
     );
     expect(cleared.description).toBeUndefined();
     expect(cleared.dueDate).toBeUndefined();
+    expect(cleared.startDate).toBeUndefined();
+  });
+
+  it("更新任务：开始时间晚于新截止时间被拦截；未改日期时沿用原值校验", async () => {
+    const userId = await createUser();
+    const task = await createPersonalTask(
+      userId,
+      { title: "日期联动", startDate: "2026-10-01", dueDate: "2026-10-31" },
+      db,
+    );
+
+    // 直接把截止时间改早于已有开始时间 -> 拦截。
+    await expect(
+      updatePersonalTask(userId, task.id, { dueDate: "2026-09-30" }, db),
+    ).rejects.toMatchObject({ field: "startDate" });
+
+    // 同时把开始时间提前则放行。
+    const updated = await updatePersonalTask(
+      userId,
+      task.id,
+      { startDate: "2026-09-01", dueDate: "2026-09-30" },
+      db,
+    );
+    expect(updated).toMatchObject({ startDate: "2026-09-01", dueDate: "2026-09-30" });
   });
 
   it("评论：添加后可按作者删除，非作者删除抛 DomainError", async () => {
@@ -468,6 +502,17 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
     await expect(
       createPersonalTask(userId, { title: "合法", dueDate: "2026-02-31" }, db),
     ).rejects.toMatchObject({ field: "dueDate" });
+    await expect(
+      createPersonalTask(userId, { title: "合法", startDate: "2026/10/28" }, db),
+    ).rejects.toMatchObject({ field: "startDate" });
+    // 开始时间晚于截止时间被拦截。
+    await expect(
+      createPersonalTask(
+        userId,
+        { title: "合法", startDate: "2026-11-02", dueDate: "2026-11-01" },
+        db,
+      ),
+    ).rejects.toMatchObject({ field: "startDate" });
 
     const task = await createPersonalTask(userId, { title: "合法" }, db);
 
