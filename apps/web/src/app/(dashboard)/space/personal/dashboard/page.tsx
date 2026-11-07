@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
 import { HintBadge } from "@/components/ui/HintBadge";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
 import {
@@ -68,20 +69,16 @@ export default async function PersonalDashboardPage() {
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
-      <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-            {tNav("dashboard")}
-          </h1>
-          <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
-            {t("personalSubtitle")}
-          </p>
-        </div>
-        <div className="flex flex-none items-center gap-2">
-          <NewPersonalProjectButton />
-          <NewTaskButton projects={projects} />
-        </div>
-      </header>
+      <PageHeader
+        title={tNav("dashboard")}
+        subtitle={t("personalSubtitle")}
+        actions={
+          <>
+            <NewPersonalProjectButton />
+            <NewTaskButton projects={projects} />
+          </>
+        }
+      />
 
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
@@ -105,7 +102,7 @@ export default async function PersonalDashboardPage() {
           label={t("statOverdue")}
           value={stats.overdue}
           hint={overdueHint}
-          color="#ff5757"
+          color="var(--status-overdue)"
         />
         <StatCard
           label={t("statDoneThisWeek")}

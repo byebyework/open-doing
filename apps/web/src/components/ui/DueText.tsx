@@ -31,7 +31,7 @@ export function DueText({ dueDate, status, today }: DueTextProps) {
   if (isOverdue(dueDate, status, today)) {
     return (
       <span
-        className="inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold text-[#ff5757]"
+        className="inline-flex items-center whitespace-nowrap text-[12.5px] font-semibold text-[var(--status-overdue)]"
         title={dueDate}
       >
         {t("overdueWithDate", { date: shortDate(dueDate) })}

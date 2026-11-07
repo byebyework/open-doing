@@ -96,7 +96,7 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
             switchPending ? "opacity-50" : ""
           }`}
         >
-          <span className="h-2 w-2 shrink-0 rounded-full bg-[#7d2ae8]" />
+          <span className="h-2 w-2 shrink-0 rounded-full bg-[var(--purple-600)]" />
           <span className="min-w-0 flex-1 truncate font-semibold text-[var(--ink-900)] group-data-[collapsed]/sidebar:hidden">
             {currentLabel}
           </span>

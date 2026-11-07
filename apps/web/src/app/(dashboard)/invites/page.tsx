@@ -4,7 +4,9 @@ import Link from "next/link";
 import dayjs from "dayjs";
 import { getTranslations } from "next-intl/server";
 
+import { CARD_SHELL } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { requireUser } from "@/features/auth/session";
@@ -57,10 +59,7 @@ export default async function InvitesPage() {
 
   return (
     <div className="mx-auto w-full max-w-[820px] py-8 min-[861px]:py-10">
-      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">{t("invitesTitle")}</h1>
-      <p className="mb-6 mt-1.5 text-[14px] text-[var(--ink-500)]">
-        {t("invitesSubtitle")}
-      </p>
+      <PageHeader className="mb-6" title={t("invitesTitle")} subtitle={t("invitesSubtitle")} />
 
       <div className="mb-6 rounded-lg border border-[var(--border-default)] bg-[rgba(125,42,232,0.06)] p-3.5 text-[13px] text-[var(--ink-500)]">
         <strong className="text-[var(--ink-900)]">{t("uidPrivacyStrong")}</strong>
@@ -84,9 +83,9 @@ export default async function InvitesPage() {
               {pending.map(({ invite, team, invitedBy, memberCount }) => (
                 <div
                   key={invite.id}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)]"
+                  className={`flex items-center gap-3 ${CARD_SHELL} p-4`}
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[rgba(125,42,232,0.12)] text-[14px] font-bold text-[#7d2ae8]">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[rgba(125,42,232,0.12)] text-[14px] font-bold text-[var(--purple-600)]">
                     {team.name.slice(0, 1)}
                   </span>
                   <div className="min-w-0 flex-1">
@@ -152,7 +151,7 @@ export default async function InvitesPage() {
       {myJoinRequests.length === 0 ? (
         <p className="text-[13px] text-[var(--ink-400)]">
           {t("noJoinRequestsBefore")}{" "}
-          <Link href={joinTeamHref()} className="font-semibold text-[#7d2ae8]">
+          <Link href={joinTeamHref()} className="font-semibold text-[var(--purple-600)]">
             {t("joinPageTitle")}
           </Link>{" "}
           {t("noJoinRequestsAfter")}
@@ -164,9 +163,9 @@ export default async function InvitesPage() {
               {pendingJoin.map(({ request, team }) => (
                 <div
                   key={request.id}
-                  className="flex items-center gap-3 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)]"
+                  className={`flex items-center gap-3 ${CARD_SHELL} p-4`}
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[rgba(125,42,232,0.12)] text-[14px] font-bold text-[#7d2ae8]">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[rgba(125,42,232,0.12)] text-[14px] font-bold text-[var(--purple-600)]">
                     {team.name.slice(0, 1)}
                   </span>
                   <div className="min-w-0 flex-1">

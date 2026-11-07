@@ -97,8 +97,8 @@ function DueTag({
       className="inline-flex items-center whitespace-nowrap rounded-full px-2 py-0.5 text-[11px] font-semibold leading-[1.5]"
       style={
         tone === "overdue"
-          ? { background: "rgba(255, 87, 87, 0.1)", color: "#ff5757" }
-          : { background: "rgba(255, 176, 32, 0.12)", color: "#a66b00" }
+          ? { background: "var(--status-overdue-bg)", color: "var(--status-overdue)" }
+          : { background: "var(--status-due-soon-bg)", color: "#a66b00" }
       }
     >
       {children}
@@ -483,7 +483,7 @@ export function TaskDetailView({
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <Link
         href={backHref}
-        className="mb-4 inline-block text-[13px] text-[var(--ink-500)] no-underline hover:text-[#7d2ae8] hover:underline"
+        className="mb-4 inline-block text-[13px] text-[var(--ink-500)] no-underline hover:text-[var(--purple-600)] hover:underline"
       >
         {resolvedBackLabel}
       </Link>
@@ -570,7 +570,7 @@ export function TaskDetailView({
         </div>
 
         {/* 右列：元信息 */}
-        <aside className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <aside className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[var(--shadow-rest)]">
           <div>
             <MetaRow label={t("statusLabel")}>
               <StatusTag status={status} />
@@ -675,7 +675,7 @@ export function TaskDetailView({
                 <>
                   <span>{shortDate(task.dueDate)}</span>
                   {overdue ? (
-                    <span className="font-semibold text-[#ff5757]">
+                    <span className="font-semibold text-[var(--status-overdue)]">
                       {tDate("overdue")}
                     </span>
                   ) : dueSoon ? (
@@ -698,7 +698,7 @@ export function TaskDetailView({
               {task.projectId && task.projectName ? (
                 <Link
                   href={backHref}
-                  className="min-w-0 truncate text-[#7d2ae8] no-underline hover:underline"
+                  className="min-w-0 truncate text-[var(--purple-600)] no-underline hover:underline"
                 >
                   {task.projectName}
                 </Link>
@@ -745,7 +745,7 @@ export function TaskDetailView({
             <div
               className="mt-4 flex items-start gap-2 rounded-lg px-3 py-2.5 text-[12px] leading-relaxed"
               style={{
-                background: "rgba(13, 153, 255, 0.1)",
+                background: "var(--info-bg)",
                 color: "#0b6fb8",
               }}
             >

@@ -31,7 +31,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         />
 
         <div className="relative flex items-center gap-2.5">
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-[9px] bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[16px] font-extrabold text-white">
+          <span className="grid h-[30px] w-[30px] place-items-center rounded-[9px] bg-[image:var(--brand-gradient)] text-[16px] font-extrabold text-white">
             O
           </span>
           <span className="text-[15px] font-extrabold tracking-[-0.01em]">

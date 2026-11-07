@@ -122,7 +122,7 @@ export function JoinByCodeForm() {
 
       <p className="mt-5 text-[13px] text-[var(--ink-500)]">
         {t("trackBefore")}{" "}
-        <Link href={invitesHref()} className="font-semibold text-[#7d2ae8]">
+        <Link href={invitesHref()} className="font-semibold text-[var(--purple-600)]">
           {t("invitesTitle")}
         </Link>{" "}
         {t("trackAfter")}

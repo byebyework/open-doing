@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
 import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
@@ -136,24 +137,18 @@ export default async function TeamKanbanPage(
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
-      <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-            {tNav("kanban")}
-          </h1>
-          <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
-            {t("teamSubtitle")}
-          </p>
-        </div>
-        {canManageProjects ? (
-          <div className="flex flex-none items-center gap-2">
-            {/* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */}
+      <PageHeader
+        title={tNav("kanban")}
+        subtitle={t("teamSubtitle")}
+        actions={
+          canManageProjects ? (
+            /* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */
             <Link href={teamProjectNewHref(team.slug)}>
               <Button variant="outline">{t("newProjectButton")}</Button>
             </Link>
-          </div>
-        ) : null}
-      </header>
+          ) : null
+        }
+      />
 
       <KanbanStatStrip
         stats={stats}

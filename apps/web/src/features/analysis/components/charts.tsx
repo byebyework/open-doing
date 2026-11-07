@@ -20,7 +20,7 @@ export interface TrendSeries {
 
 /** 系列色值（teal 不是主题令牌，只能是字面 hex；文字不穿系列色）。 */
 const SERIES_COLOR: Record<TrendSeries["tone"], string> = {
-  primary: "#7d2ae8",
+  primary: "var(--purple-600)",
   teal: "#0e9ba3",
 };
 
@@ -313,7 +313,7 @@ export function HBarList({ rows }: { rows: HBarRow[] }) {
                     width: `${percent}%`,
                     height: 14,
                     minWidth: 2,
-                    background: "#7d2ae8",
+                    background: "var(--purple-600)",
                     borderRadius: "0 4px 4px 0",
                   }}
                 />
@@ -354,7 +354,7 @@ export function WeekMiniBars({
             style={{
               width: 6,
               height: value * 4,
-              background: "#7d2ae8",
+              background: "var(--purple-600)",
               borderRadius: "2px 2px 0 0",
               opacity: 0.85,
             }}

@@ -383,7 +383,7 @@ function CalendarDayCell({
         <span
           className={`inline-flex h-[26px] w-[26px] shrink-0 items-center justify-center rounded-full tabular-nums ${
             isToday
-              ? "bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[13.5px] font-bold text-white"
+              ? "bg-[image:var(--brand-gradient)] text-[13.5px] font-bold text-white"
               : isOut
                 ? "text-[color-mix(in_srgb,var(--ink-400)_50%,transparent)]"
                 : "text-[15px] text-[var(--ink-900)]"
@@ -721,12 +721,12 @@ export function SpaceCalendar({
               {noDueHref ? (
                 <Link
                   href={noDueHref}
-                  className="font-medium text-[#7d2ae8] hover:underline"
+                  className="font-medium text-[var(--purple-600)] hover:underline"
                 >
                   {tCalendar("noDueLink", { count: data.noDueCount })}
                 </Link>
               ) : (
-                <span className="font-medium text-[#7d2ae8]">
+                <span className="font-medium text-[var(--purple-600)]">
                   {tCalendar("noDueLink", { count: data.noDueCount })}
                 </span>
               )}
@@ -796,7 +796,7 @@ export function SpaceCalendar({
                 type="button"
                 data-testid="calendar-today"
                 aria-label={tDate("today")}
-                className={`ml-1.5 inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-[#7d2ae8] transition-[color,background-color,opacity] duration-150 hover:bg-[var(--primary-bg)] ${
+                className={`ml-1.5 inline-flex h-8 items-center rounded-lg px-3 text-[13px] font-medium text-[var(--purple-600)] transition-[color,background-color,opacity] duration-150 hover:bg-[var(--primary-bg)] ${
                   monthPending ? "opacity-50" : ""
                 }`}
                 onClick={() => {
@@ -909,7 +909,7 @@ export function SpaceCalendar({
                         aria-hidden="true"
                         className={`absolute -left-[21px] top-[13px] h-[9px] w-[9px] rounded-full border-2 ${
                           isToday
-                            ? "border-[#7d2ae8] bg-[#7d2ae8] shadow-[0_0_0_3px_var(--purple-14)]"
+                            ? "border-[var(--purple-600)] bg-[var(--purple-600)] shadow-[0_0_0_3px_var(--purple-14)]"
                             : "border-[var(--border-strong)] bg-white"
                         }`}
                       />
@@ -917,12 +917,12 @@ export function SpaceCalendar({
                       <div className="mb-1 flex items-center gap-1.5 text-[11px] text-[var(--ink-400)]">
                         {isToday ? (
                           <>
-                            <b className="font-semibold text-[#7d2ae8]">
+                            <b className="font-semibold text-[var(--purple-600)]">
                               {tDate("today")} ·{" "}
                               {tDate(WEEKDAY_KEYS[weekdayIndex(today)])}{" "}
                               {shortDate(today)}
                             </b>
-                            <span className="rounded-full bg-[var(--accent-lavender-bg)] px-1.5 py-px text-[10px] font-medium text-[#7d2ae8]">
+                            <span className="rounded-full bg-[var(--accent-lavender-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--purple-600)]">
                               {tCalendar("countItems", {
                                 count: group.items.length,
                               })}
@@ -984,7 +984,7 @@ export function SpaceCalendar({
                   <div className="mt-2 border-t border-[var(--border-default)] pt-2 text-[12px]">
                     <button
                       type="button"
-                      className="font-medium text-[#7d2ae8] hover:underline"
+                      className="font-medium text-[var(--purple-600)] hover:underline"
                       onClick={() => {
                         setUpcomingExpanded((current) => !current);
                       }}

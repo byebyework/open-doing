@@ -19,7 +19,7 @@ export interface StatCardProps {
  */
 export function StatCard({ label, value, hint, color }: StatCardProps) {
   return (
-    <div className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+    <div className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
       <div className="text-[12.5px] text-[var(--ink-500)]">{label}</div>
       <div
         className="mt-1 text-[28px] font-bold leading-none tracking-[-0.01em] text-[var(--ink-900)]"

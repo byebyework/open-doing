@@ -9,13 +9,13 @@ import { moduleHref } from "@/lib/routes";
 const KIND_META = {
   overdue: {
     icon: "⏰",
-    color: "#ff5757",
-    background: "rgba(255,87,87,0.1)",
+    color: "var(--status-overdue)",
+    background: "var(--status-overdue-bg)",
   },
   dueSoon: {
     icon: "⏳",
     color: "#a66b00",
-    background: "rgba(255,176,32,0.12)",
+    background: "var(--status-due-soon-bg)",
   },
   upcoming: {
     icon: "📅",
@@ -64,7 +64,7 @@ export async function MilestoneList({
   const tTasks = await getTranslations("tasks");
 
   return (
-    <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+    <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
           {t("milestonesTitle")}
@@ -139,7 +139,7 @@ export async function MilestoneList({
       <div className="-mx-4 mt-1 border-t border-[var(--border-default)] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
         <Link
           href={moduleHref(teamSlug, "kanban")}
-          className="text-[12.5px] font-medium text-[#7d2ae8] hover:underline"
+          className="text-[12.5px] font-medium text-[var(--purple-600)] hover:underline"
         >
           {t("viewAllTasks")}
         </Link>

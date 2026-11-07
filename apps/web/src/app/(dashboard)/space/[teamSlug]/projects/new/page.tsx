@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { CARD_SHELL } from "@/components/ui/card";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
 import { TeamProjectCreatePanel } from "@/features/projects/components/TeamProjectForm";
 import { can, getMembership } from "@/features/teams/permissions";
@@ -45,14 +47,13 @@ export default async function NewTeamProjectPage({
         <strong className="truncate font-semibold text-[var(--ink-900)]">{t("newProjectTitle")}</strong>
       </nav>
 
-      <header className="mt-2">
-        <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-          {t("newProjectTitle")}
-        </h1>
-        <p className="mt-1.5 text-[13.5px] text-[var(--ink-500)]">{t("newProjectHint")}</p>
-      </header>
+      <PageHeader
+        className="mt-2"
+        title={t("newProjectTitle")}
+        subtitle={t("newProjectHint")}
+      />
 
-      <section className="mt-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+      <section className={`mt-5 ${CARD_SHELL} p-5`}>
         <TeamProjectCreatePanel teamId={team.id} teamSlug={team.slug} />
       </section>
     </div>

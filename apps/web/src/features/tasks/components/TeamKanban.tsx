@@ -161,7 +161,7 @@ function TeamKanbanCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(14,19,24,0.04)] hover:shadow-[0_8px_24px_rgba(14,19,24,0.08)] ${
+      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[var(--shadow-rest)] hover:shadow-[var(--shadow-card-hover)] ${
         // 非拖拽态带 transform 过渡：松手后卡片 200ms 缓出归位（settle）。
         isDragging
           ? "opacity-50 transition-shadow"
@@ -271,7 +271,7 @@ function TeamKanbanColumn({
       aria-label={tStatus(TEAM_TASK_STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver
-          ? "bg-[#eef0fc] outline outline-2 outline-dashed outline-offset-[-4px] outline-[#7d2ae8]"
+          ? "bg-[var(--surface-cool)] outline outline-2 outline-dashed outline-offset-[-4px] outline-[var(--purple-600)]"
           : "bg-[#f4f5f7]"
       }`}
     >

@@ -41,7 +41,7 @@ function LoadSummary({ member }: { member: MemberLoad }) {
       color: "var(--ink-500)",
     },
     { key: "loadDueSoon", value: member.dueSoon, color: "#a66b00" },
-    { key: "loadOverdue", value: member.overdue, color: "#ff5757" },
+    { key: "loadOverdue", value: member.overdue, color: "var(--status-overdue)" },
   ] as const;
 
   return (

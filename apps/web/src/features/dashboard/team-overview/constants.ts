@@ -12,12 +12,12 @@
  */
 export const HEALTH_COLOR_RULES = {
   overdue: {
-    color: "#ff5757",
-    background: "rgba(255, 87, 87, 0.1)",
+    color: "var(--status-overdue)",
+    background: "var(--status-overdue-bg)",
   },
   dueSoon: {
     color: "#a66b00",
-    background: "rgba(255, 176, 32, 0.12)",
+    background: "var(--status-due-soon-bg)",
   },
   normal: {
     color: "#00b894",

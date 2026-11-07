@@ -177,7 +177,7 @@ export function RegisterForm() {
   return (
     <div>
       <span
-        className="grid h-10 w-10 place-items-center rounded-xl bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[19px] font-extrabold text-white"
+        className="grid h-10 w-10 place-items-center rounded-xl bg-[image:var(--brand-gradient)] text-[19px] font-extrabold text-white"
         aria-hidden="true"
       >
         O
@@ -407,7 +407,7 @@ export function RegisterForm() {
 
       <p className="mt-5 text-center text-[13px] text-[var(--ink-500)]">
         {t("hasAccount")}{" "}
-        <Link href="/login" className="font-semibold text-[#7d2ae8]">
+        <Link href="/login" className="font-semibold text-[var(--purple-600)]">
           {t("signInInstead")}
         </Link>
       </p>

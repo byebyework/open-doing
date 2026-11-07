@@ -2,6 +2,7 @@ import { displayName } from "@open-doing/types";
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
 import {
   getTeamProjectBySlug,
@@ -84,34 +85,32 @@ export default async function TeamProjectPage({
         </strong>
       </nav>
 
-      <header className="mt-2 flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
-        <div className="min-w-0">
-          <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-            {project.name}
-          </h1>
-          <p className="mt-1.5 text-[13.5px] text-[var(--ink-500)]">
-            {view === "board"
-              ? t("boardDragHint")
-              : t("teamProjectMeta", { tasks: tasks.length, members: participantCount })}
-          </p>
-        </div>
-
-        <TeamProjectHeader
-          teamId={team.id}
-          project={{
-            id: project.id,
-            name: project.name,
-            description: project.description,
-          }}
-          projectPath={projectPath}
-          view={view}
-          projects={projectOptions}
-          members={members}
-          actorId={user.id}
-          canManage={can(membership.role, "team:manage_projects")}
-          redirectTo={teamSettingsHref(team.slug)}
-        />
-      </header>
+      <PageHeader
+        className="mt-2"
+        title={project.name}
+        subtitle={
+          view === "board"
+            ? t("boardDragHint")
+            : t("teamProjectMeta", { tasks: tasks.length, members: participantCount })
+        }
+        actions={
+          <TeamProjectHeader
+            teamId={team.id}
+            project={{
+              id: project.id,
+              name: project.name,
+              description: project.description,
+            }}
+            projectPath={projectPath}
+            view={view}
+            projects={projectOptions}
+            members={members}
+            actorId={user.id}
+            canManage={can(membership.role, "team:manage_projects")}
+            redirectTo={teamSettingsHref(team.slug)}
+          />
+        }
+      />
 
       <div className="mt-5">
         {view === "board" ? (

@@ -136,7 +136,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
       {/* 品牌标识仅移动端保留（<861px 无侧栏）；桌面端侧栏已有品牌区，
           顶栏重复展示信息冗余。 */}
       <span
-        className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[14px] font-extrabold text-white min-[861px]:hidden"
+        className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-[image:var(--brand-gradient)] text-[14px] font-extrabold text-white min-[861px]:hidden"
         aria-hidden="true"
       >
         O

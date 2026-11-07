@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
 import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
@@ -68,22 +69,16 @@ export default async function PersonalKanbanPage(
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
-      <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
-        <div className="min-w-0">
-          <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-            {tNav("kanban")}
-          </h1>
-          <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
-            {t("personalSubtitle")}
-          </p>
-        </div>
-        <div className="flex flex-none items-center gap-2">
+      <PageHeader
+        title={tNav("kanban")}
+        subtitle={t("personalSubtitle")}
+        actions={
           <PersonalKanbanNewTaskButton
             projects={projects.map(({ id, name }) => ({ id, name }))}
             defaultProjectId={activeProject?.id}
           />
-        </div>
-      </header>
+        }
+      />
 
       <KanbanStatStrip
         stats={stats}

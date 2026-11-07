@@ -18,7 +18,7 @@ export interface EmptyStateProps {
 export function EmptyState({ title, description, action }: EmptyStateProps) {
   return (
     <div className="flex flex-col items-center justify-center px-4 py-12 text-center">
-      <span className="mb-3 grid h-14 w-14 place-items-center rounded-full bg-[#eef0fc] text-[#7d2ae8]">
+      <span className="mb-3 grid h-14 w-14 place-items-center rounded-full bg-[var(--surface-cool)] text-[var(--purple-600)]">
         <svg
           width="26"
           height="26"

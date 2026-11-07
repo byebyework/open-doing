@@ -167,7 +167,7 @@ function ProjectTag({
       className="inline-flex max-w-[180px] items-center truncate rounded-full px-2 py-0.5 text-[11px] font-semibold"
       style={
         isTeam
-          ? { background: "rgba(155,135,245,0.14)", color: "#6d4fd4" }
+          ? { background: "var(--accent-lavender-bg)", color: "#6d4fd4" }
           : { background: "rgba(72,201,151,0.12)", color: "#1f9d78" }
       }
     >
@@ -204,7 +204,7 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
   if (card.dueDate < today) {
     return (
       <span
-        className="whitespace-nowrap text-[12.5px] font-semibold text-[#ff5757]"
+        className="whitespace-nowrap text-[12.5px] font-semibold text-[var(--status-overdue)]"
         title={card.dueDate}
       >
         {t("overdueShort", {
@@ -344,7 +344,7 @@ function SpaceKanbanCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(14,19,24,0.04)] hover:shadow-[0_8px_24px_rgba(14,19,24,0.08)] ${
+      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[var(--shadow-rest)] hover:shadow-[var(--shadow-card-hover)] ${
         // 非拖拽态带 transform 过渡：松手后卡片 200ms 缓出归位（settle）；
         // 拖拽中不加 transform 过渡，避免卡片跟手延迟。
         isDragging
@@ -474,7 +474,7 @@ function SpaceKanbanColumn({
       aria-label={t(STATUS_KEYS[status])}
       className={`min-w-0 rounded-2xl p-3 transition-colors ${
         isOver
-          ? "bg-[#eef0fc] outline outline-2 outline-dashed outline-offset-[-4px] outline-[#7d2ae8]"
+          ? "bg-[var(--surface-cool)] outline outline-2 outline-dashed outline-offset-[-4px] outline-[var(--purple-600)]"
           : "bg-[#f4f5f7]"
       }`}
     >
@@ -488,7 +488,7 @@ function SpaceKanbanColumn({
         {overdueCount > 0 ? (
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-bold"
-            style={{ color: "#ff5757", background: "rgba(255,87,87,0.1)" }}
+            style={{ color: "var(--status-overdue)", background: "var(--status-overdue-bg)" }}
           >
             {t("overdueBadge", { count: overdueCount })}
           </span>
@@ -497,8 +497,8 @@ function SpaceKanbanColumn({
           <span
             className="rounded-full px-2 py-0.5 text-[11px] font-bold"
             style={{
-              color: "#7d2ae8",
-              background: "rgba(155,135,245,0.14)",
+              color: "var(--purple-600)",
+              background: "var(--accent-lavender-bg)",
             }}
           >
             {t("weekDoneBadge", { count: weekDoneCount })}
@@ -543,7 +543,7 @@ function SpaceKanbanColumn({
             onClick={onToggleOlder}
             className="mt-2 block w-full border-t border-dashed border-[var(--border-default)] px-2 pb-0.5 pt-[9px] text-left"
           >
-            <span className="text-[12px] font-medium text-[#7d2ae8]">
+            <span className="text-[12px] font-medium text-[var(--purple-600)]">
               {expanded
                 ? t("collapseAll", { count })
                 : t("expandOlder", { count: doneOlderCount })}

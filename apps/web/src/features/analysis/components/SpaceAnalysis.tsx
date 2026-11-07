@@ -3,7 +3,9 @@ import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { CARD_SHELL } from "@/components/ui/card";
 import { HintBadge } from "@/components/ui/HintBadge";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { StatCard } from "@/components/ui/StatCard";
 import {
   HEALTH_COLOR_RULES,
@@ -38,17 +40,16 @@ export interface SpaceAnalysisProps {
 }
 
 /** 讨论 / 统计卡的统一外观（与 Dashboard 卡片一致）。 */
-const CARD_CLASS =
-  "min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5";
+const CARD_CLASS = `${CARD_SHELL} min-w-0 p-4 min-[861px]:p-5`;
 
 /** 原型 `.callout.info` 的配色（设计令牌 info 系列）。 */
 const INFO_CALLOUT_STYLE = {
-  background: "rgba(13, 153, 255, 0.1)",
+  background: "var(--info-bg)",
   color: "#0b6fb8",
 } as const;
 
 /** 页头：标题 + 口径说明 + 右侧范围切换。 */
-async function PageHeader({
+async function AnalysisPageHeader({
   variant,
   range,
   basePath,
@@ -61,19 +62,11 @@ async function PageHeader({
   const tNav = await getTranslations("nav");
 
   return (
-    <header className="flex flex-col gap-3 min-[861px]:flex-row min-[861px]:items-start min-[861px]:justify-between min-[861px]:gap-4">
-      <div className="min-w-0">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-          {tNav("analysis")}
-        </h1>
-        <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
-          {variant === "personal" ? t("personalSubtitle") : t("teamSubtitle")}
-        </p>
-      </div>
-      <div className="flex flex-none items-center gap-2">
-        <AnalysisRangeSelector basePath={basePath} range={range} />
-      </div>
-    </header>
+    <PageHeader
+      title={tNav("analysis")}
+      subtitle={variant === "personal" ? t("personalSubtitle") : t("teamSubtitle")}
+      actions={<AnalysisRangeSelector basePath={basePath} range={range} />}
+    />
   );
 }
 
@@ -244,13 +237,13 @@ async function PersonalBody({
               ? t("overdueHintAction")
               : tDashboard("overdueHintNone")
           }
-          color="#ff5757"
+          color="var(--status-overdue)"
         />
         <StatCard
           label={t("onTimeRate")}
           value={rateValue}
           hint={rateHint}
-          color="#7d2ae8"
+          color="var(--purple-600)"
         />
       </div>
 
@@ -294,7 +287,7 @@ async function PersonalBody({
                   {t("legendCreated")}
                 </span>
                 <span className="inline-flex items-center">
-                  <LegendSwatch color="#7d2ae8" />
+                  <LegendSwatch color="var(--purple-600)" />
                   {t("legendCompleted")}
                 </span>
               </span>
@@ -445,7 +438,7 @@ async function TeamBody({
           label={tDashboard("statOverallProgress")}
           value={`${stats.avgProgressPercent}%`}
           hint={tDashboard("statOverallProgressHint")}
-          color="#7d2ae8"
+          color="var(--purple-600)"
         />
         <StatCard
           label={t("statOverdueNow")}
@@ -455,7 +448,7 @@ async function TeamBody({
               ? tDashboard("statOverdueTasksHint")
               : tDashboard("overdueHintNone")
           }
-          color="#ff5757"
+          color="var(--status-overdue)"
         />
         <StatCard
           label={t("statDoneThisWeek")}
@@ -636,7 +629,7 @@ async function TeamBody({
               >
                 <span
                   className="grid h-7 w-7 flex-none place-items-center rounded-lg text-[14px]"
-                  style={{ background: "rgba(255, 176, 32, 0.12)" }}
+                  style={{ background: "var(--status-due-soon-bg)" }}
                   aria-hidden="true"
                 >
                   🕸
@@ -657,7 +650,7 @@ async function TeamBody({
                 <span
                   className="ml-auto inline-flex shrink-0 items-center whitespace-nowrap rounded-full px-2.5 py-0.5 text-[12px] font-semibold"
                   style={{
-                    background: "rgba(255, 176, 32, 0.12)",
+                    background: "var(--status-due-soon-bg)",
                     color: "#a66b00",
                   }}
                 >
@@ -671,7 +664,7 @@ async function TeamBody({
         <div className="mt-3 border-t border-[var(--border-default)] pt-2.5">
           <Link
             href={kanbanHref}
-            className="text-[13px] font-medium text-[#7d2ae8] no-underline hover:underline"
+            className="text-[13px] font-medium text-[var(--purple-600)] no-underline hover:underline"
           >
             {t("zombieFooter")}
           </Link>
@@ -728,7 +721,7 @@ export async function SpaceAnalysis({
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
-      <PageHeader variant={variant} range={range} basePath={basePath} />
+      <AnalysisPageHeader variant={variant} range={range} basePath={basePath} />
       {body}
     </div>
   );

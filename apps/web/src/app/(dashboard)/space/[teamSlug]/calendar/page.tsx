@@ -3,6 +3,7 @@ import { displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
 import { SpaceCalendar } from "@/features/calendar/components/SpaceCalendar";
 import { getTeamSpaceCalendar } from "@/features/calendar/service";
@@ -80,14 +81,7 @@ export default async function TeamCalendarPage(
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
-      <header className="min-w-0">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-          {tNav("calendar")}
-        </h1>
-        <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
-          {t("teamSubtitle")}
-        </p>
-      </header>
+      <PageHeader title={tNav("calendar")} subtitle={t("teamSubtitle")} />
 
       <div className="mt-5">
         <SpaceCalendar

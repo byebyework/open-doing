@@ -90,7 +90,7 @@ function DueLabel({
   if (dueDate < today) {
     return (
       <span
-        className="whitespace-nowrap text-[12.5px] font-semibold text-[#ff5757]"
+        className="whitespace-nowrap text-[12.5px] font-semibold text-[var(--status-overdue)]"
         title={dueDate}
       >
         {t("dueOverdueBadge", { date: shortDate(dueDate), days: daysBetween(today, dueDate) })}
@@ -184,7 +184,7 @@ export function TodayTaskList({
   }
 
   return (
-    <section className="mt-5 min-w-0 rounded-xl border border-[var(--border-default)] bg-white shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+    <section className="mt-5 min-w-0 rounded-xl border border-[var(--border-default)] bg-white shadow-[var(--shadow-rest)]">
       <div className="flex min-w-0 flex-wrap items-center gap-2 px-4 pb-2 pt-4 min-[861px]:px-5">
         <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
           {t("todayHeader", {
@@ -195,13 +195,13 @@ export function TodayTaskList({
         </h2>
         <span
           className="ml-auto whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-medium"
-          style={{ background: "rgba(255,87,87,0.1)", color: "#ff5757" }}
+          style={{ background: "var(--status-overdue-bg)", color: "var(--status-overdue)" }}
         >
           {t("badgeOverdue", { count: overdueCount })}
         </span>
         <span
           className="whitespace-nowrap rounded-full px-2 py-0.5 text-[11.5px] font-medium"
-          style={{ background: "rgba(255,176,32,0.12)", color: "#a66b00" }}
+          style={{ background: "var(--status-due-soon-bg)", color: "#a66b00" }}
         >
           {t("badgeToday", { count: todayCount })}
         </span>
@@ -268,7 +268,7 @@ export function TodayTaskList({
         <div className="border-t border-[var(--border-default)] px-4 py-3 min-[861px]:px-5">
           <Link
             href={moduleHref("personal", "kanban")}
-            className="text-[12.5px] text-[#7d2ae8] no-underline hover:underline"
+            className="text-[12.5px] text-[var(--purple-600)] no-underline hover:underline"
           >
             {t("moreTasksFooter", {
               count: total - tasks.length,

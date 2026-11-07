@@ -52,7 +52,7 @@ export function AnalysisRangeSelector({
             onClick={() => router.push(`${basePath}?range=${option.value}`)}
             className={`cursor-pointer rounded-md px-3.5 py-[5px] text-[13px] font-semibold transition-colors ${
               active
-                ? "bg-white text-[var(--ink-900)] shadow-[0_1px_3px_rgba(14,19,24,0.04)]"
+                ? "bg-white text-[var(--ink-900)] shadow-[var(--shadow-rest)]"
                 : "text-[var(--ink-500)] hover:text-[var(--ink-900)]"
             }`}
           >

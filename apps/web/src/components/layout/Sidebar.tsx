@@ -36,7 +36,7 @@ export async function Sidebar({ nav }: SidebarProps) {
         href={spaceDashboardHref("personal")}
         className="mb-2 flex items-center gap-2.5 px-3 py-2 text-[var(--ink-900)] no-underline hover:text-[var(--ink-900)] group-data-[collapsed]/sidebar:justify-center group-data-[collapsed]/sidebar:px-0"
       >
-        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[16px] font-extrabold text-white shadow-[0_2px_8px_rgba(125,42,232,0.2)]">
+        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-[image:var(--brand-gradient)] text-[16px] font-extrabold text-white shadow-[var(--shadow-btn)]">
           O
         </span>
         <span className="text-[15px] font-extrabold tracking-[-0.01em] group-data-[collapsed]/sidebar:hidden">

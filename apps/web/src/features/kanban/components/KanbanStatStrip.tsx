@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 
 import type { TaskStatus } from "@open-doing/types";
 
+import { CARD_SHELL } from "@/components/ui/card";
 import { HintBadge } from "@/components/ui/HintBadge";
 
 import type { KanbanStats } from "../service";
@@ -40,8 +41,7 @@ interface StatChip {
 }
 
 /** chip 卡片外壳（对照原型 `.card .stat`：描边圆角卡、左对齐三行）。 */
-const CHIP_CLASS =
-  "rounded-xl border border-[var(--border-default)] bg-white px-4 py-3 text-left shadow-[0_1px_3px_rgba(14,19,24,0.04)] transition-colors hover:border-[var(--primary)]";
+const CHIP_CLASS = `${CARD_SHELL} px-4 py-3 text-left transition-colors hover:border-[var(--primary)]`;
 
 /**
  * 看板统计带（对照 `space-kanban-*.html` 的 `.kb-stats`）。

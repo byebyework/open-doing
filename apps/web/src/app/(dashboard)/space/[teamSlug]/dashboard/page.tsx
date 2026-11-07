@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { HintBadge } from "@/components/ui/HintBadge";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
@@ -67,14 +68,7 @@ export default async function TeamDashboardPage(
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
-      <header className="min-w-0">
-        <h1 className="text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-          {tNav("dashboard")}
-        </h1>
-        <p className="mt-1.5 text-[14px] text-[var(--ink-500)]">
-          {t("teamSubtitle")}
-        </p>
-      </header>
+      <PageHeader title={tNav("dashboard")} subtitle={t("teamSubtitle")} />
 
       <div className="mt-6 grid grid-cols-2 gap-3 min-[861px]:grid-cols-4 min-[861px]:gap-4">
         <StatCard
@@ -86,7 +80,7 @@ export default async function TeamDashboardPage(
           label={t("statOverallProgress")}
           value={`${Math.round(overview.teamStats.avgProgress * 100)}%`}
           hint={t("statOverallProgressHint")}
-          color="#7d2ae8"
+          color="var(--purple-600)"
         />
         <StatCard
           label={t("statDueSoonTasks")}
@@ -98,12 +92,12 @@ export default async function TeamDashboardPage(
           label={t("statOverdue")}
           value={overview.teamStats.overdueCount}
           hint={t("statOverdueTasksHint")}
-          color="#ff5757"
+          color="var(--status-overdue)"
         />
       </div>
 
       <div className="mt-6 grid min-w-0 grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
-        <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+        <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
               {t("healthTitle")}
@@ -177,7 +171,7 @@ export default async function TeamDashboardPage(
         />
       </div>
 
-      <section className="mt-5 min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:p-5">
+      <section className="mt-5 min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
         <div className="flex min-w-0 flex-wrap items-center gap-2">
           <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
             {t("memberLoadTitle")}

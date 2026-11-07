@@ -156,7 +156,7 @@ export function ProjectTaskTable({
         </span>
       </div>
 
-      <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white px-4 py-4 shadow-[0_1px_3px_rgba(14,19,24,0.04)] min-[861px]:px-5">
+      <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white px-4 py-4 shadow-[var(--shadow-rest)] min-[861px]:px-5">
         {isEmptyProject ? (
           <EmptyState
             title={t("emptyTasksTitle")}

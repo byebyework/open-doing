@@ -23,7 +23,7 @@ const NAV_ITEM_IDLE =
 
 /** 当前路由态：品牌紫文字 + 8% 紫底（原型 `.nav-item.active`）。 */
 const NAV_ITEM_ACTIVE =
-  "bg-[rgba(125,42,232,0.08)] font-semibold text-[#7d2ae8]";
+  "bg-[var(--purple-08)] font-semibold text-[var(--purple-600)]";
 
 /** 分组标题：与原型 `.nav-group-label` 一致（收起态整体隐藏）。 */
 const NAV_GROUP_LABEL =
@@ -297,7 +297,7 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
               // 收起态：数字徽标缩为图标右上角的 7px 红点（数量走 title）。
               <span
                 title={data.pendingInviteCount.toString()}
-                className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[#ff5757] px-1 text-[11px] font-bold text-white group-data-[collapsed]/sidebar:absolute group-data-[collapsed]/sidebar:left-1/2 group-data-[collapsed]/sidebar:top-1 group-data-[collapsed]/sidebar:ml-[3px] group-data-[collapsed]/sidebar:h-[7px] group-data-[collapsed]/sidebar:min-w-0 group-data-[collapsed]/sidebar:p-0 group-data-[collapsed]/sidebar:text-[0px]"
+                className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[var(--status-overdue)] px-1 text-[11px] font-bold text-white group-data-[collapsed]/sidebar:absolute group-data-[collapsed]/sidebar:left-1/2 group-data-[collapsed]/sidebar:top-1 group-data-[collapsed]/sidebar:ml-[3px] group-data-[collapsed]/sidebar:h-[7px] group-data-[collapsed]/sidebar:min-w-0 group-data-[collapsed]/sidebar:p-0 group-data-[collapsed]/sidebar:text-[0px]"
               >
                 {data.pendingInviteCount}
               </span>

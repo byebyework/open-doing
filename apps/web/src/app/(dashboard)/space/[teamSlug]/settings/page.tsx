@@ -5,7 +5,9 @@ import { notFound } from "next/navigation";
 import dayjs from "dayjs";
 
 import { requireUser } from "@/features/auth/session";
+import { CARD_SHELL } from "@/components/ui/card";
 import { HintBadge } from "@/components/ui/HintBadge";
+import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { can, getMembership } from "@/features/teams/permissions";
@@ -71,11 +73,14 @@ export default async function TeamSettingsPage(
       <div className="mb-1 text-[13px] text-[var(--ink-400)]">
         {team.name} <span className="mx-1">/</span> {t("settingsHeading")}
       </div>
-      <h1 className="text-[22px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">{t("settingsHeading")}</h1>
-      <p className="mb-8 mt-1.5 text-[14px] text-[var(--ink-500)]">{t("settingsSubtitle")}</p>
+      <PageHeader
+        className="mb-8"
+        title={t("settingsHeading")}
+        subtitle={t("settingsSubtitle")}
+      />
 
       {canManage ? (
-        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <h2 className="mb-1 text-[15px] font-bold text-[var(--ink-900)]">{t("teamInfoTitle")}</h2>
           <p className="mb-4 text-[13px] text-[var(--ink-400)]">
             {t("createdAtLine", { date: dayjs(team.createdAt).format("YYYY-MM-DD") })}
@@ -86,7 +91,7 @@ export default async function TeamSettingsPage(
       ) : null}
 
       {canManage ? (
-        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-[15px] font-bold text-[var(--ink-900)]">{t("inviteMembersTitle")}</h2>
             <HintBadge
@@ -129,7 +134,7 @@ export default async function TeamSettingsPage(
       ) : null}
 
       {canManage && joinSettings ? (
-        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-[15px] font-bold text-[var(--ink-900)]">{t("joinByCode")}</h2>
             <HintBadge
@@ -148,7 +153,7 @@ export default async function TeamSettingsPage(
       ) : null}
 
       {canManage ? (
-        <section className="mb-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+        <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <h2 className="mb-4 text-[15px] font-bold text-[var(--ink-900)]">
             {t("joinRequestsHeading", { count: joinRequests.length })}
           </h2>
@@ -157,7 +162,7 @@ export default async function TeamSettingsPage(
         </section>
       ) : null}
 
-      <section className="rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
+      <section className={`${CARD_SHELL} p-5`}>
         <h2 className="mb-4 text-[15px] font-bold text-[var(--ink-900)]">{t("membersHeading", { count: members.length })}</h2>
         <MemberList
           members={members}
@@ -167,8 +172,8 @@ export default async function TeamSettingsPage(
         />
       </section>
 
-      <section className="mt-5 rounded-xl border border-[var(--border-default)] bg-white p-5 shadow-[0_1px_3px_rgba(14,19,24,0.04)]">
-        <h2 className="mb-2 text-[15px] font-bold text-[#ff5757]">{t("dangerZoneTitle")}</h2>
+      <section className={`mt-5 ${CARD_SHELL} p-5`}>
+        <h2 className="mb-2 text-[15px] font-bold text-[var(--status-overdue)]">{t("dangerZoneTitle")}</h2>
 
         {canLeave ? (
           <div className="flex items-center gap-4 py-3">

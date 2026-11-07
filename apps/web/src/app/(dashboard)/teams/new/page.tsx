@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { getTranslations } from "next-intl/server";
 
+import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
 import { CreateTeamForm } from "@/features/teams/components/CreateTeamForm";
 import { joinTeamHref } from "@/lib/routes";
@@ -19,16 +20,18 @@ export default async function CreateTeamPage() {
 
   return (
     <div className="mx-auto w-full max-w-[520px] py-10">
-      <h1 data-testid="create-team-heading" className="text-[22px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">
-        {t("createTitle")}
-      </h1>
-      <p className="mb-8 mt-1.5 text-[14px] text-[var(--ink-500)]">{t("createSubtitle")}</p>
+      <PageHeader
+        className="mb-8"
+        titleTestId="create-team-heading"
+        title={t("createTitle")}
+        subtitle={t("createSubtitle")}
+      />
 
       <CreateTeamForm />
 
       <p className="mt-8 text-center text-[13px] text-[var(--ink-500)]">
         {t("haveJoinCode")}{" "}
-        <Link href={joinTeamHref()} className="font-semibold text-[#7d2ae8]">
+        <Link href={joinTeamHref()} className="font-semibold text-[var(--purple-600)]">
           {t("joinByCode")}
         </Link>
       </p>
