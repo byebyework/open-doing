@@ -13,10 +13,14 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/shadcn/dropdown-menu";
-import { Input } from "@/components/ui/shadcn/input";
 import { logoutAction } from "@/features/auth/actions";
 import { NotificationBell } from "@/features/notifications/components/NotificationBell";
 import { personalSettingsHref } from "@/lib/routes";
+
+import {
+  toggleSidebarCollapsed,
+  useSidebarCollapsed,
+} from "./SidebarShell";
 
 /** 个人设置图标（齿轮，与空间导航的同款图标一致）。 */
 function SettingsIcon() {
@@ -36,6 +40,25 @@ function SettingsIcon() {
   );
 }
 
+/** 退出登录图标（原型 log-out：门 + 外指箭头，与齿轮同款描边风格）。 */
+function LogoutIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+      <path d="M16 17l5-5-5-5" />
+      <path d="M21 12H9" />
+    </svg>
+  );
+}
+
 /** Topbar 入参。 */
 export interface TopbarProps {
   /** 当前登录用户；F-6 接入会话前为 null（此时展示中性占位头像）。 */
@@ -45,15 +68,16 @@ export interface TopbarProps {
 }
 
 /**
- * 顶栏：品牌/面包屑位 + 禁用态搜索框 + 通知占位 + 用户头像。
+ * 顶栏：侧栏伸缩按钮 + 品牌/面包屑位 + 通知占位 + 用户头像。
  *
  * `<NotificationBell />` 当前渲染 null，N-2 在原路径替换实现；
- * 搜索框在空间/全局搜索接线前保持禁用，≤860px 隐藏（与原型一致）。
+ * 搜索框暂不实现（功能接线前整体移除，避免占位误导）。
  */
 export function Topbar({ user, mobileNav }: TopbarProps) {
   const router = useRouter();
   const t = useTranslations("nav");
   const [loggingOut, setLoggingOut] = useState(false);
+  const sidebarCollapsed = useSidebarCollapsed();
 
   async function handleLogout() {
     if (loggingOut) return;
@@ -75,44 +99,57 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
       {/* 移动端导航入口（<861px 显示，由 MobileNav 负责） */}
       {mobileNav}
 
-      {/* 移动端无侧栏时保留品牌标识 */}
+      {/* 桌面侧栏伸缩按钮（≤860px 无侧栏，随侧栏一并隐藏）；ghost 样式，
+          hover 才显形，避免在扁平顶栏里突兀。 */}
+      <button
+        type="button"
+        onClick={toggleSidebarCollapsed}
+        aria-expanded={!sidebarCollapsed}
+        aria-label={
+          sidebarCollapsed ? t("expandSidebar") : t("collapseSidebar")
+        }
+        title={sidebarCollapsed ? t("expandSidebar") : t("collapseSidebar")}
+        className="hidden size-9 shrink-0 items-center justify-center rounded-lg text-[var(--ink-500)] transition-colors duration-150 hover:bg-[#f4f5f7] hover:text-[var(--ink-900)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)] min-[861px]:inline-flex"
+      >
+        {/* 面板折叠图标：外框 + 左分隔线 + chevron（收起时朝右） */}
+        <svg
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.8"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <rect x="3" y="4.5" width="18" height="15" rx="2.5" />
+          <path d="M9 4.5v15" />
+          {sidebarCollapsed ? (
+            <path d="M12.5 10l2.5 2-2.5 2" />
+          ) : (
+            <path d="M14.5 10L12 12l2.5 2" />
+          )}
+        </svg>
+      </button>
+
+      {/* 品牌标识仅移动端保留（<861px 无侧栏）；桌面端侧栏已有品牌区，
+          顶栏重复展示信息冗余。 */}
       <span
         className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-[linear-gradient(135deg,#7d2ae8_0%,#00c4cc_100%)] text-[14px] font-extrabold text-white min-[861px]:hidden"
         aria-hidden="true"
       >
         O
       </span>
-      <div className="truncate text-[13px] text-[var(--ink-500)]">Open Doing</div>
-
-      {/* 禁用态搜索框：键盘快捷键与搜索功能由后续轨道接入 */}
-      <div className="relative ml-auto hidden w-[240px] shrink-0 min-[861px]:block">
-        <svg
-          width="15"
-          height="15"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-          strokeLinecap="round"
-          aria-hidden="true"
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-[var(--ink-400)]"
-        >
-          <circle cx="11" cy="11" r="7" />
-          <path d="M21 21l-4.3-4.3" />
-        </svg>
-        <Input
-          disabled
-          aria-label={t("searchAria")}
-          placeholder={t("searchPlaceholder")}
-          className="pr-10 pl-8"
-        />
-        <kbd className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 rounded border border-[var(--border-default)] bg-white px-1.5 font-mono text-[11px] text-[var(--ink-500)]">
-          ⌘K
-        </kbd>
+      <div className="min-[861px]:hidden truncate text-[13px] text-[var(--ink-500)]">
+        Open Doing
       </div>
 
-      {/* 通知入口占位：N-2 替换实现，路径不变 */}
-      <NotificationBell />
+      {/* 通知入口占位（N-2 替换实现）+ 右侧用户区：占位当前渲染 null，
+          由本容器承担把用户头像推到右端（原为搜索框 ml-auto）。 */}
+      <div className="ml-auto flex items-center">
+        <NotificationBell />
+      </div>
 
       {/* 用户头像区：点击打开用户菜单（个人设置 / 退出登录） */}
       {user ? (
@@ -144,6 +181,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
                 void handleLogout();
               }}
             >
+              <LogoutIcon />
               {t("logout")}
             </DropdownMenuItem>
           </DropdownMenuContent>

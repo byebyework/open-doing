@@ -189,15 +189,15 @@
     "accountGroup": "账号",
     "pendingInvites": "待处理邀请",
     "logout": "退出登录",
-    "searchPlaceholder": "搜索任务…",
-    "searchAria": "搜索任务",
     "currentUserAria": "当前用户 {name}，打开用户菜单",
     "notSignedInAria": "未登录用户",
     "dashboard": "仪表盘",
     "kanban": "看板",
     "calendar": "日历",
     "analysis": "分析",
-    "openNavAria": "打开导航"
+    "openNavAria": "打开导航",
+    "collapseSidebar": "收起侧栏",
+    "expandSidebar": "展开侧栏"
   },
   "tasks": {
     "title": "标题",

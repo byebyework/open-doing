@@ -3,6 +3,8 @@
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 适配:遮罩用 --ink-900/45(对齐原型 .dialog-overlay);关闭钮 sr-only 文案走 next-intl(common.close),不硬编码英文。
+ * 动效:shadcn 自带的 tailwindcss-animate 工具类在本仓库不存在(死类,曾导致
+ * 弹窗零动画),改挂 motion.css 的 iOS 弹簧动效(遮罩 od-overlay / 内容 od-modal)。
  */
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
@@ -43,7 +45,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 fixed inset-0 z-50 bg-[rgba(14,19,24,0.45)]",
+        "od-overlay fixed inset-0 z-50 bg-[rgba(14,19,24,0.45)]",
         className,
       )}
       {...props}
@@ -66,7 +68,7 @@ function DialogContent({
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(
-          "bg-card data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[var(--radius-12)] p-6 shadow-lg duration-200 sm:max-w-lg",
+          "bg-card od-modal fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[var(--radius-12)] p-6 shadow-lg sm:max-w-lg",
           className,
         )}
         {...props}

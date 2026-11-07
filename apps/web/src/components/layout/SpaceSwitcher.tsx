@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+import { useTransition } from "react";
 
 import {
   DropdownMenu,
@@ -67,6 +68,9 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("nav");
+  // 空间切换是 RSC 重取数（目标路由无 loading.js），用 transition 标记
+  // pending：旧页面保持可见，触发器降透明度作为「正在切换」的反馈。
+  const [switchPending, startSwitchTransition] = useTransition();
 
   const teamSlugs = teams.map((team) => team.slug);
   const selectedKey = selectedSpaceKey(pathname, teamSlugs);
@@ -87,10 +91,13 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
         <button
           type="button"
           data-testid="space-switcher-trigger"
-          className="mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[var(--border-default)] bg-white px-2.5 py-2 text-left text-[13px] transition-colors hover:border-[#c7cdd3] hover:bg-[#f4f5f7]"
+          title={currentLabel}
+          className={`mx-2 mb-2 flex w-[calc(100%-1rem)] items-center gap-2 rounded-lg border border-[var(--border-default)] bg-white px-2.5 py-2 text-left text-[13px] transition-[color,background-color,border-color,opacity] duration-150 hover:border-[#c7cdd3] hover:bg-[#f4f5f7] group-data-[collapsed]/sidebar:mx-0 group-data-[collapsed]/sidebar:w-full group-data-[collapsed]/sidebar:justify-center group-data-[collapsed]/sidebar:px-0 ${
+            switchPending ? "opacity-50" : ""
+          }`}
         >
           <span className="h-2 w-2 shrink-0 rounded-full bg-[#7d2ae8]" />
-          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--ink-900)]">
+          <span className="min-w-0 flex-1 truncate font-semibold text-[var(--ink-900)] group-data-[collapsed]/sidebar:hidden">
             {currentLabel}
           </span>
           <svg
@@ -102,7 +109,7 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
             strokeWidth="2"
             strokeLinecap="round"
             strokeLinejoin="round"
-            className="shrink-0 text-[var(--ink-400)]"
+            className="shrink-0 text-[var(--ink-400)] group-data-[collapsed]/sidebar:hidden"
             aria-hidden="true"
           >
             <path d="M6 9l6 6 6-6" />
@@ -117,7 +124,11 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
         <DropdownMenuLabel>{t("personal")}</DropdownMenuLabel>
         <DropdownMenuItem
           data-selected={selectedMenuKey === "personal" ? "" : undefined}
-          onSelect={() => router.push(spaceDashboardHref("personal"))}
+          onSelect={() =>
+            startSwitchTransition(() =>
+              router.push(spaceDashboardHref("personal")),
+            )
+          }
         >
           {t("personalSpace")}
         </DropdownMenuItem>
@@ -131,7 +142,11 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
                 data-selected={
                   selectedMenuKey === `team:${team.slug}` ? "" : undefined
                 }
-                onSelect={() => router.push(spaceDashboardHref(team.slug))}
+                onSelect={() =>
+                  startSwitchTransition(() =>
+                    router.push(spaceDashboardHref(team.slug)),
+                  )
+                }
               >
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-[#9b87f5]" />
@@ -142,10 +157,18 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
           </>
         ) : null}
         <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={() => router.push(createTeamHref())}>
+        <DropdownMenuItem
+          onSelect={() =>
+            startSwitchTransition(() => router.push(createTeamHref()))
+          }
+        >
           {t("createTeam")}
         </DropdownMenuItem>
-        <DropdownMenuItem onSelect={() => router.push(joinTeamHref())}>
+        <DropdownMenuItem
+          onSelect={() =>
+            startSwitchTransition(() => router.push(joinTeamHref()))
+          }
+        >
           {t("joinByCode")}
         </DropdownMenuItem>
       </DropdownMenuContent>

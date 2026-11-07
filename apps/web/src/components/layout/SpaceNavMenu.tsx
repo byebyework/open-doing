@@ -1,17 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { useTranslations } from "next-intl";
-import type { ComponentType } from "react";
+import type { ComponentType, ReactNode } from "react";
 
 import { invitesHref, moduleHref, type SpaceModule } from "@/lib/routes";
 
 import type { SpaceNavData } from "./SpaceNavData";
 
-/** 导航项基础样式：与原型 `.nav-item` 对齐（8px 12px、8px 圆角、13.5px）。 */
+/**
+ * 导航项基础样式：与原型 `.nav-item` 对齐（8px 12px、8px 圆角、13.5px）。
+ * 侧栏收起态（`SidebarShell` 的 `data-collapsed`）下隐藏文字、图标居中。
+ */
 const NAV_ITEM_BASE =
-  "flex items-center gap-[10px] rounded-lg px-3 py-2 text-[13.5px] font-medium no-underline transition-colors";
+  "relative flex items-center gap-[10px] rounded-lg px-3 py-2 text-[13.5px] font-medium no-underline transition-colors group-data-[collapsed]/sidebar:justify-center group-data-[collapsed]/sidebar:px-0";
 
 /** 未选中态：次要文字色，hover 用浅灰表面。 */
 const NAV_ITEM_IDLE =
@@ -21,9 +25,34 @@ const NAV_ITEM_IDLE =
 const NAV_ITEM_ACTIVE =
   "bg-[rgba(125,42,232,0.08)] font-semibold text-[#7d2ae8]";
 
-/** 分组标题：与原型 `.nav-group-label` 一致。 */
+/** 分组标题：与原型 `.nav-group-label` 一致（收起态整体隐藏）。 */
 const NAV_GROUP_LABEL =
-  "px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--ink-400)]";
+  "px-3 pb-1 pt-3 text-[11px] font-semibold uppercase tracking-[0.06em] text-[var(--ink-400)] group-data-[collapsed]/sidebar:hidden";
+
+/** 导航项文字：收起态隐藏（图标即全部信息，全称走 title）。 */
+const NAV_LABEL_CLASS = "min-w-0 group-data-[collapsed]/sidebar:hidden";
+
+/**
+ * 导航项内容包装：消费 `useLinkStatus` 的 pending 态（RSC 取数期间），
+ * 整行降透明度作为导航进行中的反馈——路由无 loading.js 时 App Router
+ * 会一直停留在旧页面，没有这个信号点击就像「没反应」。
+ * 固定结构性元素（不改尺寸、不加 spinner），只在 pending 时降透明度，
+ * 避免布局位移；prefetch 命中时 pending 被跳过，不会闪。
+ */
+function NavLinkBody({ children }: { children: ReactNode }) {
+  const { pending } = useLinkStatus();
+
+  return (
+    <span
+      aria-busy={pending || undefined}
+      className={`flex min-w-0 flex-1 items-center gap-[10px] transition-opacity duration-150 group-data-[collapsed]/sidebar:flex-none ${
+        pending ? "opacity-50" : "opacity-100"
+      }`}
+    >
+      {children}
+    </span>
+  );
+}
 
 /** 图标样式：17px、跟随文字色、原型 0.85 透明度。 */
 const ICON_CLASS = "h-[17px] w-[17px] shrink-0 opacity-[0.85]";
@@ -235,12 +264,15 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
               key={module}
               href={moduleHref(spaceRef, module)}
               aria-current={active ? "page" : undefined}
+              title={t(labelKey)}
               className={`${NAV_ITEM_BASE} ${
                 active ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE
               }`}
             >
-              <Icon />
-              {t(labelKey)}
+              <NavLinkBody>
+                <Icon />
+                <span className={NAV_LABEL_CLASS}>{t(labelKey)}</span>
+              </NavLinkBody>
             </Link>
           );
         })}
@@ -251,17 +283,26 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
         <Link
           href={invitesHref()}
           aria-current={invitesActive ? "page" : undefined}
+          title={t("pendingInvites")}
           className={`${NAV_ITEM_BASE} ${
             invitesActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE
           }`}
         >
-          <InvitesIcon />
-          <span className="min-w-0 flex-1">{t("pendingInvites")}</span>
-          {data.pendingInviteCount > 0 ? (
-            <span className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[#ff5757] px-1 text-[11px] font-bold text-white">
-              {data.pendingInviteCount}
+          <NavLinkBody>
+            <InvitesIcon />
+            <span className={`flex-1 ${NAV_LABEL_CLASS}`}>
+              {t("pendingInvites")}
             </span>
-          ) : null}
+            {data.pendingInviteCount > 0 ? (
+              // 收起态：数字徽标缩为图标右上角的 7px 红点（数量走 title）。
+              <span
+                title={data.pendingInviteCount.toString()}
+                className="grid h-[18px] min-w-[18px] shrink-0 place-items-center rounded-full bg-[#ff5757] px-1 text-[11px] font-bold text-white group-data-[collapsed]/sidebar:absolute group-data-[collapsed]/sidebar:left-1/2 group-data-[collapsed]/sidebar:top-1 group-data-[collapsed]/sidebar:ml-[3px] group-data-[collapsed]/sidebar:h-[7px] group-data-[collapsed]/sidebar:min-w-0 group-data-[collapsed]/sidebar:p-0 group-data-[collapsed]/sidebar:text-[0px]"
+              >
+                {data.pendingInviteCount}
+              </span>
+            ) : null}
+          </NavLinkBody>
         </Link>
       </div>
     </>

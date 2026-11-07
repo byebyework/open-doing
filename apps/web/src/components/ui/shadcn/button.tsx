@@ -3,7 +3,8 @@
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 适配:颜色经 globals.css 的 @theme 桥接消费 tokens.css 语义槽位;
- * 渐变主按钮(品牌 CTA)按 docs/prototypes/login.html 增加 `gradient` variant。
+ * 渐变主按钮(品牌 CTA)按 docs/prototypes/login.html 增加 `gradient` variant;
+ * 按压反馈:active:scale-[0.98](150ms,无过冲,Corporate 动效人格)。
  */
 import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
@@ -12,7 +13,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-8)] text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
+  "inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-[var(--radius-8)] text-sm font-medium transition-[color,background-color,border-color,box-shadow,opacity,transform] duration-150 active:scale-[0.98] focus-visible:outline-none focus-visible:ring-[3px] focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0",
   {
     variants: {
       variant: {

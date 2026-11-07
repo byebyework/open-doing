@@ -189,15 +189,15 @@
     "accountGroup": "Account",
     "pendingInvites": "Pending invites",
     "logout": "Sign out",
-    "searchPlaceholder": "Search tasks…",
-    "searchAria": "Search tasks",
     "currentUserAria": "Signed in as {name}, open user menu",
     "notSignedInAria": "Not signed in",
     "dashboard": "Dashboard",
     "kanban": "Kanban",
     "calendar": "Calendar",
     "analysis": "Analysis",
-    "openNavAria": "Open navigation"
+    "openNavAria": "Open navigation",
+    "collapseSidebar": "Collapse sidebar",
+    "expandSidebar": "Expand sidebar"
   },
   "tasks": {
     "title": "Title",

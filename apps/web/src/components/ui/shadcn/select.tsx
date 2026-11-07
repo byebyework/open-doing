@@ -2,7 +2,10 @@
 
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
- * 适配:危险色 aria-invalid;尺寸/动画保留官方默认。
+ * 适配:危险色 aria-invalid;尺寸保留官方默认。
+ * 动效:shadcn 自带的 tailwindcss-animate 工具类在本仓库不存在(死类),改挂
+ * motion.css 的 iOS 动效(内容 od-popover 小行程弹簧);
+ * 缩放原点由 origin-(--radix-select-content-transform-origin) 跟随弹出方向。
  */
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
@@ -65,7 +68,7 @@ function SelectContent({
       <SelectPrimitive.Content
         data-slot="select-content"
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[var(--radius-8)] border shadow-md",
+          "bg-popover text-popover-foreground od-popover relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[var(--radius-8)] border shadow-md",
           position === "popper" &&
             "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
           className,

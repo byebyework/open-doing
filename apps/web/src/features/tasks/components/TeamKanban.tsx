@@ -161,8 +161,11 @@ function TeamKanbanCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(14,19,24,0.04)] transition-shadow hover:shadow-[0_8px_24px_rgba(14,19,24,0.08)] ${
-        isDragging ? "opacity-50" : ""
+      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[0_1px_3px_rgba(14,19,24,0.04)] hover:shadow-[0_8px_24px_rgba(14,19,24,0.08)] ${
+        // 非拖拽态带 transform 过渡：松手后卡片 200ms 缓出归位（settle）。
+        isDragging
+          ? "opacity-50 transition-shadow"
+          : "transition-[transform,box-shadow] duration-200 ease-out"
       } ${done ? "opacity-[0.62]" : ""}`}
     >
       {/* 拖拽把手只覆盖卡片主体；窄屏不挂监听，保住 touch 滚动。 */}

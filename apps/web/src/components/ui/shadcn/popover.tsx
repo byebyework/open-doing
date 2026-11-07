@@ -3,6 +3,9 @@
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 无令牌适配。
+ * 动效:shadcn 自带的 tailwindcss-animate 工具类在本仓库不存在(死类),改挂
+ * motion.css 的 iOS 动效(内容 od-popover 小行程弹簧);
+ * 缩放原点由 origin-(--radix-popover-content-transform-origin) 跟随弹出方向。
  */
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 import * as React from "react";
@@ -34,7 +37,7 @@ function PopoverContent({
         align={align}
         sideOffset={sideOffset}
         className={cn(
-          "bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2 z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-[var(--radius-8)] border p-4 shadow-md outline-hidden",
+          "bg-popover text-popover-foreground od-popover z-50 w-72 origin-(--radix-popover-content-transform-origin) rounded-[var(--radius-8)] border p-4 shadow-md outline-hidden",
           className,
         )}
         {...props}
