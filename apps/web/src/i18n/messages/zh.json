@@ -658,7 +658,7 @@
     "metaDaysLeft": "还有 {days} 天",
     "upcomingLine": "{date} · 还有 {days} 天",
     "thisWeek": "本周任务",
-    "weekRange": "{start} 周一 ~ {end} 周日 · {count} 项",
+    "weekRange": "{start} ~ {end} · {count} 项",
     "weekEmpty": "本周没有要截止的任务",
     "countItems": "{count} 项",
     "upcomingTitle": "本月即将到期",
@@ -669,7 +669,9 @@
     "teamHintAria": "团队日历说明",
     "teamHintSummary": "未指派任务也会显示",
     "teamHintTitle": "团队日历",
-    "teamHintClick": "点击任务可查看详情并切换状态。"
+    "teamHintClick": "点击任务可查看详情并切换状态。",
+    "monthDueCount": "{count} 项截止",
+    "addTaskAria": "在 {date} 新建任务"
   },
   "analysis": {
     "analysis": "分析",

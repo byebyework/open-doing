@@ -1,0 +1,546 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
+  <title>个人空间 Calendar v2 · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* ============================================================
+       Calendar v2 — 「安静画布，事件上墨」
+       设计要点：
+       1. 网格无竖线，仅保留极淡周间横分隔；结构靠留白与 hover 显形
+       2. 今天 = 全页唯一重音：品牌渐变日期盘 + 淡紫描边环 + 8% 紫底
+       3. 事件 chip = 左侧 3px 色条 + 低饱和底；文字保持墨色，逾期红字报警
+       4. 非本月仅数字淡显，无整格灰底
+       5. 侧栏本周 = 竖向时间线（脊线 + 日节点）；即将到期 = 迷你日期块
+       ============================================================ */
+
+    .cal2-layout { display: flex; gap: var(--space-4); align-items: flex-start; }
+    .cal2-main { flex: 1; min-width: 0; }
+    .cal2-side { width: 320px; flex-shrink: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+    @media (max-width: 860px) { .cal2-layout { flex-direction: column; } .cal2-side { width: 100%; } }
+
+    /* ===== 月历标题行 ===== */
+    .cal2-header { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-3); }
+    .cal2-title { font-size: var(--text-h2); font-weight: 600; letter-spacing: -0.01em; color: var(--foreground); }
+    .cal2-title small { font-size: var(--text-sm); font-weight: 400; color: var(--text-faint); margin-left: 10px; letter-spacing: 0; }
+    .cal2-nav { display: flex; align-items: center; gap: 2px; margin-left: auto; }
+    .cal2-nav-btn {
+      width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center;
+      border: none; background: transparent; border-radius: var(--radius-8);
+      color: var(--text-secondary); cursor: pointer; font-size: 16px; line-height: 1;
+      transition: background var(--duration-quick) var(--ease-standard), color var(--duration-quick) var(--ease-standard);
+    }
+    .cal2-nav-btn:hover { background: var(--surface-subtle); color: var(--foreground); }
+    .cal2-nav-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .cal2-today-btn {
+      height: 30px; padding: 0 12px; margin-left: 6px;
+      border: none; background: transparent; border-radius: var(--radius-8);
+      font-size: var(--text-sm); font-weight: 500; color: var(--primary); cursor: pointer;
+      transition: background var(--duration-quick) var(--ease-standard);
+    }
+    .cal2-today-btn:hover { background: var(--primary-bg); }
+    .cal2-today-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+
+    /* ===== 月历网格 ===== */
+    .cal2-grid {
+      border: 1px solid var(--border); border-radius: var(--radius-16);
+      background: var(--card); box-shadow: var(--shadow-rest); overflow: hidden;
+    }
+    .cal2-headrow {
+      display: grid; grid-template-columns: repeat(7, 1fr);
+      padding: 0 var(--space-2);
+      border-bottom: 1px solid var(--border);
+    }
+    .cal2-headrow .h {
+      padding: 12px 12px 10px; font-size: 12.5px; font-weight: 400; color: var(--text-faint);
+      text-align: center;
+    }
+
+    .cal2-body { padding: 0 var(--space-2) var(--space-2); }
+    .cal2-weekrow { display: grid; grid-template-columns: repeat(7, 1fr); }
+    /* 周间横分隔：极淡，仅扫描用 */
+    .cal2-weekrow + .cal2-weekrow {
+      border-top: 1px solid color-mix(in srgb, var(--border) 55%, transparent);
+    }
+
+    .cal2-cell {
+      height: 138px; padding: 10px 10px 8px; border-radius: var(--radius-12);
+      display: flex; flex-direction: column;
+      overflow: hidden; position: relative;
+      transition: background var(--duration-quick) var(--ease-standard);
+    }
+    .cal2-cell:hover { background: var(--surface-subtle); }
+
+    /* hover 浮现的快捷添加「+」（装饰性占位，实现时决定是否接创建流） */
+    .cal2-cell::after {
+      content: "+"; position: absolute; top: 8px; right: 10px;
+      font-size: 15px; line-height: 1; color: var(--text-faint);
+      opacity: 0; transition: opacity var(--duration-quick) var(--ease-standard);
+    }
+    .cal2-cell:hover::after { opacity: 1; }
+
+    /* 今天单元格：全页唯一重音 */
+    .cal2-cell.is-today {
+      background: var(--purple-08);
+      box-shadow: inset 0 0 0 1.5px var(--purple-30);
+    }
+    .cal2-cell.is-today:hover { background: var(--purple-14); }
+    .cal2-cell.is-today::after { display: none; }
+
+    /* 日期数字：大号、常规字重，仅今天用渐变盘 */
+    .cal2-date { display: flex; align-items: center; padding: 0 6px; }
+    .cal2-date .n {
+      width: 26px; height: 26px; display: inline-flex; align-items: center; justify-content: center;
+      border-radius: var(--radius-pill); font-size: 15px; color: var(--ink-900);
+      font-variant-numeric: tabular-nums; flex-shrink: 0;
+    }
+    .cal2-cell.is-today .cal2-date .n {
+      background: var(--brand-gradient); color: #fff; font-weight: 700; font-size: 13.5px;
+    }
+    .cal2-cell.is-out .cal2-date .n { color: color-mix(in srgb, var(--text-faint) 50%, transparent); }
+
+    /* ===== 事件 chip：左色条 + 低饱和底，文字随色调 ===== */
+    .cal2-chip {
+      display: flex; align-items: center; width: fit-content; max-width: 100%;
+      margin: 5px 3px 0; border-radius: var(--radius-pill);
+      background: var(--surface-inset); overflow: hidden;
+      font-size: 11.5px; line-height: 1.4; color: var(--text-secondary);
+      transition: box-shadow var(--duration-micro) var(--ease-standard);
+    }
+    .cal2-cell:hover .cal2-chip { box-shadow: var(--shadow-rest); }
+    .cal2-chip .bar { width: 3px; align-self: stretch; flex-shrink: 0; border-radius: 1px 0 0 1px; }
+    .cal2-chip .t { padding: 2.5px 9px 2.5px 7px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .cal2-chip.is-overdue { background: var(--error-bg); color: var(--error); }
+    .cal2-chip.is-overdue .t { font-weight: 500; }
+    /* done：无底色纯文本，淡显 + 划线（对照参考图「周报与发票整理」） */
+    .cal2-chip.is-done { background: transparent; color: var(--text-faint); margin-left: 9px; }
+    .cal2-chip.is-done .t { text-decoration: line-through; padding: 1px 0; }
+
+    /* chip 色条与文字（紧迫度承载层；中性档保持墨色文字） */
+    .bar-later { background: var(--ink-400); }
+    .bar-soon { background: var(--accent-tangerine); }
+    .bar-today-chip { background: var(--warning-500); }
+    .bar-overdue { background: var(--error-500); }
+    .cal2-chip.is-soon-tone { background: var(--accent-tangerine-bg); color: #b35400; }
+    .cal2-chip.is-today-tone { background: var(--warning-bg); color: #8a5800; }
+
+    .cal2-chip .av {
+      width: 14px; height: 14px; border-radius: 50%; font-size: 9px; color: #fff;
+      display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; margin-left: 5px;
+    }
+
+    .cal2-more {
+      margin: 5px 3px 0 10px; font-size: 11px; font-weight: 500;
+      color: color-mix(in srgb, var(--primary) 78%, transparent);
+      cursor: pointer;
+    }
+    .cal2-more:hover { color: var(--primary); }
+
+    /* 非本月内容整体淡化（数字 35% 已单独处理，chip 再压一档） */
+    .cal2-cell.is-out .cal2-chip { opacity: .5; }
+
+    /* ===== 侧栏卡片 ===== */
+    .side2-card {
+      border: 1px solid var(--border); border-radius: var(--radius-12);
+      background: var(--card); box-shadow: var(--shadow-rest); padding: var(--space-4);
+    }
+    .side2-head { display: flex; align-items: baseline; margin-bottom: var(--space-3); }
+    .side2-head h3 { font-size: var(--text-base); font-weight: 600; margin: 0; color: var(--foreground); }
+    .side2-head .range { margin-left: auto; font-size: var(--text-tag); color: var(--text-faint); font-variant-numeric: tabular-nums; }
+
+    /* 本周：竖向时间线 */
+    .tl { position: relative; padding-left: 21px; }
+    .tl::before {
+      content: ""; position: absolute; left: 3.5px; top: 8px; bottom: 8px;
+      width: 2px; border-radius: 1px; background: var(--surface-inset);
+    }
+    .tl-day { position: relative; padding: 7px 0 3px; }
+    .tl-day + .tl-day { border-top: none; }
+    .tl-day .node {
+      position: absolute; left: -21px; top: 13px;
+      width: 9px; height: 9px; border-radius: 50%;
+      background: var(--card); border: 2px solid var(--border-strong);
+      transform: translateX(0);
+    }
+    .tl-day.is-today .node { background: var(--primary); border-color: var(--primary); box-shadow: 0 0 0 3px var(--purple-14); }
+    .tl-day .d {
+      display: flex; align-items: center; gap: 7px; margin-bottom: 3px;
+      font-size: var(--text-tag); color: var(--text-faint);
+    }
+    .tl-day.is-today .d b { color: var(--primary); font-weight: 600; }
+    .tl-day .d .pill {
+      font-size: 10px; background: var(--accent-lavender-bg); color: var(--primary);
+      border-radius: var(--radius-pill); padding: 1px 7px; font-weight: 500;
+    }
+    .tl-item {
+      display: flex; align-items: center; gap: 7px; padding: 4px 0;
+      font-size: var(--text-caption); color: var(--foreground);
+      border-radius: var(--radius-6); margin-left: -8px; padding-left: 8px; padding-right: 8px;
+      transition: background var(--duration-micro) var(--ease-standard);
+    }
+    .tl-item:hover { background: var(--surface-subtle); }
+    .tl-item .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+    .tl-item.is-done { color: var(--text-faint); }
+    .tl-item.is-done .t { text-decoration: line-through; }
+    .tl-item .meta { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+    .tl-item .meta.is-overdue { color: var(--error); font-weight: 500; }
+    .tl-item .meta.is-soon { color: #b35400; }
+
+    /* 即将到期：迷你日期块 */
+    .up2-item { display: flex; align-items: center; gap: 10px; padding: 5px 0; }
+    .up2-date {
+      width: 34px; height: 36px; flex-shrink: 0; border-radius: var(--radius-8);
+      background: var(--surface-subtle); border: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0;
+      font-variant-numeric: tabular-nums;
+    }
+    .up2-date .dd { font-size: 14px; font-weight: 600; color: var(--text-secondary); line-height: 1.1; }
+    .up2-date .mm { font-size: 9px; color: var(--text-faint); line-height: 1.2; }
+    .up2-item .t {
+      font-size: var(--text-caption); color: var(--foreground);
+      overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0;
+    }
+    .up2-item .meta { margin-left: auto; flex-shrink: 0; font-size: 11px; color: var(--text-faint); white-space: nowrap; }
+    .side2-foot {
+      border-top: 1px solid var(--border); margin-top: 10px; padding-top: 10px; font-size: var(--text-caption);
+    }
+
+    /* 入场：网格行级联上浮（一次性，尊重 reduced-motion） */
+    .cal2-weekrow { animation: cal2-rise var(--duration-panel) var(--ease-decelerate) backwards; }
+    .cal2-weekrow:nth-child(1) { animation-delay: 40ms; }
+    .cal2-weekrow:nth-child(2) { animation-delay: 80ms; }
+    .cal2-weekrow:nth-child(3) { animation-delay: 120ms; }
+    .cal2-weekrow:nth-child(4) { animation-delay: 160ms; }
+    .cal2-weekrow:nth-child(5) { animation-delay: 200ms; }
+    .cal2-weekrow:nth-child(6) { animation-delay: 240ms; }
+    @keyframes cal2-rise {
+      from { opacity: 0; transform: translateY(6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cal2-weekrow { animation: none; }
+      .cal2-cell, .cal2-chip, .tl-item { transition: none; }
+    }
+
+    /* ============================================================
+       侧栏伸缩（Linear/Notion 式：分割线上的圆形 chevron 按钮）
+       ============================================================ */
+    .sidebar { position: relative; }
+    .app-shell { transition: grid-template-columns var(--duration-panel) var(--ease-standard); }
+    .sidebar-toggle {
+      position: absolute; top: 16px; right: -13px; z-index: 30;
+      width: 26px; height: 26px; border-radius: 50%;
+      background: var(--card); border: 1px solid var(--border);
+      color: var(--text-faint); cursor: pointer; padding: 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      box-shadow: var(--shadow-rest);
+      transition: color var(--duration-quick) var(--ease-standard),
+                  border-color var(--duration-quick) var(--ease-standard);
+    }
+    .sidebar-toggle:hover { color: var(--foreground); border-color: var(--border-strong); }
+    .sidebar-toggle:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
+    .sidebar-toggle svg { transition: transform var(--duration-panel) var(--ease-standard); }
+    .app-shell.is-collapsed .sidebar-toggle svg { transform: rotate(180deg); }
+
+    .nav-item { position: relative; }
+    .nav-item .label { white-space: nowrap; }
+
+    /* 收起态：68px 图标栏 */
+    .app-shell.is-collapsed { grid-template-columns: 68px 1fr; }
+    .app-shell.is-collapsed .brand { justify-content: center; padding-left: 0; padding-right: 0; }
+    .app-shell.is-collapsed .brand-name,
+    .app-shell.is-collapsed .team-switcher .name,
+    .app-shell.is-collapsed .team-switcher .chev,
+    .app-shell.is-collapsed .nav-group-label,
+    .app-shell.is-collapsed .nav-item .label,
+    .app-shell.is-collapsed .sidebar-user .meta { display: none; }
+    .app-shell.is-collapsed .team-switcher { justify-content: center; padding-left: 0; padding-right: 0; }
+    .app-shell.is-collapsed .nav-item { justify-content: center; gap: 0; padding-left: 0; padding-right: 0; }
+    .app-shell.is-collapsed .nav-item .count-badge {
+      position: absolute; top: 6px; left: 50%; margin-left: 3px;
+      width: 7px; height: 7px; padding: 0; font-size: 0; border-radius: 50%;
+    }
+    .app-shell.is-collapsed .sidebar-user { justify-content: center; padding-left: 0; padding-right: 0; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .app-shell, .sidebar-toggle svg { transition: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏(个人空间,Calendar 激活,可伸缩) ========== -->
+    <aside class="sidebar">
+      <button class="sidebar-toggle" type="button" id="sidebar-toggle" aria-label="收起侧栏" aria-expanded="true" title="收起侧栏">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M10 3L5 8l5 5"/></svg>
+      </button>
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+      <button class="team-switcher" type="button" title="个人空间">
+        <span class="dot"></span>
+        <span class="name">个人空间</span>
+        <span class="chev">▾</span>
+      </button>
+      <nav>
+        <div class="nav-group-label">个人空间</div>
+        <a class="nav-item" href="space-dashboard-personal.html" title="Dashboard">
+          <svg class="icon" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2" width="5.4" height="5.4" rx="1.4"/><rect x="9.6" y="2" width="5.4" height="5.4" rx="1.4"/><rect x="2" y="9.6" width="5.4" height="5.4" rx="1.4"/><rect x="9.6" y="9.6" width="5.4" height="5.4" rx="1.4"/></svg>
+          <span class="label">Dashboard</span>
+        </a>
+        <a class="nav-item" href="space-kanban-personal.html" title="Kanban">
+          <svg class="icon" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="2.5" width="4" height="12" rx="1.2"/><rect x="10" y="2.5" width="4" height="7.5" rx="1.2"/></svg>
+          <span class="label">Kanban</span>
+        </a>
+        <a class="nav-item active" href="space-calendar-v2.html" title="Calendar">
+          <svg class="icon" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><rect x="2" y="3" width="13" height="12" rx="2"/><path d="M2 6.8h13M5.6 1.6v2.8M11.4 1.6v2.8"/></svg>
+          <span class="label">Calendar</span>
+        </a>
+        <a class="nav-item" href="#" title="Analysis">
+          <svg class="icon" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 14.5V9M8.5 14.5V3.5M14 14.5v-4"/></svg>
+          <span class="label">Analysis</span>
+        </a>
+        <a class="nav-item" href="#" title="设置">
+          <svg class="icon" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 5h12M2.5 12h12"/><circle cx="6.2" cy="5" r="1.7" fill="var(--card)"/><circle cx="11" cy="12" r="1.7" fill="var(--card)"/></svg>
+          <span class="label">设置</span>
+        </a>
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html" title="待处理邀请">
+          <svg class="icon" viewBox="0 0 17 17" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 6a4.5 4.5 0 1 0-9 0c0 4-1.7 5.2-1.7 5.2h12.4S13 10 13 6"/><path d="M7 13.8a1.6 1.6 0 0 0 3 0"/></svg>
+          <span class="label">待处理邀请</span>
+          <span class="count-badge">2</span>
+        </a>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta"><div class="username">林夏</div><div class="uid">doing_x7k2m9</div></div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">个人空间 <span class="sep">/</span> <strong>Calendar</strong></div>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">Calendar</h1>
+            <div class="sub">个人项目的任务日历:按截止日期看本月分布,右侧是本周清单与本月临期提醒。</div>
+          </div>
+        </div>
+
+        <div class="filterbar anim-in">
+          <span class="text-caption"><a href="#" style="color:var(--primary);text-decoration:none;">2 项任务没有截止日期 →</a>(在 Dashboard 查看)</span>
+          <div class="spacer"></div>
+          <span class="text-caption">基准日期 2026-10-21(周三)</span>
+        </div>
+
+        <div class="cal2-layout anim-in">
+          <!-- ===== 左:月历 ===== -->
+          <div class="cal2-main">
+            <div class="cal2-header">
+              <span class="cal2-title">2026 年 10 月<small>9 项截止</small></span>
+              <div class="cal2-nav">
+                <button class="cal2-nav-btn" type="button" aria-label="上一月">‹</button>
+                <button class="cal2-nav-btn" type="button" aria-label="下一月">›</button>
+                <button class="cal2-today-btn" type="button">今天</button>
+              </div>
+            </div>
+
+            <div class="cal2-grid">
+              <div class="cal2-headrow">
+                <div class="h">周一</div><div class="h">周二</div><div class="h">周三</div><div class="h">周四</div><div class="h">周五</div><div class="h">周六</div><div class="h">周日</div>
+              </div>
+              <div class="cal2-body">
+                <!-- 第 1 行:09-28 ~ 10-04 -->
+                <div class="cal2-weekrow">
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">28</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">29</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">30</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">1</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">2</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">3</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">4</span></div></div>
+                </div>
+                <!-- 第 2 行:10-05 ~ 10-11 -->
+                <div class="cal2-weekrow">
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">5</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">6</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">7</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">8</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">9</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">10</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">11</span></div></div>
+                </div>
+                <!-- 第 3 行:10-12 ~ 10-18 -->
+                <div class="cal2-weekrow">
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">12</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">13</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">14</span></div>
+                    <div class="cal2-chip is-done"><span class="t">月度预算核对</span></div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">15</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">16</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">17</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">18</span></div>
+                    <div class="cal2-chip is-done"><span class="t">换季衣物收纳</span></div>
+                  </div>
+                </div>
+                <!-- 第 4 行:10-19 ~ 10-25(本周,高亮今天) -->
+                <div class="cal2-weekrow">
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">19</span></div>
+                    <div class="cal2-chip is-overdue"><span class="bar bar-overdue"></span><span class="t">21 天晨间日记打卡</span></div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">20</span></div></div>
+                  <div class="cal2-cell is-today"><div class="cal2-date"><span class="n">21</span></div>
+                    <div class="cal2-chip is-today-tone"><span class="bar bar-today-chip"></span><span class="t">给妈妈打电话</span></div>
+                    <div class="cal2-chip is-done"><span class="t">周报与发票整理</span></div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">22</span></div>
+                    <div class="cal2-chip is-soon-tone"><span class="bar bar-soon"></span><span class="t">Q4 个人 OKR 草拟</span></div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">23</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">24</span></div>
+                    <div class="cal2-chip"><span class="bar bar-later"></span><span class="t">完成《设计心理学》第 4 章笔记</span></div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">25</span></div></div>
+                </div>
+                <!-- 第 5 行:10-26 ~ 11-01(10-26 演示溢出) -->
+                <div class="cal2-weekrow">
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">26</span></div>
+                    <div class="cal2-chip"><span class="bar bar-later"></span><span class="t">每周复盘模板 v2</span></div>
+                    <div class="cal2-chip"><span class="bar bar-later"></span><span class="t">买 11 月火车票</span></div>
+                    <div class="cal2-chip"><span class="bar bar-later"></span><span class="t">回访张阿姨</span></div>
+                    <div class="cal2-more">还有 1 项</div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">27</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">28</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">29</span></div></div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">30</span></div>
+                    <div class="cal2-chip"><span class="bar bar-later"></span><span class="t">提交房租水电缴费</span></div>
+                  </div>
+                  <div class="cal2-cell"><div class="cal2-date"><span class="n">31</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">1</span></div></div>
+                </div>
+                <!-- 第 6 行:11-02 ~ 11-08 -->
+                <div class="cal2-weekrow">
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">2</span></div>
+                    <div class="cal2-chip"><span class="bar bar-later"></span><span class="t">整理年底旅行照片</span></div>
+                  </div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">3</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">4</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">5</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">6</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">7</span></div></div>
+                  <div class="cal2-cell is-out"><div class="cal2-date"><span class="n">8</span></div></div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- ===== 右:侧栏 ===== -->
+          <aside class="cal2-side">
+            <!-- 本周:竖向时间线 -->
+            <div class="side2-card">
+              <div class="side2-head">
+                <h3>本周任务</h3>
+                <span class="range">10-19 ~ 10-25 · 5 项</span>
+              </div>
+
+              <div class="tl">
+                <div class="tl-day is-today">
+                  <span class="node"></span>
+                  <div class="d"><b>今天 · 周三 10-21</b><span class="pill">2 项</span></div>
+                  <div class="tl-item"><span class="t">给妈妈打电话</span><span class="meta">生活琐事</span></div>
+                  <div class="tl-item is-done"><span class="t">周报与发票整理</span><span class="meta">已完成</span></div>
+                </div>
+                <div class="tl-day">
+                  <span class="node"></span>
+                  <div class="d">周一 10-19</div>
+                  <div class="tl-item"><span class="t">21 天晨间日记打卡</span><span class="meta is-overdue">逾期 2 天</span></div>
+                  <div class="tl-item is-done"><span class="t">《卡片笔记法》读后感</span><span class="meta">已完成</span></div>
+                </div>
+                <div class="tl-day">
+                  <span class="node"></span>
+                  <div class="d">周四 10-22</div>
+                  <div class="tl-item"><span class="t">Q4 个人 OKR 草拟</span><span class="meta is-soon">还有 1 天</span></div>
+                </div>
+                <div class="tl-day">
+                  <span class="node"></span>
+                  <div class="d">周六 10-24</div>
+                  <div class="tl-item"><span class="t">完成《设计心理学》第 4 章笔记</span><span class="meta">还有 3 天</span></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- 即将到期:迷你日期块 -->
+            <div class="side2-card">
+              <div class="side2-head">
+                <h3>本月即将到期</h3>
+                <span class="range">本周之后</span>
+              </div>
+
+              <div class="up2-item">
+                <div class="up2-date"><span class="dd">26</span><span class="mm">10月</span></div>
+                <span class="t">每周复盘模板 v2</span>
+                <span class="meta">还有 5 天</span>
+              </div>
+              <div class="up2-item">
+                <div class="up2-date"><span class="dd">26</span><span class="mm">10月</span></div>
+                <span class="t">买 11 月火车票</span>
+                <span class="meta">还有 5 天</span>
+              </div>
+              <div class="up2-item">
+                <div class="up2-date"><span class="dd">26</span><span class="mm">10月</span></div>
+                <span class="t">回访张阿姨</span>
+                <span class="meta">还有 5 天</span>
+              </div>
+              <div class="up2-item">
+                <div class="up2-date"><span class="dd">30</span><span class="mm">10月</span></div>
+                <span class="t">提交房租水电缴费</span>
+                <span class="meta">还有 9 天</span>
+              </div>
+              <div class="side2-foot">
+                <a href="#" style="color:var(--primary);text-decoration:none;">查看本月其余 1 项 →</a>
+              </div>
+            </div>
+          </aside>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+  <script>
+    // 侧栏伸缩：状态持久化到 localStorage，aria-expanded 同步
+    (function () {
+      var shell = document.querySelector(".app-shell");
+      var toggle = document.getElementById("sidebar-toggle");
+      var KEY = "od-proto-sidebar-collapsed";
+
+      function apply(collapsed) {
+        shell.classList.toggle("is-collapsed", collapsed);
+        toggle.setAttribute("aria-expanded", String(!collapsed));
+        toggle.setAttribute("aria-label", collapsed ? "展开侧栏" : "收起侧栏");
+        toggle.title = collapsed ? "展开侧栏" : "收起侧栏";
+      }
+
+      apply(localStorage.getItem(KEY) === "1");
+      toggle.addEventListener("click", function () {
+        var collapsed = !shell.classList.contains("is-collapsed");
+        localStorage.setItem(KEY, collapsed ? "1" : "0");
+        apply(collapsed);
+      });
+    })();
+  </script>
+</body>
+</html>

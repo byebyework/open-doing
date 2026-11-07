@@ -658,7 +658,7 @@
     "metaDaysLeft": "{days} days left",
     "upcomingLine": "{date} · in {days} days",
     "thisWeek": "This week",
-    "weekRange": "Mon {start} – Sun {end} · {count} items",
+    "weekRange": "{start} – {end} · {count} items",
     "weekEmpty": "Nothing due this week",
     "countItems": "{count} items",
     "upcomingTitle": "Due later this month",
@@ -669,7 +669,9 @@
     "teamHintAria": "Team calendar explanation",
     "teamHintSummary": "Unassigned tasks shown too",
     "teamHintTitle": "Team calendar",
-    "teamHintClick": "Click a task to view details and change its status."
+    "teamHintClick": "Click a task to view details and change its status.",
+    "monthDueCount": "{count} due",
+    "addTaskAria": "Add a task due {date}"
   },
   "analysis": {
     "analysis": "Analysis",

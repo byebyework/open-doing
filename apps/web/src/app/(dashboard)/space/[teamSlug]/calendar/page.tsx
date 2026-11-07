@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
@@ -7,7 +8,7 @@ import { SpaceCalendar } from "@/features/calendar/components/SpaceCalendar";
 import { getTeamSpaceCalendar } from "@/features/calendar/service";
 import { listTeamProjects } from "@/features/projects/service";
 import { getMembership } from "@/features/teams/permissions";
-import { getTeamBySlug } from "@/features/teams/service";
+import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { moduleHref, teamTaskHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
@@ -62,6 +63,8 @@ export default async function TeamCalendarPage(
 
   // 卡片只有 projectId；href 需要 project slug，用当前项目列表反查。
   const projects = await listTeamProjects(team.id);
+  // 格子「+」新建任务入口：项目选项 + 可指派成员（默认当前用户）。
+  const memberList = await listMembers(team.id);
   const projectSlugById = new Map(
     projects.map((project) => [project.id, project.slug]),
   );
@@ -94,6 +97,15 @@ export default async function TeamCalendarPage(
           data={data}
           taskHrefs={taskHrefs}
           basePath={moduleHref(team.slug, "calendar")}
+          createTask={{
+            projects: projects.map(({ id, name }) => ({ id, name })),
+            teamId: team.id,
+            members: memberList.map(({ user: member }) => ({
+              id: member.id,
+              name: displayName(member),
+            })),
+            defaultAssigneeId: user.id,
+          }}
         />
       </div>
     </div>
