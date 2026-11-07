@@ -102,7 +102,7 @@ features/
 
 ## 5. Routing Structure
 
-The app is unified as a space tree: `/space/{spaceRef}/{module}`, where `spaceRef` is `personal` or a team slug, and `module` ∈ `dashboard / kanban / calendar / analysis / settings`.
+The app is unified as a space tree: `/space/{spaceRef}/{module}`, where `spaceRef` is `personal` or a team slug. Personal space exposes four modules — `dashboard / kanban / calendar / analysis`; team space adds a fifth, `settings` (displayed as 团队管理 / team management, route unchanged). Personal settings are not a space module: they live at the top-level `/settings` route, reached from the topbar user menu.
 
 ```
 app/
@@ -111,6 +111,7 @@ app/
 │   └── register/page.tsx
 ├── (dashboard)/                     # logged-in layout: sidebar + top bar (with notification badge)
 │   ├── page.tsx                     # `/` → /space/personal/dashboard
+│   ├── settings/page.tsx            # personal settings (system-level): profile, password, reminders, language, project ordering
 │   ├── invites/page.tsx             # pending invites (accept/decline), not a space page
 │   ├── teams/
 │   │   ├── new/page.tsx             # create team, static page
@@ -121,7 +122,6 @@ app/
 │       │   ├── kanban/page.tsx      # personal Kanban: cross-project aggregation + ?project filter
 │       │   ├── calendar/page.tsx    # personal Calendar: month view + this-week / this-month lists (?month)
 │       │   ├── analysis/page.tsx    # personal Analysis: trends / backlog / on-time rate / project comparison (?range)
-│       │   ├── settings/page.tsx    # personal settings: change password, reminder toggles, project ordering notes
 │       │   ├── projects/[projectSlug]/
 │       │   │   └── page.tsx         # personal project page (list/kanban dual view, owner only)
 │       │   └── tasks/[taskId]/page.tsx # personal task detail (incl. tasks in personal projects)
@@ -130,7 +130,7 @@ app/
 │       │   ├── kanban/page.tsx      # team Kanban: cross-project aggregation + ?project / ?assignee filters
 │       │   ├── calendar/page.tsx    # team Calendar: all team tasks (incl. unassigned) + ?month
 │       │   ├── analysis/page.tsx    # team Analysis: throughput / member load / health / zombie tasks (?range)
-│       │   ├── settings/page.tsx    # team settings: team info/rename, invites, join-by-code and request approval, members, danger zone
+│       │   ├── settings/page.tsx    # team management (团队管理): team info/rename, invites, join-by-code and request approval, members, danger zone
 │       │   └── projects/
 │       │       ├── new/page.tsx      # create team project (edit/delete in project page header)
 │       │       └── [projectSlug]/
@@ -141,7 +141,8 @@ app/
         └── due-scan/route.ts        # due-soon/overdue scan, secret-protected
 ```
 
-- The five modules are real pages in both space types (`dashboard` / `kanban` / `calendar` / `analysis` / `settings`). Personal and team pages share domain components, differentiated by `spaceType` / variant (see §5.2–§5.4).
+- Both space types render the same domain pages; personal space has four modules (`dashboard` / `kanban` / `calendar` / `analysis`), team space has five (the same four plus `settings`, displayed as 团队管理). The pages share domain components, differentiated by `spaceType` / variant (see §5.2–§5.5).
+- Personal settings are a **system-level page** at `/settings`, inside the `(dashboard)` group so it inherits AppShell and `requireUser()`: profile fields, change password, reminder toggles, language, project ordering. The former `/space/personal/settings` route was removed outright (404, no redirect).
 - `personal` is a reserved spaceRef: team slug generation treats `personal` as taken (`RESERVED_SPACE_SLUGS` in `lib/slug.ts`); a team named "Personal" falls back to `personal-2`, leaving personal-space routing unaffected.
 - Route parameters always use slugs (teams/projects); task details use opaque internal IDs.
 - Personal and team tasks reuse the same task detail component; differences are handled via `spaceType` and the permission context.
@@ -162,7 +163,7 @@ app/
 ### 5.2 Navigation (AppShell / SpaceNav)
 
 - `AppShell` props: `{ nav, mobileNav, user, children }`.
-- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (Dashboard / Kanban / Calendar / Analysis / Settings + account group), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + Radix Sheet drawer).
+- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (personal space: Dashboard / Kanban / Calendar / Analysis, no settings entry; team space: the same four plus Settings, labeled 团队管理 (team management), route unchanged; the item arrays are hardcoded per space type and shared by the desktop sidebar and the mobile drawer; a separate account group holds the pending-invites entry), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + Radix Sheet drawer).
 - The desktop sidebar and the mobile Drawer share the same navigation tree; `(dashboard)/layout.tsx` imports are adjusted accordingly.
 
 ### 5.3 Space-level Kanban
@@ -231,7 +232,13 @@ Core tables (fields summarized; the Drizzle schema and migrations are authoritat
 users
   id            internal primary key (not exposed)
   uid           external identifier, unique, doing_xxxx (used for invites)
-  username      login/display name, unique
+  username      login name, unique
+  nickname      display name (nullable; generated user_<5-hex> when left blank at registration)
+  gender        male | female | secret (nullable)
+  email         nullable, globally unique (stored lowercase)
+  phone         nullable, globally unique
+  due_soon_reminder_enabled / overdue_reminder_enabled
+  language      zh | en
   password_hash
   created_at
 
@@ -286,11 +293,12 @@ sessions (not created: stateless jose signed cookie, see §3)
 
 Key constraints and behavior:
 
-- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable.
+- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable. `users.email` and `users.phone` are additionally globally unique and nullable: optional empty inputs are normalized to `NULL` (MySQL unique indexes treat NULLs as distinct), and email is lowercased on write.
+- **Display name**: `users.nickname` is the display name everywhere (assignee selectors, member lists, notification actor names, avatar initials); `username` remains the login identity. When the optional nickname is left blank at registration, the service stores a generated `user_<5-hex>` (first 5 lowercase hex chars of `sha256(uid)`) in `nickname`. Users can change it in `/settings` and it takes effect everywhere; `displayName(user)` in `@open-doing/types` resolves `nickname`, falling back to `username` for legacy rows. Avatar background color hashes the user id, not the name, so it stays stable across renames.
 - Personal-space data: tasks with `space_type = 'personal'` (`project_id` may point to the owner's personal project or be null) and personal projects with `owner_id = self` are accessible only by the owner (see §7); personal-project tasks always have `assignee_id` = the owner.
 - **Cascade deletes**: deleting a project (team or personal) → its tasks/subtasks/comments and related notifications; dissolving a team → its projects, memberships, invites, notifications. Backed by database foreign keys `ON DELETE CASCADE`, with a second confirmation in the app layer.
 - Removing a member / leaving: only deletes `team_memberships`, **not tasks**; their `assignee_id` is nulled.
-- The `pending_scope` unique index prevents multiple pending invites for the same person (same pattern on `team_join_requests`); identifier columns (username, uid, slug, join_code, status, …) use `utf8mb4_bin` to keep PostgreSQL's exact-match (case-sensitive) semantics.
+- The `pending_scope` unique index prevents multiple pending invites for the same person (same pattern on `team_join_requests`); identifier columns (username, uid, slug, join_code, status, …) use `utf8mb4_bin` to keep PostgreSQL's exact-match (case-sensitive) semantics. `email` and `phone` are deliberate exceptions: they use MySQL's default collation (`utf8mb4_0900_ai_ci`, case- and accent-insensitive) so uniqueness is case-insensitive too. This choice is documented in the comment on the `email` column in `schema.ts`.
 
 ## 7. Permission Model (enforcement points)
 

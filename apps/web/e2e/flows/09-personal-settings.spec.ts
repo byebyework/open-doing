@@ -168,6 +168,9 @@ test.describe("flow 9: 个人空间设置", () => {
 
     // 先建 A、后建 B：两者都没有任务时按 createdAt 降序，B 在前。
     await createPersonalProject(page, projectA);
+    // created_at 是秒级 timestamp：两次建项目落在同一秒会让排序键打平、
+    // 顺序不确定。隔开 1 秒以上，保证「B 在前」可断言。
+    await page.waitForTimeout(1_100);
     await createPersonalProject(page, projectB);
 
     await page.goto("/space/personal/kanban");
