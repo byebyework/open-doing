@@ -5,15 +5,17 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { findByUid, getCredentialsByUsername, getUserById } from "@/features/users/service";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { users } from "@/server/db/schema";
+import { registrationCodes, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
+import { generateRegistrationCodes, REGISTRATION_CODE_MAX_USES } from "./registration-codes";
 import {
   AuthError,
   changePassword,
   generateNickname,
   login,
   registerUser,
+  type AuthInput,
 } from "./service";
 
 /**
@@ -38,19 +40,36 @@ if (!hasTestDatabase) {
 
 describe.skipIf(!hasTestDatabase)("认证 service", () => {
   let db: DbClient;
+  let code: string;
 
   beforeEach(async () => {
     db = await setupTestDb();
     mockGenerateUid.mockReset();
     mockGenerateUid.mockImplementation(uidModule.generateUid);
+    // 封测注册码：每个用例预置一个有效码，供 registerWithCode 注入。
+    code = (await generateRegistrationCodes(1, db))[0]!;
   });
+
+  /** 注册码封测后注册必须凭码；默认注入当前用例的有效码。 */
+  const registerWithCode = (
+    input: Omit<AuthInput, "registrationCode"> & { registrationCode?: string },
+    client: DbClient = db,
+  ) => registerUser({ registrationCode: code, ...input }, client);
+
+  async function usedCountOf(value: string): Promise<number> {
+    const [row] = await db
+      .select({ usedCount: registrationCodes.usedCount })
+      .from(registrationCodes)
+      .where(eq(registrationCodes.code, value));
+    return row!.usedCount;
+  }
 
   afterAll(async () => {
     await closeTestDb();
   });
 
   it("注册成功：返回带 doing_ 前缀 UID 的 User，密码以 argon2id 哈希落库", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     expect(user.username).toBe("alice");
     expect(user.uid).toMatch(/^doing_[a-z2-9]{6}$/);
@@ -63,15 +82,15 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("注册时用户名首尾空白会被裁剪", async () => {
-    const user = await registerUser({ username: "  bob  ", password: "password123" }, db);
+    const user = await registerWithCode({ username: "  bob  ", password: "password123" }, db);
 
     expect(user.username).toBe("bob");
   });
 
   it("用户名重复：抛出「用户名已存在」类错误", async () => {
-    await registerUser({ username: "alice", password: "password123" }, db);
+    await registerWithCode({ username: "alice", password: "password123" }, db);
 
-    const error = await registerUser({ username: "alice", password: "password456" }, db).catch(
+    const error = await registerWithCode({ username: "alice", password: "password456" }, db).catch(
       (caught: unknown) => caught,
     );
 
@@ -84,7 +103,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("UID 碰撞：依赖数据库唯一约束重新生成 UID 后注册成功", async () => {
-    const first = await registerUser({ username: "existing", password: "password123" }, db);
+    const first = await registerWithCode({ username: "existing", password: "password123" }, db);
     const freshUid = uidModule.generateUid();
 
     mockGenerateUid.mockReset();
@@ -92,7 +111,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
       .mockImplementationOnce(() => first.uid)
       .mockImplementationOnce(() => freshUid);
 
-    const user = await registerUser({ username: "newcomer", password: "password123" }, db);
+    const user = await registerWithCode({ username: "newcomer", password: "password123" }, db);
 
     expect(mockGenerateUid).toHaveBeenCalledTimes(2);
     expect(user.uid).toBe(freshUid);
@@ -100,14 +119,14 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("注册校验：用户名 2–20 字符、密码至少 8 位", async () => {
-    await expect(registerUser({ username: "a", password: "password123" }, db)).rejects.toMatchObject({
+    await expect(registerWithCode({ username: "a", password: "password123" }, db)).rejects.toMatchObject({
       code: "VALIDATION",
       field: "username",
     });
     await expect(
-      registerUser({ username: "a".repeat(21), password: "password123" }, db),
+      registerWithCode({ username: "a".repeat(21), password: "password123" }, db),
     ).rejects.toMatchObject({ code: "VALIDATION", field: "username" });
-    await expect(registerUser({ username: "alice", password: "short" }, db)).rejects.toMatchObject({
+    await expect(registerWithCode({ username: "alice", password: "short" }, db)).rejects.toMatchObject({
       code: "VALIDATION",
       field: "password",
     });
@@ -115,7 +134,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
 
   describe("注册资料字段", () => {
     it("email / phone 传空字符串时落库为 null", async () => {
-      const user = await registerUser(
+      const user = await registerWithCode(
         { username: "alice", password: "password123", email: "", phone: "" },
         db,
       );
@@ -125,7 +144,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("email 会 trim 并转为小写", async () => {
-      const user = await registerUser(
+      const user = await registerWithCode(
         { username: "alice", password: "password123", email: "A@B.COM " },
         db,
       );
@@ -134,7 +153,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("非法 gender：VALIDATION / field gender / key genderInvalid", async () => {
-      const error = await registerUser(
+      const error = await registerWithCode(
         { username: "alice", password: "password123", gender: "other" },
         db,
       ).catch((caught: unknown) => caught);
@@ -148,7 +167,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("非法 phone：VALIDATION / field phone / key phoneInvalid", async () => {
-      const error = await registerUser(
+      const error = await registerWithCode(
         { username: "alice", password: "password123", phone: "123" },
         db,
       ).catch((caught: unknown) => caught);
@@ -162,7 +181,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("非法 email：VALIDATION / field email / key emailInvalid", async () => {
-      const error = await registerUser(
+      const error = await registerWithCode(
         { username: "alice", password: "password123", email: "not-an-email" },
         db,
       ).catch((caught: unknown) => caught);
@@ -176,7 +195,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("nickname 超过 50 字符：VALIDATION / field nickname / key nicknameMaxLength", async () => {
-      const error = await registerUser(
+      const error = await registerWithCode(
         { username: "alice", password: "password123", nickname: "x".repeat(51) },
         db,
       ).catch((caught: unknown) => caught);
@@ -190,13 +209,13 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("未传 nickname 时按 uid 生成默认昵称", async () => {
-      const user = await registerUser({ username: "alice", password: "password123" }, db);
+      const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
       expect(user.nickname).toBe(generateNickname(user.uid));
     });
 
     it("传入 nickname 时 trim 后作为昵称落库", async () => {
-      const user = await registerUser(
+      const user = await registerWithCode(
         { username: "alice", password: "password123", nickname: "  阿岚  " },
         db,
       );
@@ -205,12 +224,12 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("邮箱重复：抛出 EMAIL_TAKEN 字段错误，而不是 UID_GENERATION_FAILED", async () => {
-      await registerUser(
+      await registerWithCode(
         { username: "owner", password: "password123", email: "taken@test.com" },
         db,
       );
 
-      const error = await registerUser(
+      const error = await registerWithCode(
         { username: "second", password: "password123", email: "taken@test.com" },
         db,
       ).catch((caught: unknown) => caught);
@@ -225,12 +244,12 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
 
     it("手机号重复：抛出 PHONE_TAKEN 字段错误，而不是 UID_GENERATION_FAILED", async () => {
-      await registerUser(
+      await registerWithCode(
         { username: "owner", password: "password123", phone: "+8613800000000" },
         db,
       );
 
-      const error = await registerUser(
+      const error = await registerWithCode(
         { username: "second", password: "password123", phone: "+8613800000000" },
         db,
       ).catch((caught: unknown) => caught);
@@ -253,8 +272,83 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
     });
   });
 
+  describe("注册码", () => {
+    it("未提供注册码：VALIDATION / field registrationCode / key registrationCodeRequired", async () => {
+      const error = await registerUser({ username: "alice", password: "password123" }, db).catch(
+        (caught: unknown) => caught,
+      );
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "VALIDATION",
+        field: "registrationCode",
+        i18n: { key: "registrationCodeRequired" },
+      });
+      expect(await db.select().from(registrationCodes)).toHaveLength(1);
+    });
+
+    it("码不存在：REGISTRATION_CODE_INVALID / key registrationCodeInvalid，且先于用户名占用检查", async () => {
+      // 先注册 alice 占用用户名：无有效码的请求只应看到「码无效」，不泄露占用信息。
+      await registerWithCode({ username: "alice", password: "password123" }, db);
+
+      const error = await registerUser(
+        { username: "alice", password: "password123", registrationCode: "ZZZZZZZZ" },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "REGISTRATION_CODE_INVALID",
+        field: "registrationCode",
+        i18n: { key: "registrationCodeInvalid" },
+      });
+    });
+
+    it("码已用尽：REGISTRATION_CODE_EXHAUSTED / key registrationCodeExhausted", async () => {
+      await db
+        .update(registrationCodes)
+        .set({ usedCount: REGISTRATION_CODE_MAX_USES })
+        .where(eq(registrationCodes.code, code));
+
+      const error = await registerWithCode({ username: "alice", password: "password123" }, db).catch(
+        (caught: unknown) => caught,
+      );
+
+      expect(error).toBeInstanceOf(AuthError);
+      expect(error).toMatchObject({
+        code: "REGISTRATION_CODE_EXHAUSTED",
+        field: "registrationCode",
+        i18n: { key: "registrationCodeExhausted" },
+      });
+    });
+
+    it("注册成功：消耗码的一个名额", async () => {
+      await registerWithCode({ username: "alice", password: "password123" }, db);
+
+      await expect(usedCountOf(code)).resolves.toBe(1);
+    });
+
+    it("注册失败（用户名重复）：回滚，不消耗名额", async () => {
+      await registerWithCode({ username: "alice", password: "password123" }, db);
+
+      await expect(
+        registerWithCode({ username: "alice", password: "password456" }, db),
+      ).rejects.toMatchObject({ code: "USERNAME_TAKEN" });
+
+      await expect(usedCountOf(code)).resolves.toBe(1);
+    });
+
+    it("注册失败（资料校验）：回滚，不消耗名额", async () => {
+      await expect(
+        registerWithCode({ username: "a", password: "password123" }, db),
+      ).rejects.toMatchObject({ code: "VALIDATION", field: "username" });
+
+      await expect(usedCountOf(code)).resolves.toBe(0);
+    });
+  });
+
   it("登录成功：正确密码返回 User（不含密码哈希）", async () => {
-    const registered = await registerUser({ username: "alice", password: "password123" }, db);
+    const registered = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     const loggedIn = await login({ username: "alice", password: "password123" }, db);
 
@@ -263,7 +357,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("登录失败：错误密码与不存在的用户名抛出同一「用户名或密码错误」", async () => {
-    await registerUser({ username: "alice", password: "password123" }, db);
+    await registerWithCode({ username: "alice", password: "password123" }, db);
 
     const wrongPassword = await login({ username: "alice", password: "wrongpass" }, db).catch(
       (caught: unknown) => caught,
@@ -287,7 +381,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("修改密码成功：返回 true，新密码可验证、旧密码失效", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     await expect(
       changePassword(
@@ -303,7 +397,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("修改密码：旧密码错误 → AuthError(field oldPassword)", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     const error = await changePassword(
       { userId: user.id, oldPassword: "wrongpass", newPassword: "newpassword456" },
@@ -319,7 +413,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("修改密码：新密码不足 8 位 → field newPassword 且提示至少 8 位", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     const error = await changePassword(
       { userId: user.id, oldPassword: "password123", newPassword: "short12" },
@@ -335,7 +429,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("修改密码：新密码为空 → field newPassword", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     const error = await changePassword(
       { userId: user.id, oldPassword: "password123", newPassword: "" },
@@ -351,7 +445,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("改密全链路：改密后新密码可登录，旧密码登录失败", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     await changePassword(
       { userId: user.id, oldPassword: "password123", newPassword: "newpassword456" },
@@ -365,7 +459,7 @@ describe.skipIf(!hasTestDatabase)("认证 service", () => {
   });
 
   it("users service：按 id / uid 查询返回领域 User，未命中返回 null", async () => {
-    const user = await registerUser({ username: "alice", password: "password123" }, db);
+    const user = await registerWithCode({ username: "alice", password: "password123" }, db);
 
     await expect(getUserById(user.id, db)).resolves.toEqual(user);
     await expect(findByUid(user.uid, db)).resolves.toEqual(user);

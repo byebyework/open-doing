@@ -1,4 +1,5 @@
 import path from "node:path";
+import { randomUUID } from "node:crypto";
 
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
@@ -6,6 +7,7 @@ import { migrate } from "drizzle-orm/mysql2/migrator";
 import mysql from "mysql2/promise";
 
 import { E2E_DATABASE_URL, assertE2EDatabaseUrl } from "./utils/env";
+import { E2E_REGISTRATION_CODE } from "./utils/flows";
 
 /** 需要清空的业务表（顺序与迁移无关，外键检查已关闭）；必须与 schema.ts 的业务表保持一致，并与 src/server/db/testing.ts 的列表逐表同步。 */
 const TRUNCATE_TABLES = [
@@ -17,6 +19,7 @@ const TRUNCATE_TABLES = [
   "team_join_requests",
   "team_memberships",
   "projects",
+  "registration_codes",
   "teams",
   "users",
 ] as const;
@@ -60,6 +63,13 @@ export default async function globalSetup(): Promise<void> {
     } finally {
       await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1`);
     }
+
+    // 预置 e2e 注册码：注册现要求凭码，全部流程共用这一个固定码。
+    // 码列唯一索引兜底；这里用原生 SQL，避免 import 应用 db 模块
+    // （client.ts 会按 DATABASE_URL 建池，e2e 进程里不存在该变量）。
+    await db.execute(
+      sql`INSERT INTO registration_codes (id, code, max_uses, used_count) VALUES (${randomUUID()}, ${E2E_REGISTRATION_CODE}, 10, 0)`,
+    );
   } finally {
     await pool.end();
   }

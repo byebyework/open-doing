@@ -26,6 +26,7 @@ import {
   USERNAME_TAKEN_MESSAGE,
 } from "./constants";
 import { clearSession } from "./session";
+import { consumeRegistrationCode, normalizeRegistrationCode } from "./registration-codes";
 
 export {
   INVALID_CREDENTIALS_MESSAGE,
@@ -43,6 +44,8 @@ const PHONE_TAKEN_MESSAGE = "手机号已被使用";
 
 export type AuthErrorCode =
   | "VALIDATION"
+  | "REGISTRATION_CODE_INVALID"
+  | "REGISTRATION_CODE_EXHAUSTED"
   | "USERNAME_TAKEN"
   | "EMAIL_TAKEN"
   | "PHONE_TAKEN"
@@ -50,6 +53,7 @@ export type AuthErrorCode =
   | "UID_GENERATION_FAILED";
 
 export type AuthErrorField =
+  | "registrationCode"
   | "username"
   | "password"
   | "nickname"
@@ -87,6 +91,8 @@ export class AuthError extends Error {
 }
 
 export interface AuthInput {
+  /** 注册码（封测）：必填；trim + 去内部空白 + 大写归一化后校验。 */
+  registrationCode?: string;
   username: string;
   password: string;
   /** 昵称：trim 后最长为 50 字符；空/未传时按 uid 生成默认昵称。 */
@@ -225,8 +231,13 @@ function validateRegistration(input: AuthInput): {
 }
 
 /**
- * 注册用户。
+ * 注册用户（封测：必须凭有效注册码）。
  *
+ * - 注册码先于一切资料校验：无有效码的请求只看到「码无效/已用尽」，
+ *   不泄露用户名/邮箱占用信息；
+ * - 码的消费与用户写入在**同一事务**内完成：原子条件更新扣减名额
+ *   （并发不超发），后续任何失败（资料校验、用户名/邮箱/手机号占用、
+ *   UID 重试耗尽）整体回滚，不白耗名额；
  * - 用户名查重给出友好错误；并发竞态由数据库唯一约束兜底；
  * - 可选资料（昵称/性别/邮箱/手机号）归一化后落库，未填昵称按 uid 生成；
  * - 密码用 @node-rs/argon2（默认 Argon2id）哈希，绝不明文落库；
@@ -237,81 +248,105 @@ export async function registerUser(
   input: AuthInput,
   client: DbClient = db,
 ): Promise<User> {
-  const { username, password, nickname, gender, email, phone } =
-    validateRegistration(input);
-
-  if (await usernameExists(username, client)) {
-    throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
-      key: "usernameTaken",
+  const code = normalizeRegistrationCode(input?.registrationCode);
+  if (!code) {
+    throw new AuthError("VALIDATION", "请输入注册码", "registrationCode", {
+      key: "registrationCodeRequired",
     });
   }
 
-  const passwordHash = await hash(password);
-
-  for (let attempt = 1; attempt <= MAX_UID_ATTEMPTS; attempt += 1) {
-    try {
-      // MySQL 无 RETURNING：先取应用层生成的 UUID，再在同一 client 上回查。
-      const uid = generateUid();
-      const [inserted] = await client
-        .insert(users)
-        .values({
-          uid,
-          username,
-          passwordHash,
-          nickname: nickname ?? generateNickname(uid),
-          gender,
-          email,
-          phone,
-        })
-        .$returningId();
-
-      const [row] = await client
-        .select({
-          id: users.id,
-          uid: users.uid,
-          username: users.username,
-          nickname: users.nickname,
-          gender: users.gender,
-          email: users.email,
-          phone: users.phone,
-          createdAt: users.createdAt,
-        })
-        .from(users)
-        .where(eq(users.id, inserted!.id))
-        .limit(1);
-
-      return toUser(row!);
-    } catch (error) {
-      if (!isUniqueViolation(error)) throw error;
-
-      // 唯一冲突按被违反的索引分派；先分派业务唯一键，再解释为 UID 碰撞。
-      const key = uniqueViolationKey(error);
-
-      if (key === "users_username_unique") {
-        throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
-          key: "usernameTaken",
-        });
-      }
-      if (key === "users_email_unique") {
-        throw new AuthError("EMAIL_TAKEN", EMAIL_TAKEN_MESSAGE, "email", {
-          key: "emailTaken",
-        });
-      }
-      if (key === "users_phone_unique") {
-        throw new AuthError("PHONE_TAKEN", PHONE_TAKEN_MESSAGE, "phone", {
-          key: "phoneTaken",
-        });
-      }
-      // key 为 null：其余唯一冲突只可能来自 UID，重新生成后重试。
+  return client.transaction(async (tx) => {
+    const consumed = await consumeRegistrationCode(code, tx);
+    if (consumed === "invalid") {
+      throw new AuthError("REGISTRATION_CODE_INVALID", "注册码无效", "registrationCode", {
+        key: "registrationCodeInvalid",
+      });
     }
-  }
+    if (consumed === "exhausted") {
+      throw new AuthError(
+        "REGISTRATION_CODE_EXHAUSTED",
+        "注册码已达使用上限",
+        "registrationCode",
+        { key: "registrationCodeExhausted" },
+      );
+    }
 
-  throw new AuthError(
-    "UID_GENERATION_FAILED",
-    "系统繁忙，请稍后重试",
-    "form",
-    { key: "uidGenerationFailed" },
-  );
+    const { username, password, nickname, gender, email, phone } =
+      validateRegistration(input);
+
+    if (await usernameExists(username, tx)) {
+      throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
+        key: "usernameTaken",
+      });
+    }
+
+    const passwordHash = await hash(password);
+
+    for (let attempt = 1; attempt <= MAX_UID_ATTEMPTS; attempt += 1) {
+      try {
+        // MySQL 无 RETURNING：先取应用层生成的 UUID，再在同一 client 上回查。
+        const uid = generateUid();
+        const [inserted] = await tx
+          .insert(users)
+          .values({
+            uid,
+            username,
+            passwordHash,
+            nickname: nickname ?? generateNickname(uid),
+            gender,
+            email,
+            phone,
+          })
+          .$returningId();
+
+        const [row] = await tx
+          .select({
+            id: users.id,
+            uid: users.uid,
+            username: users.username,
+            nickname: users.nickname,
+            gender: users.gender,
+            email: users.email,
+            phone: users.phone,
+            createdAt: users.createdAt,
+          })
+          .from(users)
+          .where(eq(users.id, inserted!.id))
+          .limit(1);
+
+        return toUser(row!);
+      } catch (error) {
+        if (!isUniqueViolation(error)) throw error;
+
+        // 唯一冲突按被违反的索引分派；先分派业务唯一键，再解释为 UID 碰撞。
+        const key = uniqueViolationKey(error);
+
+        if (key === "users_username_unique") {
+          throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
+            key: "usernameTaken",
+          });
+        }
+        if (key === "users_email_unique") {
+          throw new AuthError("EMAIL_TAKEN", EMAIL_TAKEN_MESSAGE, "email", {
+            key: "emailTaken",
+          });
+        }
+        if (key === "users_phone_unique") {
+          throw new AuthError("PHONE_TAKEN", PHONE_TAKEN_MESSAGE, "phone", {
+            key: "phoneTaken",
+          });
+        }
+        // key 为 null：其余唯一冲突只可能来自 UID，重新生成后重试。
+      }
+    }
+
+    throw new AuthError(
+      "UID_GENERATION_FAILED",
+      "系统繁忙，请稍后重试",
+      "form",
+      { key: "uidGenerationFailed" },
+    );
+  });
 }
 
 /**

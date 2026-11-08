@@ -11,6 +11,7 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:seed": "tsx src/server/db/seed.ts",
+    "register-codes": "tsx src/server/db/register-codes.ts",
     "test:e2e": "bash scripts/e2e-with-db-guard.sh"
   },
   "dependencies": {

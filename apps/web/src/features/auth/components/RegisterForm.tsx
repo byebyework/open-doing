@@ -41,6 +41,8 @@ const GENDER_OPTIONS = [
 export interface RegisterPayloadValues {
   username: string;
   password: string;
+  /** 注册码（封测）：表单必填；空值原样提交，由服务端报「请输入注册码」。 */
+  registrationCode: string;
   nickname?: string;
   gender?: string;
   email?: string;
@@ -50,13 +52,15 @@ export interface RegisterPayloadValues {
 /**
  * 表单值 → Server Action 入参。
  *
- * 可选资料与用户输入方式保持一致：trim 后为空视为未填，直接省略该键，
+ * 注册码必填，trim 后原样携带（空字符串交给服务端报错）；可选资料与
+ * 用户输入方式保持一致：trim 后为空视为未填，直接省略该键，
  * 与服务端「空字符串归一化为 null」的规则对齐。
  */
 export function buildRegisterPayload(values: RegisterPayloadValues): AuthInput {
   const payload: AuthInput = {
     username: values.username,
     password: values.password,
+    registrationCode: values.registrationCode.trim(),
   };
 
   const nickname = values.nickname?.trim();
@@ -101,6 +105,7 @@ export function RegisterForm() {
         .min(1, t("passwordRequired"))
         .min(PASSWORD_MIN_LENGTH, t("passwordMinLength", { min: PASSWORD_MIN_LENGTH })),
       confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
+      registrationCode: z.string().min(1, t("registrationCodeRequired")),
       nickname: z
         .string()
         .refine(
@@ -142,6 +147,7 @@ export function RegisterForm() {
       username: "",
       password: "",
       confirmPassword: "",
+      registrationCode: "",
       nickname: "",
       gender: undefined,
       email: "",
@@ -375,6 +381,31 @@ export function RegisterForm() {
           {errors.phone ? (
             <p id="register-phone-error" className="text-[12.5px] text-[var(--error)]">
               {errors.phone.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mb-4 flex flex-col gap-2">
+          <Label htmlFor="register-registration-code">{t("registrationCodeLabel")}</Label>
+          <Input
+            id="register-registration-code"
+            type="text"
+            className="h-10 font-mono uppercase"
+            placeholder={t("registrationCodePlaceholder")}
+            data-testid="auth-registration-code-input"
+            autoComplete="off"
+            autoCapitalize="characters"
+            spellCheck={false}
+            aria-invalid={errors.registrationCode ? true : undefined}
+            aria-describedby={
+              errors.registrationCode ? "register-registration-code-error" : undefined
+            }
+            disabled={submitting}
+            {...register("registrationCode")}
+          />
+          {errors.registrationCode ? (
+            <p id="register-registration-code-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.registrationCode.message}
             </p>
           ) : null}
         </div>

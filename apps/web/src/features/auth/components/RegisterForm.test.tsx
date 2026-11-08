@@ -24,10 +24,17 @@ function renderRegisterForm(): string {
 }
 
 describe("buildRegisterPayload", () => {
-  it("submits only username/password when optional fields are absent", () => {
-    expect(buildRegisterPayload({ username: "alice", password: "secret123" })).toStrictEqual({
+  it("submits username/password and the trimmed registration code when optional fields are absent", () => {
+    expect(
+      buildRegisterPayload({
+        username: "alice",
+        password: "secret123",
+        registrationCode: "  ABC123XY  ",
+      }),
+    ).toStrictEqual({
       username: "alice",
       password: "secret123",
+      registrationCode: "ABC123XY",
     });
   });
 
@@ -36,6 +43,7 @@ describe("buildRegisterPayload", () => {
       buildRegisterPayload({
         username: "alice",
         password: "secret123",
+        registrationCode: "ABC123XY",
         nickname: "  Alice  ",
         gender: "female",
         email: "  alice@example.com  ",
@@ -44,6 +52,7 @@ describe("buildRegisterPayload", () => {
     ).toStrictEqual({
       username: "alice",
       password: "secret123",
+      registrationCode: "ABC123XY",
       nickname: "Alice",
       gender: "female",
       email: "alice@example.com",
@@ -51,24 +60,22 @@ describe("buildRegisterPayload", () => {
     });
   });
 
-  it("omits optional fields that only contain whitespace", () => {
+  it("submits an empty registration code as-is so the server reports it as required", () => {
     expect(
       buildRegisterPayload({
         username: "alice",
         password: "secret123",
-        nickname: "   ",
-        gender: "",
-        email: " ",
-        phone: "",
+        registrationCode: "   ",
       }),
-    ).toStrictEqual({ username: "alice", password: "secret123" });
+    ).toStrictEqual({ username: "alice", password: "secret123", registrationCode: "" });
   });
 });
 
 describe("RegisterForm optional profile fields", () => {
-  it("renders the nickname, gender, email and phone inputs", () => {
+  it("renders the registration code, nickname, gender, email and phone inputs", () => {
     const markup = renderRegisterForm();
     for (const testId of [
+      "auth-registration-code-input",
       "auth-nickname-input",
       "auth-gender-male",
       "auth-gender-female",
@@ -78,6 +85,7 @@ describe("RegisterForm optional profile fields", () => {
     ]) {
       expect(markup).toContain(`data-testid="${testId}"`);
     }
+    expect(markup).toContain('name="registrationCode"');
     expect(markup).toContain('name="nickname"');
     expect(markup).toContain('name="email"');
     expect(markup).toContain('name="phone"');

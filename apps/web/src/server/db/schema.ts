@@ -30,6 +30,7 @@ import {
   customType,
   date,
   index,
+  int,
   mysqlTable,
   text,
   unique,
@@ -121,6 +122,25 @@ export const users = mysqlTable("users", {
   language: identifierVarchar("language").notNull().default("zh"),
   createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
 });
+
+/**
+ * 注册码（封测）：凭码注册，一码多用、固定次数上限。
+ *
+ * 与团队入群码同族（见文件头决策 7）：码由应用层生成（8 位、31 字符集），
+ * 唯一性落为独立的表级唯一索引。`used_count` 由原子条件更新扣减
+ * （`WHERE used_count < max_uses`），并发下不会超发；无过期时间。
+ */
+export const registrationCodes = mysqlTable(
+  "registration_codes",
+  {
+    id: uuidPk(),
+    code: identifierVarchar("code").notNull(),
+    maxUses: int("max_uses").notNull().default(10),
+    usedCount: int("used_count").notNull().default(0),
+    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+  },
+  (t) => [uniqueIndex("registration_codes_code_unique").on(t.code)],
+);
 
 /** 团队：slug 全局唯一；join_code 由应用层生成（见文件头决策 7）。 */
 export const teams = mysqlTable(

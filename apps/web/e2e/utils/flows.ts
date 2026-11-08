@@ -7,6 +7,12 @@ import { TEST_IDS } from "./testids";
 /** 五条流共用的测试密码（满足 8 位下限）。 */
 export const E2E_PASSWORD = "e2e-password-123";
 
+/**
+ * e2e 注册码（封测注册必须凭码）：由 global-setup 在每次运行开始时
+ * 预置进 e2e 库，全部流程共用；不在仓库其它地方重复定义。
+ */
+export const E2E_REGISTRATION_CODE = "E2EREGCO";
+
 /** 生成全局唯一的用户名（2–20 字符，符合注册校验）。 */
 export function uniqueUsername(prefix: string): string {
   return `${prefix}_${randomUUID().replace(/-/g, "").slice(0, 8)}`;
@@ -34,6 +40,7 @@ export async function registerUser(
   await page.getByTestId(TEST_IDS.auth.nicknameInput).fill(username);
   await page.getByTestId(TEST_IDS.auth.passwordInput).fill(password);
   await page.getByTestId(TEST_IDS.auth.passwordConfirmInput).fill(password);
+  await page.getByTestId(TEST_IDS.auth.registrationCodeInput).fill(E2E_REGISTRATION_CODE);
   await page.getByTestId(TEST_IDS.auth.submitButton).click();
 
   await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {

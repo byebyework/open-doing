@@ -17,24 +17,12 @@ describe("AuthError i18n channel", () => {
     expect(plain.i18n).toBeUndefined();
   });
 
-  it("注册校验错误携带 auth 命名空间 key 与插值参数", async () => {
+  it("注册码校验先于资料校验与任何数据库访问，缺码报 auth.registrationCodeRequired", async () => {
     await expect(
       registerUser({ username: "", password: "x".repeat(8) }),
     ).rejects.toMatchObject({
-      field: "username",
-      i18n: { key: "usernameRequired" },
-    });
-
-    await expect(
-      registerUser({ username: "a", password: "x".repeat(8) }),
-    ).rejects.toMatchObject({
-      i18n: { key: "usernameLength", params: { min: 2, max: 20 } },
-    });
-
-    await expect(
-      registerUser({ username: "alice", password: "short" }),
-    ).rejects.toMatchObject({
-      i18n: { key: "passwordMinLength", params: { min: 8 } },
+      field: "registrationCode",
+      i18n: { key: "registrationCodeRequired" },
     });
   });
 

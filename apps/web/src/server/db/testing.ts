@@ -19,6 +19,7 @@ const TRUNCATE_TABLES = [
   "team_join_requests",
   "team_memberships",
   "projects",
+  "registration_codes",
   "teams",
   "users",
 ] as const;

@@ -11,6 +11,7 @@ export const TEST_IDS = {
     nicknameInput: "auth-nickname-input",
     passwordInput: "auth-password-input",
     passwordConfirmInput: "auth-password-confirm-input",
+    registrationCodeInput: "auth-registration-code-input",
     submitButton: "auth-submit-button",
   },
   projects: {
