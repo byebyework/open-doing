@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/shadcn/radio-group";
 import { spaceDashboardHref } from "@/lib/routes";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { applyActionErrors } from "@/lib/action-form";
 
 import { registerAction } from "../actions";
@@ -182,12 +183,7 @@ export function RegisterForm() {
 
   return (
     <div>
-      <span
-        className="grid h-10 w-10 place-items-center rounded-xl bg-[image:var(--brand-gradient)] text-[19px] font-extrabold text-white"
-        aria-hidden="true"
-      >
-        O
-      </span>
+      <BrandMark className="h-10 w-10" />
 
       <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">
         {t("createAccount")}

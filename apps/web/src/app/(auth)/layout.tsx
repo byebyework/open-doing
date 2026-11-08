@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { getTranslations } from "next-intl/server";
 
+import { BrandMark } from "@/components/ui/BrandMark";
 import { getCurrentUser } from "@/features/auth/session";
 import { spaceDashboardHref } from "@/lib/routes";
 
@@ -31,9 +32,7 @@ export default async function AuthLayout({ children }: { children: ReactNode }) 
         />
 
         <div className="relative flex items-center gap-2.5">
-          <span className="grid h-[30px] w-[30px] place-items-center rounded-[9px] bg-[image:var(--brand-gradient)] text-[16px] font-extrabold text-white">
-            O
-          </span>
+          <BrandMark className="h-[30px] w-[30px]" />
           <span className="text-[15px] font-extrabold tracking-[-0.01em]">
             Open Doing
           </span>

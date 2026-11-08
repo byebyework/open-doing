@@ -4,6 +4,7 @@ import { useTranslations } from "next-intl";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 
+import { BrandMark } from "@/components/ui/BrandMark";
 import { Button } from "@/components/ui/shadcn/button";
 import {
   Sheet,
@@ -85,12 +86,7 @@ export function MobileNav({ data }: MobileNavProps) {
           {/* 品牌行：复用 Topbar 的品牌标记与名称 */}
           <SheetTitle asChild>
             <div className="flex items-center gap-2.5">
-              <span
-                className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-[image:var(--brand-gradient)] text-[14px] font-extrabold text-white"
-                aria-hidden="true"
-              >
-                O
-              </span>
+              <BrandMark className="h-[26px] w-[26px] shrink-0" />
               <div className="truncate text-[13px] text-[var(--ink-500)]">Open Doing</div>
             </div>
           </SheetTitle>

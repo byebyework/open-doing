@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
 import { spaceDashboardHref } from "@/lib/routes";
+import { BrandMark } from "@/components/ui/BrandMark";
 import { applyActionErrors } from "@/lib/action-form";
 
 import { loginAction } from "../actions";
@@ -79,12 +80,7 @@ export function LoginForm() {
 
   return (
     <div>
-      <span
-        className="grid h-10 w-10 place-items-center rounded-xl bg-[image:var(--brand-gradient)] text-[19px] font-extrabold text-white"
-        aria-hidden="true"
-      >
-        O
-      </span>
+      <BrandMark className="h-10 w-10" />
 
       <h1 className="mb-2 mt-5 text-[26px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)]">
         {t("welcomeBack")}

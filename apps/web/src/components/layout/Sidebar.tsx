@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 
+import { BrandMark } from "@/components/ui/BrandMark";
 import { getCurrentUser } from "@/features/auth/session";
 import { listTeamsForUser } from "@/features/teams/service";
 import { spaceDashboardHref } from "@/lib/routes";
@@ -36,9 +37,7 @@ export async function Sidebar({ nav }: SidebarProps) {
         href={spaceDashboardHref("personal")}
         className="mb-2 flex items-center gap-2.5 px-3 py-2 text-[var(--ink-900)] no-underline hover:text-[var(--ink-900)] group-data-[collapsed]/sidebar:justify-center group-data-[collapsed]/sidebar:px-0"
       >
-        <span className="grid h-[30px] w-[30px] shrink-0 place-items-center rounded-[9px] bg-[image:var(--brand-gradient)] text-[16px] font-extrabold text-white shadow-[var(--shadow-btn)]">
-          O
-        </span>
+        <BrandMark className="h-[30px] w-[30px] shrink-0" />
         <span className="text-[15px] font-extrabold tracking-[-0.01em] group-data-[collapsed]/sidebar:hidden">
           Open Doing
         </span>

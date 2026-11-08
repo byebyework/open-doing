@@ -4,6 +4,8 @@ import { displayName, type User } from "@open-doing/types";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
+
+import { BrandMark } from "@/components/ui/BrandMark";
 import { useState, type ReactNode } from "react";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -135,12 +137,7 @@ export function Topbar({ user, mobileNav }: TopbarProps) {
 
       {/* 品牌标识仅移动端保留（<861px 无侧栏）；桌面端侧栏已有品牌区，
           顶栏重复展示信息冗余。 */}
-      <span
-        className="grid h-[26px] w-[26px] shrink-0 place-items-center rounded-[8px] bg-[image:var(--brand-gradient)] text-[14px] font-extrabold text-white min-[861px]:hidden"
-        aria-hidden="true"
-      >
-        O
-      </span>
+      <BrandMark className="h-[26px] w-[26px] shrink-0 min-[861px]:hidden" />
       <div className="min-[861px]:hidden truncate text-[13px] text-[var(--ink-500)]">
         Open Doing
       </div>
