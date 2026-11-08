@@ -65,10 +65,12 @@ export default async function globalSetup(): Promise<void> {
     }
 
     // 预置 e2e 注册码：注册现要求凭码，全部流程共用这一个固定码。
+    // 上限放宽到 100：全量套件约需 35 次注册（每用例独立注册），
+    // 业务默认的 10 次会在中段耗尽，导致其后所有注册超时。
     // 码列唯一索引兜底；这里用原生 SQL，避免 import 应用 db 模块
     // （client.ts 会按 DATABASE_URL 建池，e2e 进程里不存在该变量）。
     await db.execute(
-      sql`INSERT INTO registration_codes (id, code, max_uses, used_count) VALUES (${randomUUID()}, ${E2E_REGISTRATION_CODE}, 10, 0)`,
+      sql`INSERT INTO registration_codes (id, code, max_uses, used_count) VALUES (${randomUUID()}, ${E2E_REGISTRATION_CODE}, 100, 0)`,
     );
   } finally {
     await pool.end();
