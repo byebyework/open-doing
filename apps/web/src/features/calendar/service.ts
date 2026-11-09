@@ -259,7 +259,7 @@ async function countPersonalNoDue(
   scope: SQL<unknown>,
 ): Promise<number> {
   const rows = await client
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: sql<number>`count(*)::int` })
     .from(tasks)
     .where(and(scope, isNull(tasks.dueDate)));
 
@@ -272,7 +272,7 @@ async function countTeamNoDue(
   scope: SQL<unknown>,
 ): Promise<number> {
   const rows = await client
-    .select({ count: sql<number>`count(*)` })
+    .select({ count: sql<number>`count(*)::int` })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
     .where(and(scope, isNull(tasks.dueDate)));

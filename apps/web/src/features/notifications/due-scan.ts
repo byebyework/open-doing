@@ -35,9 +35,9 @@ export function shanghaiToday(now: Date = new Date()): string {
  * - 接收人 = assignee，`actorId = null`，带任务自身的 team/project/task 关联；
  * - 接收人关闭了对应提醒开关时，该类型不投递（另一类型照常）。
  *
- * 幂等：MySQL 无 `ON CONFLICT DO NOTHING`，插入前先按 `(userId, taskId, type)`
- * 预查存量通知并在应用侧去重，只插入真正缺失的行；唯一索引
- * `(user_id, task_id, type)` 仍作为并发兜底。返回值只统计本次真正插入的通知行数。
+ * 幂等：单条批量 `INSERT ... ON CONFLICT DO NOTHING`，由部分唯一索引
+ * `(user_id, task_id, type) WHERE task_id IS NOT NULL` 兜底，重复扫描不新增行。
+ * 返回值只统计本次真正插入的通知行数。
  */
 export async function runDueScan(
   client: DbClient = db,
@@ -109,46 +109,16 @@ export async function runDueScan(
     return { dueSoon: 0, overdue: 0 };
   }
 
-  // MySQL 无 ON CONFLICT DO NOTHING / RETURNING：先批量预查这些任务已有的
-  // 到期类通知，构建 `userId:taskId:type` 集合后在应用侧过滤，重复扫描不新增行。
-  const taskIds = Array.from(
-    new Set(
-      values
-        .map((value) => value.taskId)
-        .filter((taskId): taskId is string => Boolean(taskId)),
-    ),
-  );
-
-  const existing = await target
-    .select({
-      userId: notifications.userId,
-      taskId: notifications.taskId,
-      type: notifications.type,
-    })
-    .from(notifications)
-    .where(
-      and(
-        inArray(notifications.taskId, taskIds),
-        inArray(notifications.type, ["task_due_soon", "task_overdue"]),
-      ),
-    );
-
-  const existingKeys = new Set(
-    existing.map((row) => `${row.userId}:${row.taskId}:${row.type}`),
-  );
-  const pending = values.filter(
-    (value) => !existingKeys.has(`${value.userId}:${value.taskId}:${value.type}`),
-  );
-
-  if (pending.length === 0) {
-    return { dueSoon: 0, overdue: 0 };
-  }
-
-  await target.insert(notifications).values(pending);
+  // 单条批量 INSERT；冲突（重复扫描）直接跳过，只返回真正插入的行。
+  const inserted = await target
+    .insert(notifications)
+    .values(values)
+    .onConflictDoNothing()
+    .returning({ type: notifications.type });
 
   let dueSoon = 0;
   let overdue = 0;
-  for (const row of pending) {
+  for (const row of inserted) {
     if (row.type === "task_due_soon") {
       dueSoon += 1;
     } else if (row.type === "task_overdue") {

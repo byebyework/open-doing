@@ -131,10 +131,8 @@ async function listTeamTaskSnapshots(
   const subtaskStats = client
     .select({
       taskId: subtasks.taskId,
-      subtaskCount: sql<number>`count(*)`.as("subtask_count"),
-      // MySQL 无 `count(*) FILTER`；`sum(case ...)` 的 DECIMAL/NULL 用
-      // cast + coalesce 还原成 number / 0。
-      completedSubtaskCount: sql<number>`coalesce(cast(sum(case when ${subtasks.completed} then 1 else 0 end) as signed), 0)`.as(
+      subtaskCount: sql<number>`count(*)::int`.as("subtask_count"),
+      completedSubtaskCount: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
         "completed_subtask_count",
       ),
     })
@@ -154,20 +152,15 @@ async function listTeamTaskSnapshots(
       projectId: projects.id,
       projectName: projects.name,
       projectSlug: projects.slug,
-      subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)`,
-      completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)`,
+      subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)::int`,
+      completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)::int`,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
     .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
     .where(and(eq(tasks.spaceType, "team"), eq(projects.teamId, teamId)))
-    .orderBy(
-      // MySQL 的 `asc` 默认把 NULL 排在最前，先用 CASE 把无截止行推到末尾。
-      sql`case when ${tasks.dueDate} is null then 1 else 0 end asc`,
-      asc(tasks.dueDate),
-      asc(tasks.createdAt),
-    );
+    .orderBy(sql`${tasks.dueDate} asc nulls last`, asc(tasks.createdAt));
 
   return rows.map((row) => ({
     ...row,

@@ -1,6 +1,5 @@
 import type { SpaceType as SharedSpaceType, TaskStatus } from "@open-doing/types";
 import { addDays, aggregateProjectProgress, getTaskProgress } from "@open-doing/types";
-import dayjs from "dayjs";
 import {
   and,
   asc,
@@ -109,7 +108,7 @@ interface TeamKanbanCardRow extends KanbanCardRow {
  * 个人空间看板：跨项目聚合本人的全部个人任务。
  *
  * - 查询范围：`space_type = 'personal' AND assignee_id = userId`；
- * - todo / in_progress 按截止日期升序（逾期天然置顶，无截止垫底）；
+ * - todo / in_progress 按截止日期升序（逾期天然置顶，无截止 `nulls last`）；
  * - done 只取 `updatedAt >= today - 6`（含今天，上海日历日零点起算），
  *   按 updatedAt 降序；`doneOlderCount` 为窗口外数量，`doneTotal` 为两侧之和；
  * - 子任务计数用派生表一次聚合，避免逐卡查询。
@@ -154,7 +153,7 @@ export async function getPersonalSpaceBoard(
       doneOrder,
     ),
     client
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(tasks)
       .where(
         and(
@@ -260,7 +259,7 @@ export async function getTeamSpaceBoard(
       doneOrder,
     ),
     client
-      .select({ count: sql<number>`count(*)` })
+      .select({ count: sql<number>`count(*)::int` })
       .from(tasks)
       .innerJoin(projects, eq(tasks.projectId, projects.id))
       .where(
@@ -443,33 +442,18 @@ function andDefined(...conditions: (SQL | undefined)[]): SQL<unknown> {
 }
 
 /**
- * 近 7 天窗口起点：`today - 6` 的上海日历日零点，返回无时区墙钟字符串。
+ * 近 7 天窗口起点：`today - 6` 的上海日历日零点，返回 timestamptz。
  *
- * `today` 是 Asia/Shanghai 的 `YYYY-MM-DD`；用 dayjs 做纯日历算术得到
- * `today - 6`，再拼成 `YYYY-MM-DD 00:00:00`。会话时区固定 +08:00，
- * MySQL 会按同一墙钟解释该参数，等价于 PG 中把该日期按 Asia/Shanghai
- * 换算成当日零点的时刻。
+ * `today` 是 Asia/Shanghai 的 `YYYY-MM-DD`；显式 `AT TIME ZONE 'Asia/Shanghai'`
+ * 换算，避免跟随数据库会话时区（与 my-tasks 的周起点口径一致）。
  */
 function doneWindowStart(today: string) {
-  const sixDaysAgo = dayjs(today, "YYYY-MM-DD")
-    .subtract(6, "day")
-    .format("YYYY-MM-DD");
-
-  return sql`${`${sixDaysAgo} 00:00:00`}`;
+  return sql`((${today}::date - 6)::timestamp AT TIME ZONE 'Asia/Shanghai')`;
 }
 
-/**
- * todo / in_progress 列：截止升序，逾期天然在前，无截止垫底；同日按创建时间降序。
- *
- * MySQL 的 `asc` 默认把 NULL 排在最前，故先用 CASE 把无截止行推到末尾，
- * 再按截止日升序（等价于 PG 的截止日升序 + 无截止垫底）。
- */
+/** todo / in_progress 列：截止升序，逾期天然在前，无截止垫底；同日按创建时间降序。 */
 function activeOrder(): SQL[] {
-  return [
-    sql`case when ${tasks.dueDate} is null then 1 else 0 end asc`,
-    asc(tasks.dueDate),
-    desc(tasks.createdAt),
-  ];
+  return [sql`${tasks.dueDate} asc nulls last`, desc(tasks.createdAt)];
 }
 
 /** done 列：最近完成在前。 */
@@ -491,11 +475,10 @@ async function selectCards(
   const subtaskStats = client
     .select({
       taskId: subtasks.taskId,
-      subtaskTotal: sql<number>`count(*)`.as("subtask_total"),
-      subtaskDone:
-        sql<number>`cast(sum(case when ${subtasks.completed} then 1 else 0 end) as signed)`.as(
-          "subtask_done",
-        ),
+      subtaskTotal: sql<number>`count(*)::int`.as("subtask_total"),
+      subtaskDone: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+        "subtask_done",
+      ),
     })
     .from(subtasks)
     .groupBy(subtasks.taskId)
@@ -509,8 +492,8 @@ async function selectCards(
       dueDate: tasks.dueDate,
       projectId: projects.id,
       projectName: projects.name,
-      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)`,
-      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)`,
+      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
+      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
       updatedAt: tasks.updatedAt,
     })
     .from(tasks)
@@ -535,11 +518,10 @@ async function selectTeamCards(
   const subtaskStats = client
     .select({
       taskId: subtasks.taskId,
-      subtaskTotal: sql<number>`count(*)`.as("subtask_total"),
-      subtaskDone:
-        sql<number>`cast(sum(case when ${subtasks.completed} then 1 else 0 end) as signed)`.as(
-          "subtask_done",
-        ),
+      subtaskTotal: sql<number>`count(*)::int`.as("subtask_total"),
+      subtaskDone: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+        "subtask_done",
+      ),
     })
     .from(subtasks)
     .groupBy(subtasks.taskId)
@@ -553,8 +535,8 @@ async function selectTeamCards(
       dueDate: tasks.dueDate,
       projectId: projects.id,
       projectName: projects.name,
-      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)`,
-      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)`,
+      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
+      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
       updatedAt: tasks.updatedAt,
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
@@ -673,20 +655,17 @@ export async function getTeamKanbanStats(
   return row!;
 }
 
-/** 五个统计计数的一次性 select 片段（每个条件各自聚合）。 */
+/** 五个统计计数的一次性 select 片段（`count(*) filter` 各自独立）。 */
 function kanbanStatsSelect(today: string) {
   const dueSoonEnd = addDays(today, 3);
   const recentStart = doneWindowStart(today);
 
-  // `sum(case …)` 在 MySQL 返回 DECIMAL（mysql2 映射为字符串），且空集合上
-  // 返回 NULL；显式 cast 成整数并 coalesce 0，与 PG `count(*) filter` 的
-  // number / 0 语义保持一致。
   return {
-    todo: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'todo' then 1 else 0 end) as signed), 0)`,
-    inProgress: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'in_progress' then 1 else 0 end) as signed), 0)`,
-    doneRecent: sql<number>`coalesce(cast(sum(case when ${tasks.status} = 'done' and ${tasks.updatedAt} >= ${recentStart} then 1 else 0 end) as signed), 0)`,
-    overdue: sql<number>`coalesce(cast(sum(case when ${tasks.dueDate} < ${today} and ${tasks.status} <> 'done' then 1 else 0 end) as signed), 0)`,
-    dueSoon: sql<number>`coalesce(cast(sum(case when ${tasks.dueDate} >= ${today} and ${tasks.dueDate} <= ${dueSoonEnd} and ${tasks.status} <> 'done' then 1 else 0 end) as signed), 0)`,
+    todo: sql<number>`(count(*) filter (where ${tasks.status} = 'todo'))::int`,
+    inProgress: sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress'))::int`,
+    doneRecent: sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${tasks.updatedAt} >= ${recentStart}))::int`,
+    overdue: sql<number>`(count(*) filter (where ${tasks.dueDate} < ${today} and ${tasks.status} <> 'done'))::int`,
+    dueSoon: sql<number>`(count(*) filter (where ${tasks.dueDate} >= ${today} and ${tasks.dueDate} <= ${dueSoonEnd} and ${tasks.status} <> 'done'))::int`,
   };
 }
 
@@ -715,11 +694,10 @@ export async function getTeamKanbanProjectProgress(
   const subtaskStats = client
     .select({
       taskId: subtasks.taskId,
-      subtaskTotal: sql<number>`count(*)`.as("subtask_total"),
-      subtaskDone:
-        sql<number>`cast(sum(case when ${subtasks.completed} then 1 else 0 end) as signed)`.as(
-          "subtask_done",
-        ),
+      subtaskTotal: sql<number>`count(*)::int`.as("subtask_total"),
+      subtaskDone: sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+        "subtask_done",
+      ),
     })
     .from(subtasks)
     .groupBy(subtasks.taskId)
@@ -729,8 +707,8 @@ export async function getTeamKanbanProjectProgress(
     .select({
       projectId: projects.id,
       status: tasks.status,
-      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)`,
-      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)`,
+      subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
+      subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
     })
     .from(projects)
     .leftJoin(
