@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import mysql, { type RowDataPacket } from "mysql2/promise";
+import postgres from "postgres";
 
 import { E2E_DATABASE_URL, assertE2EDatabaseUrl } from "../utils/env";
 import { TEST_IDS } from "../utils/testids";
@@ -121,20 +121,16 @@ test.describe("flow 12: 英文界面冒烟", () => {
 
     // ===== users.language = 'en' =====
     assertE2EDatabaseUrl(E2E_DATABASE_URL);
-    const client = await mysql.createConnection({
-      uri: E2E_DATABASE_URL,
-      timezone: "+08:00",
-    });
+    const client = postgres(E2E_DATABASE_URL, { max: 1, onnotice: () => {} });
     let language: string | undefined;
     try {
-      const [rows] = await client.execute<RowDataPacket[]>(
-        "SELECT language FROM users WHERE username = ? LIMIT 1",
-        [username],
-      );
+      const rows = await client`
+        SELECT language FROM users WHERE username = ${username} LIMIT 1
+      `;
       expect(rows.length).toBe(1);
-      language = rows[0]!.language as string | undefined;
+      language = rows[0]!.language;
     } finally {
-      await client.end();
+      await client.end({ timeout: 5 });
     }
     expect(language).toBe("en");
 

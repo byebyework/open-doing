@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import mysql, { type ResultSetHeader } from "mysql2/promise";
+import postgres from "postgres";
 
 import { E2E_DATABASE_URL, assertE2EDatabaseUrl } from "../utils/env";
 import { TEST_IDS } from "../utils/testids";
@@ -305,18 +305,17 @@ test.describe("flow 6: 空间级 Kanban", () => {
 async function ageTaskUpdatedAt(title: string, days: number): Promise<void> {
   assertE2EDatabaseUrl(E2E_DATABASE_URL);
 
-  const client = await mysql.createConnection({
-    uri: E2E_DATABASE_URL,
-    timezone: "+08:00",
-  });
+  const client = postgres(E2E_DATABASE_URL, { max: 1, onnotice: () => {} });
   try {
-    const [result] = await client.execute<ResultSetHeader>(
-      "UPDATE tasks SET updated_at = DATE_SUB(NOW(), INTERVAL ? DAY) WHERE title = ?",
-      [days, title],
-    );
-    expect(result.affectedRows).toBe(1);
+    const updated = await client`
+      UPDATE tasks
+      SET updated_at = now() - ${`${days} days`}::interval
+      WHERE title = ${title}
+      RETURNING id
+    `;
+    expect(updated.length).toBe(1);
   } finally {
-    await client.end();
+    await client.end({ timeout: 5 });
   }
 }
 

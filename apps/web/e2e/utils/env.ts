@@ -10,19 +10,19 @@
  * - SESSION_SECRET / CRON_SECRET 仅为测试值，不用于任何真实环境。
  */
 /**
- * 连接参数与 `scripts/e2e-with-db-guard.sh` 保持一致：默认本机 3307（docker
- * compose 的 MySQL 映射端口），可用 `MYSQL_HOST` / `MYSQL_PORT` /
- * `MYSQL_USER` / `MYSQL_PASSWORD` 覆盖（例如端口冲突时换用其他端口）。
+ * 连接参数与 `scripts/e2e-with-db-guard.sh` 保持一致：默认本机 5433（docker
+ * compose 的 PostgreSQL 映射端口），可用 `PGUSER` / `PGPASSWORD` /
+ * `PGHOST` / `PGPORT` 覆盖（例如端口冲突时换用其他端口）。
  * 库名固定为 `open_doing_e2e`，并由 `assertE2EDatabaseUrl` 再次校验。
  */
-const E2E_DB_USER = encodeURIComponent(process.env.MYSQL_USER ?? "open-doing");
+const E2E_DB_USER = encodeURIComponent(process.env.PGUSER ?? "open-doing");
 const E2E_DB_PASSWORD = encodeURIComponent(
-  process.env.MYSQL_PASSWORD ?? "open-doing",
+  process.env.PGPASSWORD ?? "open-doing",
 );
-const E2E_DB_HOST = process.env.MYSQL_HOST ?? "localhost";
-const E2E_DB_PORT = process.env.MYSQL_PORT ?? "3307";
+const E2E_DB_HOST = process.env.PGHOST ?? "localhost";
+const E2E_DB_PORT = process.env.PGPORT ?? "5433";
 
-export const E2E_DATABASE_URL = `mysql://${E2E_DB_USER}:${E2E_DB_PASSWORD}@${E2E_DB_HOST}:${E2E_DB_PORT}/open_doing_e2e`;
+export const E2E_DATABASE_URL = `postgres://${E2E_DB_USER}:${E2E_DB_PASSWORD}@${E2E_DB_HOST}:${E2E_DB_PORT}/open_doing_e2e`;
 
 export const E2E_SESSION_SECRET = "e2e-session-secret-not-for-production";
 export const E2E_CRON_SECRET = "e2e-cron-secret-not-for-production";
