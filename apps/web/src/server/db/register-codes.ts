@@ -10,8 +10,8 @@
  * 生成与写入不在同一事务也无需回滚：码只是尚未发放的名额，多生成可以
  * 用 `--list` 观察后弃用（不再分发即可）。
  */
-import { drizzle } from "drizzle-orm/mysql2";
-import mysql from "mysql2/promise";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 
 import {
   generateRegistrationCodes,
@@ -27,9 +27,9 @@ async function main(): Promise<void> {
     throw new Error("Missing DATABASE_URL; load env first: set -a; source apps/web/.env.local; set +a");
   }
 
-  const pool = mysql.createPool({ uri: databaseUrl, connectionLimit: 5, timezone: "+08:00" });
+  const sqlClient = postgres(databaseUrl, { max: 5 });
   try {
-    const db = drizzle(pool, { schema, mode: "default" });
+    const db = drizzle(sqlClient, { schema });
     const arg = process.argv[2];
 
     if (arg === "--list") {
@@ -62,7 +62,7 @@ async function main(): Promise<void> {
       console.log(code);
     }
   } finally {
-    await pool.end();
+    await sqlClient.end({ timeout: 5 });
   }
 }
 

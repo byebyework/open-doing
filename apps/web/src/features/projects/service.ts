@@ -163,21 +163,12 @@ export async function createTeamProject(
     return Boolean(existing);
   });
 
-  // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
-  return client.transaction(async (tx) => {
-    const [inserted] = await tx
-      .insert(projects)
-      .values({ teamId: input.teamId, name, slug, description })
-      .$returningId();
+  const [row] = await client
+    .insert(projects)
+    .values({ teamId: input.teamId, name, slug, description })
+    .returning();
 
-    const [row] = await tx
-      .select()
-      .from(projects)
-      .where(eq(projects.id, inserted!.id))
-      .limit(1);
-
-    return toProject(row!);
-  });
+  return toProject(row!);
 }
 
 /** 读取团队项目行（内部使用）；团队不匹配 / 不存在返回 undefined。 */
@@ -230,25 +221,17 @@ export async function updateTeamProject(
     return toProject(existing);
   }
 
-  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
-  return client.transaction(async (tx) => {
-    await tx
-      .update(projects)
-      .set(changes)
-      .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)));
+  const [row] = await client
+    .update(projects)
+    .set(changes)
+    .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)))
+    .returning();
 
-    const [row] = await tx
-      .select()
-      .from(projects)
-      .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)))
-      .limit(1);
+  if (!row) {
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+  }
 
-    if (!row) {
-      throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
-    }
-
-    return toProject(row);
-  });
+  return toProject(row);
 }
 
 /**
@@ -262,12 +245,12 @@ export async function deleteTeamProject(
 ): Promise<void> {
   await requireManageRole(input.teamId, input.actorId, client);
 
-  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
-  const [result] = await client
+  const [row] = await client
     .delete(projects)
-    .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)));
+    .where(and(eq(projects.id, input.projectId), eq(projects.teamId, input.teamId)))
+    .returning({ id: projects.id });
 
-  if (result.affectedRows === 0) {
+  if (!row) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 }

@@ -1,7 +1,7 @@
 import type { Comment, Subtask, Task, TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
-import { alias } from "drizzle-orm/mysql-core";
+import { alias } from "drizzle-orm/pg-core";
 
 import type { TaskDetailModel } from "@/components/ui/task-detail/types";
 import {
@@ -176,7 +176,7 @@ async function requireAssignableMember(
 }
 
 /**
- * 发通知并吞掉唯一索引撞车（MySQL `ER_DUP_ENTRY`）。
+ * 发通知并吞掉唯一索引撞车（23505）。
  *
  * 通知表 `(user_id, task_id, type)` 部分唯一索引保证同一任务同类通知只留
  * 一条；重复触发（例如多人先后评论）不应让业务写入失败。嵌套事务即
@@ -246,8 +246,7 @@ export async function createTeamTask(
     await requireTeamProject(teamId, projectId, tx);
     await requireAssignableMember(teamId, assigneeId, tx);
 
-    // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
-    const [inserted] = await tx
+    const [row] = await tx
       .insert(tasks)
       .values({
         projectId,
@@ -260,13 +259,7 @@ export async function createTeamTask(
         startDate,
         createdById: actorId,
       })
-      .$returningId();
-
-    const [row] = await tx
-      .select()
-      .from(tasks)
-      .where(eq(tasks.id, inserted!.id))
-      .limit(1);
+      .returning();
 
     if (!row) {
       throw new DomainError("任务创建失败，请稍后重试", undefined, { key: "taskCreateFailed" });
@@ -408,18 +401,12 @@ export async function updateTeamTask(
     changes.assigneeId = nextAssigneeId;
   }
 
-  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
   return client.transaction(async (tx) => {
-    await tx
+    const [row] = await tx
       .update(tasks)
       .set(changes)
-      .where(and(eq(tasks.id, taskId), eq(tasks.spaceType, "team")));
-
-    const [row] = await tx
-      .select()
-      .from(tasks)
       .where(and(eq(tasks.id, taskId), eq(tasks.spaceType, "team")))
-      .limit(1);
+      .returning();
 
     if (!row) {
       throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
@@ -471,12 +458,12 @@ export async function deleteTeamTask(
     assigneeId: existing.task.assigneeId,
   });
 
-  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
-  const [result] = await client
+  const [row] = await client
     .delete(tasks)
-    .where(and(eq(tasks.id, taskId), eq(tasks.spaceType, "team")));
+    .where(and(eq(tasks.id, taskId), eq(tasks.spaceType, "team")))
+    .returning({ id: tasks.id });
 
-  if (result.affectedRows === 0) {
+  if (!row) {
     throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
 }
@@ -497,17 +484,10 @@ export async function addTeamSubtask(
 
   const title = validateTaskTitle(input?.title, "子任务");
 
-  // MySQL 无 RETURNING：插入后取主键，再回查整行。
-  const [inserted] = await client
+  const [row] = await client
     .insert(subtasks)
     .values({ taskId, title })
-    .$returningId();
-
-  const [row] = await client
-    .select()
-    .from(subtasks)
-    .where(eq(subtasks.id, inserted!.id))
-    .limit(1);
+    .returning();
 
   if (!row) {
     throw new DomainError("子任务创建失败，请稍后重试", undefined, { key: "subtaskCreateFailed" });
@@ -539,12 +519,12 @@ export async function removeTeamSubtask(
     throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
-  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
-  const [result] = await client
+  const [row] = await client
     .delete(subtasks)
-    .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)));
+    .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)))
+    .returning({ id: subtasks.id });
 
-  if (result.affectedRows === 0) {
+  if (!row) {
     throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 }
@@ -577,28 +557,20 @@ export async function toggleTeamSubtask(
     throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
   }
 
-  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
-  return client.transaction(async (tx) => {
-    await tx
-      .update(subtasks)
-      .set({
-        completed,
-        completedAt: completed ? new Date() : null,
-      })
-      .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)));
+  const [row] = await client
+    .update(subtasks)
+    .set({
+      completed,
+      completedAt: completed ? new Date() : null,
+    })
+    .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)))
+    .returning();
 
-    const [row] = await tx
-      .select()
-      .from(subtasks)
-      .where(and(eq(subtasks.id, subtaskId), eq(subtasks.taskId, taskId)))
-      .limit(1);
+  if (!row) {
+    throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
+  }
 
-    if (!row) {
-      throw new DomainError("子任务不存在或无权访问", undefined, { key: "subtaskNotFound" });
-    }
-
-    return toSubtask(row);
-  });
+  return toSubtask(row);
 }
 
 /** 新增评论：任何成员可发；通知当前责任人（评论自己不发）。 */
@@ -617,17 +589,10 @@ export async function addTeamComment(
   const assigneeId = existing.task.assigneeId;
 
   return client.transaction(async (tx) => {
-    // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
-    const [inserted] = await tx
+    const [row] = await tx
       .insert(comments)
       .values({ taskId, authorId: actorId, content })
-      .$returningId();
-
-    const [row] = await tx
-      .select()
-      .from(comments)
-      .where(eq(comments.id, inserted!.id))
-      .limit(1);
+      .returning();
 
     if (!row) {
       throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
@@ -665,8 +630,7 @@ export async function deleteTeamComment(
     throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 
-  // MySQL 无 RETURNING：以 affectedRows 判断删除是否命中。
-  const [result] = await client
+  const [row] = await client
     .delete(comments)
     .where(
       and(
@@ -674,9 +638,10 @@ export async function deleteTeamComment(
         eq(comments.taskId, taskId),
         eq(comments.authorId, actorId),
       ),
-    );
+    )
+    .returning({ id: comments.id });
 
-  if (result.affectedRows === 0) {
+  if (!row) {
     throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
 }

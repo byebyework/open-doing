@@ -90,7 +90,7 @@ export async function consumeRegistrationCode(
   const normalized = normalizeRegistrationCode(code);
   if (!normalized) return "invalid";
 
-  const [result] = await client
+  const rows = await client
     .update(registrationCodes)
     .set({ usedCount: sql`${registrationCodes.usedCount} + 1` })
     .where(
@@ -98,9 +98,10 @@ export async function consumeRegistrationCode(
         eq(registrationCodes.code, normalized),
         lt(registrationCodes.usedCount, registrationCodes.maxUses),
       ),
-    );
+    )
+    .returning({ id: registrationCodes.id });
 
-  if (result.affectedRows > 0) return "ok";
+  if (rows.length > 0) return "ok";
 
   const [row] = await client
     .select({ usedCount: registrationCodes.usedCount })

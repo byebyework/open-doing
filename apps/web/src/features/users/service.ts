@@ -143,22 +143,14 @@ export async function updateUserLanguage(
   input: { userId: string; language: AppLocale },
   client: DbClient = db,
 ): Promise<AppLocale> {
-  // MySQL 无 RETURNING：写入后在同一事务内按主键回查，保持原语义（原子返回持久化值）。
-  return client.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set({ language: input.language })
-      .where(eq(users.id, input.userId));
+  const [row] = await client
+    .update(users)
+    .set({ language: input.language })
+    .where(eq(users.id, input.userId))
+    .returning({ language: users.language });
 
-    const [row] = await tx
-      .select({ language: users.language })
-      .from(users)
-      .where(eq(users.id, input.userId))
-      .limit(1);
-
-    if (!row) throw new DomainError("user not found");
-    return row.language as AppLocale;
-  });
+  if (!row) throw new DomainError("user not found");
+  return row.language as AppLocale;
 }
 
 /**
@@ -186,22 +178,14 @@ export async function updateReminderPrefs(
     return getReminderPrefs(input.userId, client);
   }
 
-  // MySQL 无 RETURNING：写入后在同一事务内按主键回查更新后的全量偏好。
-  return client.transaction(async (tx) => {
-    await tx
-      .update(users)
-      .set(patch)
-      .where(eq(users.id, input.userId));
+  const [row] = await client
+    .update(users)
+    .set(patch)
+    .where(eq(users.id, input.userId))
+    .returning(reminderPrefsColumns);
 
-    const [row] = await tx
-      .select(reminderPrefsColumns)
-      .from(users)
-      .where(eq(users.id, input.userId))
-      .limit(1);
-
-    if (!row) throw new Error("user not found");
-    return row;
-  });
+  if (!row) throw new Error("user not found");
+  return row;
 }
 
 /** 个人资料错误可落到的表单字段。 */
@@ -337,7 +321,7 @@ function buildProfilePatch(input: Partial<UserProfile>): Partial<UserProfile> {
  *
  * - 未传任何键：不执行空 SET，直接返回当前值；
  * - 邮箱 / 电话冲突按唯一索引名分派为 `emailTaken` / `phoneTaken` 字段错误；
- * - MySQL 无 RETURNING：写入后在同一事务内回查，保证返回值与落库一致。
+ * - 写入后直接返回持久化值（`returning`），保证返回值与落库一致。
  */
 export async function updateProfile(
   input: { userId: string } & Partial<UserProfile>,
@@ -349,18 +333,14 @@ export async function updateProfile(
   }
 
   try {
-    return await client.transaction(async (tx) => {
-      await tx.update(users).set(patch).where(eq(users.id, input.userId));
+    const [row] = await client
+      .update(users)
+      .set(patch)
+      .where(eq(users.id, input.userId))
+      .returning(profileColumns);
 
-      const [row] = await tx
-        .select(profileColumns)
-        .from(users)
-        .where(eq(users.id, input.userId))
-        .limit(1);
-
-      if (!row) throw new UserError("user not found");
-      return row;
-    });
+    if (!row) throw new UserError("user not found");
+    return row;
   } catch (error) {
     if (isUniqueViolation(error)) {
       const key = uniqueViolationKey(error);

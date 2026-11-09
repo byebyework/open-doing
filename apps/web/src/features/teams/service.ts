@@ -91,7 +91,7 @@ function validateName(name: unknown): string {
  * 在给定 client 内为 base slug 找一个空闲计数后缀。
  *
  * 先按 `like(base + '%')` 扫描已有 slug 取空闲计数，再由外层
- * 唯一约束冲突（MySQL `ER_DUP_ENTRY`）重试兜底并发竞态。`RESERVED_SPACE_SLUGS`
+ * 唯一约束 23505 重试兜底并发竞态。`RESERVED_SPACE_SLUGS`
  * （如 `personal`）视同已占用，团队不会占用空间路由保留字。
  */
 async function nextFreeSlug(base: string, client: DbClient): Promise<string> {
@@ -129,23 +129,16 @@ export async function createTeam(
 
   const attemptInsert = async (tx: DbClient): Promise<Team> => {
     const slug = await nextFreeSlug(base, tx);
-    // MySQL 无 RETURNING：插入后取主键，再在同一事务内回查整行。
-    const [inserted] = await tx
+    const [teamRow] = await tx
       .insert(teams)
       .values({ name, slug, ownerId: actorId, joinCode: generateJoinCode() })
-      .$returningId();
+      .returning();
 
     await tx.insert(teamMemberships).values({
-      teamId: inserted!.id,
+      teamId: teamRow!.id,
       userId: actorId,
       role: "owner",
     });
-
-    const [teamRow] = await tx
-      .select()
-      .from(teams)
-      .where(eq(teams.id, inserted!.id))
-      .limit(1);
 
     return toTeam(teamRow!);
   };
@@ -205,18 +198,13 @@ export async function renameTeam(
   const membership = await getMembership(input.teamId, input.actorId, client);
   assertCan(membership?.role ?? null, "team:rename");
 
-  // MySQL 无 RETURNING：写入后在同一事务内按主键回查。
-  return client.transaction(async (tx) => {
-    await tx.update(teams).set({ name }).where(eq(teams.id, input.teamId));
+  const [row] = await client
+    .update(teams)
+    .set({ name })
+    .where(eq(teams.id, input.teamId))
+    .returning();
 
-    const [row] = await tx
-      .select()
-      .from(teams)
-      .where(eq(teams.id, input.teamId))
-      .limit(1);
-
-    return toTeam(row!);
-  });
+  return toTeam(row!);
 }
 
 /** 成员视图：成员关系 + 展示用的用户信息。 */

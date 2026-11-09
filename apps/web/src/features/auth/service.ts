@@ -284,37 +284,34 @@ export async function registerUser(
 
     for (let attempt = 1; attempt <= MAX_UID_ATTEMPTS; attempt += 1) {
       try {
-        // MySQL 无 RETURNING：先取应用层生成的 UUID，再在同一 client 上回查。
-        const uid = generateUid();
-        const [inserted] = await tx
-          .insert(users)
-          .values({
-            uid,
-            username,
-            passwordHash,
-            nickname: nickname ?? generateNickname(uid),
-            gender,
-            email,
-            phone,
-          })
-          .$returningId();
+        // 每次尝试包一层 savepoint：PostgreSQL 唯一约束冲突会让整个事务进入
+        // aborted 状态，savepoint 回滚后外层事务（注册码扣减）仍可继续重试。
+        return await tx.transaction(async (attemptTx) => {
+          const uid = generateUid();
+          const [row] = await attemptTx
+            .insert(users)
+            .values({
+              uid,
+              username,
+              passwordHash,
+              nickname: nickname ?? generateNickname(uid),
+              gender,
+              email,
+              phone,
+            })
+            .returning({
+              id: users.id,
+              uid: users.uid,
+              username: users.username,
+              nickname: users.nickname,
+              gender: users.gender,
+              email: users.email,
+              phone: users.phone,
+              createdAt: users.createdAt,
+            });
 
-        const [row] = await tx
-          .select({
-            id: users.id,
-            uid: users.uid,
-            username: users.username,
-            nickname: users.nickname,
-            gender: users.gender,
-            email: users.email,
-            phone: users.phone,
-            createdAt: users.createdAt,
-          })
-          .from(users)
-          .where(eq(users.id, inserted!.id))
-          .limit(1);
-
-        return toUser(row!);
+          return toUser(row!);
+        });
       } catch (error) {
         if (!isUniqueViolation(error)) throw error;
 
