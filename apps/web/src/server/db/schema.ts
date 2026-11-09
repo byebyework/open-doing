@@ -1,42 +1,41 @@
 /**
- * Open Doing v1 全量数据库 schema（Drizzle / MySQL 8.0）
+ * Open Doing v1 全量数据库 schema（Drizzle / PostgreSQL）
  *
  * 设计决策（对应 ARCHITECTURE §6 与 F-3 brief）：
- * 1. 全部主键使用 `char(36)`；UUID 由应用层 `crypto.randomUUID()` 生成
- *    （MySQL 无 `gen_random_uuid()`），外键列使用同一类型。
+ * 1. 全部主键使用原生 `uuid` + `defaultRandom()`（PostgreSQL 内置
+ *    `gen_random_uuid()`，无需应用层生成）；外键列使用同一 `uuid` 类型。
  * 2. `teams.slug` 采用**全局唯一**（单列 unique），不按团队内唯一。
  * 3. 个人任务（含个人项目内任务）的 `assignee_id` 应恒为本人——该约束由
  *    **应用层 service 断言**保证，不建数据库触发器；数据库只保留可空外键。
  * 4. 级联删除路径全部落在外键 `onDelete` 上，作为应用层二次确认后的兜底。
- * 5. 通知幂等索引 `(user_id, task_id, type)` 是 N-3 幂等投递的数据库依据；
- *    MySQL 唯一索引中 NULL 互不相等，`task_id IS NULL` 的行天然豁免
- *    （等价于 PostgreSQL 的 `WHERE task_id IS NOT NULL` 部分索引）。
+ * 5. 通知幂等索引 `(user_id, task_id, type) WHERE task_id IS NOT NULL`
+ *    是 N-3 幂等投递的数据库依据；`task_id IS NULL` 的行不占用该部分唯一索引。
  * 6. v1 不建 sessions 表（jose 无状态签名 cookie）。
  * 7. 团队入群码 `teams.join_code` 由应用层生成（8 位、31 字符集），全局唯一；
  *    唯一性落为独立的表级唯一索引。
  *    `join_code_enabled` 控制该团队是否接受凭码加入申请。
- * 8. `team_join_requests` 镜像 team_invites 的 pending 唯一约束：生成列
- *    `pending_scope`（pending 时为 'pending'，否则 NULL）参与唯一索引；
- *    终态（approved/declined/cancelled）不占用。
- * 9. 标识/枚举列使用 `varchar(255) COLLATE utf8mb4_bin`，保持 PostgreSQL 的
- *    精确（大小写敏感）匹配语义；纯内容列使用 `text`。时间戳不带时区，
- *    由连接会话时区（+08:00）统一解释。
+ * 8. `team_invites` / `team_join_requests` 使用 `WHERE status = 'pending'`
+ *    的部分唯一索引：同一 (team, invitee) / (team, user) 同时只允许一条
+ *    pending 记录；终态（accepted/declined/rescinded/cancelled）不占用。
+ * 9. 标识/枚举列直接使用 `text`——PostgreSQL 的 text 等值/唯一比较默认
+ *    大小写敏感，天然保持精确匹配语义；内容列同样使用 `text`。
+ *    时间戳使用 `timestamptz`（存绝对时刻，不依赖会话时区），默认 `now()`；
+ *    日期列使用 `date`（按天粒度，字符串模式）。
  */
-import { sql } from "drizzle-orm";
+import { isNotNull, sql } from "drizzle-orm";
 import {
   boolean,
-  char,
   check,
-  customType,
   date,
   index,
-  int,
-  mysqlTable,
+  integer,
+  pgTable,
   text,
+  timestamp,
   unique,
   uniqueIndex,
-  varchar,
-} from "drizzle-orm/mysql-core";
+  uuid,
+} from "drizzle-orm/pg-core";
 import type {
   Gender,
   NotificationType,
@@ -45,82 +44,32 @@ import type {
   TeamJoinStatus,
 } from "@open-doing/types";
 
-/**
- * 标识/枚举列：`varchar(255) COLLATE utf8mb4_bin`。
- *
- * PostgreSQL 的 text 等值/唯一比较是大小写敏感的；MySQL 默认 collation
- * （utf8mb4_0900_ai_ci）不区分大小写，会让 `Alice` / `alice` 在唯一约束和
- * 等值查询上产生 PostgreSQL 不会有的冲突。用二进制 collation 保持精确匹配。
- */
-const identifierVarchar = (name: string) =>
-  customType<{ data: string; driverData: string }>({
-    dataType() {
-      return "varchar(255) COLLATE utf8mb4_bin";
-    },
-  })(name);
-
-/**
- * 时间戳列：`timestamp`（无时区），按会话时区（+08:00）双向解释。
- *
- * mysql-core 内置 `timestamp` 的 mapToDriverValue 输出 UTC 墙钟字符串
- * （`toISOString()`），而所有连接（client / testing / e2e global-setup）
- * 都固定会话时区 `+08:00`，MySQL 会把该 UTC 墙钟误读为 +08:00 本地时间，
- * 导致显式写入的时刻早 8 小时；反向读取时服务端输出 +08:00 墙钟字符串
- * 又被内置 mapFromDriverValue 当作 UTC 解析，defaultNow 回读的时刻晚
- * 8 小时。这里改为显式双向映射：写入按 +08:00 墙钟格式化、读取按
- * +08:00 解析，与会话时区保持一致。
- */
-const tzTimestamp = (name: string) =>
-  customType<{ data: Date; driverData: string }>({
-    dataType() {
-      return "timestamp";
-    },
-    // 注意：mysql-core customType 的映射钩子名为 toDriver / fromDriver
-    // （不是内置列的 mapToDriverValue / mapFromDriverValue，拼错会被静默跳过）。
-    toDriver(value: Date): string {
-      // 写入：按 Asia/Shanghai（+08:00）墙钟格式化，与会话时区一致。
-      return new Date(value.getTime() + 8 * 3_600_000)
-        .toISOString()
-        .slice(0, 19)
-        .replace("T", " ");
-    },
-    fromDriver(value: string): Date {
-      // 读取：drizzle 的 mysql2 会话对 TIMESTAMP/DATETIME 强制 typeCast 为
-      // 字符串（会话墙钟），按 +08:00 解析回时刻。
-      return new Date(value.replace(" ", "T") + "+08:00");
-    },
-  })(name);
-
-/** UUID 主键：`char(36)` + 应用层生成。 */
-const uuidPk = () =>
-  char("id", { length: 36 })
-    .primaryKey()
-    .$defaultFn(() => crypto.randomUUID());
+/** UUID 主键：原生 `uuid` + 数据库端 `gen_random_uuid()`。 */
+const uuidPk = () => uuid("id").primaryKey().defaultRandom();
 
 /** UUID 外键列（可空性由调用方 `.notNull()` 决定）。 */
-const uuidRef = (name: string) => char(name, { length: 36 });
+const uuidRef = (name: string) => uuid(name);
 
 /** 用户：用户名 + 密码登录；昵称 / 性别 / 邮箱 / 电话为可选资料；uid 仅用于邀请。 */
-export const users = mysqlTable("users", {
+export const users = pgTable("users", {
   id: uuidPk(),
-  uid: identifierVarchar("uid").notNull().unique(),
-  username: identifierVarchar("username").notNull().unique(),
-  passwordHash: varchar("password_hash", { length: 255 }).notNull(),
+  uid: text("uid").notNull().unique(),
+  username: text("username").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
   // 展示名（可重复，不唯一）；为空时由应用层回退到 username。
-  nickname: varchar("nickname", { length: 50 }),
+  nickname: text("nickname"),
   // 可选资料：NULL 表示未填写。
-  gender: identifierVarchar("gender").$type<Gender>(),
-  // 邮箱：全库唯一。这里**有意使用 MySQL 默认 collation**
-  // （utf8mb4_0900_ai_ci，大小写与重音均不敏感）——邮箱语义上大小写不敏感，
-  // 唯一约束需按此判重；写入前由应用层 lowercase 归一化。
-  email: varchar("email", { length: 255 }).unique(),
-  phone: varchar("phone", { length: 20 }).unique(),
+  gender: text("gender").$type<Gender>(),
+  // 邮箱 / 电话：全库唯一，均可空（阶段 A 保持 nullable）。
+  // 邮箱语义上大小写不敏感，写入前由应用层 lowercase 归一化。
+  email: text("email").unique(),
+  phone: text("phone").unique(),
   // 个人设置：临期 / 逾期提醒开关，默认开启；存量用户由 DEFAULT 回填。
   dueSoonReminderEnabled: boolean("due_soon_reminder_enabled").notNull().default(true),
   overdueReminderEnabled: boolean("overdue_reminder_enabled").notNull().default(true),
   // 个人设置：界面语言（'zh' | 'en'），默认中文；账号级偏好，登录后每请求生效。
-  language: identifierVarchar("language").notNull().default("zh"),
-  createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+  language: text("language").notNull().default("zh"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /**
@@ -130,40 +79,40 @@ export const users = mysqlTable("users", {
  * 唯一性落为独立的表级唯一索引。`used_count` 由原子条件更新扣减
  * （`WHERE used_count < max_uses`），并发下不会超发；无过期时间。
  */
-export const registrationCodes = mysqlTable(
+export const registrationCodes = pgTable(
   "registration_codes",
   {
     id: uuidPk(),
-    code: identifierVarchar("code").notNull(),
-    maxUses: int("max_uses").notNull().default(10),
-    usedCount: int("used_count").notNull().default(0),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    code: text("code").notNull(),
+    maxUses: integer("max_uses").notNull().default(10),
+    usedCount: integer("used_count").notNull().default(0),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex("registration_codes_code_unique").on(t.code)],
 );
 
 /** 团队：slug 全局唯一；join_code 由应用层生成（见文件头决策 7）。 */
-export const teams = mysqlTable(
+export const teams = pgTable(
   "teams",
   {
     id: uuidPk(),
-    name: identifierVarchar("name").notNull(),
-    slug: identifierVarchar("slug").notNull().unique(),
-    joinCode: identifierVarchar("join_code").notNull(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull().unique(),
+    joinCode: text("join_code").notNull(),
     joinCodeEnabled: boolean("join_code_enabled").notNull().default(true),
     ownerId: uuidRef("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // 独立唯一索引（非列级 .unique()），与 PostgreSQL 迁移中的表级索引名一致。
+    // 独立唯一索引（非列级 .unique()），与迁移中的表级索引名一致。
     uniqueIndex("teams_join_code_unique").on(t.joinCode),
   ],
 );
 
 /** 团队成员关系：同一用户在同一团队只允许一条。 */
-export const teamMemberships = mysqlTable(
+export const teamMemberships = pgTable(
   "team_memberships",
   {
     id: uuidPk(),
@@ -173,8 +122,8 @@ export const teamMemberships = mysqlTable(
     userId: uuidRef("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    role: identifierVarchar("role").$type<"owner" | "admin" | "member">().notNull(),
-    joinedAt: tzTimestamp("joined_at").notNull().default(sql`(now())`),
+    role: text("role").$type<"owner" | "admin" | "member">().notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     unique("team_memberships_team_id_user_id_unique").on(t.teamId, t.userId),
@@ -183,8 +132,8 @@ export const teamMemberships = mysqlTable(
   ],
 );
 
-/** 团队邀请：pending 状态对同一 (team, invitee) 只允许一条（生成列唯一索引）。 */
-export const teamInvites = mysqlTable(
+/** 团队邀请：pending 状态对同一 (team, invitee) 只允许一条（部分唯一索引）。 */
+export const teamInvites = pgTable(
   "team_invites",
   {
     id: uuidPk(),
@@ -197,29 +146,22 @@ export const teamInvites = mysqlTable(
     invitedById: uuidRef("invited_by_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    status: identifierVarchar("status")
+    status: text("status")
       .$type<"pending" | "accepted" | "declined" | "rescinded">()
       .notNull()
       .default("pending"),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
-    respondedAt: tzTimestamp("responded_at"),
-    // 生成列：pending 时为 'pending'，终态为 NULL，使唯一索引只约束 pending。
-    // MySQL 索引不支持 TEXT 列（除非前缀长度），故用 varchar。
-    pendingScope: varchar("pending_scope", { length: 255 }).generatedAlwaysAs(
-      sql`case when status = 'pending' then 'pending' else null end`,
-    ),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
   },
   (t) => [
-    uniqueIndex("team_invites_pending_team_invitee_unique").on(
-      t.teamId,
-      t.inviteeId,
-      t.pendingScope,
-    ),
+    uniqueIndex("team_invites_pending_team_invitee_unique")
+      .on(t.teamId, t.inviteeId)
+      .where(sql`${t.status} = 'pending'`),
   ],
 );
 
-/** 凭码加入申请：pending 状态对同一 (team, user) 只允许一条（生成列唯一索引）。 */
-export const teamJoinRequests = mysqlTable(
+/** 凭码加入申请：pending 状态对同一 (team, user) 只允许一条（部分唯一索引）。 */
+export const teamJoinRequests = pgTable(
   "team_join_requests",
   {
     id: uuidPk(),
@@ -229,39 +171,33 @@ export const teamJoinRequests = mysqlTable(
     userId: uuidRef("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    status: identifierVarchar("status").$type<TeamJoinStatus>().notNull().default("pending"),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
-    respondedAt: tzTimestamp("responded_at"),
+    status: text("status").$type<TeamJoinStatus>().notNull().default("pending"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    respondedAt: timestamp("responded_at", { withTimezone: true }),
     respondedById: uuidRef("responded_by_id").references(() => users.id, {
       onDelete: "cascade",
     }),
-    // 同 team_invites：pending 才占用唯一索引。
-    pendingScope: varchar("pending_scope", { length: 255 }).generatedAlwaysAs(
-      sql`case when status = 'pending' then 'pending' else null end`,
-    ),
   },
   (t) => [
-    uniqueIndex("team_join_requests_pending_team_user_unique").on(
-      t.teamId,
-      t.userId,
-      t.pendingScope,
-    ),
+    uniqueIndex("team_join_requests_pending_team_user_unique")
+      .on(t.teamId, t.userId)
+      .where(sql`${t.status} = 'pending'`),
     // 「我的申请」查询：按用户列出其加入申请。
     index("team_join_requests_user_id_idx").on(t.userId),
   ],
 );
 
 /** 项目：团队项目与个人项目二选一（team_id / owner_id 互斥 CHECK）。 */
-export const projects = mysqlTable(
+export const projects = pgTable(
   "projects",
   {
     id: uuidPk(),
     teamId: uuidRef("team_id").references(() => teams.id, { onDelete: "cascade" }),
     ownerId: uuidRef("owner_id").references(() => users.id, { onDelete: "cascade" }),
-    name: identifierVarchar("name").notNull(),
-    slug: identifierVarchar("slug").notNull(),
+    name: text("name").notNull(),
+    slug: text("slug").notNull(),
     description: text("description"),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     check(
@@ -269,24 +205,27 @@ export const projects = mysqlTable(
       sql`(${t.teamId} IS NOT NULL) <> (${t.ownerId} IS NOT NULL)`,
     ),
     // 团队项目 slug 在团队内唯一；个人项目 slug 在个人空间内唯一。
-    // MySQL 唯一索引中 NULL 互不相等，未填的一侧天然不参与约束。
-    uniqueIndex("projects_team_id_slug_unique").on(t.teamId, t.slug),
-    uniqueIndex("projects_owner_id_slug_unique").on(t.ownerId, t.slug),
+    uniqueIndex("projects_team_id_slug_unique")
+      .on(t.teamId, t.slug)
+      .where(isNotNull(t.teamId)),
+    uniqueIndex("projects_owner_id_slug_unique")
+      .on(t.ownerId, t.slug)
+      .where(isNotNull(t.ownerId)),
     // 查询索引：个人项目列表 / 归属校验。
     index("projects_owner_id_idx").on(t.ownerId),
   ],
 );
 
 /** 任务：project_id 可空（零散个人任务）；assignee_id 可空（成员退出后未指派）。 */
-export const tasks = mysqlTable(
+export const tasks = pgTable(
   "tasks",
   {
     id: uuidPk(),
     projectId: uuidRef("project_id").references(() => projects.id, { onDelete: "cascade" }),
-    spaceType: identifierVarchar("space_type").$type<SpaceType>().notNull(),
-    title: varchar("title", { length: 500 }).notNull(),
+    spaceType: text("space_type").$type<SpaceType>().notNull(),
+    title: text("title").notNull(),
     description: text("description"),
-    status: identifierVarchar("status").$type<TaskStatus>().notNull().default("todo"),
+    status: text("status").$type<TaskStatus>().notNull().default("todo"),
     // 成员被移除/退出时置空，不删除任务。
     assigneeId: uuidRef("assignee_id").references(() => users.id, { onDelete: "set null" }),
     dueDate: date("due_date", { mode: "string" }),
@@ -295,8 +234,8 @@ export const tasks = mysqlTable(
     createdById: uuidRef("created_by_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
-    updatedAt: tzTimestamp("updated_at").notNull().default(sql`(now())`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
     index("tasks_assignee_id_idx").on(t.assigneeId),
@@ -306,19 +245,19 @@ export const tasks = mysqlTable(
 );
 
 /** 子任务：仅完成/未完成，无责任人、无截止日期。 */
-export const subtasks = mysqlTable("subtasks", {
+export const subtasks = pgTable("subtasks", {
   id: uuidPk(),
   taskId: uuidRef("task_id")
     .notNull()
     .references(() => tasks.id, { onDelete: "cascade" }),
-  title: varchar("title", { length: 500 }).notNull(),
+  title: text("title").notNull(),
   completed: boolean("completed").notNull().default(false),
-  createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
-  completedAt: tzTimestamp("completed_at"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
 /** 任务评论：个人任务下即自我备注。 */
-export const comments = mysqlTable("comments", {
+export const comments = pgTable("comments", {
   id: uuidPk(),
   taskId: uuidRef("task_id")
     .notNull()
@@ -327,29 +266,31 @@ export const comments = mysqlTable("comments", {
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
   content: text("content").notNull(),
-  createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
 /** 系统内通知：task_id 非空时同一 (user, task, type) 幂等。 */
-export const notifications = mysqlTable(
+export const notifications = pgTable(
   "notifications",
   {
     id: uuidPk(),
     userId: uuidRef("user_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
-    type: identifierVarchar("type").$type<NotificationType>().notNull(),
+    type: text("type").$type<NotificationType>().notNull(),
     read: boolean("read").notNull().default(false),
     teamId: uuidRef("team_id").references(() => teams.id, { onDelete: "cascade" }),
     projectId: uuidRef("project_id").references(() => projects.id, { onDelete: "cascade" }),
     taskId: uuidRef("task_id").references(() => tasks.id, { onDelete: "cascade" }),
     actorId: uuidRef("actor_id").references(() => users.id, { onDelete: "cascade" }),
-    createdAt: tzTimestamp("created_at").notNull().default(sql`(now())`),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    // N-3 幂等投递依赖：同一用户、同一任务、同一类型只保留一条。
-    // task_id 为 NULL 的行因 MySQL 唯一索引 NULL 互不相等而豁免。
-    uniqueIndex("notifications_user_task_type_unique").on(t.userId, t.taskId, t.type),
+    // N-3 幂等投递依赖：同一用户、同一任务、同一类型只保留一条；
+    // task_id 为 NULL 的行不占用该部分唯一索引。
+    uniqueIndex("notifications_user_task_type_unique")
+      .on(t.userId, t.taskId, t.type)
+      .where(isNotNull(t.taskId)),
     // 通知中心未读角标查询。
     index("notifications_user_id_read_idx").on(t.userId, t.read),
   ],

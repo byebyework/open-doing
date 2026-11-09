@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { getTableConfig } from "drizzle-orm/mysql-core";
+import { getTableConfig } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
@@ -22,7 +22,7 @@ const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
 if (!hasTestDatabase) {
   console.warn(
-    "[schema.test] 未设置 TEST_DATABASE_URL，数据库用例已跳过。先运行 `docker compose up -d`，再设置 TEST_DATABASE_URL=mysql://open-doing:open-doing@localhost:3307/open_doing_test 执行 `pnpm test`。",
+    "[schema.test] 未设置 TEST_DATABASE_URL，数据库用例已跳过。先运行 `docker compose up -d`，再设置 TEST_DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open_doing_test 执行 `pnpm test`。",
   );
 }
 
@@ -191,7 +191,7 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
       }),
     ).resolves.toBeDefined();
 
-    // task_id 为 NULL 的行不占用唯一索引（MySQL 唯一索引 NULL 互不相等），
+    // task_id 为 NULL 的行不占用部分唯一索引（WHERE task_id IS NOT NULL），
     // 同 (user, type) 可写入多条。
     await expect(
       db.insert(notifications).values({
@@ -354,8 +354,7 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
       .from(users)
       .where(eq(users.id, user.id));
 
-    // 旧缺陷（写入 −8h、读取 +8h）在纯往返断言下相互抵消，
-    // 只有依赖 defaultNow() 的回读同时暴露两个方向的时区映射错误。
+    // timestamptz 存绝对时刻，defaultNow() 回读应接近当前时刻。
     const readback = row!.createdAt.getTime();
     expect(readback).toBeGreaterThanOrEqual(before - 2000);
     expect(readback).toBeLessThanOrEqual(after + 2000);
@@ -370,24 +369,24 @@ describe("users 表结构（schema 元数据）", () => {
     const nickname = byName.get("nickname");
     expect(nickname).toBeDefined();
     expect(nickname!.notNull).toBe(false);
-    expect(nickname!.getSQLType()).toBe("varchar(50)");
+    expect(nickname!.getSQLType()).toBe("text");
 
     const gender = byName.get("gender");
     expect(gender).toBeDefined();
     expect(gender!.notNull).toBe(false);
-    expect(gender!.getSQLType()).toBe("varchar(255) COLLATE utf8mb4_bin");
+    expect(gender!.getSQLType()).toBe("text");
 
     const email = byName.get("email");
     expect(email).toBeDefined();
     expect(email!.notNull).toBe(false);
-    expect(email!.getSQLType()).toBe("varchar(255)");
+    expect(email!.getSQLType()).toBe("text");
     expect(email!.isUnique).toBe(true);
     expect(email!.uniqueName).toBe("users_email_unique");
 
     const phone = byName.get("phone");
     expect(phone).toBeDefined();
     expect(phone!.notNull).toBe(false);
-    expect(phone!.getSQLType()).toBe("varchar(20)");
+    expect(phone!.getSQLType()).toBe("text");
     expect(phone!.isUnique).toBe(true);
     expect(phone!.uniqueName).toBe("users_phone_unique");
   });

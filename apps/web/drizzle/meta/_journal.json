@@ -1,33 +1,12 @@
 {
   "version": "7",
-  "dialect": "mysql",
+  "dialect": "postgresql",
   "entries": [
     {
       "idx": 0,
-      "version": "5",
-      "when": 1793889172073,
-      "tag": "0000_orange_luckman",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "5",
-      "when": 1793975976348,
-      "tag": "0001_tiny_bedlam",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "5",
-      "when": 1794054586357,
-      "tag": "0002_great_chat",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "5",
-      "when": 1794149727897,
-      "tag": "0003_large_dakota_north",
+      "version": "7",
+      "when": 1794225888748,
+      "tag": "0000_mysterious_silhouette",
       "breakpoints": true
     }
   ]
