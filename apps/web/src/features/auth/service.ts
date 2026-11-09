@@ -1,19 +1,14 @@
 import { createHash } from "node:crypto";
 
-import { hash, verify } from "@node-rs/argon2";
 import type { Gender, User } from "@open-doing/types";
-import { eq } from "drizzle-orm";
+import { hashPassword, verifyPassword } from "better-auth/crypto";
+import { verify } from "@node-rs/argon2";
+import { and, eq } from "drizzle-orm";
 
-import {
-  getCredentialsByUsername,
-  toUser,
-  usernameExists,
-} from "@/features/users/service";
+import { getCredentialsByUsername } from "@/features/users/service";
 import type { DomainErrorI18n } from "@/lib/domain-error";
-import { generateUid } from "@/lib/uid";
 import { db, type DbClient } from "@/server/db/client";
-import { isUniqueViolation, uniqueViolationKey } from "@/server/db/errors";
-import { users } from "@/server/db/schema";
+import { accounts } from "@/server/db/schema";
 
 import {
   EMAIL_PATTERN,
@@ -23,10 +18,8 @@ import {
   PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
-  USERNAME_TAKEN_MESSAGE,
 } from "./constants";
 import { clearSession } from "./session";
-import { consumeRegistrationCode, normalizeRegistrationCode } from "./registration-codes";
 
 export {
   INVALID_CREDENTIALS_MESSAGE,
@@ -35,12 +28,6 @@ export {
   USERNAME_MIN_LENGTH,
   USERNAME_TAKEN_MESSAGE,
 } from "./constants";
-
-/** UID 唯一约束冲突时的最大重试次数（含首次插入）。 */
-const MAX_UID_ATTEMPTS = 5;
-
-const EMAIL_TAKEN_MESSAGE = "邮箱已被使用";
-const PHONE_TAKEN_MESSAGE = "手机号已被使用";
 
 export type AuthErrorCode =
   | "VALIDATION"
@@ -95,11 +82,11 @@ export interface AuthInput {
   registrationCode?: string;
   username: string;
   password: string;
-  /** 昵称：trim 后最长为 50 字符；空/未传时按 uid 生成默认昵称。 */
+  /** 昵称：trim 后最长为 50 字符；空/未传时由注册 hook 按 uid 生成。 */
   nickname?: string;
   /** 性别：仅接受 "male" | "female" | "secret"；空/未传时为 null。 */
   gender?: string;
-  /** 邮箱：trim + 小写；空字符串归一化为 null。 */
+  /** 邮箱：注册必填；trim + 小写。 */
   email?: string;
   /** 手机号：trim；空字符串归一化为 null。 */
   phone?: string;
@@ -125,31 +112,28 @@ function isGender(value: string): value is Gender {
 /**
  * 由 uid 生成默认昵称：`user_` + sha256(uid) 的前 5 位小写十六进制。
  *
- * 昵称列不参与唯一约束，故不保证全局唯一；仅用于注册未填昵称时的展示名。
+ * 展示名列不参与唯一约束，故不保证全局唯一；仅用于注册未填昵称时的展示名。
  */
 export function generateNickname(uid: string): string {
   return `user_${createHash("sha256").update(uid).digest("hex").slice(0, 5)}`;
 }
 
-function invalidCredentials(): AuthError {
-  return new AuthError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE, "form", {
-    key: "invalidCredentials",
-  });
-}
-
 /**
  * 注册入参校验与归一化。
  *
- * 用户名 2–20 字符，密码至少 8 位；昵称 ≤50 字符，性别限枚举，
- * 邮箱/手机号按格式校验。可选资料的空字符串一律归一化为 null
- * （否则第二个空邮箱会撞上 users.email 的唯一索引）。
+ * 用户名 2–20 字符，密码至少 8 位，邮箱必填且需符合格式；昵称 ≤50
+ * 字符，性别限枚举，手机号按格式校验。可选资料的空字符串一律归一化为
+ * null（手机号否则会撞上 users.phone 的唯一索引）。
+ *
+ * 抛出 `AuthError`（带 i18n 通道），由 registerAction 的 toFailure 统一
+ * 翻译并落到对应表单字段。
  */
-function validateRegistration(input: AuthInput): {
+export function validateRegistration(input: AuthInput): {
   username: string;
   password: string;
   nickname: string | null;
   gender: Gender | null;
-  email: string | null;
+  email: string;
   phone: string | null;
 } {
   const username = normalizeUsername(input?.username);
@@ -207,7 +191,12 @@ function validateRegistration(input: AuthInput): {
   }
 
   const emailValue = normalizeOptionalText(input?.email).toLowerCase();
-  if (emailValue && !EMAIL_PATTERN.test(emailValue)) {
+  if (!emailValue) {
+    throw new AuthError("VALIDATION", "请输入邮箱", "email", {
+      key: "emailRequired",
+    });
+  }
+  if (!EMAIL_PATTERN.test(emailValue)) {
     throw new AuthError("VALIDATION", "邮箱格式不正确", "email", {
       key: "emailInvalid",
     });
@@ -225,129 +214,42 @@ function validateRegistration(input: AuthInput): {
     password,
     nickname: nickname || null,
     gender,
-    email: emailValue || null,
+    email: emailValue,
     phone: phoneValue || null,
   };
 }
 
 /**
- * 注册用户（封测：必须凭有效注册码）。
+ * better-auth 注册返回的 user（含 additionalFields）-> 领域 User。
  *
- * - 注册码先于一切资料校验：无有效码的请求只看到「码无效/已用尽」，
- *   不泄露用户名/邮箱占用信息；
- * - 码的消费与用户写入在**同一事务**内完成：原子条件更新扣减名额
- *   （并发不超发），后续任何失败（资料校验、用户名/邮箱/手机号占用、
- *   UID 重试耗尽）整体回滚，不白耗名额；
- * - 用户名查重给出友好错误；并发竞态由数据库唯一约束兜底；
- * - 可选资料（昵称/性别/邮箱/手机号）归一化后落库，未填昵称按 uid 生成；
- * - 密码用 @node-rs/argon2（默认 Argon2id）哈希，绝不明文落库；
- * - 邮箱/手机号唯一冲突按索引名分派为对应字段错误；
- * - UID 碰撞依赖 `users.uid` 唯一约束重新生成，最多尝试 5 次。
+ * `name` 承载展示名（原 nickname 语义）；Task 3 的通用 `toUser` 映射
+ * 完成后可由其替代，这里保持注册链路自包含。
  */
-export async function registerUser(
-  input: AuthInput,
-  client: DbClient = db,
-): Promise<User> {
-  const code = normalizeRegistrationCode(input?.registrationCode);
-  if (!code) {
-    throw new AuthError("VALIDATION", "请输入注册码", "registrationCode", {
-      key: "registrationCodeRequired",
-    });
-  }
-
-  return client.transaction(async (tx) => {
-    const consumed = await consumeRegistrationCode(code, tx);
-    if (consumed === "invalid") {
-      throw new AuthError("REGISTRATION_CODE_INVALID", "注册码无效", "registrationCode", {
-        key: "registrationCodeInvalid",
-      });
-    }
-    if (consumed === "exhausted") {
-      throw new AuthError(
-        "REGISTRATION_CODE_EXHAUSTED",
-        "注册码已达使用上限",
-        "registrationCode",
-        { key: "registrationCodeExhausted" },
-      );
-    }
-
-    const { username, password, nickname, gender, email, phone } =
-      validateRegistration(input);
-
-    if (await usernameExists(username, tx)) {
-      throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
-        key: "usernameTaken",
-      });
-    }
-
-    const passwordHash = await hash(password);
-
-    for (let attempt = 1; attempt <= MAX_UID_ATTEMPTS; attempt += 1) {
-      try {
-        // 每次尝试包一层 savepoint：PostgreSQL 唯一约束冲突会让整个事务进入
-        // aborted 状态，savepoint 回滚后外层事务（注册码扣减）仍可继续重试。
-        return await tx.transaction(async (attemptTx) => {
-          const uid = generateUid();
-          const [row] = await attemptTx
-            .insert(users)
-            .values({
-              uid,
-              username,
-              passwordHash,
-              nickname: nickname ?? generateNickname(uid),
-              gender,
-              email,
-              phone,
-            })
-            .returning({
-              id: users.id,
-              uid: users.uid,
-              username: users.username,
-              nickname: users.nickname,
-              gender: users.gender,
-              email: users.email,
-              phone: users.phone,
-              createdAt: users.createdAt,
-            });
-
-          return toUser(row!);
-        });
-      } catch (error) {
-        if (!isUniqueViolation(error)) throw error;
-
-        // 唯一冲突按被违反的索引分派；先分派业务唯一键，再解释为 UID 碰撞。
-        const key = uniqueViolationKey(error);
-
-        if (key === "users_username_unique") {
-          throw new AuthError("USERNAME_TAKEN", USERNAME_TAKEN_MESSAGE, "username", {
-            key: "usernameTaken",
-          });
-        }
-        if (key === "users_email_unique") {
-          throw new AuthError("EMAIL_TAKEN", EMAIL_TAKEN_MESSAGE, "email", {
-            key: "emailTaken",
-          });
-        }
-        if (key === "users_phone_unique") {
-          throw new AuthError("PHONE_TAKEN", PHONE_TAKEN_MESSAGE, "phone", {
-            key: "phoneTaken",
-          });
-        }
-        // key 为 null：其余唯一冲突只可能来自 UID，重新生成后重试。
-      }
-    }
-
-    throw new AuthError(
-      "UID_GENERATION_FAILED",
-      "系统繁忙，请稍后重试",
-      "form",
-      { key: "uidGenerationFailed" },
-    );
-  });
+export function toRegisteredUser(user: {
+  id: string;
+  uid?: string | null;
+  username?: string | null;
+  name: string;
+  gender?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  createdAt: Date | string;
+}): User {
+  return {
+    id: user.id,
+    uid: user.uid ?? "",
+    username: user.username ?? "",
+    nickname: user.name,
+    gender: (user.gender as Gender | null | undefined) ?? null,
+    email: user.email ?? null,
+    phone: user.phone ?? null,
+    createdAt:
+      user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
+  };
 }
 
 /**
- * 登录。
+ * 登录（旧实现，Task 3 接入 better-auth 会话后替换）。
  *
  * 不存在的用户名与错误密码抛出同一个 `INVALID_CREDENTIALS`，
  * 防止通过错误信息枚举已注册用户名。
@@ -381,12 +283,13 @@ export interface ChangePasswordInput {
 }
 
 /**
- * 修改密码。
+ * 修改密码（旧实现，Task 3 改为 `auth.api.changePassword`）。
  *
- * - 新密码先做长度校验（与注册同一规则），旧密码错误与登录同用
- *   `INVALID_CREDENTIALS`，但落到 `oldPassword` 字段；
+ * 密码凭据已迁移到 better-auth 的 `accounts.password`，哈希算法与其
+ * 默认 scrypt 保持一致：
+ * - 新密码先做长度校验（与注册同一规则），旧密码错误落 `oldPassword`；
  * - 旧密码校验通过后重新哈希写入，绝不明文落库；
- * - 不触碰会话：无状态 JWT 继续有效，用户保持登录。
+ * - 不触碰会话。
  */
 export async function changePassword(
   input: ChangePasswordInput,
@@ -405,17 +308,20 @@ export async function changePassword(
   }
 
   const userId = typeof input?.userId === "string" ? input.userId : "";
-  const [credentials] = await client
-    .select({ passwordHash: users.passwordHash })
-    .from(users)
-    .where(eq(users.id, userId))
+  const [account] = await client
+    .select({ id: accounts.id, password: accounts.password })
+    .from(accounts)
+    .where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")))
     .limit(1);
 
   const oldPassword = normalizePassword(input?.oldPassword);
   let oldPasswordMatches = false;
-  if (credentials) {
+  if (account?.password) {
     try {
-      oldPasswordMatches = await verify(credentials.passwordHash, oldPassword);
+      oldPasswordMatches = await verifyPassword({
+        hash: account.password,
+        password: oldPassword,
+      });
     } catch {
       // 哈希损坏等异常同样按旧密码错误处理，不泄露内部状态。
       oldPasswordMatches = false;
@@ -429,14 +335,20 @@ export async function changePassword(
   }
 
   await client
-    .update(users)
-    .set({ passwordHash: await hash(newPassword) })
-    .where(eq(users.id, userId));
+    .update(accounts)
+    .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
+    .where(eq(accounts.id, account.id));
 
   return true;
 }
 
-/** 登出：清除无状态会话 cookie。 */
+/** 登出：清除会话 cookie（旧实现，Task 3 改为 `auth.api.signOut`）。 */
 export async function logout(): Promise<void> {
   await clearSession();
+}
+
+function invalidCredentials(): AuthError {
+  return new AuthError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE, "form", {
+    key: "invalidCredentials",
+  });
 }

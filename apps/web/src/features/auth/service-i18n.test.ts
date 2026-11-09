@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import { AuthError, changePassword, registerUser } from "./service";
+import { registerAction } from "./actions";
+import { AuthError, changePassword } from "./service";
 
 /**
  * AuthError 的 i18n 通道（可选第四参）：
@@ -18,11 +19,10 @@ describe("AuthError i18n channel", () => {
   });
 
   it("注册码校验先于资料校验与任何数据库访问，缺码报 auth.registrationCodeRequired", async () => {
-    await expect(
-      registerUser({ username: "", password: "x".repeat(8) }),
-    ).rejects.toMatchObject({
-      field: "registrationCode",
-      i18n: { key: "registrationCodeRequired" },
+    const result = await registerAction({ username: "", password: "x".repeat(8) });
+    expect(result).toEqual({
+      ok: false,
+      errors: { registrationCode: "请输入注册码" },
     });
   });
 

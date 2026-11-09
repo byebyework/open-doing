@@ -6,6 +6,8 @@ import { username } from "better-auth/plugins";
 import { db } from "@/server/db/client";
 import { accounts, sessions, users, verifications } from "@/server/db/schema";
 
+import { authDatabaseHooks, authRequestHooks } from "./hooks";
+
 /**
  * 读取 better-auth 会话签名密钥。
  *
@@ -54,7 +56,12 @@ export const auth = betterAuth({
       account: accounts,
       verification: verifications,
     },
+    // better-auth 默认 transaction:false（drizzle adapter 的 user/account 两次
+    // 写入不在同一事务）。注册链路要求建号原子性：本钩子内的抛错可整体回滚。
+    transaction: true,
   }),
+  hooks: authRequestHooks,
+  databaseHooks: authDatabaseHooks,
   emailAndPassword: {
     enabled: true,
     minPasswordLength: 8,
@@ -87,6 +94,9 @@ export const auth = betterAuth({
       usernameNormalization: false,
       minUsernameLength: 2,
       maxUsernameLength: 20,
+      // 现有产品语义只限制 2–20 字符（大小写敏感、允许中文/空格等）；
+      // better-auth 默认的 `[a-zA-Z0-9_.]` 校验会收紧语义，故放开字符集。
+      usernameValidator: () => true,
     }),
     nextCookies(),
   ],
