@@ -5,9 +5,11 @@ import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "./client";
 import {
+  accounts,
   comments,
   notifications,
   projects,
+  sessions,
   subtasks,
   tasks,
   teamInvites,
@@ -15,6 +17,7 @@ import {
   teamMemberships,
   teams,
   users,
+  verifications,
 } from "./schema";
 import { closeTestDb, setupTestDb } from "./testing";
 
@@ -30,6 +33,7 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
   let db: DbClient;
   let userSeq = 0;
   let teamSeq = 0;
+  let emailSeq = 0;
 
   beforeAll(async () => {
     db = await setupTestDb();
@@ -47,7 +51,15 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
   async function createUser(username: string) {
     const id = crypto.randomUUID();
     const uid = generateUid();
-    await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+    emailSeq += 1;
+    await db.insert(users).values({
+      id,
+      uid,
+      username,
+      name: username,
+      email: `user-${emailSeq}@example.com`,
+      displayUsername: username,
+    });
     return { id, uid };
   }
 
@@ -88,11 +100,23 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     const user = await createUser("alice");
 
     await expect(
-      db.insert(users).values({ uid: generateUid(), username: "alice", passwordHash: "hash" }),
+      db.insert(users).values({
+        uid: generateUid(),
+        username: "alice",
+        name: "alice",
+        email: "duplicate-alice@example.com",
+        displayUsername: "alice",
+      }),
     ).rejects.toThrow();
 
     await expect(
-      db.insert(users).values({ uid: user.uid, username: "bob", passwordHash: "hash" }),
+      db.insert(users).values({
+        uid: user.uid,
+        username: "bob",
+        name: "bob",
+        email: "duplicate-uid@example.com",
+        displayUsername: "bob",
+      }),
     ).rejects.toThrow();
   });
 
@@ -359,35 +383,118 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     expect(readback).toBeGreaterThanOrEqual(before - 2000);
     expect(readback).toBeLessThanOrEqual(after + 2000);
   });
+
+  it("⑫ session.token 唯一约束拒绝重复 token", async () => {
+    const user = await createUser("session_token_unique");
+    const token = crypto.randomUUID();
+
+    await db.insert(sessions).values({
+      userId: user.id,
+      token,
+      expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+    });
+
+    await expect(
+      db.insert(sessions).values({
+        userId: user.id,
+        token,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      }),
+    ).rejects.toThrow();
+  });
 });
 
-describe("users 表结构（schema 元数据）", () => {
-  it("⑫ 可空昵称 / 性别 / 邮箱 / 电话，email 与 phone 带约定命名的唯一索引", () => {
-    const { columns } = getTableConfig(users);
-    const byName = new Map(columns.map((column) => [column.name, column]));
+describe("better-auth 表结构（schema 元数据）", () => {
+  function columnsByName(table: Parameters<typeof getTableConfig>[0]) {
+    const { columns } = getTableConfig(table);
+    return new Map(columns.map((column) => [column.name, column]));
+  }
 
-    const nickname = byName.get("nickname");
-    expect(nickname).toBeDefined();
-    expect(nickname!.notNull).toBe(false);
-    expect(nickname!.getSQLType()).toBe("text");
+  it("⑬ users 扩展 better-auth 字段、email 必填，且移除 password_hash / nickname", () => {
+    const byName = columnsByName(users);
 
-    const gender = byName.get("gender");
-    expect(gender).toBeDefined();
-    expect(gender!.notNull).toBe(false);
-    expect(gender!.getSQLType()).toBe("text");
+    const name = byName.get("name");
+    expect(name).toBeDefined();
+    expect(name!.notNull).toBe(true);
+    expect(name!.getSQLType()).toBe("text");
+
+    const emailVerified = byName.get("email_verified");
+    expect(emailVerified).toBeDefined();
+    expect(emailVerified!.notNull).toBe(true);
+    expect(emailVerified!.getSQLType()).toBe("boolean");
+    expect(emailVerified!.hasDefault).toBe(true);
+    expect(emailVerified!.default).toBe(false);
+
+    const image = byName.get("image");
+    expect(image).toBeDefined();
+    expect(image!.notNull).toBe(false);
+    expect(image!.getSQLType()).toBe("text");
+
+    const displayUsername = byName.get("display_username");
+    expect(displayUsername).toBeDefined();
+    expect(displayUsername!.notNull).toBe(true);
+    expect(displayUsername!.getSQLType()).toBe("text");
+
+    const updatedAt = byName.get("updated_at");
+    expect(updatedAt).toBeDefined();
+    expect(updatedAt!.notNull).toBe(true);
+    expect(updatedAt!.getSQLType()).toBe("timestamp with time zone");
+    expect(updatedAt!.hasDefault).toBe(true);
 
     const email = byName.get("email");
     expect(email).toBeDefined();
-    expect(email!.notNull).toBe(false);
-    expect(email!.getSQLType()).toBe("text");
+    expect(email!.notNull).toBe(true);
     expect(email!.isUnique).toBe(true);
     expect(email!.uniqueName).toBe("users_email_unique");
 
-    const phone = byName.get("phone");
-    expect(phone).toBeDefined();
-    expect(phone!.notNull).toBe(false);
-    expect(phone!.getSQLType()).toBe("text");
-    expect(phone!.isUnique).toBe(true);
-    expect(phone!.uniqueName).toBe("users_phone_unique");
+    // better-auth 将密码迁到 accounts.password；旧自研列必须消失。
+    expect(byName.has("password_hash")).toBe(false);
+    expect(byName.has("nickname")).toBe(false);
+  });
+
+  it("⑭ sessions / accounts / verifications 三表存在且列形状符合 better-auth 模型", () => {
+    const sessionColumns = columnsByName(sessions);
+    expect(sessionColumns.has("user_id")).toBe(true);
+    expect(sessionColumns.get("user_id")!.notNull).toBe(true);
+    expect(sessionColumns.has("expires_at")).toBe(true);
+    expect(sessionColumns.get("expires_at")!.notNull).toBe(true);
+    expect(sessionColumns.has("ip_address")).toBe(true);
+    expect(sessionColumns.get("ip_address")!.notNull).toBe(false);
+    expect(sessionColumns.has("user_agent")).toBe(true);
+    expect(sessionColumns.get("user_agent")!.notNull).toBe(false);
+    expect(sessionColumns.has("created_at")).toBe(true);
+    expect(sessionColumns.has("updated_at")).toBe(true);
+
+    const token = sessionColumns.get("token");
+    expect(token).toBeDefined();
+    expect(token!.notNull).toBe(true);
+    expect(token!.isUnique).toBe(true);
+    expect(token!.uniqueName).toBe("sessions_token_unique");
+
+    const accountColumns = columnsByName(accounts);
+    expect(accountColumns.has("account_id")).toBe(true);
+    expect(accountColumns.get("account_id")!.notNull).toBe(true);
+    expect(accountColumns.has("provider_id")).toBe(true);
+    expect(accountColumns.get("provider_id")!.notNull).toBe(true);
+    expect(accountColumns.has("password")).toBe(true);
+    expect(accountColumns.get("password")!.notNull).toBe(false);
+    expect(accountColumns.has("user_id")).toBe(true);
+
+    const verificationColumns = columnsByName(verifications);
+    expect(verificationColumns.has("identifier")).toBe(true);
+    expect(verificationColumns.get("identifier")!.notNull).toBe(true);
+    expect(verificationColumns.has("value")).toBe(true);
+    expect(verificationColumns.get("value")!.notNull).toBe(true);
+    expect(verificationColumns.has("expires_at")).toBe(true);
+    expect(verificationColumns.get("expires_at")!.notNull).toBe(true);
+    expect(verificationColumns.has("created_at")).toBe(true);
+    expect(verificationColumns.has("updated_at")).toBe(true);
+
+    const indexNames = (table: Parameters<typeof getTableConfig>[0]) =>
+      getTableConfig(table).indexes.map((item) => item.config.name);
+
+    expect(indexNames(sessions)).toContain("sessions_user_id_idx");
+    expect(indexNames(accounts)).toContain("accounts_user_id_idx");
+    expect(indexNames(verifications)).toContain("verifications_identifier_idx");
   });
 });

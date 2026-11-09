@@ -11,6 +11,9 @@ const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../../drizzle", import.meta.
 
 /** 需要清空的业务表（单条 TRUNCATE ... CASCADE 一次清空）；必须与 schema.ts 的业务表保持一致，并与 e2e/global-setup.ts 的列表逐表同步。 */
 const TRUNCATE_TABLES = [
+  "sessions",
+  "accounts",
+  "verifications",
   "notifications",
   "comments",
   "subtasks",

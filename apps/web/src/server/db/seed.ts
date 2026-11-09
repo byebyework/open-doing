@@ -15,14 +15,14 @@
  * 这样无论在哪一天执行 seed，「今天/明天/逾期」的相对状态都与原型一致。
  *
  * 说明：
- * - 密码统一为 `seed-password`，哈希参数与注册流程一致（@node-rs/argon2 默认参数，Argon2id）。
+ * - 种子用户只写入 better-auth 的 user 模型字段（`name` / `email`
+ *   / `displayUsername`）；密码凭据存于 `accounts`，由注册链路建立。
  * - 角色映射与原型一致：周牧为团队所有者（owner），林夏为管理员（admin），
  *   其余成员为 member。owner 仅用于转让/解散等重要操作，管理员可重命名、
  *   邀请、移除成员和管理项目。
  * - 仅读取 `DATABASE_URL`（开发库），绝不触碰测试库 / e2e 库。
  */
 import type { TaskStatus } from "@open-doing/types";
-import { hash } from "@node-rs/argon2";
 import { eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -44,9 +44,6 @@ import {
 
 /** 迁移目录：apps/web/drizzle（相对本文件定位，不依赖执行 cwd）。 */
 const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../../drizzle", import.meta.url));
-
-/** 所有种子账号统一密码（仅用于本地开发，切勿用于生产）。 */
-const SEED_PASSWORD = "seed-password";
 
 interface SeedUser {
   username: string;
@@ -521,8 +518,6 @@ async function seed(): Promise<void> {
     }
 
     const today = todayInShanghai();
-    // 所有账号密码相同：只计算一次哈希即可（参数与注册流程一致）。
-    const passwordHash = await hash(SEED_PASSWORD);
 
     const summary = await db.transaction(async (tx) => {
       const userRows = await tx
@@ -531,9 +526,12 @@ async function seed(): Promise<void> {
           SEED_USERS.map((user) => ({
             uid: user.uid,
             username: user.username,
-            // 种子数据的展示名沿用原型里的用户名（如「林夏」）。
-            nickname: user.username,
-            passwordHash,
+            // 展示名沿用原型里的用户名（如「林夏」），即原 nickname 语义。
+            name: user.username,
+            // 邮箱唯一且小写；种子数据以用户名为前缀。
+            email: `${user.username.toLowerCase()}@example.com`,
+            emailVerified: false,
+            displayUsername: user.username,
             createdAt: timestampFromOffset(today, -30, 9),
           })),
         )
@@ -692,7 +690,7 @@ async function seed(): Promise<void> {
       `seed 完成：${summary.users} 位用户、1 个团队、${summary.projects} 个项目、` +
         `${summary.tasks} 个任务、${summary.subtasks} 个子任务、${summary.comments} 条评论。`,
     );
-    console.log("登录账号：林夏（doing_x7k2m9），密码：seed-password。");
+    console.log("种子用户：林夏（doing_x7k2m9）。");
   } finally {
     await sqlClient.end({ timeout: 5 });
   }

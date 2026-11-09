@@ -10,7 +10,10 @@
  * 4. 级联删除路径全部落在外键 `onDelete` 上，作为应用层二次确认后的兜底。
  * 5. 通知幂等索引 `(user_id, task_id, type) WHERE task_id IS NOT NULL`
  *    是 N-3 幂等投递的数据库依据；`task_id IS NULL` 的行不占用该部分唯一索引。
- * 6. v1 不建 sessions 表（jose 无状态签名 cookie）。
+ * 6. 认证由 better-auth 负责：`users` 即其 user 模型（`name` / `email`
+ *    / `emailVerified` / `image` / `displayUsername`），另有 `sessions`
+ *    / `accounts` / `verifications` 三表；密码存于 `accounts.password`，
+ *    不再有 `users.password_hash` / `users.nickname`。
  * 7. 团队入群码 `teams.join_code` 由应用层生成（8 位、31 字符集），全局唯一；
  *    唯一性落为独立的表级唯一索引。
  *    `join_code_enabled` 控制该团队是否接受凭码加入申请。
@@ -52,19 +55,30 @@ const uuidPk = () => uuid("id").primaryKey().defaultRandom();
 /** UUID 外键列（可空性由调用方 `.notNull()` 决定）。 */
 const uuidRef = (name: string) => uuid(name);
 
-/** 用户：用户名 + 密码登录；昵称 / 性别 / 邮箱 / 电话为可选资料；uid 仅用于邀请。 */
+/**
+ * 用户：同时充当 better-auth 的 `user` 模型。
+ *
+ * - 字段名与 better-auth 的 user 模型一一对应（TS 属性名），列名保持 snake_case；
+ * - `username` / `displayUsername` 由 username 插件使用（大小写敏感，
+ *   `usernameNormalization: false`）；
+ * - 旧自研密码列已移除，密码存于 `accounts.password`；
+ * - `name` 承载展示名（原 nickname 语义），`email` 必填且全库唯一。
+ */
 export const users = pgTable("users", {
   id: uuidPk(),
+  // 业务 UID（doing_xxxx），仅用于邀请；与 better-auth 字段无关。
   uid: text("uid").notNull().unique(),
   username: text("username").notNull().unique(),
-  passwordHash: text("password_hash").notNull(),
-  // 展示名（可重复，不唯一）；为空时由应用层回退到 username。
-  nickname: text("nickname"),
+  // 展示名（可重复，不唯一），对应原 nickname。
+  name: text("name").notNull(),
+  // 邮箱必填、全库唯一；大小写不敏感语义，写入前由应用层 lowercase 归一化。
+  email: text("email").notNull().unique(),
+  emailVerified: boolean("email_verified").notNull().default(false),
+  image: text("image"),
+  // username 插件的展示用户名（大小写敏感，不归一化）。
+  displayUsername: text("display_username").notNull(),
   // 可选资料：NULL 表示未填写。
   gender: text("gender").$type<Gender>(),
-  // 邮箱 / 电话：全库唯一，均可空（阶段 A 保持 nullable）。
-  // 邮箱语义上大小写不敏感，写入前由应用层 lowercase 归一化。
-  email: text("email").unique(),
   phone: text("phone").unique(),
   // 个人设置：临期 / 逾期提醒开关，默认开启；存量用户由 DEFAULT 回填。
   dueSoonReminderEnabled: boolean("due_soon_reminder_enabled").notNull().default(true),
@@ -72,7 +86,64 @@ export const users = pgTable("users", {
   // 个人设置：界面语言（'zh' | 'en'），默认中文；账号级偏好，登录后每请求生效。
   language: text("language").notNull().default("zh"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/** better-auth 会话：token 唯一，userId 级联删除。 */
+export const sessions = pgTable(
+  "sessions",
+  {
+    id: uuidPk(),
+    userId: uuidRef("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    token: text("token").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("sessions_user_id_idx").on(t.userId)],
+);
+
+/** better-auth 账号：密码凭据（providerId = "credential"）存于 password。 */
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: uuidPk(),
+    userId: uuidRef("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    accountId: text("account_id").notNull(),
+    providerId: text("provider_id").notNull(),
+    accessToken: text("access_token"),
+    refreshToken: text("refresh_token"),
+    accessTokenExpiresAt: timestamp("access_token_expires_at", { withTimezone: true }),
+    refreshTokenExpiresAt: timestamp("refresh_token_expires_at", { withTimezone: true }),
+    scope: text("scope"),
+    idToken: text("id_token"),
+    // 仅 email/password 凭据账号有值；NULL 表示 OAuth 等无密码账号。
+    password: text("password"),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("accounts_user_id_idx").on(t.userId)],
+);
+
+/** better-auth 验证码 / 一次性令牌。 */
+export const verifications = pgTable(
+  "verifications",
+  {
+    id: uuidPk(),
+    identifier: text("identifier").notNull(),
+    value: text("value").notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("verifications_identifier_idx").on(t.identifier)],
+);
 
 /**
  * 注册码（封测）：凭码注册，一码多用、固定次数上限。
