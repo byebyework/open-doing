@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { getSessionUserId } from "@/features/auth/session";
+import { getCurrentUser } from "@/features/auth/session";
 import { getUnreadNotificationCount, listNotifications } from "@/features/notifications/queries";
 
 /** 轮询列表默认条数（与查询层一致）。 */
@@ -31,14 +31,15 @@ function parseLimit(raw: string | null): number {
  * GET /api/notifications —— 通知中心轮询读接口。
  *
  * 未登录 401；登录后只看本人通知，返回未读数与按创建时间倒序的列表。
- * Route Handler 默认不缓存（Next 16），且 `getSessionUserId()` 读取 cookies
+ * Route Handler 默认不缓存（Next 16），且 `getCurrentUser()` 读取请求头
  * 属于请求期数据，无需额外 `export const dynamic`。
  */
 export async function GET(request: NextRequest) {
-  const userId = await getSessionUserId();
-  if (!userId) {
+  const user = await getCurrentUser();
+  if (!user) {
     return NextResponse.json({ ok: false }, { status: 401 });
   }
+  const userId = user.id;
 
   const limit = parseLimit(request.nextUrl.searchParams.get("limit"));
   const [unreadCount, items] = await Promise.all([

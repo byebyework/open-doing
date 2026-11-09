@@ -5,7 +5,7 @@ import {
   E2E_CRON_SECRET,
   E2E_DATABASE_URL,
   E2E_PORT,
-  E2E_SESSION_SECRET,
+  E2E_AUTH_SECRET,
 } from "./e2e/utils/env";
 
 /**
@@ -41,7 +41,7 @@ export default defineConfig({
     timeout: 180_000,
     env: {
       DATABASE_URL: E2E_DATABASE_URL,
-      SESSION_SECRET: E2E_SESSION_SECRET,
+      BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
       CRON_SECRET: E2E_CRON_SECRET,
       NEXT_TELEMETRY_DISABLED: "1",
     },

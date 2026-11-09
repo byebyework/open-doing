@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { registerAction } from "./actions";
-import { AuthError, changePassword } from "./service";
+import { AuthError } from "./service";
 
 /**
  * AuthError 的 i18n 通道（可选第四参）：
@@ -23,15 +23,6 @@ describe("AuthError i18n channel", () => {
     expect(result).toEqual({
       ok: false,
       errors: { registrationCode: "请输入注册码" },
-    });
-  });
-
-  it("修改密码的新密码长度错误携带 key（长度校验先于数据库访问）", async () => {
-    await expect(
-      changePassword({ userId: "u", oldPassword: "a", newPassword: "short" }),
-    ).rejects.toMatchObject({
-      field: "newPassword",
-      i18n: { key: "newPasswordMinLength", params: { min: 8 } },
     });
   });
 });

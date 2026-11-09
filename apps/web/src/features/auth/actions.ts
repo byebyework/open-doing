@@ -1,21 +1,19 @@
 "use server";
 
 import type { User } from "@open-doing/types";
+import { headers } from "next/headers";
 
-import { mapAuthError } from "./auth-error";
+import { mapAuthError, readAuthErrorCode } from "./auth-error";
 import { normalizeRegistrationCode } from "./registration-codes";
 import {
   AuthError,
-  changePassword,
-  login,
-  logout,
-  toRegisteredUser,
   validateRegistration,
   type AuthInput,
 } from "./service";
 import { auth } from "./server";
-import { createSession, getCurrentUser } from "./session";
+import { getCurrentUser } from "./session";
 import { standardFailuresForRequest } from "@/lib/action-failure";
+import { toDomainUser } from "@/features/users/service";
 
 /**
  * Server Action 统一返回值（全仓复用）：
@@ -93,7 +91,7 @@ export async function registerAction(input: AuthInput): Promise<ActionResult<Use
 
     const result = await auth.api.signUpEmail({ body: signUpBody });
 
-    return { ok: true, data: toRegisteredUser(result.user) };
+    return { ok: true, data: toDomainUser(result.user) };
   } catch (error) {
     const mapped = await mapAuthError(error);
     if (mapped) {
@@ -101,7 +99,10 @@ export async function registerAction(input: AuthInput): Promise<ActionResult<Use
       return {
         ok: false,
         errors: {
-          [mapped.field]: failures.custom(`auth.${mapped.i18nKey}`).errors.form!,
+          [mapped.field]: failures.custom(
+            `auth.${mapped.i18nKey}`,
+            mapped.params,
+          ).errors.form!,
         },
       };
     }
@@ -109,46 +110,114 @@ export async function registerAction(input: AuthInput): Promise<ActionResult<Use
   }
 }
 
+/**
+ * 登录（better-auth username 插件）。
+ *
+ * 不存在的用户名与错误密码统一映射为 `auth.invalidCredentials`，
+ * 防止通过错误信息枚举已注册用户名；未知错误同样回落到该文案。
+ * `signInUsername` 成功后会创建 sessions 行并由 nextCookies 写入
+ * 会话 cookie，登录后的下一个请求即可通过 `getCurrentUser` 识别。
+ */
 export async function loginAction(input: AuthInput): Promise<ActionResult<User>> {
+  const username = typeof input?.username === "string" ? input.username.trim() : "";
+  const password = typeof input?.password === "string" ? input.password : "";
+
+  if (!username || !password) {
+    return (await standardFailuresForRequest()).custom("auth.invalidCredentials");
+  }
+
   try {
-    const user = await login(input);
-    await createSession(user.id);
-    return { ok: true, data: user };
+    const result = await auth.api.signInUsername({
+      body: { username, password },
+      headers: await headers(),
+    });
+    return { ok: true, data: toDomainUser(result.user) };
   } catch (error) {
-    return toFailure(error, "loginFailed");
+    const mapped = await mapAuthError(error);
+    if (mapped) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [mapped.field]: failures.custom(
+            `auth.${mapped.i18nKey}`,
+            mapped.params,
+          ).errors.form!,
+        },
+      };
+    }
+
+    console.error("[auth] 登录失败", error);
+    return (await standardFailuresForRequest()).custom("auth.invalidCredentials");
   }
 }
 
 /**
- * 修改当前会话用户的密码。
+ * 修改当前会话用户的密码（better-auth `changePassword`）。
  *
- * 个人设置页调用；未登录直接返回表单错误、不重定向。成功返回
- * `true`，会话不变（无状态 JWT），用户保持登录。
+ * 个人设置页调用；未登录直接返回表单错误、不重定向。
+ * `revokeOtherSessions: true` 删除该用户的所有旧会话并下发新会话 cookie：
+ * 当前设备保持登录，其它设备上的旧 session 立即失效。
+ * 旧密码错误落 `oldPassword`；新密码过短落 `newPassword`。
  */
 export async function changePasswordAction(input: {
   oldPassword: string;
   newPassword: string;
 }): Promise<ActionResult<true>> {
-  try {
-    const user = await getCurrentUser();
-    if (!user) {
-      return (await standardFailuresForRequest()).notLoggedIn();
-    }
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
 
-    await changePassword({
-      userId: user.id,
-      oldPassword: input?.oldPassword,
-      newPassword: input?.newPassword,
+  const currentPassword =
+    typeof input?.oldPassword === "string" ? input.oldPassword : "";
+  const newPassword =
+    typeof input?.newPassword === "string" ? input.newPassword : "";
+
+  try {
+    await auth.api.changePassword({
+      body: { currentPassword, newPassword, revokeOtherSessions: true },
+      headers: await headers(),
     });
     return { ok: true, data: true };
   } catch (error) {
+    const code = readAuthErrorCode(error);
+
+    // 当前密码错误：better-auth 抛 INVALID_PASSWORD，改密表单落到 oldPassword。
+    if (code === "INVALID_PASSWORD") {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          oldPassword: failures.custom("auth.oldPasswordIncorrect").errors.form!,
+        },
+      };
+    }
+
+    const mapped = await mapAuthError(error);
+    if (mapped) {
+      const failures = await standardFailuresForRequest();
+      // 通用映射里密码字段叫 password；改密表单的新密码字段叫 newPassword。
+      const field = mapped.field === "password" ? "newPassword" : mapped.field;
+      return {
+        ok: false,
+        errors: {
+          [field]: failures.custom(
+            `auth.${mapped.i18nKey}`,
+            mapped.params,
+          ).errors.form!,
+        },
+      };
+    }
+
     return toFailure(error, "changePasswordFailed");
   }
 }
 
+/** 登出：删除当前 sessions 行并清除会话 cookie（better-auth `signOut`）。 */
 export async function logoutAction(): Promise<ActionResult<true>> {
   try {
-    await logout();
+    await auth.api.signOut({ headers: await headers() });
     return { ok: true, data: true };
   } catch (error) {
     return toFailure(error, "signOutFailed");

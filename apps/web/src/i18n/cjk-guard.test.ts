@@ -58,7 +58,6 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
 
   // ── 启动期 / 环境错误（开发者面向，进程级 throw，无 UI） ──
   { prefix: "apps/web/src/features/auth/server.ts", reason: "BETTER_AUTH_SECRET 缺失的启动期 throw" },
-  { prefix: "apps/web/src/features/auth/session.ts", reason: "SESSION_SECRET 缺失等启动期 throw" },
   { prefix: "apps/web/src/server/db/client.ts", reason: "DATABASE_URL 缺失启动期 throw" },
   { prefix: "apps/web/src/server/db/testing.ts", reason: "TEST_DATABASE_URL 缺失启动期 throw" },
   { prefix: "apps/web/src/lib/slug.ts", reason: "slug 冲突超限的进程级 throw" },

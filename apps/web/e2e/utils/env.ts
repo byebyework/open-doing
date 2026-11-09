@@ -7,7 +7,7 @@
  * 约束（对应 Track X Task 2 / Review Focus 1）：
  * - DATABASE_URL 只能指向独立的 Playwright 库 `open_doing_e2e`；
  * - 绝不能指向开发库 `open_doing` 或 Vitest 测试库 `open_doing_test`；
- * - SESSION_SECRET / CRON_SECRET 仅为测试值，不用于任何真实环境。
+ * - BETTER_AUTH_SECRET / CRON_SECRET 仅为测试值，不用于任何真实环境。
  */
 /**
  * 连接参数与 `scripts/e2e-with-db-guard.sh` 保持一致：默认本机 5433（docker
@@ -26,7 +26,7 @@ const E2E_DB_PORT = process.env.PGPORT ?? process.env.PG_PORT ?? "5433";
 
 export const E2E_DATABASE_URL = `postgres://${E2E_DB_USER}:${E2E_DB_PASSWORD}@${E2E_DB_HOST}:${E2E_DB_PORT}/open_doing_e2e`;
 
-export const E2E_SESSION_SECRET = "e2e-session-secret-not-for-production";
+export const E2E_AUTH_SECRET = "e2e-session-secret-not-for-production";
 export const E2E_CRON_SECRET = "e2e-cron-secret-not-for-production";
 
 /** e2e dev server 端口：与宿主机 `pnpm dev` (3000) 错开。 */

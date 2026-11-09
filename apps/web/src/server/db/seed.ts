@@ -15,14 +15,17 @@
  * 这样无论在哪一天执行 seed，「今天/明天/逾期」的相对状态都与原型一致。
  *
  * 说明：
- * - 种子用户只写入 better-auth 的 user 模型字段（`name` / `email`
- *   / `displayUsername`）；密码凭据存于 `accounts`，由注册链路建立。
+ * - 种子用户写入 better-auth 的 user 模型字段（`name` / `email`
+ *   / `displayUsername`），同时写入 credential 账号行，密码为
+ *   `seed-password`（AGENTS.md 记录的开发登录方式）；
+ * - 密码哈希使用 better-auth 的 `hashPassword`（与登录校验同一算法）。
  * - 角色映射与原型一致：周牧为团队所有者（owner），林夏为管理员（admin），
  *   其余成员为 member。owner 仅用于转让/解散等重要操作，管理员可重命名、
  *   邀请、移除成员和管理项目。
  * - 仅读取 `DATABASE_URL`（开发库），绝不触碰测试库 / e2e 库。
  */
 import type { TaskStatus } from "@open-doing/types";
+import { hashPassword } from "better-auth/crypto";
 import { eq, or } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
@@ -33,6 +36,7 @@ import { generateJoinCode } from "../../lib/join-code";
 import { todayInShanghai } from "../../lib/today";
 import * as schema from "./schema";
 import {
+  accounts,
   comments,
   projects,
   subtasks,
@@ -520,6 +524,8 @@ async function seed(): Promise<void> {
     }
 
     const today = todayInShanghai();
+    // 与 better-auth 登录校验使用同一哈希算法；5 个种子用户共用同一开发密码。
+    const seedPasswordHash = await hashPassword("seed-password");
 
     const summary = await db.transaction(async (tx) => {
       const userRows = await tx
@@ -540,6 +546,21 @@ async function seed(): Promise<void> {
         .returning({ id: users.id, username: users.username });
       const userIdByName = new Map(
         userRows.map((row) => [row.username, row.id] as const),
+      );
+
+      // better-auth credential 账号：accountId 与 userId 相同，
+      // password 存 scrypt 哈希；没有这行，种子用户无法登录。
+      await tx.insert(accounts).values(
+        SEED_USERS.map((user) => {
+          const userId = requireId(userIdByName, user.username);
+          return {
+            userId,
+            accountId: userId,
+            providerId: "credential",
+            password: seedPasswordHash,
+            createdAt: timestampFromOffset(today, -30, 9),
+          };
+        }),
       );
 
       const [team] = await tx

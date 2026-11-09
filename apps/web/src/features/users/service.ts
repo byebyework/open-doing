@@ -13,30 +13,51 @@ import {
   PHONE_PATTERN,
 } from "./constants";
 
-/** users 表中可映射为领域模型的列。 */
+/** users 表中可映射为领域模型的列（展示名列是 `name`）。 */
 type UserRow = {
   id: string;
   uid: string;
   username: string;
-  nickname: string | null;
+  name: string;
   gender: Gender | null;
   email: string | null;
   phone: string | null;
   createdAt: Date;
 };
 
-/** 数据库行 -> 可跨边界传递的领域 User（时间统一为 ISO 字符串）。 */
-export function toUser(row: UserRow): User {
+/**
+ * better-auth user / 数据库行 -> 可跨边界传递的领域 User。
+ *
+ * 领域模型（packages/types）保持不变：`nickname` 语义由 better-auth 的
+ * `name` 列承载；时间统一为 ISO 字符串。better-auth 返回的可选 additional
+ * fields（uid/gender/phone）缺失时按空值归一化。
+ */
+export function toDomainUser(user: {
+  id: string;
+  uid?: string | null;
+  username?: string | null;
+  name: string;
+  gender?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  createdAt: Date | string;
+}): User {
   return {
-    id: row.id,
-    uid: row.uid,
-    username: row.username,
-    nickname: row.nickname,
-    gender: row.gender,
-    email: row.email,
-    phone: row.phone,
-    createdAt: row.createdAt.toISOString(),
+    id: user.id,
+    uid: user.uid ?? "",
+    username: user.username ?? "",
+    nickname: user.name,
+    gender: (user.gender as Gender | null | undefined) ?? null,
+    email: user.email ?? null,
+    phone: user.phone ?? null,
+    createdAt:
+      user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
   };
+}
+
+/** 数据库行 -> 领域 User。 */
+export function toUser(row: UserRow): User {
+  return toDomainUser(row);
 }
 
 /** 按内部主键查询用户；不存在返回 null。 */
@@ -55,40 +76,6 @@ export async function findByUid(
 ): Promise<User | null> {
   const [row] = await client.select().from(users).where(eq(users.uid, uid)).limit(1);
   return row ? toUser(row) : null;
-}
-
-/** 登录凭据：领域 User + 仅供 auth service 使用的密码哈希。 */
-export interface UserCredentials {
-  user: User;
-  passwordHash: string;
-}
-
-/** 按用户名读取登录凭据；不存在返回 null。 */
-export async function getCredentialsByUsername(
-  username: string,
-  client: DbClient = db,
-): Promise<UserCredentials | null> {
-  const [row] = await client
-    .select()
-    .from(users)
-    .where(eq(users.username, username))
-    .limit(1);
-
-  if (!row) return null;
-  return { user: toUser(row), passwordHash: row.passwordHash };
-}
-
-/** 用户名是否已被占用（注册前置检查）。 */
-export async function usernameExists(
-  username: string,
-  client: DbClient = db,
-): Promise<boolean> {
-  const [row] = await client
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.username, username))
-    .limit(1);
-  return Boolean(row);
 }
 
 /** 个人设置：提醒开关领域模型（可跨边界传递）。 */
@@ -222,9 +209,9 @@ export interface UserProfile {
   phone: string | null;
 }
 
-/** 只取四个可选资料列，避免把密码哈希等字段带出。 */
+/** 只取四个资料列；展示名列 `name` 在领域层继续叫 `nickname`。 */
 const profileColumns = {
-  nickname: users.nickname,
+  nickname: users.name,
   gender: users.gender,
   email: users.email,
   phone: users.phone,
@@ -262,8 +249,9 @@ export async function getProfile(
  * 契约（表单是唯一写入口）：
  * - `nickname`：未传/`null`/空字符串 → **保持当前昵称**（不清空、不重新生成）；
  *   非空则 trim 并校验长度 ≤50。
- * - `gender` / `email` / `phone`：未传 → 保持当前值；显式 `null` 或空字符串
- *   → 清空为 null；非空则 trim 后按枚举 / 邮箱 / 电话规则校验（邮箱小写）。
+ * - `gender` / `phone`：未传 → 保持当前值；显式 `null` 或空字符串 → 清空为 null。
+ * - `email`：better-auth 要求必填（列 NOT NULL），空字符串按「保持当前值」处理，
+ *   避免把用户已有的登录邮箱清空；非空则 trim 后校验格式（小写）。
  */
 function buildProfilePatch(input: Partial<UserProfile>): Partial<UserProfile> {
   const patch: Partial<UserProfile> = {};
@@ -332,10 +320,28 @@ export async function updateProfile(
     return getProfile(input.userId, client);
   }
 
+  // 领域层字段 `nickname` 落库到 better-auth 的展示名列 `name`。
+  // better-auth 的 email 列 NOT NULL：清空邮箱（null）视为不修改，保留原值。
+  const dbPatch: {
+    name?: string;
+    gender?: Gender | null;
+    email?: string;
+    phone?: string | null;
+  } = {};
+  if (patch.nickname) dbPatch.name = patch.nickname;
+  if (patch.gender !== undefined) dbPatch.gender = patch.gender;
+  if (patch.email) dbPatch.email = patch.email;
+  if (patch.phone !== undefined) dbPatch.phone = patch.phone;
+
+  // 例如只传了空邮箱：没有可写列，直接返回当前资料（不执行空 SET）。
+  if (Object.keys(dbPatch).length === 0) {
+    return getProfile(input.userId, client);
+  }
+
   try {
     const [row] = await client
       .update(users)
-      .set(patch)
+      .set(dbPatch)
       .where(eq(users.id, input.userId))
       .returning(profileColumns);
 

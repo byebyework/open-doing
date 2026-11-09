@@ -6,7 +6,7 @@
  * 避免客户端组件把数据库等服务端模块打进浏览器包。
  */
 
-/** 昵称最大长度（与 users.nickname 的 varchar(50) 一致）。 */
+/** 昵称最大长度（展示名列 users.name 的 text 长度约束）。 */
 export const NICKNAME_MAX_LENGTH = 50;
 
 /** 邮箱格式：与服务端 updateProfile 的校验一致。 */

@@ -12,7 +12,7 @@ export const USERNAME_MAX_LENGTH = 20;
 /** 密码最短 8 位。 */
 export const PASSWORD_MIN_LENGTH = 8;
 
-/** 昵称最大长度（与 users.nickname 的 varchar(50) 一致）。 */
+/** 昵称最大长度（展示名写入 better-auth 的 users.name 列）。 */
 export const NICKNAME_MAX_LENGTH = 50;
 
 /** 可选资料格式：注册表单与服务端校验共用同一规则。 */

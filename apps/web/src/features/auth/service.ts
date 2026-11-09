@@ -1,25 +1,17 @@
 import { createHash } from "node:crypto";
 
-import type { Gender, User } from "@open-doing/types";
-import { hashPassword, verifyPassword } from "better-auth/crypto";
-import { verify } from "@node-rs/argon2";
-import { and, eq } from "drizzle-orm";
+import type { Gender } from "@open-doing/types";
 
-import { getCredentialsByUsername } from "@/features/users/service";
 import type { DomainErrorI18n } from "@/lib/domain-error";
-import { db, type DbClient } from "@/server/db/client";
-import { accounts } from "@/server/db/schema";
 
 import {
   EMAIL_PATTERN,
-  INVALID_CREDENTIALS_MESSAGE,
   NICKNAME_MAX_LENGTH,
   PASSWORD_MIN_LENGTH,
   PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
 } from "./constants";
-import { clearSession } from "./session";
 
 export {
   INVALID_CREDENTIALS_MESSAGE,
@@ -217,138 +209,4 @@ export function validateRegistration(input: AuthInput): {
     email: emailValue,
     phone: phoneValue || null,
   };
-}
-
-/**
- * better-auth 注册返回的 user（含 additionalFields）-> 领域 User。
- *
- * `name` 承载展示名（原 nickname 语义）；Task 3 的通用 `toUser` 映射
- * 完成后可由其替代，这里保持注册链路自包含。
- */
-export function toRegisteredUser(user: {
-  id: string;
-  uid?: string | null;
-  username?: string | null;
-  name: string;
-  gender?: string | null;
-  email?: string | null;
-  phone?: string | null;
-  createdAt: Date | string;
-}): User {
-  return {
-    id: user.id,
-    uid: user.uid ?? "",
-    username: user.username ?? "",
-    nickname: user.name,
-    gender: (user.gender as Gender | null | undefined) ?? null,
-    email: user.email ?? null,
-    phone: user.phone ?? null,
-    createdAt:
-      user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
-  };
-}
-
-/**
- * 登录（旧实现，Task 3 接入 better-auth 会话后替换）。
- *
- * 不存在的用户名与错误密码抛出同一个 `INVALID_CREDENTIALS`，
- * 防止通过错误信息枚举已注册用户名。
- */
-export async function login(input: AuthInput, client: DbClient = db): Promise<User> {
-  const username = normalizeUsername(input?.username);
-  const password = normalizePassword(input?.password);
-
-  if (!username || !password) throw invalidCredentials();
-
-  const credentials = await getCredentialsByUsername(username, client);
-  if (!credentials) throw invalidCredentials();
-
-  let passwordMatches = false;
-  try {
-    passwordMatches = await verify(credentials.passwordHash, password);
-  } catch {
-    // 哈希损坏等异常同样按凭据错误处理，不泄露内部状态。
-    passwordMatches = false;
-  }
-
-  if (!passwordMatches) throw invalidCredentials();
-
-  return credentials.user;
-}
-
-export interface ChangePasswordInput {
-  userId: string;
-  oldPassword: string;
-  newPassword: string;
-}
-
-/**
- * 修改密码（旧实现，Task 3 改为 `auth.api.changePassword`）。
- *
- * 密码凭据已迁移到 better-auth 的 `accounts.password`，哈希算法与其
- * 默认 scrypt 保持一致：
- * - 新密码先做长度校验（与注册同一规则），旧密码错误落 `oldPassword`；
- * - 旧密码校验通过后重新哈希写入，绝不明文落库；
- * - 不触碰会话。
- */
-export async function changePassword(
-  input: ChangePasswordInput,
-  client: DbClient = db,
-): Promise<true> {
-  const newPassword = normalizePassword(input?.newPassword);
-
-  // 空密码（长度 0）同样落入该分支：两处共用同一锁定文案。
-  if (newPassword.length < PASSWORD_MIN_LENGTH) {
-    throw new AuthError(
-      "VALIDATION",
-      `新密码至少 ${PASSWORD_MIN_LENGTH} 位`,
-      "newPassword",
-      { key: "newPasswordMinLength", params: { min: PASSWORD_MIN_LENGTH } },
-    );
-  }
-
-  const userId = typeof input?.userId === "string" ? input.userId : "";
-  const [account] = await client
-    .select({ id: accounts.id, password: accounts.password })
-    .from(accounts)
-    .where(and(eq(accounts.userId, userId), eq(accounts.providerId, "credential")))
-    .limit(1);
-
-  const oldPassword = normalizePassword(input?.oldPassword);
-  let oldPasswordMatches = false;
-  if (account?.password) {
-    try {
-      oldPasswordMatches = await verifyPassword({
-        hash: account.password,
-        password: oldPassword,
-      });
-    } catch {
-      // 哈希损坏等异常同样按旧密码错误处理，不泄露内部状态。
-      oldPasswordMatches = false;
-    }
-  }
-
-  if (!oldPasswordMatches) {
-    throw new AuthError("INVALID_CREDENTIALS", "旧密码不正确", "oldPassword", {
-      key: "oldPasswordIncorrect",
-    });
-  }
-
-  await client
-    .update(accounts)
-    .set({ password: await hashPassword(newPassword), updatedAt: new Date() })
-    .where(eq(accounts.id, account.id));
-
-  return true;
-}
-
-/** 登出：清除会话 cookie（旧实现，Task 3 改为 `auth.api.signOut`）。 */
-export async function logout(): Promise<void> {
-  await clearSession();
-}
-
-function invalidCredentials(): AuthError {
-  return new AuthError("INVALID_CREDENTIALS", INVALID_CREDENTIALS_MESSAGE, "form", {
-    key: "invalidCredentials",
-  });
 }

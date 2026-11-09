@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { cache } from "react";
 import { getRequestConfig } from "next-intl/server";
 
-import { getSessionUserId } from "@/features/auth/session";
+import { getCurrentUser } from "@/features/auth/session";
 import { getUserLanguage } from "@/features/users/service";
 
 import {
@@ -19,9 +19,9 @@ import type { AppMessages } from "./translate";
  * 未登录读 cookie;两者皆无回落 zh。见设计文档 §locale 的来源与传递。
  */
 export const getRequestLocale = cache(async (): Promise<AppLocale> => {
-  const userId = await getSessionUserId();
-  if (userId) {
-    const language = await getUserLanguage(userId);
+  const user = await getCurrentUser();
+  if (user) {
+    const language = await getUserLanguage(user.id);
     if (language) return language;
   }
 

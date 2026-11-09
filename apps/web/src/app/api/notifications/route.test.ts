@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { getSessionUserId } from "@/features/auth/session";
+import { getCurrentUser } from "@/features/auth/session";
 import {
   getUnreadNotificationCount,
   listNotifications,
@@ -12,7 +12,7 @@ import { GET } from "./route";
 
 vi.mock("@/features/auth/session", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@/features/auth/session")>();
-  return { ...actual, getSessionUserId: vi.fn() };
+  return { ...actual, getCurrentUser: vi.fn() };
 });
 
 vi.mock("@/features/notifications/queries", async (importOriginal) => {
@@ -20,11 +20,22 @@ vi.mock("@/features/notifications/queries", async (importOriginal) => {
   return { ...actual, getUnreadNotificationCount: vi.fn(), listNotifications: vi.fn() };
 });
 
-const mockGetSessionUserId = vi.mocked(getSessionUserId);
+const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockGetUnreadCount = vi.mocked(getUnreadNotificationCount);
 const mockListNotifications = vi.mocked(listNotifications);
 
 const userId = "00000000-0000-0000-0000-000000000001";
+
+const currentUser = {
+  id: userId,
+  uid: "doing_x7k2m9",
+  username: "林夏",
+  nickname: "林夏",
+  gender: null,
+  email: null,
+  phone: null,
+  createdAt: "2026-10-01T00:00:00.000Z",
+};
 
 const item: NotificationListItem = {
   id: "00000000-0000-0000-0000-000000000002",
@@ -47,7 +58,7 @@ describe("GET /api/notifications", () => {
   });
 
   it("未登录返回 401，不查通知", async () => {
-    mockGetSessionUserId.mockResolvedValue(null);
+    mockGetCurrentUser.mockResolvedValue(null);
 
     const response = await get();
 
@@ -58,7 +69,7 @@ describe("GET /api/notifications", () => {
   });
 
   it("登录后返回未读数与本人通知列表（默认 20 条）", async () => {
-    mockGetSessionUserId.mockResolvedValue(userId);
+    mockGetCurrentUser.mockResolvedValue(currentUser);
     mockGetUnreadCount.mockResolvedValue(1);
     mockListNotifications.mockResolvedValue([item]);
 
@@ -73,7 +84,7 @@ describe("GET /api/notifications", () => {
   it.each(["0", "-5", "abc", "101", "1.5"])(
     "非法 limit=%s 回落默认 20",
     async (limit) => {
-      mockGetSessionUserId.mockResolvedValue(userId);
+      mockGetCurrentUser.mockResolvedValue(currentUser);
       mockGetUnreadCount.mockResolvedValue(0);
       mockListNotifications.mockResolvedValue([]);
 
@@ -84,7 +95,7 @@ describe("GET /api/notifications", () => {
   );
 
   it("合法 limit 透传（1..100）", async () => {
-    mockGetSessionUserId.mockResolvedValue(userId);
+    mockGetCurrentUser.mockResolvedValue(currentUser);
     mockGetUnreadCount.mockResolvedValue(0);
     mockListNotifications.mockResolvedValue([]);
 

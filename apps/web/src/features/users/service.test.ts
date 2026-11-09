@@ -55,9 +55,15 @@ if (!hasTestDatabase) {
 /** 用户夹具：故意不写提醒开关列，让数据库默认值生效。 */
 async function createUser(db: DbClient, username: string) {
   const id = crypto.randomUUID();
-  await db
-    .insert(users)
-    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+  await db.insert(users).values({
+    id,
+    uid: generateUid(),
+    username,
+    // better-auth 行：展示名 / 邮箱 / displayUsername 均为 NOT NULL。
+    name: username,
+    email: `${id}@test.local`,
+    displayUsername: username,
+  });
   return { id };
 }
 
@@ -206,14 +212,19 @@ async function createProfileUser(
   },
 ) {
   const id = crypto.randomUUID();
+  // 领域 nickname -> better-auth `name`；邮箱 NOT NULL，未填时用测试兜底地址。
+  const fallbackEmail = `${id}@test.local`;
   await db.insert(users).values({
     id,
     uid: generateUid(),
     username,
-    passwordHash: "test-hash",
-    ...profile,
+    name: profile.nickname ?? username,
+    displayUsername: username,
+    email: profile.email ?? fallbackEmail,
+    gender: profile.gender,
+    phone: profile.phone,
   });
-  return { id };
+  return { id, fallbackEmail };
 }
 
 describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
@@ -267,6 +278,7 @@ describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
     });
 
     // 空字符串（等价于表单清空）= 归一化为 null；昵称空串不改变当前值。
+    // better-auth 的 email 必填：空邮箱按保持当前值处理，不清空登录邮箱。
     await expect(
       updateProfile(
         {
@@ -281,7 +293,7 @@ describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
     ).resolves.toEqual({
       nickname: "阿岚",
       gender: null,
-      email: null,
+      email: "lan@example.com",
       phone: null,
     });
   });
@@ -345,9 +357,9 @@ describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
 
     // 事务回滚：冲突值没有写进库。
     await expect(getProfile(user.id, db)).resolves.toEqual({
-      nickname: null,
+      nickname: "林夏",
       gender: null,
-      email: null,
+      email: user.fallbackEmail,
       phone: null,
     });
   });

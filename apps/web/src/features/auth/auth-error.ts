@@ -14,13 +14,17 @@
  * Task 3 的登录 / 改密可直接复用本表（INVALID_PASSWORD 在改密场景下
  * 可按需二次覆盖为 oldPassword/oldPasswordIncorrect）。
  */
+import { PASSWORD_MIN_LENGTH } from "./constants";
+
 export interface MappedAuthError {
   field: string;
   i18nKey: string;
+  /** 模板插值参数（如 `{ min: 8 }`），随 i18nKey 一起传给 translator。 */
+  params?: Record<string, string | number>;
 }
 
 /** 从 better-call APIError 中读取错误码；兼容 body.code 与 body.message。 */
-function readErrorCode(error: unknown): string | null {
+export function readAuthErrorCode(error: unknown): string | null {
   if (!error || typeof error !== "object") return null;
 
   const body = (error as { body?: { code?: unknown; message?: unknown } }).body;
@@ -43,7 +47,13 @@ const ERROR_CODE_MAP: Record<string, MappedAuthError> = {
   USER_ALREADY_EXISTS: { field: "email", i18nKey: "emailTaken" },
   USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: { field: "email", i18nKey: "emailTaken" },
   INVALID_EMAIL: { field: "email", i18nKey: "emailInvalid" },
-  PASSWORD_TOO_SHORT: { field: "password", i18nKey: "passwordTooShort" },
+  // 改密场景是 PASSWORD_TOO_SHORT 的首次可达路径：带最小长度参数，
+  // 避免展示一条没有上下文的「密码太短」。
+  PASSWORD_TOO_SHORT: {
+    field: "password",
+    i18nKey: "passwordMinLength",
+    params: { min: PASSWORD_MIN_LENGTH },
+  },
   PASSWORD_TOO_LONG: { field: "password", i18nKey: "passwordTooLong" },
   INVALID_PASSWORD: { field: "form", i18nKey: "invalidCredentials" },
   INVALID_USERNAME_OR_PASSWORD: { field: "form", i18nKey: "invalidCredentials" },
@@ -75,6 +85,6 @@ const ERROR_CODE_MAP: Record<string, MappedAuthError> = {
  * 或数据库状态细分），且调用方始终 `await`。
  */
 export async function mapAuthError(error: unknown): Promise<MappedAuthError | null> {
-  const code = readErrorCode(error);
+  const code = readAuthErrorCode(error);
   return code ? (ERROR_CODE_MAP[code] ?? null) : null;
 }
