@@ -11,6 +11,8 @@
 #
 # 连接 PostgreSQL 的顺序：本机 `psql`（PGPASSWORD）→ docker compose 的
 # `postgres` 服务（`docker compose exec`）。两库名固定为开发库与测试库。
+# 端口变量两种写法都接受：libpq 的 `PGPORT`，以及 docker compose 的
+# `${PG_PORT}` 覆盖变量；两者同时存在时以 `PGPORT` 为准。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,7 +23,7 @@ COMPOSE_FILE="$ROOT_DIR/docker-compose.yml"
 PGUSER="${PGUSER:-open-doing}"
 PGPASSWORD="${PGPASSWORD:-open-doing}"
 PGHOST="${PGHOST:-localhost}"
-PGPORT="${PGPORT:-5433}"
+PGPORT="${PGPORT:-${PG_PORT:-5433}}"
 
 USE_DOCKER=0
 if ! command -v psql >/dev/null 2>&1; then

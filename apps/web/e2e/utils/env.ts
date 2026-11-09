@@ -13,6 +13,8 @@
  * 连接参数与 `scripts/e2e-with-db-guard.sh` 保持一致：默认本机 5433（docker
  * compose 的 PostgreSQL 映射端口），可用 `PGUSER` / `PGPASSWORD` /
  * `PGHOST` / `PGPORT` 覆盖（例如端口冲突时换用其他端口）。
+ * 端口变量两种写法都接受：libpq 的 `PGPORT`，以及 docker compose 的
+ * `${PG_PORT}` 覆盖变量；两者同时存在时以 `PGPORT` 为准。
  * 库名固定为 `open_doing_e2e`，并由 `assertE2EDatabaseUrl` 再次校验。
  */
 const E2E_DB_USER = encodeURIComponent(process.env.PGUSER ?? "open-doing");
@@ -20,7 +22,7 @@ const E2E_DB_PASSWORD = encodeURIComponent(
   process.env.PGPASSWORD ?? "open-doing",
 );
 const E2E_DB_HOST = process.env.PGHOST ?? "localhost";
-const E2E_DB_PORT = process.env.PGPORT ?? "5433";
+const E2E_DB_PORT = process.env.PGPORT ?? process.env.PG_PORT ?? "5433";
 
 export const E2E_DATABASE_URL = `postgres://${E2E_DB_USER}:${E2E_DB_PASSWORD}@${E2E_DB_HOST}:${E2E_DB_PORT}/open_doing_e2e`;
 

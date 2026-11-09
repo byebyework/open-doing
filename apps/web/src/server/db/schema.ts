@@ -16,7 +16,9 @@
  *    `join_code_enabled` 控制该团队是否接受凭码加入申请。
  * 8. `team_invites` / `team_join_requests` 使用 `WHERE status = 'pending'`
  *    的部分唯一索引：同一 (team, invitee) / (team, user) 同时只允许一条
- *    pending 记录；终态（accepted/declined/rescinded/cancelled）不占用。
+ *    pending 记录。终态各自独立：`team_invites` 为
+ *    accepted/declined/rescinded，`team_join_requests` 为
+ *    approved/declined/cancelled；终态不占用唯一索引。
  * 9. 标识/枚举列直接使用 `text`——PostgreSQL 的 text 等值/唯一比较默认
  *    大小写敏感，天然保持精确匹配语义；内容列同样使用 `text`。
  *    时间戳使用 `timestamptz`（存绝对时刻，不依赖会话时区），默认 `now()`；
@@ -154,6 +156,8 @@ export const teamInvites = pgTable(
     respondedAt: timestamp("responded_at", { withTimezone: true }),
   },
   (t) => [
+    // 谓词必须用原始 sql 字符串：drizzle-kit 0.31.11 会把 `.where(eq(...))`
+    // 渲染成 DDL 里的 `$1` 绑定参数，导致 `db:migrate` 失败；不要改回 eq()。
     uniqueIndex("team_invites_pending_team_invitee_unique")
       .on(t.teamId, t.inviteeId)
       .where(sql`${t.status} = 'pending'`),
@@ -179,6 +183,8 @@ export const teamJoinRequests = pgTable(
     }),
   },
   (t) => [
+    // 同 team_invites：谓词必须用原始 sql 字符串，不能用 eq()，否则
+    // drizzle-kit 0.31.11 会渲染出 `$1` 绑定参数使 `db:migrate` 失败。
     uniqueIndex("team_join_requests_pending_team_user_unique")
       .on(t.teamId, t.userId)
       .where(sql`${t.status} = 'pending'`),
