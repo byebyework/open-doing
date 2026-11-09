@@ -616,7 +616,7 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         db,
       );
 
-      // MySQL TIMESTAMP 秒级精度：同秒创建会并列，显式错开创建时间固定排序语义。
+      // 显式错开创建时间，固定列表排序语义（避免同一时刻创建导致顺序不确定）。
       await db
         .update(tasks)
         .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
@@ -691,7 +691,7 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         { teamId: team.id, taskId: task.id, actorId: owner.id, title: "未完成" },
         db,
       );
-      // MySQL TIMESTAMP 秒级精度：同秒创建会并列，显式错开创建时间固定排序语义。
+      // 显式错开创建时间，固定列表排序语义（避免同一时刻创建导致顺序不确定）。
       await db
         .update(subtasks)
         .set({ createdAt: new Date("2026-01-01T00:00:00Z") })

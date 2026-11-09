@@ -334,7 +334,7 @@ describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
     });
     const user = await createProfileUser(db, "林夏");
 
-    // 大小写不同同样冲突：写入前 lowercase，且 MySQL 邮箱 collation 大小写不敏感。
+    // 大小写不同同样冲突：写入前统一 lowercase，唯一索引按归一化后的精确值比较。
     await expect(
       updateProfile({ userId: user.id, email: "TAKEN@example.com" }, db),
     ).rejects.toMatchObject({
