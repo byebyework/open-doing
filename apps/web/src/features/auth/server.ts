@@ -37,6 +37,15 @@ export function getSessionSecret(): string {
 export const auth = betterAuth({
   secret: getSessionSecret(),
   baseURL: process.env.BETTER_AUTH_URL,
+  advanced: {
+    database: {
+      // better-auth 默认生成 32 位字母数字 ID，与库中 `uuid` 主键不兼容
+      // （首次写入即报 invalid input syntax for type uuid）。用 "uuid" 生成
+      // 标准 UUID；drizzle adapter 的 supportsUUIDs 会省略 id，让
+      // `defaultRandom()`（gen_random_uuid()）在库端填充。
+      generateId: "uuid",
+    },
+  },
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {

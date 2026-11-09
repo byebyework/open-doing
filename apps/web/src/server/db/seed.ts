@@ -48,16 +48,18 @@ const MIGRATIONS_FOLDER = fileURLToPath(new URL("../../../drizzle", import.meta.
 interface SeedUser {
   username: string;
   uid: string;
+  /** 邮箱本地部分用 ASCII 拼音，避免中文邮箱触发后续校验问题。 */
+  email: string;
   role: "owner" | "admin" | "member";
 }
 
 /** 5 位成员，UID 与角色对照 docs/prototypes/team-settings.html。 */
 const SEED_USERS: readonly SeedUser[] = [
-  { username: "林夏", uid: "doing_x7k2m9", role: "admin" },
-  { username: "周牧", uid: "doing_8f3qk2", role: "owner" },
-  { username: "陈默", uid: "doing_2vbd81", role: "member" },
-  { username: "苏晓", uid: "doing_5nqc04", role: "member" },
-  { username: "高远", uid: "doing_6wtp77", role: "member" },
+  { username: "林夏", uid: "doing_x7k2m9", email: "linxia@example.com", role: "admin" },
+  { username: "周牧", uid: "doing_8f3qk2", email: "zhoumu@example.com", role: "owner" },
+  { username: "陈默", uid: "doing_2vbd81", email: "chenmo@example.com", role: "member" },
+  { username: "苏晓", uid: "doing_5nqc04", email: "suxiao@example.com", role: "member" },
+  { username: "高远", uid: "doing_6wtp77", email: "gaoyuan@example.com", role: "member" },
 ];
 
 type SeedUsername = (typeof SEED_USERS)[number]["username"];
@@ -528,8 +530,8 @@ async function seed(): Promise<void> {
             username: user.username,
             // 展示名沿用原型里的用户名（如「林夏」），即原 nickname 语义。
             name: user.username,
-            // 邮箱唯一且小写；种子数据以用户名为前缀。
-            email: `${user.username.toLowerCase()}@example.com`,
+            // 邮箱唯一且小写；本地部分为 ASCII 拼音。
+            email: user.email,
             emailVerified: false,
             displayUsername: user.username,
             createdAt: timestampFromOffset(today, -30, 9),

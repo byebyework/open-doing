@@ -447,6 +447,19 @@ describe("better-auth 表结构（schema 元数据）", () => {
     expect(email!.isUnique).toBe(true);
     expect(email!.uniqueName).toBe("users_email_unique");
 
+    // 保留的可选资料列：gender 可空、phone 可空且唯一。
+    const gender = byName.get("gender");
+    expect(gender).toBeDefined();
+    expect(gender!.notNull).toBe(false);
+    expect(gender!.getSQLType()).toBe("text");
+
+    const phone = byName.get("phone");
+    expect(phone).toBeDefined();
+    expect(phone!.notNull).toBe(false);
+    expect(phone!.getSQLType()).toBe("text");
+    expect(phone!.isUnique).toBe(true);
+    expect(phone!.uniqueName).toBe("users_phone_unique");
+
     // better-auth 将密码迁到 accounts.password；旧自研列必须消失。
     expect(byName.has("password_hash")).toBe(false);
     expect(byName.has("nickname")).toBe(false);
