@@ -44,13 +44,13 @@ packages/
 
 - Next.js 16（App Router，Turbopack）+ React 19 + TypeScript
 - antd v6（ConfigProvider 主题令牌、`zh_CN`）+ Tailwind CSS 4（只引 theme/utilities，不引 preflight）
-- MySQL 8.0 + Drizzle ORM / drizzle-kit
+- PostgreSQL 16 + Drizzle ORM / drizzle-kit
 - jose 签名的无状态 httpOnly cookie 会话 + `@node-rs/argon2` 密码哈希
 - Vitest（根级 workspace 配置）+ pnpm workspaces
 
 ## 本地开发（Quickstart）
 
-本地开发形态：**Docker 只运行 MySQL，Next.js 在宿主机直接运行**。编译走原生文件系统，避开 macOS 容器内 Turbopack 编译过慢的问题。以下步骤均在宿主机执行。
+本地开发形态：**Docker 只运行 PostgreSQL，Next.js 在宿主机直接运行**。编译走原生文件系统，避开 macOS 容器内 Turbopack 编译过慢的问题。以下步骤均在宿主机执行。
 
 ### 0. 前置条件
 
@@ -64,7 +64,7 @@ packages/
 pnpm install
 ```
 
-### 2. 启动 MySQL
+### 2. 启动 PostgreSQL
 
 在仓库根目录执行：
 
@@ -72,11 +72,11 @@ pnpm install
 docker compose up -d --wait
 ```
 
-`docker-compose.yml` 现在只定义 `mysql` 一个服务（web 不进容器）；`--wait` 会等健康检查通过再返回。
+`docker-compose.yml` 现在只定义 `postgres` 一个服务（web 不进容器）；`--wait` 会等健康检查通过再返回。
 
-`docker-compose.yml`（仓库根）的 `mysql` 服务使用 `mysql:8.0`（utf8mb4），容器内创建开发库 `open_doing`，并由 `docker/initdb` 下的初始化脚本创建测试库 `open_doing_test`（`01-create-test-db.sh`）与 Playwright e2e 库 `open_doing_e2e`（`02-create-e2e-db.sh`，供 e2e 用例使用）。
+`docker-compose.yml`（仓库根）的 `postgres` 服务使用 `postgres:16`，容器内创建开发库 `open_doing`，并由 `docker/initdb` 下的初始化脚本创建测试库 `open_doing_test`（`01-create-test-db.sh`）与 Playwright e2e 库 `open_doing_e2e`（`02-create-e2e-db.sh`，供 e2e 用例使用）。
 
-- 数据库默认映射宿主机 **3307**（MySQL 默认的 3306 常被本机已有实例占用，与 `apps/web/.env.local` 的默认值一致）。需要换端口时设 `MYSQL_PORT`：它只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
+- 数据库默认映射宿主机 **5433**（PostgreSQL 默认的 5432 常被本机已有实例占用，与 `apps/web/.env.local` 的默认值一致）。需要换端口时设 `PG_PORT`：它只被 Docker Compose 读取，请放在 shell 里或仓库根的 `.env`，**不要**写进 `apps/web/.env.local`；同时把 `.env.local` 里两个连接串的端口改成同一值。
 - `docker/initdb` 中的脚本**只在数据卷为空时执行一次**。若数据卷是早期创建的、`open_doing_test` / `open_doing_e2e` 不存在：`docker compose down -v` 后重新启动（会清空数据），或手动执行 `CREATE DATABASE open_doing_test;` / `CREATE DATABASE open_doing_e2e;`。
 
 ### 3. 配置环境变量
@@ -177,7 +177,7 @@ pnpm test         # 运行全部 Vitest 用例（= pnpm test:run）
 
 前置条件：
 
-- MySQL 已启动（`docker compose up -d --wait`）；e2e 库 `open_doing_e2e` 由 `docker/initdb/02-create-e2e-db.sh` 在数据卷初始化时创建。
+- PostgreSQL 已启动（`docker compose up -d --wait`）；e2e 库 `open_doing_e2e` 由 `docker/initdb/02-create-e2e-db.sh` 在数据卷初始化时创建。
 - 首次运行需安装与 `@playwright/test` 版本匹配的 Chromium：`pnpm --filter @open-doing/web exec playwright install chromium`。
 
 运行（在仓库根目录）：

@@ -9,7 +9,7 @@ This document describes the target architecture and how the system is built. Wha
 A monolithic web application (no microservices):
 
 - **Next.js (App Router, React, Turbopack)** hosts pages, Server Actions, and Route Handlers in one app.
-- **MySQL 8.0** is the only persistent store; **Drizzle ORM** handles schema, migrations, and queries.
+- **PostgreSQL 16** is the only persistent store; **Drizzle ORM** handles schema, migrations, and queries.
 - Scheduled scans (due-soon/overdue notifications) run through a protected Route Handler triggered by an external cron — no separate worker process.
 - No email sending, no third-party services; no external dependencies other than the database and cron.
 
@@ -23,7 +23,7 @@ apps/web (Next.js)
   └── server/         Infrastructure: db, auth, session
   │
   ▼
-MySQL 8.0 (Docker for local development)
+PostgreSQL 16 (Docker for local development)
 ```
 
 ## 2. Monorepo Layout
@@ -59,7 +59,7 @@ packages/
 | Toasts | sonner | Single Toaster in root `providers.tsx`; position/shadow/icons aligned to the prototype `.toast` spec |
 | Styling | **Tailwind CSS 4 (preflight enabled)** | theme + preflight + utilities layers; utilities handle layout/spacing/fine-tuning |
 | Theme/locale | Design tokens in `tokens.css` (light only) + dayjs locale per request | No runtime theming (`theme.ts` removed); tokens stay 1:1 with the prototypes; locale switches next-intl + dayjs + `<html lang>` |
-| Database | MySQL 8.0 | Relational integrity, cascade deletes, unique constraints (username, UID) |
+| Database | PostgreSQL 16 | Relational integrity, cascade deletes, unique constraints (username, UID) |
 | ORM | Drizzle | Lightweight, close to SQL, good type inference, built-in migration tooling |
 | Local database | Docker compose | Consistent environment, zero manual setup |
 | Auth | Username + password; stateless HS256 signature via jose in an httpOnly cookie (`od_session`, sameSite lax, 30 days, payload `{ userId }`) + `@node-rs/argon2` (Argon2id) | No sessions table: no DB lookup on validation, no session cleanup job; Argon2id resists GPU cracking with fast native performance; signing key from `SESSION_SECRET` |
@@ -255,9 +255,7 @@ team_invites
   id, team_id -> teams.id, invitee_id -> users.id, invited_by_id -> users.id
   status        pending | accepted | declined | rescinded
   created_at, responded_at
-  UNIQUE(team_id, invitee_id, pending_scope)   -- generated column pending_scope is 'pending'
-                                               -- while status = 'pending', else NULL; NULL rows
-                                               -- are exempt from the unique index (MySQL semantics)
+  UNIQUE(team_id, invitee_id) WHERE status = 'pending'   -- partial unique index
 
 projects
   id, name, slug, description, created_at
@@ -293,12 +291,12 @@ sessions (not created: stateless jose signed cookie, see §3)
 
 Key constraints and behavior:
 
-- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable. `users.email` and `users.phone` are additionally globally unique and nullable: optional empty inputs are normalized to `NULL` (MySQL unique indexes treat NULLs as distinct), and email is lowercased on write.
+- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable. `users.email` and `users.phone` are additionally globally unique and nullable: optional empty inputs are normalized to `NULL` (PostgreSQL unique indexes treat NULLs as distinct), and email is lowercased on write.
 - **Display name**: `users.nickname` is the display name everywhere (assignee selectors, member lists, notification actor names, avatar initials); `username` remains the login identity. When the optional nickname is left blank at registration, the service stores a generated `user_<5-hex>` (first 5 lowercase hex chars of `sha256(uid)`) in `nickname`. Users can change it in `/settings` and it takes effect everywhere; `displayName(user)` in `@open-doing/types` resolves `nickname`, falling back to `username` for legacy rows. Avatar background color hashes the user id, not the name, so it stays stable across renames.
 - Personal-space data: tasks with `space_type = 'personal'` (`project_id` may point to the owner's personal project or be null) and personal projects with `owner_id = self` are accessible only by the owner (see §7); personal-project tasks always have `assignee_id` = the owner.
 - **Cascade deletes**: deleting a project (team or personal) → its tasks/subtasks/comments and related notifications; dissolving a team → its projects, memberships, invites, notifications. Backed by database foreign keys `ON DELETE CASCADE`, with a second confirmation in the app layer.
 - Removing a member / leaving: only deletes `team_memberships`, **not tasks**; their `assignee_id` is nulled.
-- The `pending_scope` unique index prevents multiple pending invites for the same person (same pattern on `team_join_requests`); identifier columns (username, uid, slug, join_code, status, …) use `utf8mb4_bin` to keep PostgreSQL's exact-match (case-sensitive) semantics. `email` and `phone` are deliberate exceptions: they use MySQL's default collation (`utf8mb4_0900_ai_ci`, case- and accent-insensitive) so uniqueness is case-insensitive too. This choice is documented in the comment on the `email` column in `schema.ts`.
+- The partial unique index `WHERE status = 'pending'` prevents multiple pending invites for the same person (same pattern on `team_join_requests`); identifier columns (username, uid, slug, join_code, status, …) use PostgreSQL `text`, whose equality/uniqueness comparison is case-sensitive by default. `email` and `phone` are case-insensitive in practice because the service lowercases email on write. This choice is documented in the comment on the `email` column in `schema.ts`.
 
 ## 7. Permission Model (enforcement points)
 
@@ -318,7 +316,7 @@ Pure computation lives in `@open-doing/types`; the server only fetches data:
 - Task progress: with subtasks → completed subtasks / total subtasks; without → status mapping 0 / 0.5 / 1.
 - Project progress: equal-weight average of all the project's tasks, empty project 0 (same for team and personal projects); team progress: equal-weight average across the team's projects, 0 when there are none; personal projects do not participate.
 - Dashboard aggregations are computed in the database (SQL aggregation of task/subtask counts); the app layer applies the same semantics rather than pulling whole tables into memory.
-- `due_date` uses the MySQL `date` type. Overdue: `current date (Asia/Shanghai) > due_date and status != done`; due soon: `due_date IN (today, tomorrow) and not completed`. Session and database connections consistently use UTC+8 semantics.
+- `due_date` uses the PostgreSQL `date` type. Overdue: `current date (Asia/Shanghai) > due_date and status != done`; due soon: `due_date IN (today, tomorrow) and not completed`. Timestamps are stored as `timestamptz` (absolute instants), so reads are independent of the database session timezone; calendar-day math is done explicitly in Asia/Shanghai.
 
 ## 9. Notifications
 
@@ -353,10 +351,10 @@ Error translation inside Server Actions goes through `standardFailuresForRequest
 Environment variables required by `apps/web` (`.env.local`, not committed):
 
 ```
-DATABASE_URL=mysql://open-doing:open-doing@localhost:3307/open_doing
+DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open_doing
 SESSION_SECRET=...
 CRON_SECRET=...
 ```
 
-- `docker-compose.yml` at the repo root starts the local MySQL 8.0 (host port 3307, overridable via `MYSQL_PORT`).
+- `docker-compose.yml` at the repo root starts the local PostgreSQL 16 (host port 5433, overridable via `PG_PORT`).
 - Drizzle config and migration files live in the web package (`src/server/db/` + `drizzle/`), run via `pnpm --filter @open-doing/web db:generate / db:migrate`.
