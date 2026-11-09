@@ -2,20 +2,21 @@ import { describe, expect, it } from "vitest";
 
 import { uniqueViolationKey } from "./errors";
 
-/** 构造 mysql2 风格的 ER_DUP_ENTRY 错误对象。 */
-function duplicateEntry(overrides: Record<string, unknown> = {}) {
+/** 构造 postgres-js 风格的 23505 唯一约束错误。 */
+function uniqueViolation(overrides: Record<string, unknown> = {}) {
   return {
-    errno: 1062,
-    code: "ER_DUP_ENTRY",
-    message: "Duplicate entry 'value' for key 'users.users_username_unique'",
+    code: "23505",
+    constraint_name: "users_username_unique",
+    message: 'duplicate key value violates unique constraint "users_username_unique"',
     ...overrides,
   };
 }
 
 describe("uniqueViolationKey", () => {
   it("message 含 users_email_unique → 返回 users_email_unique", () => {
-    const error = duplicateEntry({
-      message: "Duplicate entry 'a@example.com' for key 'users.users_email_unique'",
+    const error = uniqueViolation({
+      constraint_name: undefined,
+      message: 'duplicate key value violates unique constraint "users_email_unique"',
     });
 
     expect(uniqueViolationKey(error)).toBe("users_email_unique");
@@ -29,7 +30,10 @@ describe("uniqueViolationKey", () => {
     ] as const) {
       expect(
         uniqueViolationKey(
-          duplicateEntry({ constraint_name: key, message: "Duplicate entry" }),
+          uniqueViolation({
+            constraint_name: key,
+            message: "duplicate key value violates unique constraint",
+          }),
         ),
       ).toBe(key);
     }
@@ -38,8 +42,9 @@ describe("uniqueViolationKey", () => {
   it("drizzle 包装的 cause 链同样能识别", () => {
     const error = new Error("DrizzleQueryError: Failed query");
     Object.assign(error, {
-      cause: duplicateEntry({
-        message: "Duplicate entry '13800000000' for key 'users.users_phone_unique'",
+      cause: uniqueViolation({
+        constraint_name: undefined,
+        message: 'duplicate key value violates unique constraint "users_phone_unique"',
       }),
     });
 
@@ -52,9 +57,10 @@ describe("uniqueViolationKey", () => {
     expect(uniqueViolationKey("users_email_unique")).toBeNull();
   });
 
-  it("仍是 1062 但索引名不在已知范围（users_uid_unique）→ null", () => {
-    const error = duplicateEntry({
-      message: "Duplicate entry 'doing_x7k2m9' for key 'users.users_uid_unique'",
+  it("仍是 23505 但索引名不在已知范围（users_uid_unique）→ null", () => {
+    const error = uniqueViolation({
+      constraint_name: "users_uid_unique",
+      message: 'duplicate key value violates unique constraint "users_uid_unique"',
     });
 
     expect(uniqueViolationKey(error)).toBeNull();
@@ -65,7 +71,16 @@ describe("uniqueViolationKey", () => {
     expect(
       uniqueViolationKey({
         message:
-          "Failed query: insert into `users` (`email`) values (?)\nparams: users_email_unique@example.com",
+          'Failed query: insert into "users" ("email") values ($1)\nparams: users_email_unique@example.com',
+      }),
+    ).toBeNull();
+  });
+
+  it("无 code 时即使 message 形似驱动错误也不匹配（message 正则仅对驱动错误启用）", () => {
+    expect(
+      uniqueViolationKey({
+        message:
+          'duplicate key value violates unique constraint "users_email_unique"',
       }),
     ).toBeNull();
   });
@@ -73,40 +88,46 @@ describe("uniqueViolationKey", () => {
   it("Drizzle 包装层参数含索引名时不误报，仍识别 cause 的真实冲突", () => {
     const wrapper = {
       message:
-        "Failed query: insert into `users` (`email`) values (?)\nparams: users_email_unique@example.com",
-      cause: duplicateEntry({
-        message: "Duplicate entry '13800000000' for key 'users.users_phone_unique'",
+        'Failed query: insert into "users" ("email") values ($1)\nparams: users_email_unique@example.com',
+      cause: uniqueViolation({
+        constraint_name: undefined,
+        message: 'duplicate key value violates unique constraint "users_phone_unique"',
       }),
     };
 
     expect(uniqueViolationKey(wrapper)).toBe("users_phone_unique");
   });
 
-  it("包装层参数含「Duplicate entry」+ 索引名也不当作驱动错误", () => {
+  it("包装层参数含完整驱动 message 也不当作驱动错误", () => {
     const wrapper = {
       message:
-        "Failed query: insert into `users` (`username`) values (?)\nparams: Duplicate entry users_username_unique",
-      cause: duplicateEntry({
-        message: "Duplicate entry 'a@example.com' for key 'users.users_email_unique'",
+        'Failed query: insert into "users" ("username") values ($1)\nparams: duplicate key value violates unique constraint "users_username_unique"',
+      cause: uniqueViolation({
+        constraint_name: undefined,
+        message: 'duplicate key value violates unique constraint "users_email_unique"',
       }),
     };
 
     expect(uniqueViolationKey(wrapper)).toBe("users_email_unique");
   });
 
-  it("重复值内嵌另一个索引名时按 for key 归属，不做子串误判", () => {
-    const error = duplicateEntry({
+  it("message 同时出现另一个索引名时以 unique constraint 引号内名称为准", () => {
+    const error = uniqueViolation({
+      constraint_name: undefined,
       message:
-        "Duplicate entry 'users_email_unique@x.com' for key 'users.users_phone_unique'",
+        'duplicate key value violates unique constraint "users_phone_unique"; Key (phone)=(users_email_unique@x.com) already exists.',
     });
 
     expect(uniqueViolationKey(error)).toBe("users_phone_unique");
   });
 
-  it("驱动错误 message 无 for key 段 → null", () => {
+  it("驱动错误 message 无 unique constraint 段 → null", () => {
     expect(
       uniqueViolationKey(
-        duplicateEntry({ message: "Duplicate entry 'some value'" }),
+        uniqueViolation({
+          constraint_name: undefined,
+          message: "duplicate key value violates unique constraint",
+        }),
       ),
     ).toBeNull();
   });
