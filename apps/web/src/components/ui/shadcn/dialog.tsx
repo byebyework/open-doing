@@ -12,14 +12,15 @@
  * (opacity 在 60% 关键帧先到 1)、退出 0.2s 加速缩小(进入比退出长,iOS 语义);
  * prefers-reduced-motion 由根 Providers 的 MotionConfig 统一处理。
  *
- * 关闭桥(后续 popover / dropdown / select / sheet 迁移沿用此模式):
- * Radix 在 open 翻 false 的瞬间卸载 Portal,纯 AnimatePresence 看不到退场。
- * 因此 `Dialog` 内部维护 desiredOpen(受控取 props.open,非受控取内部态,
- * onOpenChange 仍即时回调、不延迟),Radix Root 的 open 传
- * useHeldOpen(desiredOpen, OD_MS.modalOut) 的保持值,让退出动画在保持窗口内
- * 播完再真正卸载;Overlay / Content 通过 Context 拿 desiredOpen,直接在
- * open / closed variants 间切换,不依赖 AnimatePresence 卸载。Motion 独占
- * transform,居中定位由 style 的 x/y(-50%)承担,原 translate-x/y-* 类已删。
+ * 关闭桥(2026-11-11 提取到 overlay-motion.ts 的 createHeldOverlayRoot,
+ * popover / dropdown / select / sheet 迁移沿用同一封装):Radix 在 open 翻
+ * false 的瞬间卸载 Portal,纯 AnimatePresence 看不到退场。封装内部维护
+ * desiredOpen(受控取 props.open,非受控取内部态,onOpenChange 仍即时回调、
+ * 不延迟),Radix Root 的 open 传 useHeldOpen(desiredOpen, OD_MS.modalOut)
+ * 的保持值,让退出动画在保持窗口内播完再真正卸载;Overlay / Content 通过
+ * 封装下发的 VisibleContext 拿 desiredOpen,直接在 open / closed variants
+ * 间切换,不依赖 AnimatePresence 卸载。Motion 独占 transform,居中定位由
+ * style 的 x/y(-50%)承担,原 translate-x/y-* 类已删。
  */
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
@@ -28,42 +29,26 @@ import { useTranslations } from "next-intl";
 import * as React from "react";
 
 import {
+  createHeldOverlayRoot,
   modalVariants,
   OD_MS,
   overlayVariants,
-  useHeldOpen,
 } from "@/components/ui/overlay-motion";
 import { cn } from "@/lib/utils";
 
-/** desiredOpen 下发:Overlay / Content 据此在 open / closed variants 间切换。 */
-const DialogVisibleContext = React.createContext(true);
+const {
+  Root: DialogRoot,
+  VisibleContext: DialogVisibleContext,
+} = createHeldOverlayRoot(DialogPrimitive.Root, {
+  dataSlot: "dialog",
+  exitMs: OD_MS.modalOut,
+  displayName: "Dialog",
+});
 
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  const isControlled = props.open !== undefined;
-  const [desiredOpen, setDesiredOpen] = React.useState(
-    props.defaultOpen ?? false,
-  );
-  // ?? 而非三元:TS 无法经 isControlled 收窄 props.open,受控时取 props.open。
-  const open = props.open ?? desiredOpen;
-  // 关闭保持桥:desiredOpen 翻 false 后 Radix Root 再保持 modalOut 毫秒,
-  // 期间 Content 仍挂载,退场动画播完才真正卸载。
-  const heldOpen = useHeldOpen(open, OD_MS.modalOut);
-
-  return (
-    <DialogVisibleContext.Provider value={open}>
-      <DialogPrimitive.Root
-        data-slot="dialog"
-        {...props}
-        open={heldOpen}
-        onOpenChange={(next) => {
-          if (!isControlled) setDesiredOpen(next);
-          props.onOpenChange?.(next);
-        }}
-      />
-    </DialogVisibleContext.Provider>
-  );
+  return <DialogRoot {...props} />;
 }
 
 function DialogTrigger({

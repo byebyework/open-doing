@@ -1,7 +1,8 @@
 "use client";
 
 /*
- * 浮层动效基础件：时长 / 缓动常量 + 各类浮层的 motion variants + 受控关闭桥。
+ * 浮层动效基础件：时长 / 缓动常量 + 各类浮层的 motion variants + 受控关闭桥
+ * （useHeldOpen + createHeldOverlayRoot Root 封装工厂）。
  *
  * 时长与 `apps/web/src/app/motion.css`（iOS 风格浮层动效）的各
  * animation-duration 逐一对应；缓动取计划规定的 OD_EASE 曲线
@@ -16,6 +17,7 @@
  *   入场初值取关键帧的第一帧，与 closed 值无关）。
  */
 
+import * as React from "react";
 import { useEffect, useState } from "react";
 import type { Variants } from "motion/react";
 
@@ -129,4 +131,64 @@ export function useHeldOpen(open: boolean, exitMs: number): boolean {
   }, [open, held, exitMs]);
 
   return open || held;
+}
+
+/** Radix Root 共有的开关受控属性（Dialog / Popover / DropdownMenu / Select 一致）。 */
+export type HeldOverlayRootProps = {
+  open?: boolean;
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  children?: React.ReactNode;
+};
+
+/**
+ * 关闭桥的 Root 封装工厂（dialog / alert-dialog / popover / dropdown-menu /
+ * select 共用）：返回一个 Radix Root 包装组件与一个 visible Context。
+ *
+ * - 包装组件维护 desiredOpen（受控取 props.open，非受控取内部态），
+ *   onOpenChange 仍即时回调、不延迟；Radix Root 的 open 传
+ *   useHeldOpen(desiredOpen, exitMs) 的保持值，让退出动画在保持窗口内播完
+ *   再真正卸载。
+ * - VisibleContext 下发 desiredOpen（不是保持值）：Overlay / Content 据此
+ *   在 open / closed variants 间直接切换，不依赖 AnimatePresence 卸载。
+ * - 每次调用生成独立的 Context，保证嵌套浮层（如 Select 在 Dialog 内）不会
+ *   互相串状态。
+ */
+export function createHeldOverlayRoot<P extends HeldOverlayRootProps>(
+  Root: React.ComponentType<P>,
+  options: { dataSlot: string; exitMs: number; displayName: string },
+): {
+  Root: React.ComponentType<P>;
+  VisibleContext: React.Context<boolean>;
+} {
+  const VisibleContext = React.createContext(true);
+
+  function HeldOverlayRoot(props: P): React.ReactNode {
+    const { open: controlledOpen, defaultOpen, onOpenChange, ...rest } = props;
+    const isControlled = controlledOpen !== undefined;
+    const [desiredOpen, setDesiredOpen] = React.useState(defaultOpen ?? false);
+    // ?? 而非三元:TS 无法经 isControlled 收窄 controlledOpen,受控时取受控值。
+    const visible = controlledOpen ?? desiredOpen;
+    const heldOpen = useHeldOpen(visible, options.exitMs);
+
+    const rootProps = {
+      // 与原生写法一致:data-slot 在前,消费方仍可覆盖。
+      "data-slot": options.dataSlot,
+      ...rest,
+      open: heldOpen,
+      onOpenChange: (next: boolean) => {
+        if (!isControlled) setDesiredOpen(next);
+        onOpenChange?.(next);
+      },
+    } as unknown as P;
+
+    return React.createElement(
+      VisibleContext.Provider,
+      { value: visible },
+      React.createElement(Root, rootProps),
+    );
+  }
+  HeldOverlayRoot.displayName = options.displayName;
+
+  return { Root: HeldOverlayRoot, VisibleContext };
 }

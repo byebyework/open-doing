@@ -13,8 +13,9 @@
  * 的 MotionConfig 统一处理。居中定位由 motion style 的 x/y(-50%)承担,
  * 原 translate-x/y-* 类已删(Motion 独占 transform)。
  *
- * 关闭桥与 dialog.tsx 同构(desiredOpen + useHeldOpen 保持 Root,variants
- * 按 desiredOpen 直接切换,不依赖 AnimatePresence 卸载);AlertDialogAction
+ * 关闭桥与 dialog.tsx 同构(2026-11-11 两者都改用 overlay-motion.ts 的
+ * createHeldOverlayRoot:desiredOpen + useHeldOpen 保持 Root,variants 按
+ * desiredOpen 直接切换,不依赖 AnimatePresence 卸载);AlertDialogAction
  * 「点击即关」的默认行为保持(Radix Action 触发 onOpenChange(false),由本
  * 桥接播放退场后再卸载)。
  */
@@ -23,43 +24,27 @@ import { motion } from "motion/react";
 import * as React from "react";
 
 import {
+  createHeldOverlayRoot,
   modalVariants,
   OD_MS,
   overlayVariants,
-  useHeldOpen,
 } from "@/components/ui/overlay-motion";
 import { buttonVariants } from "@/components/ui/shadcn/button";
 import { cn } from "@/lib/utils";
 
-/** desiredOpen 下发:Overlay / Content 据此在 open / closed variants 间切换。 */
-const AlertDialogVisibleContext = React.createContext(true);
+const {
+  Root: AlertDialogRoot,
+  VisibleContext: AlertDialogVisibleContext,
+} = createHeldOverlayRoot(AlertDialogPrimitive.Root, {
+  dataSlot: "alert-dialog",
+  exitMs: OD_MS.modalOut,
+  displayName: "AlertDialog",
+});
 
 function AlertDialog({
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Root>) {
-  const isControlled = props.open !== undefined;
-  const [desiredOpen, setDesiredOpen] = React.useState(
-    props.defaultOpen ?? false,
-  );
-  // ?? 而非三元:TS 无法经 isControlled 收窄 props.open,受控时取 props.open。
-  const open = props.open ?? desiredOpen;
-  // 关闭保持桥:desiredOpen 翻 false 后 Radix Root 再保持 modalOut 毫秒,
-  // 期间 Content 仍挂载,退场动画播完才真正卸载。
-  const heldOpen = useHeldOpen(open, OD_MS.modalOut);
-
-  return (
-    <AlertDialogVisibleContext.Provider value={open}>
-      <AlertDialogPrimitive.Root
-        data-slot="alert-dialog"
-        {...props}
-        open={heldOpen}
-        onOpenChange={(next) => {
-          if (!isControlled) setDesiredOpen(next);
-          props.onOpenChange?.(next);
-        }}
-      />
-    </AlertDialogVisibleContext.Provider>
-  );
+  return <AlertDialogRoot {...props} />;
 }
 
 function AlertDialogTrigger({
