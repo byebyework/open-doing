@@ -139,8 +139,19 @@ describe("overlay motion 常量与 variants", () => {
     expect(overlayVariants.open).toMatchObject({ opacity: 1 });
     expect(overlayVariants.closed).toMatchObject({ opacity: 0 });
 
-    // 弹窗：scale 0.88→1，opacity 在 60% 关键帧处先到 1（同原 od-spring-in）
+    // 弹窗：scale 0.88→1，opacity 在 60% 关键帧处先到 1（同原 od-spring-in）；
+    // opacity 的 per-value transition 会整体替换父级 transition，须自带 duration / ease
     expect(modalVariants.open).toMatchObject({ scale: [0.88, 1] });
+    expect(modalVariants.open.opacity).toEqual([0, 1, 1]);
+    expect(modalVariants.open.transition).toMatchObject({
+      duration: OD_MS.modalIn / 1000,
+      ease: OD_EASE.springIn,
+      opacity: {
+        times: [0, 0.6, 1],
+        duration: OD_MS.modalIn / 1000,
+        ease: OD_EASE.springIn,
+      },
+    });
     expect(modalVariants.closed).toMatchObject({ opacity: 0, scale: 0.92 });
 
     // 轻量浮层：小行程弹簧 0.96→1，退出 0.97
