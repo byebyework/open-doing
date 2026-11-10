@@ -79,7 +79,7 @@ export interface AuthInput {
   /** 性别：仅接受 "male" | "female" | "secret"；空/未传时为 null。 */
   gender?: string;
   /** 邮箱：注册必填；trim + 小写。 */
-  email?: string;
+  email: string;
   /** 手机号：trim；空字符串归一化为 null。 */
   phone?: string;
 }

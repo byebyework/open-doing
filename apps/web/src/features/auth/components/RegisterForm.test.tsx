@@ -3,13 +3,28 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 
 import { applyActionErrors } from "@/lib/action-form";
+import { createTranslator } from "@/i18n/translate";
 import zh from "@/i18n/messages/zh.json";
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
 }));
 
-const { RegisterForm, buildRegisterPayload } = await import("./RegisterForm");
+const { RegisterForm, buildRegisterPayload, createRegisterSchema } =
+  await import("./RegisterForm");
+
+const tAuthZh = createTranslator(zh.auth);
+
+/** 除 email 外均满足 schema 的表单基线；email 由各用例覆盖。 */
+const validRegisterValues = {
+  username: "alice",
+  password: "secret123",
+  confirmPassword: "secret123",
+  registrationCode: "ABC123XY",
+  nickname: "",
+  email: "alice@example.com",
+  phone: "",
+};
 
 function renderRegisterForm(): string {
   return renderToStaticMarkup(
@@ -24,17 +39,19 @@ function renderRegisterForm(): string {
 }
 
 describe("buildRegisterPayload", () => {
-  it("submits username/password and the trimmed registration code when optional fields are absent", () => {
+  it("submits username/password/email and the trimmed registration code when optional fields are absent", () => {
     expect(
       buildRegisterPayload({
         username: "alice",
         password: "secret123",
         registrationCode: "  ABC123XY  ",
+        email: "  alice@example.com  ",
       }),
     ).toStrictEqual({
       username: "alice",
       password: "secret123",
       registrationCode: "ABC123XY",
+      email: "alice@example.com",
     });
   });
 
@@ -66,8 +83,65 @@ describe("buildRegisterPayload", () => {
         username: "alice",
         password: "secret123",
         registrationCode: "   ",
+        email: "alice@example.com",
       }),
-    ).toStrictEqual({ username: "alice", password: "secret123", registrationCode: "" });
+    ).toStrictEqual({
+      username: "alice",
+      password: "secret123",
+      registrationCode: "",
+      email: "alice@example.com",
+    });
+  });
+});
+
+describe("createRegisterSchema email requirement", () => {
+  it("reports email as required when the field is empty", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse({
+      ...validRegisterValues,
+      email: "",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual([
+        expect.objectContaining({ path: ["email"], message: zh.auth.emailRequired }),
+      ]);
+    }
+  });
+
+  it("treats a whitespace-only email as missing", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse({
+      ...validRegisterValues,
+      email: "   ",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues).toEqual([
+        expect.objectContaining({ path: ["email"], message: zh.auth.emailRequired }),
+      ]);
+    }
+  });
+
+  it("accepts a valid email so the submit flow proceeds", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse(validRegisterValues);
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejects a malformed email with the format message", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse({
+      ...validRegisterValues,
+      email: "not-an-email",
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]).toMatchObject({
+        path: ["email"],
+        message: zh.auth.emailInvalid,
+      });
+    }
   });
 });
 

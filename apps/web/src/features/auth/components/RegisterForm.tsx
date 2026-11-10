@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useTranslations } from "next-intl";
+import { useMessages, useTranslations } from "next-intl";
 import { useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
@@ -18,6 +18,7 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/shadcn/radio-group";
 import { spaceDashboardHref } from "@/lib/routes";
 import { BrandMark } from "@/components/ui/BrandMark";
 import { applyActionErrors } from "@/lib/action-form";
+import { createTranslator, type TranslateFn } from "@/i18n/translate";
 
 import { registerAction } from "../actions";
 import {
@@ -44,17 +45,18 @@ export interface RegisterPayloadValues {
   password: string;
   /** 注册码（封测）：表单必填；空值原样提交，由服务端报「请输入注册码」。 */
   registrationCode: string;
+  /** 邮箱：表单必填；空值原样提交，由服务端报「请输入邮箱」。 */
+  email: string;
   nickname?: string;
   gender?: string;
-  email?: string;
   phone?: string;
 }
 
 /**
  * 表单值 → Server Action 入参。
  *
- * 注册码必填，trim 后原样携带（空字符串交给服务端报错）；可选资料与
- * 用户输入方式保持一致：trim 后为空视为未填，直接省略该键，
+ * 注册码与邮箱必填，trim 后原样携带（空字符串交给服务端报错）；可选资料
+ * 与用户输入方式保持一致：trim 后为空视为未填，直接省略该键，
  * 与服务端「空字符串归一化为 null」的规则对齐。
  */
 export function buildRegisterPayload(values: RegisterPayloadValues): AuthInput {
@@ -62,6 +64,7 @@ export function buildRegisterPayload(values: RegisterPayloadValues): AuthInput {
     username: values.username,
     password: values.password,
     registrationCode: values.registrationCode.trim(),
+    email: values.email.trim(),
   };
 
   const nickname = values.nickname?.trim();
@@ -70,9 +73,6 @@ export function buildRegisterPayload(values: RegisterPayloadValues): AuthInput {
   const gender = values.gender?.trim();
   if (gender) payload.gender = gender;
 
-  const email = values.email?.trim();
-  if (email) payload.email = email;
-
   const phone = values.phone?.trim();
   if (phone) payload.phone = phone;
 
@@ -80,21 +80,13 @@ export function buildRegisterPayload(values: RegisterPayloadValues): AuthInput {
 }
 
 /**
- * 注册表单（客户端交互层）。
+ * 注册表单 zod schema（导出供测试直接验证字段规则）。
  *
- * 用户名/密码/确认密码必填；昵称、性别、邮箱、电话选填，前端校验规则与
- * 服务端 registerUser 一致。确认密码只在前端校验；注册成功后 action 写入
- * 会话 cookie，页面直接进入个人空间首页。
+ * `t` 为 auth 命名空间取词函数；确认密码一致用 refine 前端校验。
+ * 邮箱必填：trim 后为空报 emailRequired，格式不合法报 emailInvalid。
  */
-export function RegisterForm() {
-  const router = useRouter();
-  const t = useTranslations("auth");
-  const tCommon = useTranslations("common");
-  const [submitting, setSubmitting] = useState(false);
-  const [formError, setFormError] = useState<string | null>(null);
-
-  // zod schema 在组件内构建:文案取自 next-intl;确认密码一致用 refine 前端校验。
-  const schema = z
+export function createRegisterSchema(t: TranslateFn) {
+  return z
     .object({
       username: z
         .string()
@@ -117,11 +109,9 @@ export function RegisterForm() {
       gender: z.enum(GENDER_VALUES).optional(),
       email: z
         .string()
-        .refine(
-          (value) => value.trim() === "" || EMAIL_PATTERN.test(value.trim()),
-          t("emailInvalid"),
-        )
-        .optional(),
+        .trim()
+        .min(1, t("emailRequired"))
+        .refine((value) => value === "" || EMAIL_PATTERN.test(value), t("emailInvalid")),
       phone: z
         .string()
         .refine(
@@ -134,7 +124,25 @@ export function RegisterForm() {
       path: ["confirmPassword"],
       message: t("passwordMismatch"),
     });
+}
+
+/**
+ * 注册表单（客户端交互层）。
+ *
+ * 用户名/密码/确认密码/邮箱必填；昵称、性别、电话选填，前端校验规则与
+ * 服务端 registerUser 一致。确认密码只在前端校验；注册成功后 action 写入
+ * 会话 cookie，页面直接进入个人空间首页。
+ */
+export function RegisterForm() {
+  const router = useRouter();
+  const t = useTranslations("auth");
+  const tCommon = useTranslations("common");
+  // 校验规则由 createRegisterSchema 构建；取词用同一份 messages 的 auth
+  // 子树构造 TranslateFn（key 为 string），与 next-intl 运行时同源。
+  const schema = createRegisterSchema(createTranslator(useMessages().auth));
   type RegisterValues = z.infer<typeof schema>;
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
   const {
     register,

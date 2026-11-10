@@ -19,7 +19,11 @@ describe("AuthError i18n channel", () => {
   });
 
   it("注册码校验先于资料校验与任何数据库访问，缺码报 auth.registrationCodeRequired", async () => {
-    const result = await registerAction({ username: "", password: "x".repeat(8) });
+    const result = await registerAction({
+      username: "",
+      password: "x".repeat(8),
+      email: "a@test.com",
+    });
     expect(result).toEqual({
       ok: false,
       errors: { registrationCode: "请输入注册码" },

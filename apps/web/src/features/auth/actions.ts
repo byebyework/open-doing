@@ -118,7 +118,9 @@ export async function registerAction(input: AuthInput): Promise<ActionResult<Use
  * `signInUsername` 成功后会创建 sessions 行并由 nextCookies 写入
  * 会话 cookie，登录后的下一个请求即可通过 `getCurrentUser` 识别。
  */
-export async function loginAction(input: AuthInput): Promise<ActionResult<User>> {
+export async function loginAction(
+  input: Pick<AuthInput, "username" | "password">,
+): Promise<ActionResult<User>> {
   const username = typeof input?.username === "string" ? input.username.trim() : "";
   const password = typeof input?.password === "string" ? input.password : "";
 
