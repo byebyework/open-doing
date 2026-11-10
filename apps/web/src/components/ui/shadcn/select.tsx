@@ -6,8 +6,10 @@
  * 动效(2026-11-11 迁移到 motion/react):shadcn 自带的 tailwindcss-animate
  * 工具类在本仓库不存在(死类),此前改挂一层 iOS 风格的 CSS 动效(内容
  * 小行程弹簧);现按「动效全走 Motion」约定迁到 overlay-motion.ts
- * 的 popVariants,并沿用 dialog.tsx 的关闭保持桥(createHeldOverlayRoot,
- * 保持 OD_MS.popOut=150ms,退场播完才真正卸载)。缩放原点由 style 的
+ * 的 popVariants。关闭保持桥用 createHeldOverlayRoot 的 immediate 模式
+ * (保持 OD_MS.popOut=150ms):Root open 即时跟随 desiredOpen,退场内容经
+ * MountContext 的保持值挂 Portal/Content 的 forceMount 维持挂载,窗口过后
+ * 才真正卸载;窗口内内容 pointer-events:none 不可交互。缩放原点由 style 的
  * transform-origin 跟随 Radix 弹出的锚点角(--radix-select-content-
  * transform-origin),原 origin-(--radix-...) 类与旧的 CSS 动效类已删。
  * 选项点选/键盘回车仍即时触发 value 变更与 Root onOpenChange(false),
@@ -25,12 +27,16 @@ import {
 } from "@/components/ui/overlay-motion";
 import { cn } from "@/lib/utils";
 
-const { Root: SelectRoot, VisibleContext: SelectVisibleContext } =
-  createHeldOverlayRoot(SelectPrimitive.Root, {
-    dataSlot: "select",
-    exitMs: OD_MS.popOut,
-    displayName: "Select",
-  });
+const {
+  Root: SelectRoot,
+  VisibleContext: SelectVisibleContext,
+  MountContext: SelectMountContext,
+} = createHeldOverlayRoot(SelectPrimitive.Root, {
+  dataSlot: "select",
+  exitMs: OD_MS.popOut,
+  displayName: "Select",
+  mode: "immediate",
+});
 
 function Select({
   ...props
@@ -83,9 +89,15 @@ function SelectContent({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
   const visible = React.useContext(SelectVisibleContext);
+  const keepMounted = React.useContext(SelectMountContext);
   return (
-    <SelectPrimitive.Portal>
-      <SelectPrimitive.Content asChild position={position} {...props}>
+    <SelectPrimitive.Portal forceMount={keepMounted || undefined}>
+      <SelectPrimitive.Content
+        asChild
+        forceMount={keepMounted || undefined}
+        position={position}
+        {...props}
+      >
         <motion.div
           data-slot="select-content"
           className={cn(
@@ -96,6 +108,10 @@ function SelectContent({
           )}
           style={{
             transformOrigin: "var(--radix-select-content-transform-origin)",
+            // 退场保持窗口内内容不可交互。仅在 !visible 时才写入该键:
+            // Radix 经 Slot 合并 style,打开态若显式写 undefined 会覆盖掉
+            // DismissableLayer 的 pointer-events:auto,导致打开的浮层点不了。
+            ...(visible ? {} : { pointerEvents: "none" as const }),
           }}
           initial={{ opacity: 0, scale: 0.96 }}
           animate={visible ? "open" : "closed"}

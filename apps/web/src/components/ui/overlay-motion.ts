@@ -143,25 +143,56 @@ export type HeldOverlayRootProps = {
 
 /**
  * 关闭桥的 Root 封装工厂（dialog / alert-dialog / popover / dropdown-menu /
- * select 共用）：返回一个 Radix Root 包装组件与一个 visible Context。
+ * select 共用）：返回一个 Radix Root 包装组件、一个 visible Context 与一个
+ * keep-mounted Context。
+ *
+ * mode: "held"（默认，dialog / alert-dialog / sheet）——Radix Root 的 open
+ * 传 useHeldOpen(desiredOpen, exitMs) 的保持值，退出动画在保持窗口内播完
+ * 后 Radix 才真正卸载内容。
+ *
+ * mode: "immediate"（pop 家族：popover / dropdown-menu / select）——Radix
+ * Root 的 open 即时跟随 desiredOpen。原因：这三类浮层的触发器靠 Radix 的
+ * toggle 语义开关，若 Root 在保持窗口内仍是 open，窗口内再点触发器会被算成
+ * 「请求关闭」，首次重开点击是死的；Root 即时关闭后 toggle 立即算回 true。
+ * 退场改由 Content 侧维持：消费方从 MountContext 拿保持值给 Portal/Content
+ * 挂 Radix forceMount，keep-mounted 在 desiredOpen 翻 false 后仍保持
+ * exitMs，随后落 false 触发真正卸载。
+ *
+ * immediate 模式附带一次「同事件残留 dismiss」抑制：触发器 toggle 重开的
+ * 那次 pointerdown / click / keydown 里，尚未卸载的退场内容仍有活的
+ * DismissableLayer，会在同一事件的 document 冒泡阶段发 close（Popover 有
+ * Radix 自己的触发器豁免，DropdownMenu / Select 没有）。工厂在 document
+ * 捕获阶段监听这三类事件作为「事件边界」重置标记，onOpenChange(true) 置位
+ * 标记，同一事件内随后到达的 close 视为残留 dismiss 吞掉；真实关闭都来自
+ * 之后的新事件，不受影响。
  *
  * - 包装组件维护 desiredOpen（受控取 props.open，非受控取内部态），
- *   onOpenChange 仍即时回调、不延迟；Radix Root 的 open 传
- *   useHeldOpen(desiredOpen, exitMs) 的保持值，让退出动画在保持窗口内播完
- *   再真正卸载。
+ *   onOpenChange 仍即时回调、不延迟。
  * - VisibleContext 下发 desiredOpen（不是保持值）：Overlay / Content 据此
  *   在 open / closed variants 间直接切换，不依赖 AnimatePresence 卸载。
+ * - MountContext 下发 useHeldOpen 的保持值（held 模式下与 Root open 一致，
+ *   仅供 immediate 模式消费方挂 forceMount 使用）。
  * - 每次调用生成独立的 Context，保证嵌套浮层（如 Select 在 Dialog 内）不会
  *   互相串状态。
  */
 export function createHeldOverlayRoot<P extends HeldOverlayRootProps>(
   Root: React.ComponentType<P>,
-  options: { dataSlot: string; exitMs: number; displayName: string },
+  options: {
+    dataSlot: string;
+    exitMs: number;
+    displayName: string;
+    /** "held"（默认）：Root open 用保持值；"immediate"：Root open 即时跟随 desiredOpen。 */
+    mode?: "held" | "immediate";
+  },
 ): {
   Root: React.ComponentType<P>;
   VisibleContext: React.Context<boolean>;
+  /** 退场保持窗口内为 true：immediate 模式消费方据此给 Portal/Content 挂 forceMount。 */
+  MountContext: React.Context<boolean>;
 } {
   const VisibleContext = React.createContext(true);
+  const MountContext = React.createContext(false);
+  const immediate = options.mode === "immediate";
 
   function HeldOverlayRoot(props: P): React.ReactNode {
     const { open: controlledOpen, defaultOpen, onOpenChange, ...rest } = props;
@@ -171,12 +202,39 @@ export function createHeldOverlayRoot<P extends HeldOverlayRootProps>(
     const visible = controlledOpen ?? desiredOpen;
     const heldOpen = useHeldOpen(visible, options.exitMs);
 
+    // 同事件残留 dismiss 抑制（见工厂注释）：捕获阶段事件边界重置。
+    const openInEventRef = React.useRef(false);
+    React.useEffect(() => {
+      if (!immediate) {
+        return;
+      }
+      const markEventBoundary = () => {
+        openInEventRef.current = false;
+      };
+      document.addEventListener("pointerdown", markEventBoundary, true);
+      document.addEventListener("keydown", markEventBoundary, true);
+      document.addEventListener("click", markEventBoundary, true);
+      return () => {
+        document.removeEventListener("pointerdown", markEventBoundary, true);
+        document.removeEventListener("keydown", markEventBoundary, true);
+        document.removeEventListener("click", markEventBoundary, true);
+      };
+    }, [immediate]);
+
     const rootProps = {
       // 与原生写法一致:data-slot 在前,消费方仍可覆盖。
       "data-slot": options.dataSlot,
       ...rest,
-      open: heldOpen,
+      open: immediate ? visible : heldOpen,
       onOpenChange: (next: boolean) => {
+        if (immediate) {
+          if (next) {
+            openInEventRef.current = true;
+          } else if (openInEventRef.current) {
+            // 同一事件里 toggle 刚请求过 open：这是退场层的残留 dismiss。
+            return;
+          }
+        }
         if (!isControlled) setDesiredOpen(next);
         onOpenChange?.(next);
       },
@@ -185,10 +243,14 @@ export function createHeldOverlayRoot<P extends HeldOverlayRootProps>(
     return React.createElement(
       VisibleContext.Provider,
       { value: visible },
-      React.createElement(Root, rootProps),
+      React.createElement(
+        MountContext.Provider,
+        { value: heldOpen },
+        React.createElement(Root, rootProps),
+      ),
     );
   }
   HeldOverlayRoot.displayName = options.displayName;
 
-  return { Root: HeldOverlayRoot, VisibleContext };
+  return { Root: HeldOverlayRoot, VisibleContext, MountContext };
 }
