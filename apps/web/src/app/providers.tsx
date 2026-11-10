@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 
+import { MotionConfig } from "motion/react";
+
 import type { AppLocale } from "@/i18n/config";
 import { setDayjsLocale } from "@/lib/dayjs-locale";
 
@@ -21,7 +23,9 @@ export interface ProvidersProps {
 }
 
 /**
- * 根布局专用包裹：按请求 locale 设置 dayjs，并注入全局 Toaster（sonner）。
+ * 根布局专用包裹：按请求 locale 设置 dayjs，注入全局 Toaster（sonner），
+ * 并以 `MotionConfig reducedMotion="user"` 提供全局动效配置——遵循系统
+ * 「减弱动态效果」设置（全站 Motion 动画的统一入口）。
  *
  * shadcn 迁移完成后不再有 antd 的 AntdRegistry / ConfigProvider / App
  * 上下文；主题令牌来自 `tokens.css`（globals.css 引入），无运行时主题。
@@ -30,9 +34,9 @@ export function Providers({ children, locale }: ProvidersProps) {
   setDayjsLocale(locale);
 
   return (
-    <>
+    <MotionConfig reducedMotion="user">
       {children}
       <Toaster />
-    </>
+    </MotionConfig>
   );
 }

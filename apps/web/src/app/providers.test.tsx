@@ -13,4 +13,15 @@ describe("Providers", () => {
     renderToStaticMarkup(<Providers locale="en">{null}</Providers>);
     expect(dayjs.locale()).toBe("en");
   });
+
+  it("mounts MotionConfig with reducedMotion user", () => {
+    // 只锁定挂载：渲染不抛错且 children 可见；
+    // reduce 行为（跟随系统设置）由 e2e 兜底验证。
+    const html = renderToStaticMarkup(
+      <Providers locale="zh">
+        <p data-testid="probe">children-visible</p>
+      </Providers>,
+    );
+    expect(html).toContain("children-visible");
+  });
 });
