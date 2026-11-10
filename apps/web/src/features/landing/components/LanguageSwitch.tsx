@@ -37,7 +37,12 @@ export function LanguageSwitch({ language }: LanguageSwitchProps) {
   function handleSelect(next: AppLocale) {
     if (pending || next === language) return;
     startTransition(async () => {
-      await setAnonymousLocaleAction({ locale: next });
+      try {
+        await setAnonymousLocaleAction({ locale: next });
+      } catch {
+        // 静默失败：按钮只会发送合法 locale（typed 失败走 { ok:false }），
+        // 这里兜住意外抛出，避免 unhandled rejection 让 transition 卡在 pending。
+      }
     });
   }
 
