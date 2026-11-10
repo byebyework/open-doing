@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { motion } from "motion/react";
 
+import { Button } from "@/components/ui/shadcn/button";
+
 import { fadeUp } from "../motion-presets";
 
 /**
@@ -62,20 +64,24 @@ export function CtaSection() {
 
         <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3">
           <motion.div whileHover={{ scale: 1.03 }}>
-            <Link
-              href="/register"
-              className="inline-flex h-11 items-center justify-center rounded-[var(--radius-btn)] bg-white px-6 text-[15px] font-semibold text-[var(--purple-700)] shadow-[var(--shadow-card-hover)]"
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-11 border-0 bg-white px-6 font-semibold text-[var(--purple-700)] shadow-[var(--shadow-card-hover)] hover:bg-white hover:text-[var(--purple-700)]"
             >
-              {t("cta.start")}
-            </Link>
+              <Link href="/register">{t("cta.start")}</Link>
+            </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.03 }}>
-            <Link
-              href="/login"
-              className="inline-flex h-11 items-center justify-center rounded-[var(--radius-btn)] border border-white/60 px-6 text-[15px] font-semibold text-white"
+            <Button
+              asChild
+              variant="outline"
+              size="lg"
+              className="h-11 border-white/60 bg-transparent px-6 font-semibold text-white shadow-none hover:bg-white/10 hover:text-white"
             >
-              {t("cta.login")}
-            </Link>
+              <Link href="/login">{t("cta.login")}</Link>
+            </Button>
           </motion.div>
         </div>
       </motion.div>

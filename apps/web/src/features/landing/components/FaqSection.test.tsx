@@ -100,13 +100,18 @@ describe("FaqSection", () => {
     expect(section?.className).toContain("scroll-mt-16");
   });
 
-  it("renders the label, title and all three questions from the landing catalog", () => {
+  it("renders the title and all three questions from the landing catalog", () => {
     renderFaq();
 
-    expect(container.textContent).toContain(zh.landing.faq.label);
+    // 组件只渲染 h2 标题、不渲染 eyebrow：zh 目录里 faq.label 与 faq.title
+    // 同为「常见问题」，若再渲染 label 会在页面上重复一次。
     expect(container.querySelector("h2")?.textContent).toBe(
       zh.landing.faq.title,
     );
+    const headingOccurrences = (container.textContent ?? "").split(
+      zh.landing.faq.title,
+    ).length;
+    expect(headingOccurrences).toBe(2); // split 一处命中 → 长度 2
 
     for (const key of FAQ_KEYS) {
       expect(trigger(key).textContent).toContain(

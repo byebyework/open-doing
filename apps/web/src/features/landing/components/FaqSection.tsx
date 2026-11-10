@@ -59,10 +59,7 @@ export function FaqSection() {
         className="mx-auto max-w-[1120px] px-4 py-14 sm:px-6 lg:py-20"
       >
         <motion.div variants={fadeUp} className="text-center">
-          <span className="text-[11px] font-bold tracking-[0.18em] text-[var(--purple-600)]">
-            {t("faq.label")}
-          </span>
-          <h2 className="mt-2 text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[var(--ink-900)]">
+          <h2 className="text-[clamp(1.5rem,2.6vw,2rem)] font-extrabold tracking-[-0.02em] text-[var(--ink-900)]">
             {t("faq.title")}
           </h2>
         </motion.div>
