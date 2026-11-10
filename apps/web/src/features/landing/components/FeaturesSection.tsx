@@ -68,7 +68,14 @@ export function FeaturesSection() {
                 initial="hidden"
                 whileInView="visible"
                 viewport={{ once: true, margin: "-80px" }}
-                className="mx-auto grid max-w-[1120px] items-center gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.3fr)] lg:gap-12 lg:py-14"
+                className={cn(
+                  "mx-auto grid max-w-[1120px] items-center gap-8 px-4 py-10 sm:px-6 lg:gap-12 lg:py-14",
+                  // 模板随图片方向镜像：无论图在左还是右，截图始终占 1.3fr
+                  // 宽列、文案占 0.85fr 窄列（与 mockup 的 flex 比例一致）。
+                  imageRight
+                    ? "lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.3fr)]"
+                    : "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,0.85fr)]",
+                )}
               >
                 {/* 文案 */}
                 <motion.div
