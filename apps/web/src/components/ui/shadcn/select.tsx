@@ -3,20 +3,39 @@
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 适配:危险色 aria-invalid;尺寸保留官方默认。
- * 动效:shadcn 自带的 tailwindcss-animate 工具类在本仓库不存在(死类),改挂
- * motion.css 的 iOS 动效(内容 od-popover 小行程弹簧);
- * 缩放原点由 origin-(--radix-select-content-transform-origin) 跟随弹出方向。
+ * 动效(2026-11-11 迁移到 motion/react):shadcn 自带的 tailwindcss-animate
+ * 工具类在本仓库不存在(死类),此前改挂 motion.css 的 iOS 动效(内容
+ * od-popover 小行程弹簧);现按「动效全走 Motion」约定迁到 overlay-motion.ts
+ * 的 popVariants,并沿用 dialog.tsx 的关闭保持桥(createHeldOverlayRoot,
+ * 保持 OD_MS.popOut=150ms,退场播完才真正卸载)。缩放原点由 style 的
+ * transform-origin 跟随 Radix 弹出的锚点角(--radix-select-content-
+ * transform-origin),原 origin-(--radix-...) 类与 od-popover 类已删。
+ * 选项点选/键盘回车仍即时触发 value 变更与 Root onOpenChange(false),
+ * 关闭后由保持桥播放退场再卸载,不影响选择语义。
  */
 import * as SelectPrimitive from "@radix-ui/react-select";
 import { CheckIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react";
+import { motion } from "motion/react";
 import * as React from "react";
 
+import {
+  createHeldOverlayRoot,
+  OD_MS,
+  popVariants,
+} from "@/components/ui/overlay-motion";
 import { cn } from "@/lib/utils";
+
+const { Root: SelectRoot, VisibleContext: SelectVisibleContext } =
+  createHeldOverlayRoot(SelectPrimitive.Root, {
+    dataSlot: "select",
+    exitMs: OD_MS.popOut,
+    displayName: "Select",
+  });
 
 function Select({
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Root>) {
-  return <SelectPrimitive.Root data-slot="select" {...props} />;
+  return <SelectRoot {...props} />;
 }
 
 function SelectGroup({
@@ -63,30 +82,37 @@ function SelectContent({
   position = "popper",
   ...props
 }: React.ComponentProps<typeof SelectPrimitive.Content>) {
+  const visible = React.useContext(SelectVisibleContext);
   return (
     <SelectPrimitive.Portal>
-      <SelectPrimitive.Content
-        data-slot="select-content"
-        className={cn(
-          "bg-popover text-popover-foreground od-popover relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] origin-(--radix-select-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[var(--radius-8)] border shadow-md",
-          position === "popper" &&
-            "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
-          className,
-        )}
-        position={position}
-        {...props}
-      >
-        <SelectScrollUpButton />
-        <SelectPrimitive.Viewport
+      <SelectPrimitive.Content asChild position={position} {...props}>
+        <motion.div
+          data-slot="select-content"
           className={cn(
-            "p-1",
+            "bg-popover text-popover-foreground relative z-50 max-h-(--radix-select-content-available-height) min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-[var(--radius-8)] border shadow-md",
             position === "popper" &&
-              "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1",
+              "data-[side=bottom]:translate-y-1 data-[side=left]:-translate-x-1 data-[side=right]:translate-x-1 data-[side=top]:-translate-y-1",
+            className,
           )}
+          style={{
+            transformOrigin: "var(--radix-select-content-transform-origin)",
+          }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={visible ? "open" : "closed"}
+          variants={popVariants}
         >
-          {children}
-        </SelectPrimitive.Viewport>
-        <SelectScrollDownButton />
+          <SelectScrollUpButton />
+          <SelectPrimitive.Viewport
+            className={cn(
+              "p-1",
+              position === "popper" &&
+                "h-[var(--radix-select-trigger-height)] w-full min-w-[var(--radix-select-trigger-width)] scroll-my-1",
+            )}
+          >
+            {children}
+          </SelectPrimitive.Viewport>
+          <SelectScrollDownButton />
+        </motion.div>
       </SelectPrimitive.Content>
     </SelectPrimitive.Portal>
   );

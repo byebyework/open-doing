@@ -3,20 +3,40 @@
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 无令牌适配(全部消费桥接槽位)。
- * 动效:shadcn 自带的 tailwindcss-animate 工具类在本仓库不存在(死类),改挂
- * motion.css 的 iOS 动效(od-overlay / 内容 od-popover 小行程弹簧);
- * 缩放原点由 origin-(--radix-*-transform-origin) 跟随弹出方向。
+ * 动效(2026-11-11 迁移到 motion/react):shadcn 自带的 tailwindcss-animate
+ * 工具类在本仓库不存在(死类),此前改挂 motion.css 的 iOS 动效(内容
+ * od-popover 小行程弹簧);现按「动效全走 Motion」约定迁到 overlay-motion.ts
+ * 的 popVariants,并沿用 dialog.tsx 的关闭保持桥(createHeldOverlayRoot,
+ * 保持 OD_MS.popOut=150ms,退场播完才真正卸载)。缩放原点由 style 的
+ * transform-origin 跟随 Radix 弹出的锚点角(--radix-dropdown-menu-content-
+ * transform-origin),原 origin-(--radix-...) 类与 od-popover 类已删。
+ *
+ * SubContent(嵌套子菜单)只做入场:Radix Sub 关闭时同步卸载,没有可保持的
+ * Root 窗口;子菜单当前未被业务使用,如后续启用需另做保持桥。
  */
 import * as DropdownMenuPrimitive from "@radix-ui/react-dropdown-menu";
 import { CheckIcon, ChevronRightIcon, CircleIcon } from "lucide-react";
+import { motion } from "motion/react";
 import * as React from "react";
 
+import {
+  createHeldOverlayRoot,
+  OD_MS,
+  popVariants,
+} from "@/components/ui/overlay-motion";
 import { cn } from "@/lib/utils";
+
+const { Root: DropdownMenuRoot, VisibleContext: DropdownMenuVisibleContext } =
+  createHeldOverlayRoot(DropdownMenuPrimitive.Root, {
+    dataSlot: "dropdown-menu",
+    exitMs: OD_MS.popOut,
+    displayName: "DropdownMenu",
+  });
 
 function DropdownMenu({
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Root>) {
-  return <DropdownMenuPrimitive.Root data-slot="dropdown-menu" {...props} />;
+  return <DropdownMenuRoot {...props} />;
 }
 
 function DropdownMenuPortal({
@@ -40,20 +60,31 @@ function DropdownMenuTrigger({
 
 function DropdownMenuContent({
   className,
+  children,
   sideOffset = 4,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.Content>) {
+  const visible = React.useContext(DropdownMenuVisibleContext);
   return (
     <DropdownMenuPrimitive.Portal>
-      <DropdownMenuPrimitive.Content
-        data-slot="dropdown-menu-content"
-        sideOffset={sideOffset}
-        className={cn(
-          "bg-popover text-popover-foreground od-popover z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-x-hidden overflow-y-auto rounded-[var(--radius-8)] border p-1 shadow-md",
-          className,
-        )}
-        {...props}
-      />
+      <DropdownMenuPrimitive.Content asChild sideOffset={sideOffset} {...props}>
+        <motion.div
+          data-slot="dropdown-menu-content"
+          className={cn(
+            "bg-popover text-popover-foreground z-50 max-h-(--radix-dropdown-menu-content-available-height) min-w-[8rem] overflow-x-hidden overflow-y-auto rounded-[var(--radius-8)] border p-1 shadow-md",
+            className,
+          )}
+          style={{
+            transformOrigin:
+              "var(--radix-dropdown-menu-content-transform-origin)",
+          }}
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={visible ? "open" : "closed"}
+          variants={popVariants}
+        >
+          {children}
+        </motion.div>
+      </DropdownMenuPrimitive.Content>
     </DropdownMenuPrimitive.Portal>
   );
 }
@@ -231,17 +262,27 @@ function DropdownMenuSubTrigger({
 
 function DropdownMenuSubContent({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof DropdownMenuPrimitive.SubContent>) {
   return (
-    <DropdownMenuPrimitive.SubContent
-      data-slot="dropdown-menu-sub-content"
-      className={cn(
-        "bg-popover text-popover-foreground od-popover z-50 min-w-[8rem] origin-(--radix-dropdown-menu-content-transform-origin) overflow-hidden rounded-[var(--radius-8)] border p-1 shadow-lg",
-        className,
-      )}
-      {...props}
-    />
+    <DropdownMenuPrimitive.SubContent asChild {...props}>
+      <motion.div
+        data-slot="dropdown-menu-sub-content"
+        className={cn(
+          "bg-popover text-popover-foreground z-50 min-w-[8rem] overflow-hidden rounded-[var(--radius-8)] border p-1 shadow-lg",
+          className,
+        )}
+        style={{
+          transformOrigin: "var(--radix-dropdown-menu-content-transform-origin)",
+        }}
+        initial={{ opacity: 0, scale: 0.96 }}
+        animate="open"
+        variants={popVariants}
+      >
+        {children}
+      </motion.div>
+    </DropdownMenuPrimitive.SubContent>
   );
 }
 
