@@ -27,8 +27,9 @@ export function uniqueLabel(prefix: string): string {
  * 通过注册页创建账号，并等待进入个人空间 Dashboard。
  *
  * 所有用例都走真实 UI + Server Action + 数据库，不预置种子数据。
- * 昵称显式填成用户名：全站展示名取 nickname，未填时注册会生成 `user_xxxxx`，
- * 会让流程中按用户名断言的展示文案失效。
+ * 邮箱必填（better-auth user 模型），用用户名派生一个唯一地址。
+ * 昵称显式填成用户名：全站展示名取 better-auth 的 `name`，未填时注册会
+ * 生成 `user_xxxxx`，会让流程中按用户名断言的展示文案失效。
  */
 export async function registerUser(
   page: Page,
@@ -37,6 +38,7 @@ export async function registerUser(
 ): Promise<void> {
   await page.goto("/register");
   await page.getByTestId(TEST_IDS.auth.usernameInput).fill(username);
+  await page.getByTestId(TEST_IDS.auth.emailInput).fill(`${username}@e2e.local`);
   await page.getByTestId(TEST_IDS.auth.nicknameInput).fill(username);
   await page.getByTestId(TEST_IDS.auth.passwordInput).fill(password);
   await page.getByTestId(TEST_IDS.auth.passwordConfirmInput).fill(password);

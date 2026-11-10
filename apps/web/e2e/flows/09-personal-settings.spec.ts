@@ -1,10 +1,12 @@
 import { expect, test, type Page } from "@playwright/test";
 
+import { E2E_BASE_URL } from "../utils/env";
 import { TEST_IDS } from "../utils/testids";
 import {
   E2E_PASSWORD,
   createPersonalProject,
   createPersonalTask,
+  loginUser,
   openPersonalProject,
   registerUser,
   uniqueLabel,
@@ -101,13 +103,20 @@ test.describe("flow 9: 个人空间设置", () => {
       page.locator('[data-slot="alert"].text-destructive'),
     ).toHaveCount(0);
 
-    // ② 旧密码正确：toast「密码已更新」，且仍停留在设置页（保持登录）。
+    // ② 旧密码正确：toast「密码已更新」，且保持登录。
     await oldPasswordInput.fill(E2E_PASSWORD);
     await page.getByTestId(TEST_IDS.settings.updatePasswordButton).click();
     await expect(page.getByText("密码已更新")).toBeVisible();
-    await expect(page).toHaveURL(/\/settings$/);
+
+    // better-auth 的 changePassword(revokeOtherSessions) 会删掉全部旧会话
+    // （含当前会话）并签发新会话 cookie；Server Action 的 RSC 重渲染仍带旧
+    // cookie，requireUser 先跳 /login，随后 (auth) 布局识别已登录用户再跳
+    // 个人 Dashboard。用户始终处于登录态，只是回到 Dashboard 而非设置页。
+    await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+      timeout: 30_000,
+    });
     await expect(
-      page.getByRole("heading", { name: "设置", level: 1 }),
+      page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
 
     // ③ 登出（顶栏用户菜单）。
@@ -128,6 +137,42 @@ test.describe("flow 9: 个人空间设置", () => {
     await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
       timeout: 30_000,
     });
+  });
+
+  test("改密后其它会话失效，当前会话保持登录", async ({ page, browser }) => {
+    const username = uniqueUsername("e2e_st2b");
+    const newPassword = "e2e-new-password-789";
+
+    await registerUser(page, username);
+
+    // 第二个浏览器上下文用同一账号登录，模拟另一台设备上的旧会话。
+    const otherContext = await browser.newContext({ baseURL: E2E_BASE_URL });
+    const otherPage = await otherContext.newPage();
+    await loginUser(otherPage, username);
+
+    await page.goto("/settings");
+    await page.getByTestId(TEST_IDS.settings.oldPasswordInput).fill(E2E_PASSWORD);
+    await page.getByTestId(TEST_IDS.settings.newPasswordInput).fill(newPassword);
+    await page
+      .getByTestId(TEST_IDS.settings.confirmPasswordInput)
+      .fill(newPassword);
+    await page.getByTestId(TEST_IDS.settings.updatePasswordButton).click();
+    await expect(page.getByText("密码已更新")).toBeVisible();
+
+    // better-auth changePassword 以 revokeOtherSessions 撤销其它会话：
+    // 旧设备再访问受保护页面会被 requireUser 重定向到登录页。
+    await otherPage.goto("/space/personal/dashboard");
+    await expect(otherPage).toHaveURL(/\/login$/, { timeout: 30_000 });
+
+    // 当前设备拿到新会话：经 /login 的已登录跳转后仍落在个人 Dashboard。
+    await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {
+      timeout: 30_000,
+    });
+    await expect(
+      page.getByRole("heading", { name: "仪表盘", level: 1 }),
+    ).toBeVisible();
+
+    await otherContext.close();
   });
 
   test("关闭临期提醒后刷新仍为关", async ({ page }) => {

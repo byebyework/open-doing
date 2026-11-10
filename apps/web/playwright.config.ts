@@ -42,6 +42,7 @@ export default defineConfig({
     env: {
       DATABASE_URL: E2E_DATABASE_URL,
       BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
+      BETTER_AUTH_URL: "http://localhost:3100",
       CRON_SECRET: E2E_CRON_SECRET,
       NEXT_TELEMETRY_DISABLED: "1",
     },
