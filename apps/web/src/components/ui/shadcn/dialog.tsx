@@ -3,20 +3,67 @@
 /**
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 适配:遮罩用 --ink-900/45(对齐原型 .dialog-overlay);关闭钮 sr-only 文案走 next-intl(common.close),不硬编码英文。
- * 动效:shadcn 自带的 tailwindcss-animate 工具类在本仓库不存在(死类,曾导致
- * 弹窗零动画),改挂 motion.css 的 iOS 弹簧动效(遮罩 od-overlay / 内容 od-modal)。
+ *
+ * 动效(2026-11-11 迁移到 motion/react):shadcn 自带的 tailwindcss-animate
+ * 工具类在本仓库不存在(死类,曾导致弹窗零动画),此前改挂 motion.css 的
+ * iOS 风格动效(od-overlay / od-modal);现按「动效全走 Motion」约定迁到
+ * overlay-motion.ts 的 variants,设计意图与 motion.css 保持一致——遮罩淡入
+ * 0.25s / 淡出 0.2s(与内容速度分层产生层次感),内容 scale 0.88→1 弹簧进入
+ * (opacity 在 60% 关键帧先到 1)、退出 0.2s 加速缩小(进入比退出长,iOS 语义);
+ * prefers-reduced-motion 由根 Providers 的 MotionConfig 统一处理。
+ *
+ * 关闭桥(后续 popover / dropdown / select / sheet 迁移沿用此模式):
+ * Radix 在 open 翻 false 的瞬间卸载 Portal,纯 AnimatePresence 看不到退场。
+ * 因此 `Dialog` 内部维护 desiredOpen(受控取 props.open,非受控取内部态,
+ * onOpenChange 仍即时回调、不延迟),Radix Root 的 open 传
+ * useHeldOpen(desiredOpen, OD_MS.modalOut) 的保持值,让退出动画在保持窗口内
+ * 播完再真正卸载;Overlay / Content 通过 Context 拿 desiredOpen,直接在
+ * open / closed variants 间切换,不依赖 AnimatePresence 卸载。Motion 独占
+ * transform,居中定位由 style 的 x/y(-50%)承担,原 translate-x/y-* 类已删。
  */
 import * as DialogPrimitive from "@radix-ui/react-dialog";
 import { XIcon } from "lucide-react";
-import * as React from "react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
+import * as React from "react";
 
+import {
+  modalVariants,
+  OD_MS,
+  overlayVariants,
+  useHeldOpen,
+} from "@/components/ui/overlay-motion";
 import { cn } from "@/lib/utils";
+
+/** desiredOpen 下发:Overlay / Content 据此在 open / closed variants 间切换。 */
+const DialogVisibleContext = React.createContext(true);
 
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
-  return <DialogPrimitive.Root data-slot="dialog" {...props} />;
+  const isControlled = props.open !== undefined;
+  const [desiredOpen, setDesiredOpen] = React.useState(
+    props.defaultOpen ?? false,
+  );
+  // ?? 而非三元:TS 无法经 isControlled 收窄 props.open,受控时取 props.open。
+  const open = props.open ?? desiredOpen;
+  // 关闭保持桥:desiredOpen 翻 false 后 Radix Root 再保持 modalOut 毫秒,
+  // 期间 Content 仍挂载,退场动画播完才真正卸载。
+  const heldOpen = useHeldOpen(open, OD_MS.modalOut);
+
+  return (
+    <DialogVisibleContext.Provider value={open}>
+      <DialogPrimitive.Root
+        data-slot="dialog"
+        {...props}
+        open={heldOpen}
+        onOpenChange={(next) => {
+          if (!isControlled) setDesiredOpen(next);
+          props.onOpenChange?.(next);
+        }}
+      />
+    </DialogVisibleContext.Provider>
+  );
 }
 
 function DialogTrigger({
@@ -41,15 +88,20 @@ function DialogOverlay({
   className,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Overlay>) {
+  const visible = React.useContext(DialogVisibleContext);
   return (
-    <DialogPrimitive.Overlay
-      data-slot="dialog-overlay"
-      className={cn(
-        "od-overlay fixed inset-0 z-50 bg-[rgba(14,19,24,0.45)]",
-        className,
-      )}
-      {...props}
-    />
+    <DialogPrimitive.Overlay asChild {...props}>
+      <motion.div
+        data-slot="dialog-overlay"
+        className={cn(
+          "fixed inset-0 z-50 bg-[rgba(14,19,24,0.45)]",
+          className,
+        )}
+        initial={{ opacity: 0 }}
+        animate={visible ? "open" : "closed"}
+        variants={overlayVariants}
+      />
+    </DialogPrimitive.Overlay>
   );
 }
 
@@ -62,27 +114,33 @@ function DialogContent({
   showCloseButton?: boolean;
 }) {
   const t = useTranslations("common");
+  const visible = React.useContext(DialogVisibleContext);
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
-      <DialogPrimitive.Content
-        data-slot="dialog-content"
-        className={cn(
-          "bg-card od-modal fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-[var(--radius-12)] p-6 shadow-lg sm:max-w-lg",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-        {showCloseButton && (
-          <DialogPrimitive.Close
-            data-slot="dialog-close"
-            className="ring-offset-background focus:ring-ring/40 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-[var(--radius-4)] opacity-60 transition-[opacity,box-shadow] outline-none hover:opacity-100 focus:ring-[3px] focus:ring-[3px] disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
-          >
-            <XIcon />
-            <span className="sr-only">{t("close")}</span>
-          </DialogPrimitive.Close>
-        )}
+      <DialogPrimitive.Content asChild {...props}>
+        <motion.div
+          data-slot="dialog-content"
+          className={cn(
+            "bg-card fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-[var(--radius-12)] p-6 shadow-lg sm:max-w-lg",
+            className,
+          )}
+          style={{ x: "-50%", y: "-50%" }}
+          initial={{ opacity: 0, scale: 0.88 }}
+          animate={visible ? "open" : "closed"}
+          variants={modalVariants}
+        >
+          {children}
+          {showCloseButton && (
+            <DialogPrimitive.Close
+              data-slot="dialog-close"
+              className="ring-offset-background focus:ring-ring/40 data-[state=open]:bg-accent data-[state=open]:text-muted-foreground absolute top-4 right-4 rounded-[var(--radius-4)] opacity-60 transition-[opacity,box-shadow] outline-none hover:opacity-100 focus:ring-[3px] focus:ring-[3px] disabled:pointer-events-none [&_svg:not([class*='size-'])]:size-4 [&_svg]:pointer-events-none [&_svg]:shrink-0"
+            >
+              <XIcon />
+              <span className="sr-only">{t("close")}</span>
+            </DialogPrimitive.Close>
+          )}
+        </motion.div>
       </DialogPrimitive.Content>
     </DialogPortal>
   );
