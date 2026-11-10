@@ -171,7 +171,8 @@ function EditTaskModal({
     },
   });
 
-  // 每次打开都以 task 的当前值重置（关闭期间内容被卸载，但 RHF 状态常驻）。
+  // 每次打开都以 task 的当前值重置（退出保持窗口（约 200ms）结束后内容才
+  // 卸载，但 RHF 状态常驻）。
   useEffect(() => {
     if (open) {
       reset({
@@ -184,6 +185,9 @@ function EditTaskModal({
   }, [open, reset, task.title, task.description, task.dueDate, task.startDate]);
 
   const onSubmit = handleSubmit(async (values) => {
+    // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
+    // 期间按钮恢复可点/可回车提交，这里按 open 作幂等闸门避免重复保存。
+    if (!open) return;
     setSubmitting(true);
 
     try {

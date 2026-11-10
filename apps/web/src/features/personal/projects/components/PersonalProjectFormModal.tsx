@@ -100,6 +100,9 @@ export function PersonalProjectFormModal({
   }, [open, reset, mode, project]);
 
   const onSubmit = handleSubmit(async (values) => {
+    // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
+    // 期间按钮恢复可点/可回车提交，这里按 open 作幂等闸门避免重复保存。
+    if (!open) return;
     if (mode === "edit" && !project) {
       setFormError(t("missingProject"));
       return;
