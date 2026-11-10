@@ -99,11 +99,16 @@ describe("HeroAnimated", () => {
   it("shows the reminder card text on both responsive layouts", () => {
     renderHero();
 
-    const cards = container.querySelectorAll('[data-testid="hero-reminder"]');
-    expect(cards).toHaveLength(2);
-    for (const card of cards) {
-      expect(card.textContent).toBe(heroCopy.reminderCard);
-    }
+    // 按分支分别断言（不依赖「恰好两张」的计数）：后续 DOM 合并时仍各自校验文案。
+    const mobile = container.querySelector(
+      '[data-testid="hero-reminder-mobile"]',
+    );
+    expect(mobile?.textContent).toBe(heroCopy.reminderCard);
+
+    const desktop = container.querySelector(
+      '[data-testid="hero-reminder-desktop"]',
+    );
+    expect(desktop?.textContent).toBe(heroCopy.reminderCard);
   });
 
   it("marks the two collage screenshots decorative with an empty alt", () => {

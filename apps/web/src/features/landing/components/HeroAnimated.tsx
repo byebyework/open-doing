@@ -5,7 +5,7 @@ import Link from "next/link";
 import { Bell, Target } from "lucide-react";
 import { useRef } from "react";
 import type { Variants } from "motion/react";
-import { motion, useScroll, useTransform } from "motion/react";
+import { motion, useReducedMotion, useScroll, useTransform } from "motion/react";
 
 import { Button } from "@/components/ui/shadcn/button";
 
@@ -92,6 +92,9 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
     offset: ["start start", "end start"],
   });
   const parallaxY = useTransform(scrollYProgress, [0, 1], [24, -24]);
+  // useScroll/useTransform 产出的 MotionValue 直接驱动 style，MotionConfig 的
+  // reducedMotion 只作用于动画，不会停用该风格；这里显式归零以尊重系统设置。
+  const reduceMotion = useReducedMotion();
 
   return (
     <section
@@ -186,7 +189,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
             />
           </div>
           <div
-            data-testid="hero-reminder"
+            data-testid="hero-reminder-mobile"
             className="inline-flex items-center gap-2 self-start rounded-[var(--radius-btn)] border border-[var(--border-default)] bg-[var(--surface-white)] px-3.5 py-2.5 text-[13px] font-medium text-[var(--ink-700)] shadow-[var(--shadow-card-hover)]"
           >
             <Bell
@@ -200,7 +203,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
         {/* 桌面（≥lg）：双屏绝对定位拼贴 + 入场漂移 + 滚动视差 */}
         <div className="relative hidden lg:block lg:h-[480px]">
           <motion.div
-            style={{ y: parallaxY }}
+            style={{ y: reduceMotion ? 0 : parallaxY }}
             className="absolute inset-0"
           >
             <motion.div
@@ -214,7 +217,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
                   src={calendarShot}
                   alt=""
                   sizes="(min-width: 1024px) 440px, 100vw"
-                  priority
+                  fetchPriority="high"
                   className="h-auto w-full"
                 />
               </div>
@@ -231,7 +234,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
                   src={kanbanShot}
                   alt=""
                   sizes="(min-width: 1024px) 430px, 100vw"
-                  priority
+                  fetchPriority="high"
                   className="h-auto w-full"
                 />
               </div>
@@ -253,7 +256,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
                 }}
               >
                 <div
-                  data-testid="hero-reminder"
+                  data-testid="hero-reminder-desktop"
                   className="inline-flex items-center gap-2 rounded-[var(--radius-btn)] border border-[var(--border-default)] bg-[var(--surface-white)] px-3.5 py-2.5 text-[13px] font-medium text-[var(--ink-700)] shadow-[var(--shadow-card-hover)]"
                 >
                   <Bell
