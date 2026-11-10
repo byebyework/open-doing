@@ -92,6 +92,16 @@ describe("Sheet 退出保持桥（motion 迁移）", () => {
     harness.unmount();
   });
 
+  it("right 侧挂载时 content 的 transform 即关闭态位移（屏幕外原点滑入）", () => {
+    const harness = createHarness(true);
+    // 入场初值取 closed 的 x:100%：挂载瞬间（入场动画尚未推进）transform
+    // 就应是 translateX(100%)，随后由 Motion 滑入归位。
+    expect((harness.content as HTMLElement).style.transform).toBe(
+      "translateX(100%)",
+    );
+    harness.unmount();
+  });
+
   it("open 翻 false 后内容在保持窗口内仍在 document，窗口过后移除", () => {
     const harness = createHarness(true);
 

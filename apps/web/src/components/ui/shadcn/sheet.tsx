@@ -35,7 +35,7 @@ import {
   createHeldOverlayRoot,
   OD_MS,
   overlayVariants,
-  sheetVariants,
+  sheetVariantsBySide,
 } from "@/components/ui/overlay-motion";
 import { cn } from "@/lib/utils";
 
@@ -99,7 +99,7 @@ function SheetContent({
 }) {
   const t = useTranslations("common");
   const visible = React.useContext(SheetVisibleContext);
-  const variants = sheetVariants(side);
+  const variants = sheetVariantsBySide[side];
   // 入场初值取 closed 的位移(与入场关键帧首帧一致):原点在屏幕外,挂载即滑入。
   // Variants 的值是 TargetAndTransition | TargetResolver,先收窄才能取属性。
   const exit = variants.closed as TargetAndTransition;

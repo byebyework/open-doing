@@ -38,7 +38,7 @@ export const OD_EASE = {
   standard: [0.4, 0, 0.2, 1], // --ease-standard
   decelerate: [0, 0, 0.2, 1], // --ease-decelerate（入场）
   accelerate: [0.3, 0, 1, 1], // --ease-accelerate（退场）
-  springIn: [0.34, 1.4, 0.64, 1], // 原 od-spring-in 曲线
+  springIn: [0.34, 1.4, 0.64, 1], // 弹簧入场曲线（modal / pop 的 open 共用）
   sheetIn: [0.32, 0.72, 0, 1],
 } as const;
 
@@ -54,7 +54,7 @@ export const overlayVariants: Variants = {
   },
 };
 
-/** 中心弹窗：scale 0.88→1 弹簧进入，opacity 在 60% 关键帧处先到 1（同原 od-spring-in）；退出缩小到 0.92。 */
+/** 中心弹窗：scale 0.88→1 弹簧进入，opacity 在 60% 关键帧处先到 1（ease 取 springIn）；退出缩小到 0.92。 */
 export const modalVariants: Variants = {
   open: {
     opacity: [0, 1, 1],
@@ -104,6 +104,17 @@ export function sheetVariants(side: "right" | "left" | "top" | "bottom"): Varian
   };
 }
 
+/** 抽屉四向 variants 的模块级预生成：消费方按 side 取用，避免每次渲染重建。 */
+export const sheetVariantsBySide: Record<
+  "right" | "left" | "top" | "bottom",
+  Variants
+> = {
+  right: sheetVariants("right"),
+  left: sheetVariants("left"),
+  top: sheetVariants("top"),
+  bottom: sheetVariants("bottom"),
+};
+
 /**
  * 受控关闭桥：open 翻 false 后返回值保持 true 共 exitMs（让退出动画播完，
  * 消费方据此决定何时真正卸载内容），随后落回 false；open 重新为 true 时
@@ -142,9 +153,9 @@ export type HeldOverlayRootProps = {
 };
 
 /**
- * 关闭桥的 Root 封装工厂（dialog / alert-dialog / popover / dropdown-menu /
- * select 共用）：返回一个 Radix Root 包装组件、一个 visible Context 与一个
- * keep-mounted Context。
+ * 关闭桥的 Root 封装工厂（dialog / alert-dialog / sheet / popover /
+ * dropdown-menu / select 共用）：返回一个 Radix Root 包装组件、一个
+ * visible Context 与一个 keep-mounted Context。
  *
  * mode: "held"（默认，dialog / alert-dialog / sheet）——Radix Root 的 open
  * 传 useHeldOpen(desiredOpen, exitMs) 的保持值，退出动画在保持窗口内播完

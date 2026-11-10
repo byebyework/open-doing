@@ -25,12 +25,12 @@ export async function LandingFooter() {
         >
           {t("footer.copyright")}
         </span>
-        <nav className="flex items-center gap-4">
+        <nav aria-label={t("nav.footerNav")} className="flex items-center gap-4">
           {navLinks.map((link) => (
             <a
               key={link.href}
               href={link.href}
-              className="inline-flex min-h-11 -my-4 items-center rounded py-4 text-[12px] text-[var(--ink-500)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              className="inline-flex min-h-11 -my-4 items-center rounded px-2 -mx-2 py-4 text-[12px] text-[var(--ink-500)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
             >
               {link.label}
             </a>

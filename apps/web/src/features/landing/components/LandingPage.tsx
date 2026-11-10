@@ -23,7 +23,8 @@ export async function LandingPage() {
   return (
     <LandingContent locale={locale}>
       <LandingNav />
-      <main id="main-content" tabIndex={-1}>
+      {/* tabIndex={-1} 承接跳转链接焦点；focus:outline-none 只去焦点圈，main 本身无交互 */}
+      <main id="main-content" tabIndex={-1} className="focus:outline-none">
         <Hero />
         <FeaturesSection />
         <AudiencesSection />

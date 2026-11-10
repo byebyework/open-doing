@@ -102,11 +102,14 @@ export const TEST_IDS = {
     langEn: "language-switch-en",
     langZh: "language-switch-zh",
     /**
-     * 注册入口（导航 / 首屏 / 底部）本轮未挂 data-testid，三个 CTA 都指向
-     * `/register`。这是 **CSS 选择器而非 testid**：spec 用 `locator` 作为
-     * 区块作用域内的选择器，避免依赖随界面语言变化的按钮文案。产品组件
-     * 不在本任务改动范围内，后续若补 testid 应替换此处。
+     * 三个注册入口 CTA（导航 / 首屏 / 底部）的 data-testid，产品组件侧
+     * 硬编码同名字面量。spec 既有定位是 **CSS 选择器** `a[href="/register"]`
+     * （见 registerLinks）——它依然有效，新定位可改用这些 testid。
      */
+    registerNav: "landing-register-nav",
+    registerHero: "landing-register-hero",
+    registerCta: "landing-register-cta",
+    /** 旧定位：区块作用域内的注册链接 CSS 选择器（避免依赖界面文案）。 */
     registerLinks: 'a[href="/register"]',
   },
   misc: {

@@ -13,7 +13,7 @@
 
 import type { Variants } from "motion/react";
 
-import { OD_EASE } from "../../components/ui/overlay-motion";
+import { OD_EASE } from "@/components/ui/overlay-motion";
 
 /** 单元素淡入上移：y 24 → 0、opacity 0 → 1。 */
 export const fadeUp: Variants = {

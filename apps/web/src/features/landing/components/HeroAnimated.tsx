@@ -153,7 +153,9 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
               size="lg"
               className="h-11 px-6 text-[14px] font-semibold"
             >
-              <Link href="/register">{copy.ctaStart}</Link>
+              <Link href="/register" data-testid="landing-register-hero">
+                {copy.ctaStart}
+              </Link>
             </Button>
             <Button
               asChild
@@ -180,6 +182,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
               src={calendarShot}
               alt=""
               sizes="100vw"
+              loading="eager"
               className="h-auto w-full"
             />
           </div>
@@ -188,6 +191,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
               src={kanbanShot}
               alt=""
               sizes="100vw"
+              loading="eager"
               className="h-auto w-full"
             />
           </div>
@@ -220,7 +224,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
                   src={calendarShot}
                   alt=""
                   sizes="(min-width: 1024px) 440px, 100vw"
-                  fetchPriority="high"
+                  priority
                   className="h-auto w-full"
                 />
               </div>
@@ -237,7 +241,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
                   src={kanbanShot}
                   alt=""
                   sizes="(min-width: 1024px) 430px, 100vw"
-                  fetchPriority="high"
+                  priority
                   className="h-auto w-full"
                 />
               </div>

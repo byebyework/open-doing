@@ -140,7 +140,7 @@ describe("overlay motion 常量与 variants", () => {
     expect(overlayVariants.open).toMatchObject({ opacity: 1 });
     expect(overlayVariants.closed).toMatchObject({ opacity: 0 });
 
-    // 弹窗：scale 0.88→1，opacity 在 60% 关键帧处先到 1（同原 od-spring-in）；
+    // 弹窗：scale 0.88→1，opacity 在 60% 关键帧处先到 1（ease 取 springIn）；
     // opacity 的 per-value transition 会整体替换父级 transition，须自带 duration / ease。
     // Variant = TargetAndTransition | TargetResolver（函数类型），需先收窄才能取属性
     const open = modalVariants.open as TargetAndTransition;

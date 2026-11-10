@@ -50,7 +50,7 @@ export function LanguageSwitch({ language }: LanguageSwitchProps) {
     <div
       role="group"
       aria-label={t("nav.languageLabel")}
-      className="inline-flex items-center gap-0.5 rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-white/70 p-0.5 pl-2"
+      className="inline-flex items-center gap-0.5 rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-(--surface-white)/70 p-0.5 pl-2"
     >
       <LanguagesIcon
         className="size-4 shrink-0 text-[var(--ink-400)]"

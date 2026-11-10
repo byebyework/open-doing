@@ -802,7 +802,7 @@
   },
   "landing": {
     "meta": { "title": "Open Doing — Task management for individuals and teams", "description": "Personal to-dos and team projects in one system. Kanban, calendar, reminders, and analytics — ready out of the box." },
-    "nav": { "features": "Features", "audiences": "Personal vs team", "faq": "FAQ", "login": "Log in", "start": "Get started", "languageLabel": "Switch language", "brand": "Open Doing", "skipToContent": "Skip to main content" },
+    "nav": { "features": "Features", "audiences": "Personal vs team", "faq": "FAQ", "login": "Log in", "start": "Get started", "languageLabel": "Switch language", "brand": "Open Doing", "skipToContent": "Skip to main content", "primaryNav": "Primary navigation", "footerNav": "Footer navigation" },
     "hero": {
       "badge": "Built for small teams",
       "titleLine1": "Turn ideas into",

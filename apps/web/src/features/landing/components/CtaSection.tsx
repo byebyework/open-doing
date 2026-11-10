@@ -55,10 +55,10 @@ export function CtaSection() {
           className="pointer-events-none absolute inset-y-0 -left-[20%] w-[140%]"
         />
 
-        <h2 className="relative text-[clamp(1.35rem,2.4vw,1.75rem)] font-extrabold tracking-[-0.02em] text-white">
+        <h2 className="relative text-[clamp(1.35rem,2.4vw,1.75rem)] font-extrabold tracking-[-0.02em] text-(--surface-white)">
           {t("cta.title")}
         </h2>
-        <p className="relative mt-3 text-[14px] leading-[1.6] text-white/80">
+        <p className="relative mt-3 text-[14px] leading-[1.6] text-(--surface-white)/80">
           {t("cta.subtitle")}
         </p>
 
@@ -68,9 +68,11 @@ export function CtaSection() {
               asChild
               variant="outline"
               size="lg"
-              className="h-11 border-0 bg-white px-6 text-[14px] font-semibold text-[var(--purple-700)] shadow-[var(--shadow-card-hover)] hover:bg-white hover:text-[var(--purple-700)]"
+              className="h-11 border-0 bg-(--surface-white) px-6 text-[14px] font-semibold text-[var(--purple-700)] shadow-[var(--shadow-card-hover)] hover:bg-(--surface-white) hover:text-[var(--purple-700)]"
             >
-              <Link href="/register">{t("cta.start")}</Link>
+              <Link href="/register" data-testid="landing-register-cta">
+                {t("cta.start")}
+              </Link>
             </Button>
           </motion.div>
           <motion.div whileHover={{ scale: 1.03 }}>
@@ -78,7 +80,7 @@ export function CtaSection() {
               asChild
               variant="outline"
               size="lg"
-              className="h-11 border-white/80 bg-transparent px-6 text-[14px] font-semibold text-white shadow-none hover:bg-white/10 hover:text-white"
+              className="h-11 border-(--surface-white)/80 bg-transparent px-6 text-[14px] font-semibold text-(--surface-white) shadow-none hover:bg-(--surface-white)/10 hover:text-(--surface-white)"
             >
               <Link href="/login">{t("cta.login")}</Link>
             </Button>
