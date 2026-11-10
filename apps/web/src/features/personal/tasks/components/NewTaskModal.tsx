@@ -55,8 +55,8 @@ const NO_PROJECT = "__none__";
  *
  * 文案逐字对照 `personal-project.html`「新建任务」弹窗：无责任人字段，
  * 项目下拉 = 传入项目 + 末项「个人空间 · 不属于项目」。
- * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
- * 表单以还原 antd `resetFields` 语义。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 在退出保持窗口（约 200ms）结束后
+ * 卸载内容，打开时重置表单以还原 antd `resetFields` 语义。
  */
 export function NewTaskModal({
   open,

@@ -80,7 +80,8 @@ export function TeamProjectHeaderActions({
         {tCommon("delete")}
       </Button>
 
-      {/* Radix Dialog 关闭即卸载内容，编辑表单每次打开按 project 重建。 */}
+      {/* Radix Dialog 在退出保持窗口（OD_MS.modalOut）结束后才卸载内容，
+          编辑表单每次打开按 project 重建。 */}
       <Dialog open={editOpen} onOpenChange={setEditOpen}>
         <DialogContent className="sm:max-w-[520px]">
           <DialogHeader>

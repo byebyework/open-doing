@@ -130,8 +130,8 @@ interface EditTaskModalProps {
  *
  * 提交失败时由 `onAction.updateTask`（client 包装件）统一提示错误，
  * 本组件保持弹窗打开，不吞掉失败状态。RHF 状态挂在常驻包装件上，
- * Radix Dialog 关闭即卸载内容，打开时以 task 的当前值重置表单
- * （还原 antd `destroyOnHidden` + `resetFields` 语义）。
+ * Radix Dialog 在退出保持窗口（约 200ms）结束后卸载内容，打开时以 task
+ * 的当前值重置表单（还原 antd `destroyOnHidden` + `resetFields` 语义）。
  */
 function EditTaskModal({
   open,

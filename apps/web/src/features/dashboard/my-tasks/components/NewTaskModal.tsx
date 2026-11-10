@@ -103,8 +103,8 @@ function buildProjectGroups(
  * 对照 `my-tasks.html`「新建任务」弹窗：项目下拉同时列出个人项目、
  * 「不属于项目」与各团队项目（按团队分组）。提交时按所选项目的
  * teamId 分流到对应的 Server Action；团队任务的默认责任人即创建者。
- * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
- * 表单以还原 antd `resetFields` 语义。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 在退出保持窗口（约 200ms）结束后
+ * 卸载内容，打开时重置表单以还原 antd `resetFields` 语义。
  */
 export function NewTaskModal({
   open,

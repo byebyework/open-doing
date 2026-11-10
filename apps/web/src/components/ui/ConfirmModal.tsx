@@ -47,6 +47,12 @@ export interface ConfirmModalProps {
  * 取消/Esc（非 loading 时）统一走 onCancel；loading 期间 Esc 被阻止
  * （antd confirmLoading 同语义）。Radix AlertDialog 外部点击本就不触发关闭
  * （onInteractOutside 被 Radix Omit），遮罩不是侧门。
+ *
+ * 退出保持窗口（2026-11-11 motion 迁移）：消费方 open 翻 false 后，Radix 内容
+ * 仍会挂载 OD_MS.modalOut（200ms）以播完退场动画。期间确认/取消按钮仍在
+ * DOM 中可点，故本组件按 open 作幂等闸门——open 已为 false 时忽略迟到的
+ * 确认点击（消费方 onConfirm 普遍非幂等：删除/移除会重复发 action），
+ * 也不再重复回调 onCancel。loading 仍由 disabled 承担首道防线。
  */
 export function ConfirmModal({
   open,
@@ -66,7 +72,9 @@ export function ConfirmModal({
     <AlertDialog
       open={open}
       onOpenChange={(next) => {
-        if (!next) onCancel();
+        // 退出保持窗口内 Cancel/Esc 仍可再次触发关闭；open 已为 false 时忽略，
+        // 保证「关闭只通知消费方一次」。
+        if (!next && open) onCancel();
       }}
     >
       {/* Radix 默认 role="alertdialog";e2e 契约按通用 dialog 查询,显式覆盖(frozen 断言不改)。 */}
@@ -91,6 +99,9 @@ export function ConfirmModal({
               // Radix Action 默认点击即关弹窗;preventDefault 后关闭责任移到
               // 消费方 success 分支,失败时弹窗保持、输入不丢,loading 态可见。
               event.preventDefault();
+              // 退出保持窗口内按钮仍在：open 已为 false / 仍在 loading 时忽略
+              // 迟到点击，避免重复提交（消费方 onConfirm 不是幂等的）。
+              if (!open || loading) return;
               onConfirm();
             }}
             {...okButtonProps}

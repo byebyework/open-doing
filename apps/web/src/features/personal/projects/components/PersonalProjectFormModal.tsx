@@ -45,8 +45,8 @@ export interface PersonalProjectFormModalProps {
  *
  * 文案对照 `my-tasks.html`「新建个人项目」弹窗；服务端校验失败时
  * 把 `DomainError.field` 映射回对应表单项，表单级错误显示在顶部。
- * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
- * 表单以还原 antd `resetFields` 语义。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 在退出保持窗口（约 200ms）结束后
+ * 卸载内容，打开时重置表单以还原 antd `resetFields` 语义。
  */
 export function PersonalProjectFormModal({
   open,

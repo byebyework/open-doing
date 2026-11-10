@@ -57,8 +57,8 @@ export interface NewTeamTaskModalProps {
  *
  * 对照 `project-list.html`「新建任务」弹窗：项目下拉只列本团队项目
  * （控制器裁决：不提供个人空间选项），责任人下拉为团队成员、默认自己。
- * RHF 状态挂在常驻包装件上，Radix Dialog 关闭即卸载内容，打开时重置
- * 表单以还原 antd `resetFields` 语义。
+ * RHF 状态挂在常驻包装件上，Radix Dialog 在退出保持窗口（约 200ms）结束后
+ * 卸载内容，打开时重置表单以还原 antd `resetFields` 语义。
  */
 export function NewTeamTaskModal({
   open,
