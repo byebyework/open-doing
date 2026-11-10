@@ -124,11 +124,11 @@ test.describe("flow 9: 个人空间设置", () => {
     await page.getByRole("menuitem", { name: "退出登录" }).click();
     await expect(page).toHaveURL(/\/login$/, { timeout: 30_000 });
 
-    // ④ 旧密码登录失败：恒定文案「用户名或密码错误」（表单级 alert）。
+    // ④ 旧密码登录失败：恒定文案「帐号或密码错误」（表单级 alert）。
     await page.getByTestId(TEST_IDS.auth.usernameInput).fill(username);
     await page.getByTestId(TEST_IDS.auth.passwordInput).fill(E2E_PASSWORD);
     await page.getByTestId(TEST_IDS.auth.submitButton).click();
-    await expect(page.getByText("用户名或密码错误")).toBeVisible();
+    await expect(page.getByText("帐号或密码错误")).toBeVisible();
     await expect(page).toHaveURL(/\/login$/);
 
     // ⑤ 新密码登录成功。

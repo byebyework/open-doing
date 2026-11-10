@@ -203,10 +203,10 @@ describe.skipIf(!hasTestDatabase)("better-auth 会话", () => {
     expect(ok.ok && ok.data).toMatchObject({ username: "alice", nickname: "阿岚" });
 
     const wrong = await loginAction({ username: "alice", password: "wrong-password" });
-    expect(wrong).toEqual({ ok: false, errors: { form: "用户名或密码错误" } });
+    expect(wrong).toEqual({ ok: false, errors: { form: "帐号或密码错误" } });
 
     const unknown = await loginAction({ username: "nobody", password: PASSWORD });
-    expect(unknown).toEqual({ ok: false, errors: { form: "用户名或密码错误" } });
+    expect(unknown).toEqual({ ok: false, errors: { form: "帐号或密码错误" } });
   });
 
   it("changePasswordAction 撤销其他会话：旧 cookie 全部失效，当前设备拿到新会话", async () => {

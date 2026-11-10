@@ -132,14 +132,14 @@ export function validateRegistration(input: AuthInput): {
   const password = normalizePassword(input?.password);
 
   if (!username) {
-    throw new AuthError("VALIDATION", "请输入用户名", "username", {
+    throw new AuthError("VALIDATION", "请输入帐号", "username", {
       key: "usernameRequired",
     });
   }
   if (username.length < USERNAME_MIN_LENGTH || username.length > USERNAME_MAX_LENGTH) {
     throw new AuthError(
       "VALIDATION",
-      `用户名需为 ${USERNAME_MIN_LENGTH}–${USERNAME_MAX_LENGTH} 个字符`,
+      `帐号需为 ${USERNAME_MIN_LENGTH}–${USERNAME_MAX_LENGTH} 个字符`,
       "username",
       {
         key: "usernameLength",

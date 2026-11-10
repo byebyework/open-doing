@@ -19,6 +19,6 @@ export const NICKNAME_MAX_LENGTH = 50;
 export const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 export const PHONE_PATTERN = /^[+\-0-9]{7,20}$/;
 
-export const USERNAME_TAKEN_MESSAGE = "用户名已存在";
+export const USERNAME_TAKEN_MESSAGE = "帐号已存在";
 /** 登录失败恒定文案：不区分“用户不存在”与“密码错误”，避免枚举用户名。 */
-export const INVALID_CREDENTIALS_MESSAGE = "用户名或密码错误";
+export const INVALID_CREDENTIALS_MESSAGE = "帐号或密码错误";

@@ -243,7 +243,7 @@ describe.skipIf(!hasTestDatabase)("认证注册链路（better-auth）", () => {
       password: "password456",
       email: "b@test.com",
     });
-    expect(errors.username).toBe("用户名已存在");
+    expect(errors.username).toBe("帐号已存在");
   });
 
   it("邮箱已存在 → email 字段错误", async () => {

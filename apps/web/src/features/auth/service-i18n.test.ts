@@ -9,7 +9,7 @@ import { AuthError } from "./service";
  */
 describe("AuthError i18n channel", () => {
   it("携带可选 i18n 描述符；缺省为 undefined", () => {
-    const withI18n = new AuthError("VALIDATION", "请输入用户名", "username", {
+    const withI18n = new AuthError("VALIDATION", "请输入帐号", "username", {
       key: "usernameRequired",
     });
     expect(withI18n.i18n).toEqual({ key: "usernameRequired" });
