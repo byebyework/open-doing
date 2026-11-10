@@ -4,12 +4,12 @@
  * Vendored from shadcn/ui (new-york, Tailwind v4) @ 2026-11-02.
  * 无令牌适配(全部消费桥接槽位)。
  * 动效(2026-11-11 迁移到 motion/react):shadcn 自带的 tailwindcss-animate
- * 工具类在本仓库不存在(死类),此前改挂 motion.css 的 iOS 动效(内容
- * od-popover 小行程弹簧);现按「动效全走 Motion」约定迁到 overlay-motion.ts
+ * 工具类在本仓库不存在(死类),此前改挂一层 iOS 风格的 CSS 动效(内容
+ * 小行程弹簧);现按「动效全走 Motion」约定迁到 overlay-motion.ts
  * 的 popVariants,并沿用 dialog.tsx 的关闭保持桥(createHeldOverlayRoot,
  * 保持 OD_MS.popOut=150ms,退场播完才真正卸载)。缩放原点由 style 的
  * transform-origin 跟随 Radix 弹出的锚点角(--radix-dropdown-menu-content-
- * transform-origin),原 origin-(--radix-...) 类与 od-popover 类已删。
+ * transform-origin),原 origin-(--radix-...) 类与旧的 CSS 动效类已删。
  *
  * SubContent(嵌套子菜单)只做入场:Radix Sub 关闭时同步卸载,没有可保持的
  * Root 窗口;子菜单当前未被业务使用,如后续启用需另做保持桥。

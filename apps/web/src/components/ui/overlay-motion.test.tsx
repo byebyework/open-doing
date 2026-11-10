@@ -118,7 +118,7 @@ describe("useHeldOpen", () => {
 });
 
 describe("overlay motion 常量与 variants", () => {
-  it("OD_MS / OD_EASE 与 motion.css 数值逐一对应", () => {
+  it("OD_MS / OD_EASE 与原 CSS 动效层数值逐一对应", () => {
     expect(OD_MS).toEqual({
       overlayIn: 250,
       overlayOut: 200,
@@ -136,7 +136,7 @@ describe("overlay motion 常量与 variants", () => {
     expect(OD_EASE.sheetIn).toEqual([0.32, 0.72, 0, 1]);
   });
 
-  it("variants 目标值与 motion.css 关键帧对应", () => {
+  it("variants 目标值与原 CSS 动效层关键帧对应", () => {
     expect(overlayVariants.open).toMatchObject({ opacity: 1 });
     expect(overlayVariants.closed).toMatchObject({ opacity: 0 });
 

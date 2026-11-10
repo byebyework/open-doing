@@ -5,9 +5,9 @@
  * 适配:遮罩用 --ink-900/45(对齐原型 .dialog-overlay);关闭钮 sr-only 文案走 next-intl(common.close),不硬编码英文。
  *
  * 动效(2026-11-11 迁移到 motion/react):shadcn 自带的 tailwindcss-animate
- * 工具类在本仓库不存在(死类,曾导致弹窗零动画),此前改挂 motion.css 的
- * iOS 风格动效(od-overlay / od-modal);现按「动效全走 Motion」约定迁到
- * overlay-motion.ts 的 variants,设计意图与 motion.css 保持一致——遮罩淡入
+ * 工具类在本仓库不存在(死类,曾导致弹窗零动画),此前改挂一层 iOS 风格的
+ * CSS 动效(遮罩淡入淡出 + 弹窗弹簧);现按「动效全走 Motion」约定迁到
+ * overlay-motion.ts 的 variants,设计意图保持不变——遮罩淡入
  * 0.25s / 淡出 0.2s(与内容速度分层产生层次感),内容 scale 0.88→1 弹簧进入
  * (opacity 在 60% 关键帧先到 1)、退出 0.2s 加速缩小(进入比退出长,iOS 语义);
  * prefers-reduced-motion 由根 Providers 的 MotionConfig 统一处理。
