@@ -68,6 +68,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/server/db/seed.ts", reason: "种子示例数据内容" },
   { prefix: "apps/web/src/features/calendar/components/SpaceCalendar.tsx", reason: "ZH_CALENDAR_LOCALE 短星期数据" },
   { prefix: "apps/web/src/features/users/components/LanguageSetting.tsx", reason: "语言名母语展示「简体中文」" },
+  { prefix: "apps/web/src/features/landing/components/LanguageSwitch.tsx", reason: "语言按钮的母语短标识「中」（同 LanguageSetting 惯例，语言名本身不翻译）" },
 
   // ── Route Handler（无 UI：日志与 cron 兜底文案） ──
   { prefix: "apps/web/src/app/api/", reason: "API 日志与 cron 兜底文案，无 UI" },
