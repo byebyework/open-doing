@@ -89,7 +89,10 @@ export async function registerAction(input: AuthInput): Promise<ActionResult<Use
       ...(validated.phone ? { phone: validated.phone } : {}),
     };
 
-    const result = await auth.api.signUpEmail({ body: signUpBody });
+    const result = await auth.api.signUpEmail({
+      body: signUpBody,
+      headers: await headers(),
+    });
 
     return { ok: true, data: toDomainUser(result.user) };
   } catch (error) {

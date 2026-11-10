@@ -132,7 +132,7 @@ export async function updateUserLanguage(
 ): Promise<AppLocale> {
   const [row] = await client
     .update(users)
-    .set({ language: input.language })
+    .set({ language: input.language, updatedAt: new Date() })
     .where(eq(users.id, input.userId))
     .returning({ language: users.language });
 
@@ -167,7 +167,7 @@ export async function updateReminderPrefs(
 
   const [row] = await client
     .update(users)
-    .set(patch)
+    .set({ ...patch, updatedAt: new Date() })
     .where(eq(users.id, input.userId))
     .returning(reminderPrefsColumns);
 
@@ -341,7 +341,7 @@ export async function updateProfile(
   try {
     const [row] = await client
       .update(users)
-      .set(dbPatch)
+      .set({ ...dbPatch, updatedAt: new Date() })
       .where(eq(users.id, input.userId))
       .returning(profileColumns);
 

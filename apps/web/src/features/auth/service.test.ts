@@ -36,6 +36,19 @@ vi.mock("@/lib/uid", async (importOriginal) => {
 const uidModule = await vi.importActual<typeof import("@/lib/uid")>("@/lib/uid");
 const mockGenerateUid = vi.mocked(generateUid);
 
+/**
+ * registerAction 现在把请求头传给 better-auth（让限流器看到真实 IP），
+ * 单元测试没有 Next.js 请求上下文，这里提供空请求头与 cookie 容器。
+ */
+vi.mock("next/headers", () => ({
+  headers: vi.fn(async () => new Headers()),
+  cookies: vi.fn(async () => ({
+    get: () => undefined,
+    set: () => {},
+    delete: () => {},
+  })),
+}));
+
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
 if (!hasTestDatabase) {
