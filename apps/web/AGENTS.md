@@ -39,13 +39,18 @@ i18n/           server.ts (request locale), messages/{zh,en}.json
 
 ## Env is resolved from this directory
 
-Next.js resolves `.env.local` from `apps/web`, not the repo root. Required variables:
+Next.js resolves `.env.local` from `apps/web`, not the repo root. Required to run the app:
 
 ```
 DATABASE_URL=...
-TEST_DATABASE_URL=...
 BETTER_AUTH_SECRET=...
 CRON_SECRET=...
+```
+
+Required only for database tests (Vitest) and e2e tooling — not used by the running app:
+
+```
+TEST_DATABASE_URL=...
 ```
 
 Gotcha: vitest and drizzle-kit do NOT read `.env.local` — export the variables in the shell before running tests or migrations.
