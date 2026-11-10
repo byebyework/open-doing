@@ -4,7 +4,7 @@
 
 ## 功能概览
 
-登录后按**空间**组织：个人空间与各团队空间共用同一套五个模块的导航（`/space/{personal|团队 slug}/{module}`）。
+登录后按**空间**组织：个人空间与各团队空间共用 Dashboard / Kanban / Calendar / Analysis 四个空间模块（`/space/{personal|团队 slug}/{module}`）；个人设置为系统级 `/settings`（顶栏用户菜单进入），团队设置在各团队空间的 `/space/{teamSlug}/settings`。
 
 - **Dashboard**：个人看「今天该干嘛」（统计卡 + 今天/逾期任务）；团队看项目健康度、重要节点与成员负载。
 - **Kanban**：跨项目聚合的三列看板（待办 / 进行中 / 已完成），支持按项目（团队空间另支持「未指派」）筛选，拖拽改状态，已完成默认收敛近 7 天。
@@ -43,9 +43,9 @@ packages/
 ## 技术栈
 
 - Next.js 16（App Router，Turbopack）+ React 19 + TypeScript
-- antd v6（ConfigProvider 主题令牌、`zh_CN`）+ Tailwind CSS 4（只引 theme/utilities，不引 preflight）
+- 内置 shadcn/ui（Radix primitives + cva）+ Tailwind CSS 4（theme / preflight / utilities），设计令牌集中在 `apps/web/src/app/tokens.css`
 - PostgreSQL 16 + Drizzle ORM / drizzle-kit
-- jose 签名的无状态 httpOnly cookie 会话 + `@node-rs/argon2` 密码哈希
+- better-auth：数据库会话（`sessions` 表，30 天过期），密码哈希存于 `accounts.password`；`users` 表即 better-auth 的 user 模型
 - Vitest（根级 workspace 配置）+ pnpm workspaces
 
 ## 本地开发（Quickstart）
@@ -93,7 +93,8 @@ cp .env.example apps/web/.env.local
 |---|---|
 | `DATABASE_URL` | **应用运行时 + 迁移**使用的开发库连接串（默认 `open_doing`） |
 | `TEST_DATABASE_URL` | **仅测试**使用的独立测试库连接串（默认 `open_doing_test`）；由 `src/server/db/testing.ts` 重放迁移并清库，应用运行时永不使用 |
-| `SESSION_SECRET` | 会话签名密钥；生产环境必须换成强随机值（如 `openssl rand -base64 32`） |
+| `BETTER_AUTH_SECRET` | better-auth 会话签名密钥；生产环境必须换成强随机值（如 `openssl rand -base64 32`） |
+| `BETTER_AUTH_URL` | 可选，显式指定应用基址（如 `http://localhost:3000`）；未设置时按请求推导 |
 | `CRON_SECRET` | cron 路由鉴权密钥；生产环境同样必须替换 |
 
 两个数据库必须指向**不同的库**（开发库 `open_doing` / 测试库 `open_doing_test`）：测试会清空 `TEST_DATABASE_URL` 指向的库，但不会触碰开发库。`TEST_DATABASE_URL` 未设置时数据库用例会跳过并打印提示。
@@ -130,7 +131,7 @@ pnpm db:seed
 | 苏晓 | `doing_5nqc04` | 成员 |
 | 高远 | `doing_6wtp77` | 成员 |
 
-- 统一密码：`seed-password`（仅用于本地开发）。推荐用 `林夏` 登录查看个人空间五模块（`/space/personal/{dashboard,kanban,calendar,analysis,settings}`）与「增长突击队」团队空间。
+- 统一密码：`seed-password`（仅用于本地开发）。推荐用 `林夏` 登录查看个人空间四模块（`/space/personal/{dashboard,kanban,calendar,analysis}`）、系统级设置 `/settings` 与「增长突击队」团队空间。
 - 数据范围：团队「增长突击队」（3 个团队项目：官网改版 / 移动端 2.0 / Q4 用户增长活动）+ 林夏的 2 个个人项目（学习成长 / 生活琐事），共 29 个任务，覆盖逾期、今天/明天临期、已完成、无截止日期，以及子任务、评论和 1 个未指派团队任务。
 - **日期以执行当天为锚**：原型基准日为 2026-10-21，原型日期 `D` 按 `今天 + (D - 2026-10-21)` 天落库，因此「今天/明天到期、已逾期」的相对状态在任何一天执行都成立。
 - **幂等（守卫式跳过）**：脚本检测到 `林夏` / `doing_x7k2m9` 已存在时，打印「已初始化」并直接退出，不写入、不覆盖任何数据；全部写入在单个事务中完成，失败自动回滚。需要重建示例数据时，先清空开发库（例如 `docker compose down -v`，**会同时清空测试库与 e2e 库，慎用**）后重跑。
@@ -142,7 +143,7 @@ pnpm db:seed
 pnpm dev
 ```
 
-打开 http://localhost:3000：未登录会跳到 `/login`。注册（只需用户名 + 密码，无需邮箱）成功后自动登录并进入 `/space/personal/dashboard`（应用外壳 + 个人空间五模块导航：Dashboard / Kanban / Calendar / Analysis / 设置）。
+打开 http://localhost:3000：未登录会跳到 `/login`。注册（用户名 + 邮箱 + 密码，且需要有效邀请码）成功后自动登录并进入 `/space/personal/dashboard`（应用外壳 + 个人空间四模块导航：Dashboard / Kanban / Calendar / Analysis；个人设置从顶栏用户菜单进入系统级 `/settings`）。
 
 > **排障：浏览器一直转圈 / 无法访问** —— 首先确认本机 3000 端口没有被其他进程占用，最常见的是 ssh 隧道 / VSCode Remote 转发抢占了 3000（流量被转发到远端而非本地应用，表现为一直转圈）。检查：`lsof -nP -iTCP:3000 -sTCP:LISTEN`；若监听进程是 `ssh`，断开隧道 / 关闭对应转发后重试。
 
@@ -190,7 +191,7 @@ pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts
 
 运行机制：
 
-- Playwright 在 **3100** 端口启动独立的 `next dev`（与宿主机 `pnpm dev` 的 3000 端口错开），并在 `webServer.env` 中显式注入 `DATABASE_URL=…/open_doing_e2e`、测试专用 `SESSION_SECRET` / `CRON_SECRET`，因此**不需要** `apps/web/.env.local`。
+- Playwright 在 **3100** 端口启动独立的 `next dev`（与宿主机 `pnpm dev` 的 3000 端口错开），并在 `webServer.env` 中显式注入 `DATABASE_URL=…/open_doing_e2e`、测试专用 `BETTER_AUTH_SECRET` / `BETTER_AUTH_URL=http://localhost:3100` / `CRON_SECRET`，因此**不需要** `apps/web/.env.local`。
 - 全局准备（`apps/web/e2e/global-setup.ts`）先断言库名必须是 `open_doing_e2e`，再重放 `apps/web/drizzle` 迁移并 TRUNCATE 全部业务表；测试因此可重复运行。
 - `test:e2e` 由 `apps/web/scripts/e2e-with-db-guard.sh` 包裹：运行前后分别打印 `open_doing` 与 `open_doing_test` 的逐表行数，任一发生变化即判失败，证明 e2e 只写 `open_doing_e2e`。
 - 用例串行执行；每个用例通过注册页自建唯一账号。

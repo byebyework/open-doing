@@ -62,7 +62,7 @@ packages/
 | Database | PostgreSQL 16 | Relational integrity, cascade deletes, unique constraints (username, UID) |
 | ORM | Drizzle | Lightweight, close to SQL, good type inference, built-in migration tooling |
 | Local database | Docker compose | Consistent environment, zero manual setup |
-| Auth | Username + password; stateless HS256 signature via jose in an httpOnly cookie (`od_session`, sameSite lax, 30 days, payload `{ userId }`) + `@node-rs/argon2` (Argon2id) | No sessions table: no DB lookup on validation, no session cleanup job; Argon2id resists GPU cracking with fast native performance; signing key from `SESSION_SECRET` |
+| Auth | Username + email/password via **better-auth** (username + nextCookies plugins) | DB-backed sessions (`sessions` table, no hand-rolled JWT); `users` is better-auth's user model and credentials live in `accounts.password`; registration gated by registration codes consumed in database hooks; email required; signing key from `BETTER_AUTH_SECRET` |
 | Data mutations | Server Actions | Fits App Router forms / progressive enhancement |
 | Scheduled jobs | Protected Route Handler + cron | No worker process, simple deployment |
 | Package management | pnpm workspaces | Decided |
@@ -229,18 +229,36 @@ One set of components for both spaces (`features/analysis/`; `SpaceAnalysis` dis
 Core tables (fields summarized; the Drizzle schema and migrations are authoritative):
 
 ```
-users
-  id            internal primary key (not exposed)
-  uid           external identifier, unique, doing_xxxx (used for invites)
-  username      login name, unique
-  nickname      display name (nullable; generated user_<5-hex> when left blank at registration)
+users                         -- also better-auth's `user` model
+  id            uuid primary key (better-auth id, not exposed)
+  uid           external identifier, unique, doing_xxxx (used for invites; additionalField)
+  username      login name, unique (username plugin; case-sensitive)
+  display_username  display form of the username (username plugin; NOT NULL)
+  name          display name (NOT NULL; generated user_<5-hex> when blank at registration;
+                carries the old nickname semantics in the domain layer)
+  email         NOT NULL, globally unique (lowercased on write; required at registration)
+  email_verified / image   better-auth profile fields
   gender        male | female | secret (nullable)
-  email         nullable, globally unique (stored lowercase)
   phone         nullable, globally unique
   due_soon_reminder_enabled / overdue_reminder_enabled
   language      zh | en
-  password_hash
-  created_at
+  created_at, updated_at
+  -- no password column: password credentials live in accounts.password
+
+sessions                      -- better-auth: DB-backed login sessions
+  id, user_id -> users.id (cascade delete), token (unique), expires_at,
+  ip_address, user_agent, created_at, updated_at
+
+accounts                      -- better-auth: credential rows
+  id, user_id -> users.id (cascade delete), account_id, provider_id, password,
+  access_token, refresh_token, access_token_expires_at, refresh_token_expires_at,
+  scope, id_token, created_at, updated_at
+
+verifications                 -- better-auth: one-time verification tokens
+  id, identifier, value, expires_at, created_at, updated_at
+
+registration_codes            -- closed-beta registration gate
+  id, code (unique), max_uses, used_count, created_at
 
 teams
   id, name, slug (uniqueness strategy within team/global decided at implementation), owner_id -> users.id, created_at
@@ -286,13 +304,14 @@ notifications
   actor_id -> users.id (null for system-generated notifications)
   created_at
 
-sessions (not created: stateless jose signed cookie, see §3)
 ```
 
 Key constraints and behavior:
 
-- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable. `users.email` and `users.phone` are additionally globally unique and nullable: optional empty inputs are normalized to `NULL` (PostgreSQL unique indexes treat NULLs as distinct), and email is lowercased on write.
-- **Display name**: `users.nickname` is the display name everywhere (assignee selectors, member lists, notification actor names, avatar initials); `username` remains the login identity. When the optional nickname is left blank at registration, the service stores a generated `user_<5-hex>` (first 5 lowercase hex chars of `sha256(uid)`) in `nickname`. Users can change it in `/settings` and it takes effect everywhere; `displayName(user)` in `@open-doing/types` resolves `nickname`, falling back to `username` for legacy rows. Avatar background color hashes the user id, not the name, so it stays stable across renames.
+- **Authentication** is owned by better-auth: sessions are database rows (`sessions.expires_at` = 30 days), and password hashes live in `accounts.password` (`providerId = "credential"`, `accountId = user id`). Registration is closed-beta: `registration_codes` are consumed atomically in a better-auth database hook (`used_count < max_uses` conditional update), and the same hook generates `uid` and the fallback display name. `email` is required at registration; there is no email delivery.
+- `changePasswordAction` calls better-auth with `revokeOtherSessions: true`: every session except the current one is deleted (other devices are signed out), while the active session stays logged in.
+- `users.uid` and `users.username` each get a unique index; UIDs are randomly generated and non-enumerable. `users.email` is NOT NULL and globally unique (lowercased on write); `users.phone` is globally unique and nullable: an empty input is normalized to `NULL` (PostgreSQL unique indexes treat NULLs as distinct).
+- **Display name**: better-auth's `users.name` is the display name everywhere (assignee selectors, member lists, notification actor names, avatar initials); `username` remains the login identity. When the optional nickname is left blank at registration, the hook stores a generated `user_<5-hex>` (first 5 lowercase hex chars of `sha256(uid)`) in `name`. Users can change it in `/settings` and it takes effect everywhere; the domain layer still calls this field `nickname` and `displayName(user)` in `@open-doing/types` resolves `nickname`, falling back to `username`. Avatar background color hashes the user id, not the name, so it stays stable across renames.
 - Personal-space data: tasks with `space_type = 'personal'` (`project_id` may point to the owner's personal project or be null) and personal projects with `owner_id = self` are accessible only by the owner (see §7); personal-project tasks always have `assignee_id` = the owner.
 - **Cascade deletes**: deleting a project (team or personal) → its tasks/subtasks/comments and related notifications; dissolving a team → its projects, memberships, invites, notifications. Backed by database foreign keys `ON DELETE CASCADE`, with a second confirmation in the app layer.
 - Removing a member / leaving: only deletes `team_memberships`, **not tasks**; their `assignee_id` is nulled.
@@ -352,9 +371,14 @@ Environment variables required by `apps/web` (`.env.local`, not committed):
 
 ```
 DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open_doing
-SESSION_SECRET=...
+TEST_DATABASE_URL=postgres://open-doing:open-doing@localhost:5433/open_doing_test
+BETTER_AUTH_SECRET=...            # required in production; signs sessions
+# BETTER_AUTH_URL=http://localhost:3000   # optional; inferred from the request when unset
 CRON_SECRET=...
 ```
 
 - `docker-compose.yml` at the repo root starts the local PostgreSQL 16 (host port 5433, overridable via `PG_PORT`).
 - Drizzle config and migration files live in the web package (`src/server/db/` + `drizzle/`), run via `pnpm --filter @open-doing/web db:generate / db:migrate`.
+- **Full dev-DB reset after regenerating migrations**: run
+  `DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE;` (re-create `public` if your client requires it) before `db:migrate`. Drizzle-kit records applied migrations in its own `drizzle` schema; dropping only `public` leaves the journal behind, so `db:migrate` thinks migrations are applied and silently skips table creation.
+- Playwright e2e injects `BETTER_AUTH_URL=http://localhost:3100` and a test-only `BETTER_AUTH_SECRET`; it never reads `.env.local`.

@@ -30,7 +30,7 @@ pnpm test                     # all Vitest tests
 pnpm vitest run apps/web/src/lib/slug.test.ts   # a single test file
 pnpm db:generate              # generate a migration after changing schema.ts
 pnpm db:migrate
-pnpm db:seed                  # idempotent sample data (user 林夏/doing_x7k2m9, password seed-password)
+pnpm db:seed                  # idempotent sample data (login 林夏 / seed-password, uid doing_x7k2m9)
 pnpm --filter @open-doing/web test:e2e          # Playwright e2e (port 3100, separate db open_doing_e2e)
 pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # a single e2e flow
 ```
@@ -41,6 +41,7 @@ Environment variable gotchas:
 - The database pointed to by `TEST_DATABASE_URL` is **wiped by tests**; it must be a different database from the dev `DATABASE_URL`.
 - Typecheck ordering: on a clean checkout, run `pnpm build` (or `pnpm --filter @open-doing/web exec next typegen`) before `pnpm typecheck` — Next.js route types are generated at build time.
 - Before running e2e for the first time: `pnpm --filter @open-doing/web exec playwright install chromium`.
+- **Full dev-DB reset after regenerating migrations**: run `DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE;` before `pnpm db:migrate`. Drizzle-kit records applied migrations in its own `drizzle` schema; dropping only `public` leaves the journal behind, so `db:migrate` silently skips table creation.
 
 ## Architecture
 
@@ -56,6 +57,14 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 - `actions.ts` — Server Actions: validate input → check permissions → call service → return `ActionResult<T>` (`{ ok: true, data }` or `{ ok: false, errors: { form?, <field>?: string } }`). Field errors are mapped back to the corresponding form fields by client forms.
 - `service.ts` — data access and business rules (e.g. "a member cannot edit others' tasks"); never scattered inside pages.
 - `components/` — domain components; cross-domain generic components go in `src/components/ui`.
+
+### Authentication (better-auth)
+
+- Authentication is **better-auth** (`apps/web/src/features/auth/server.ts`), not a hand-rolled JWT. Sessions are database rows (`sessions` table, 30-day expiry) and password hashes live in `accounts.password`; the `users` table is better-auth's `user` model (`name` / `email` / `emailVerified` / `image` / `displayUsername`). The domain layer still exposes `nickname`, mapped from better-auth's `name`.
+- **Email is required at registration** (NOT NULL, globally unique, lowercased). Registration is closed-beta: registration codes (`registration_codes`, `used_count < max_uses`) are consumed atomically in better-auth database/request hooks, which also generate the `doing_xxxx` uid and the fallback display name.
+- Login is by username (username plugin; case-sensitive). `changePasswordAction` calls `changePassword` with `revokeOtherSessions: true`, so other devices are signed out while the current session stays valid.
+- Env: `BETTER_AUTH_SECRET` signs sessions (production throws when missing); `BETTER_AUTH_URL` is optional and inferred from the request. Playwright injects `BETTER_AUTH_URL=http://localhost:3100` plus a test-only secret.
+- Security-sensitive auth flows must keep `nextCookies()` as the last plugin; it is what writes session cookies from Server Actions.
 
 ### Server/client boundary
 
@@ -92,6 +101,7 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 ### Database
 
 - Schema: `apps/web/src/server/db/schema.ts` (Drizzle `pg-core`); migrations in `apps/web/drizzle/` (replayable on an empty database). Tables use native `uuid` primary keys with `gen_random_uuid()`; timestamps are `timestamptz` (absolute instants, no custom timestamp type). Slugs locate teams/projects; task details use opaque IDs.
+- Auth tables: `users` doubles as better-auth's user model (`name` carries the display name); `sessions` / `accounts` / `verifications` are better-auth's core tables. There is no `users.password_hash` / `users.nickname` column — credentials live in `accounts.password` and `email` is NOT NULL.
 - Cascading deletes rely on foreign keys `ON DELETE CASCADE` as the safety net; removing a member only deletes the membership and nulls the tasks' `assignee_id` — it does not delete tasks.
 - `server/db/testing.ts` replays migrations + truncates the test database.
 
@@ -117,7 +127,7 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 - Apply visibility filters in every query: team data requires membership; personal-space data is owner-only.
 - `POST /api/cron/due-scan` is authenticated by `CRON_SECRET` and designed to be idempotent — keep it that way.
 - Never commit real credentials. Use `.env.local` (gitignored) for local secrets; `.env.example` documents required variables.
-- Secrets such as `DATABASE_URL`, `TEST_DATABASE_URL`, and `CRON_SECRET` must never appear in code, logs, or tests.
+- Secrets such as `DATABASE_URL`, `TEST_DATABASE_URL`, `BETTER_AUTH_SECRET`, and `CRON_SECRET` must never appear in code, logs, or tests.
 - Never point `TEST_DATABASE_URL` at the development database — tests wipe it.
 
 ## Commit and Pull Request Guidelines

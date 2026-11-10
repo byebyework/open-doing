@@ -19,6 +19,7 @@ The only application in the monorepo: pages + Server Actions + Route Handlers + 
 - UI is the vendored shadcn/ui set (`src/components/ui/shadcn/`, Radix + cva) + Tailwind 4 (preflight enabled in `globals.css`); there is no runtime theme — colors come from design tokens in `src/app/tokens.css` (1:1 with the prototypes), and antd must not be reintroduced (a guard test pins this).
 - All user-visible copy lives in `src/i18n/messages/{zh,en}.json` (next-intl). Hardcoded CJK strings fail the cjk-guard test; new features must ship both locales.
 - "Today" is computed in Asia/Shanghai (`src/lib/today.ts`); RSCs pass `today` down as a prop — never read the local timezone in components.
+- Authentication is better-auth (`features/auth/server.ts`): DB-backed sessions (`sessions`), password in `accounts.password`, `users` as its user model, email required at registration, registration codes consumed via hooks. `nextCookies()` must remain the last plugin.
 
 ## Directory map (`src/`)
 
@@ -42,7 +43,8 @@ Next.js resolves `.env.local` from `apps/web`, not the repo root. Required varia
 
 ```
 DATABASE_URL=...
-SESSION_SECRET=...
+TEST_DATABASE_URL=...
+BETTER_AUTH_SECRET=...
 CRON_SECRET=...
 ```
 
