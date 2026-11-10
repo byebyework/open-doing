@@ -102,12 +102,12 @@ export const TEST_IDS = {
     langEn: "language-switch-en",
     langZh: "language-switch-zh",
     /**
-     * 启动 CTA（导航 / 首屏 / 底部）本轮未挂 data-testid，三个入口都指向
-     * `/register`。按 href 定位（spec 用 `locator` 作作用域内选择器），
-     * 避免依赖随界面语言变化的按钮文案。产品组件不在本任务改动范围内，
-     * 后续若补 testid 应替换此处。
+     * 注册入口（导航 / 首屏 / 底部）本轮未挂 data-testid，三个 CTA 都指向
+     * `/register`。这是 **CSS 选择器而非 testid**：spec 用 `locator` 作为
+     * 区块作用域内的选择器，避免依赖随界面语言变化的按钮文案。产品组件
+     * 不在本任务改动范围内，后续若补 testid 应替换此处。
      */
-    startButtons: 'a[href="/register"]',
+    registerLinks: 'a[href="/register"]',
   },
   misc: {
     notFoundMessage: "not-found-message",
