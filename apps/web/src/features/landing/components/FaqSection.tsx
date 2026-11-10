@@ -86,7 +86,7 @@ export function FaqSection() {
                     aria-controls={`faq-panel-${key}`}
                     onClick={() => toggle(key)}
                     onKeyDown={(event) => handleKeyDown(event, key)}
-                    className="flex min-h-14 w-full items-center justify-between gap-4 py-4 text-left text-[15px] font-bold text-[var(--ink-900)]"
+                    className="flex min-h-14 w-full items-center justify-between gap-4 py-4 text-left text-[15px] font-bold text-[var(--ink-900)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-[var(--primary)]"
                   >
                     <span>{t(`faq.items.${key}.q`)}</span>
                     <motion.span

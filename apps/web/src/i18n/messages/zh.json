@@ -802,7 +802,7 @@
   },
   "landing": {
     "meta": { "title": "Open Doing — 个人与团队的任务管理", "description": "个人待办与团队项目同处一个系统。看板、日历、提醒、数据分析,开箱即用。" },
-    "nav": { "features": "功能", "audiences": "个人 vs 团队", "faq": "常见问题", "login": "登录", "start": "免费开始", "languageLabel": "切换语言" },
+    "nav": { "features": "功能", "audiences": "个人 vs 团队", "faq": "常见问题", "login": "登录", "start": "免费开始", "languageLabel": "切换语言", "brand": "Open Doing", "skipToContent": "跳到主要内容" },
     "hero": {
       "badge": "为小团队打造",
       "titleLine1": "把想法,",
@@ -830,7 +830,6 @@
       "team": { "title": "小团队", "body": "团队空间里按项目分工,看板协作、日历对齐、分析复盘;权限清清楚楚,成员只动自己的任务。" }
     },
     "faq": {
-      "label": "常见问题",
       "title": "常见问题",
       "items": {
         "free": { "q": "免费吗?", "a": "免费。注册后全部功能均可使用,没有功能墙。" },

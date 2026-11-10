@@ -28,7 +28,7 @@ export function LandingContent({ locale, children }: LandingContentProps) {
       key={locale}
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      transition={{ duration: 0.35, ease: OD_EASE.standard }}
+      transition={{ duration: 0.35, ease: OD_EASE.decelerate }}
     >
       {children}
     </motion.div>

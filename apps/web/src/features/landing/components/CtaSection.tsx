@@ -68,7 +68,7 @@ export function CtaSection() {
               asChild
               variant="outline"
               size="lg"
-              className="h-11 border-0 bg-white px-6 font-semibold text-[var(--purple-700)] shadow-[var(--shadow-card-hover)] hover:bg-white hover:text-[var(--purple-700)]"
+              className="h-11 border-0 bg-white px-6 text-[14px] font-semibold text-[var(--purple-700)] shadow-[var(--shadow-card-hover)] hover:bg-white hover:text-[var(--purple-700)]"
             >
               <Link href="/register">{t("cta.start")}</Link>
             </Button>
@@ -78,7 +78,7 @@ export function CtaSection() {
               asChild
               variant="outline"
               size="lg"
-              className="h-11 border-white/60 bg-transparent px-6 font-semibold text-white shadow-none hover:bg-white/10 hover:text-white"
+              className="h-11 border-white/80 bg-transparent px-6 text-[14px] font-semibold text-white shadow-none hover:bg-white/10 hover:text-white"
             >
               <Link href="/login">{t("cta.login")}</Link>
             </Button>

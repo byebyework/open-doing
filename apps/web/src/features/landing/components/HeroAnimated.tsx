@@ -81,9 +81,12 @@ const SECTION_GLOW_STYLE = {
  *
  * 左列按 80ms 间隔逐项淡入上移；右列日历 / 看板错峰弹簧落位、提醒卡
  * 最后弹入并无限上下浮动，整列随页面滚动做 ±24px 视差。全部动效由
- * `motion/react` 承担；根布局的 `MotionConfig reducedMotion="user"` 会让
- * 系统「减弱动态效果」下自动静止。lg 以下拼贴改为无旋转的纵向堆叠，
- * 因此桌面拼贴单独渲染（`hidden lg:block`），移动端保持静态。
+ * `motion/react` 承担；根布局的 `MotionConfig reducedMotion="user"` 只停用
+ * transform / 位置类动画（旋转、位移、缩放、浮动），透明度淡入在系统
+ * 「减弱动态效果」下仍会播放（设计上把 opacity 视为非运动反馈）。滚动视差
+ * 不属于 Motion 动画，故这里用 `useReducedMotion()` 显式归零。lg 以下拼贴
+ * 改为无旋转的纵向堆叠，因此桌面拼贴单独渲染（`hidden lg:block`），
+ * 移动端保持静态。
  */
 export function HeroAnimated({ copy }: HeroAnimatedProps) {
   const rootRef = useRef<HTMLElement>(null);
@@ -148,7 +151,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
               asChild
               variant="gradient"
               size="lg"
-              className="h-11 px-6 font-semibold"
+              className="h-11 px-6 text-[14px] font-semibold"
             >
               <Link href="/register">{copy.ctaStart}</Link>
             </Button>
@@ -156,7 +159,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
               asChild
               variant="outline"
               size="lg"
-              className="h-11 border-[var(--border-default)] bg-[var(--surface-white)] px-6 text-[var(--ink-700)]"
+              className="h-11 border-[var(--border-default)] bg-[var(--surface-white)] px-6 text-[14px] text-[var(--ink-700)]"
             >
               <Link href="/login">{copy.ctaLogin}</Link>
             </Button>
@@ -164,7 +167,7 @@ export function HeroAnimated({ copy }: HeroAnimatedProps) {
 
           <motion.p
             variants={fadeUp}
-            className="mt-5 text-[12px] leading-[1.6] text-[var(--ink-400)]"
+            className="mt-5 text-[12px] leading-[1.6] text-[var(--ink-500)]"
           >
             {copy.trust}
           </motion.p>

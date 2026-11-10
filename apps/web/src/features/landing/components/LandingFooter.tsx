@@ -19,7 +19,10 @@ export async function LandingFooter() {
   return (
     <footer className="border-t border-[var(--border-default)] bg-[var(--surface-white)]">
       <div className="mx-auto flex max-w-[1120px] flex-wrap items-center justify-between gap-x-6 gap-y-3 px-4 py-8 sm:px-6">
-        <span className="text-[12px] text-[var(--ink-400)]">
+        <span
+          translate="no"
+          className="text-[12px] text-[var(--ink-500)]"
+        >
           {t("footer.copyright")}
         </span>
         <nav className="flex items-center gap-4">
@@ -27,7 +30,7 @@ export async function LandingFooter() {
             <a
               key={link.href}
               href={link.href}
-              className="rounded text-[12px] text-[var(--ink-400)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              className="inline-flex min-h-11 -my-4 items-center rounded py-4 text-[12px] text-[var(--ink-500)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
             >
               {link.label}
             </a>

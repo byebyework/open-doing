@@ -802,7 +802,7 @@
   },
   "landing": {
     "meta": { "title": "Open Doing — Task management for individuals and teams", "description": "Personal to-dos and team projects in one system. Kanban, calendar, reminders, and analytics — ready out of the box." },
-    "nav": { "features": "Features", "audiences": "Personal vs team", "faq": "FAQ", "login": "Log in", "start": "Get started", "languageLabel": "Switch language" },
+    "nav": { "features": "Features", "audiences": "Personal vs team", "faq": "FAQ", "login": "Log in", "start": "Get started", "languageLabel": "Switch language", "brand": "Open Doing", "skipToContent": "Skip to main content" },
     "hero": {
       "badge": "Built for small teams",
       "titleLine1": "Turn ideas into",
@@ -830,7 +830,6 @@
       "team": { "title": "Small teams", "body": "Split work by project in the team space: collaborate on the kanban, align on the calendar, review with analytics. Permissions stay clear — members only touch their own tasks." }
     },
     "faq": {
-      "label": "FAQ",
       "title": "Frequently asked questions",
       "items": {
         "free": { "q": "Is it free?", "a": "Yes. Every feature is available once you register — no feature paywall." },

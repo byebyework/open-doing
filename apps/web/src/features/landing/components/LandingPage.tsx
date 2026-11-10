@@ -23,11 +23,13 @@ export async function LandingPage() {
   return (
     <LandingContent locale={locale}>
       <LandingNav />
-      <Hero />
-      <FeaturesSection />
-      <AudiencesSection />
-      <FaqSection />
-      <CtaSection />
+      <main id="main-content" tabIndex={-1}>
+        <Hero />
+        <FeaturesSection />
+        <AudiencesSection />
+        <FaqSection />
+        <CtaSection />
+      </main>
       <LandingFooter />
     </LandingContent>
   );

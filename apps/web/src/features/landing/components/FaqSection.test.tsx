@@ -103,8 +103,8 @@ describe("FaqSection", () => {
   it("renders the title and all three questions from the landing catalog", () => {
     renderFaq();
 
-    // 组件只渲染 h2 标题、不渲染 eyebrow：zh 目录里 faq.label 与 faq.title
-    // 同为「常见问题」，若再渲染 label 会在页面上重复一次。
+    // 组件只渲染 h2 标题、不渲染 eyebrow：faq 没有 label 键（原与 title
+    // 重复，已在终检中删除），避免标题在页面上重复一次。
     expect(container.querySelector("h2")?.textContent).toBe(
       zh.landing.faq.title,
     );

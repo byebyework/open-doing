@@ -26,46 +26,64 @@ export async function LandingNav() {
   ];
 
   return (
-    <header className="sticky top-0 z-30 border-b border-[var(--border-default)] bg-white/80 backdrop-blur">
-      <div className="mx-auto flex h-16 max-w-[1120px] items-center gap-3 px-4 sm:gap-6 sm:px-6">
-        {/* 品牌：图标 + 字标（字标是专有名词，不翻译） */}
-        <Link
-          href="/"
-          className="inline-flex shrink-0 items-center gap-2.5 rounded-[var(--radius-btn)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-        >
-          <BrandMark className="h-8 w-8" />
-          <span className="hidden text-[15px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)] sm:inline">
-            Open Doing
-          </span>
-        </Link>
-
-        {/* 中部锚点：移动端隐藏 */}
-        <nav className="hidden flex-1 items-center justify-center gap-7 md:flex">
-          {navLinks.map((link) => (
-            <a
-              key={link.href}
-              href={link.href}
-              className="rounded text-[13px] font-medium text-[var(--ink-500)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
-            >
-              {link.label}
-            </a>
-          ))}
-        </nav>
-
-        {/* 右侧操作区 */}
-        <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4 md:ml-0">
-          <LanguageSwitch language={locale} />
+    <>
+      {/* 跳转链接：聚焦时浮出，直达 main，供键盘与读屏用户跳过顶栏锚点 */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-[var(--radius-btn)] focus:bg-[var(--surface-white)] focus:px-4 focus:py-2.5 focus:text-[14px] focus:font-semibold focus:text-[var(--ink-900)] focus:shadow-[var(--shadow-card-hover)] focus:outline-2 focus:outline-offset-2 focus:outline-[var(--primary)]"
+      >
+        {t("nav.skipToContent")}
+      </a>
+      <header className="sticky top-0 z-30 border-b border-[var(--border-default)] bg-white/80 backdrop-blur">
+        <div className="mx-auto flex h-16 max-w-[1120px] items-center gap-3 px-4 sm:gap-6 sm:px-6">
+          {/* 品牌：图标 + 字标（字标是专有名词，不翻译） */}
           <Link
-            href="/login"
-            className="hidden rounded text-[13px] font-medium text-[var(--ink-700)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:inline-flex"
+            href="/"
+            aria-label={t("nav.brand")}
+            className="inline-flex min-h-11 shrink-0 -my-1.5 items-center gap-2.5 rounded-[var(--radius-btn)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
           >
-            {t("nav.login")}
+            <BrandMark className="h-8 w-8" />
+            <span
+              translate="no"
+              className="hidden text-[15px] font-extrabold tracking-[-0.01em] text-[var(--ink-900)] sm:inline"
+            >
+              Open Doing
+            </span>
           </Link>
-          <Button asChild variant="gradient" size="lg" className="font-semibold">
-            <Link href="/register">{t("nav.start")}</Link>
-          </Button>
+
+          {/* 中部锚点：移动端隐藏 */}
+          <nav className="hidden flex-1 items-center justify-center gap-7 md:flex">
+            {navLinks.map((link) => (
+              <a
+                key={link.href}
+                href={link.href}
+                className="inline-flex min-h-11 -my-4 items-center rounded py-4 text-[13px] font-medium text-[var(--ink-500)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)]"
+              >
+                {link.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* 右侧操作区 */}
+          <div className="ml-auto flex shrink-0 items-center gap-2 sm:gap-4 md:ml-0">
+            <LanguageSwitch language={locale} />
+            <Link
+              href="/login"
+              className="hidden min-h-11 -my-4 items-center rounded py-4 text-[13px] font-medium text-[var(--ink-700)] transition-colors duration-150 hover:text-[var(--purple-600)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--primary)] sm:inline-flex"
+            >
+              {t("nav.login")}
+            </Link>
+            <Button
+              asChild
+              variant="gradient"
+              size="lg"
+              className="h-11 text-[14px] font-semibold"
+            >
+              <Link href="/register">{t("nav.start")}</Link>
+            </Button>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+    </>
   );
 }
