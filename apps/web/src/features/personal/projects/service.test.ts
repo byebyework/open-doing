@@ -41,7 +41,7 @@ describe.skipIf(!hasTestDatabase)("个人项目 service", () => {
     const id = crypto.randomUUID();
     await db
       .insert(users)
-      .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+      .values({ id, uid: generateUid(), username, name: username, email: `${id}@test.local`, displayUsername: username });
     return id;
   }
 

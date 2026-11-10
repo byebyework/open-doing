@@ -38,7 +38,7 @@ if (!hasTestDatabase) {
 async function createUser(db: DbClient, username: string): Promise<{ id: string; uid: string }> {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  await db.insert(users).values({ id, uid, username, name: username, email: `${id}@test.local`, displayUsername: username });
   return { id, uid };
 }
 

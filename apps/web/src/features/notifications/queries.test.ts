@@ -34,7 +34,7 @@ async function createUser(
   const uid = generateUid();
   await db
     .insert(users)
-    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+    .values({ id, uid, username, name: nickname ?? username, email: `${id}@test.local`, displayUsername: username });
   return { id, uid, username, nickname };
 }
 

@@ -52,8 +52,9 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
       id,
       uid: generateUid(),
       username,
-      nickname,
-      passwordHash: "test-hash",
+      name: nickname ?? username,
+      email: `${id}@test.local`,
+      displayUsername: username,
     });
     return id;
   }

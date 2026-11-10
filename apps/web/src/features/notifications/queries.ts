@@ -128,7 +128,7 @@ export async function listNotifications(
           .select({
             id: users.id,
             username: users.username,
-            nickname: users.nickname,
+            nickname: users.name,
           })
           .from(users)
           .where(inArray(users.id, actorIds))

@@ -298,7 +298,7 @@ export async function listPendingSentInvites(
         id: users.id,
         uid: users.uid,
         username: users.username,
-        nickname: users.nickname,
+        nickname: users.name,
       },
     })
     .from(teamInvites)
@@ -336,7 +336,7 @@ export async function listReceivedInvites(
         id: users.id,
         username: users.username,
         uid: users.uid,
-        nickname: users.nickname,
+        nickname: users.name,
       },
       memberCount: sql<number>`(select count(*)::int from ${teamMemberships} where ${teamMemberships.teamId} = ${teams.id})`,
     })

@@ -384,7 +384,7 @@ export async function getPersonalTaskDetail(
       task: tasks,
       projectName: projects.name,
       assigneeUsername: users.username,
-      assigneeNickname: users.nickname,
+      assigneeNickname: users.name,
     })
     .from(tasks)
     .leftJoin(projects, eq(tasks.projectId, projects.id))
@@ -410,7 +410,7 @@ export async function getPersonalTaskDetail(
     .select({
       comment: comments,
       authorUsername: users.username,
-      authorNickname: users.nickname,
+      authorNickname: users.name,
     })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))

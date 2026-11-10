@@ -25,7 +25,7 @@ if (!hasTestDatabase) {
   );
 }
 
-/** 直插用户，避免每个用例都走 argon2 哈希。可选资料默认留空（null）。 */
+/** 直插用户，避免每个用例都走 better-auth 密码哈希。可选资料默认留空（null）。 */
 async function createUser(
   db: DbClient,
   username: string,
@@ -39,11 +39,11 @@ async function createUser(
       id,
       uid: generateUid(),
       username,
-      nickname,
+      name: nickname ?? username,
+      email: profile.email ?? `${username}@test.local`,
+      displayUsername: username,
       gender: profile.gender ?? null,
-      email: profile.email ?? null,
       phone: profile.phone ?? null,
-      passwordHash: "test-hash",
     });
   return { id };
 }
@@ -243,13 +243,13 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
     const members = await listMembers(team.id, db);
 
     expect(members.map((view) => view.user.username)).toEqual(["owner", "member", "blank"]);
-    expect(members.map((view) => view.user.nickname)).toEqual(["林夏", "阿周", null]);
+    expect(members.map((view) => view.user.nickname)).toEqual(["林夏", "阿周", "blank"]);
     expect(members.map((view) => displayName(view.user))).toEqual(["林夏", "阿周", "blank"]);
     expect(members.map((view) => view.user.gender)).toEqual(["female", "male", null]);
     expect(members.map((view) => view.user.email)).toEqual([
       "linxia@example.com",
       "azhou@example.com",
-      null,
+      "blank@test.local",
     ]);
     expect(members.map((view) => view.user.phone)).toEqual([
       "13800138000",

@@ -341,7 +341,7 @@ export async function getTeamSpaceAnalysis(
         title: tasks.title,
         projectName: projects.name,
         assigneeUsername: users.username,
-        assigneeNickname: users.nickname,
+        assigneeNickname: users.name,
         updatedAt: tasks.updatedAt,
       })
       .from(tasks)

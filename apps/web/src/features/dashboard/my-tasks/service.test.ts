@@ -37,7 +37,7 @@ const BASE_TIME = new Date("2026-10-01T00:00:00Z").getTime();
 async function createUser(db: DbClient, username: string) {
   const id = crypto.randomUUID();
   const uid = generateUid();
-  await db.insert(users).values({ id, uid, username, passwordHash: "test-hash" });
+  await db.insert(users).values({ id, uid, username, name: username, email: `${id}@test.local`, displayUsername: username });
   return { id, username };
 }
 

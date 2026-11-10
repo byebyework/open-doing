@@ -540,7 +540,7 @@ async function selectTeamCards(
       updatedAt: tasks.updatedAt,
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
-      assigneeNickname: users.nickname,
+      assigneeNickname: users.name,
     })
     // inner join 而非 left join：团队范围条件含 `projects.team_id`，团队任务
     // 必有项目（创建路径保证），join 类型只表达这一意图，与计数查询一致。

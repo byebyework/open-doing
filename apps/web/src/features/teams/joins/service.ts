@@ -435,7 +435,7 @@ export async function listTeamJoinRequests(
         id: users.id,
         username: users.username,
         uid: users.uid,
-        nickname: users.nickname,
+        nickname: users.name,
       },
     })
     .from(teamJoinRequests)

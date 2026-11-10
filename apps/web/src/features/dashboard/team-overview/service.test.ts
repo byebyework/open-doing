@@ -41,9 +41,9 @@ async function createUser(
       id,
       uid,
       username,
-      nickname,
-      passwordHash: "test-hash",
-      email: profile.email ?? null,
+      name: nickname,
+      email: profile.email ?? `${username}@test.local`,
+      displayUsername: username,
     });
   return { id, username, nickname };
 }
@@ -405,9 +405,9 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
     ]);
     // 成员卡片展示邮箱：已填写原样下发，未填写为 null（客户端不渲染该行）。
     expect(members.map((item) => item.email)).toEqual([
-      null,
+      "owner@test.local",
       "admin@example.com",
-      null,
+      "member@test.local",
     ]);
 
     const byName = new Map(members.map((item) => [item.username, item]));

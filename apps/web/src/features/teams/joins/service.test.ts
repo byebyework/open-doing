@@ -43,7 +43,7 @@ async function createUser(
   const uid = generateUid();
   await db
     .insert(users)
-    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+    .values({ id, uid, username, name: nickname ?? username, email: `${id}@test.local`, displayUsername: username });
   return { id, uid };
 }
 
@@ -535,7 +535,7 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
     const list = await listTeamJoinRequests(team.id, db);
 
     expect(list.map((view) => view.user.username)).toEqual(["second", "outsider"]);
-    expect(list.map((view) => view.user.nickname)).toEqual(["阿二", null]);
+    expect(list.map((view) => view.user.nickname)).toEqual(["阿二", "outsider"]);
     expect(list[0]).toMatchObject({
       request: {
         userId: second.id,

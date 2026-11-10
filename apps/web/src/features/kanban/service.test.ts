@@ -82,7 +82,7 @@ async function createUser(db: DbClient, username: string) {
   const nickname = `nick-${username}`;
   await db
     .insert(users)
-    .values({ id, uid, username, nickname, passwordHash: "test-hash" });
+    .values({ id, uid, username, name: nickname ?? username, email: `${id}@test.local`, displayUsername: username });
   return { id, username, nickname };
 }
 

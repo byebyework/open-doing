@@ -40,7 +40,7 @@ if (!hasTestDatabase) {
   );
 }
 
-/** 直插用户，避免每个用例都走 argon2 哈希；昵称与用户名区分，覆盖展示名规则。 */
+/** 直插用户，避免每个用例都走 better-auth 密码哈希；昵称与用户名区分，覆盖展示名规则。 */
 async function createUser(
   db: DbClient,
   username: string,
@@ -51,8 +51,9 @@ async function createUser(
     id,
     uid: generateUid(),
     username,
-    nickname,
-    passwordHash: "test-hash",
+    name: nickname,
+    email: `${id}@test.local`,
+    displayUsername: username,
   });
   return { id, username, nickname };
 }

@@ -672,7 +672,7 @@ export async function listTeamProjectTasks(
     .select({
       task: tasks,
       assigneeUsername: users.username,
-      assigneeNickname: users.nickname,
+      assigneeNickname: users.name,
     })
     .from(tasks)
     .leftJoin(users, eq(tasks.assigneeId, users.id))
@@ -725,10 +725,10 @@ export async function getTeamTaskDetail(
       task: tasks,
       projectName: projects.name,
       assigneeUsername: users.username,
-      assigneeNickname: users.nickname,
+      assigneeNickname: users.name,
       assigneeEmail: users.email,
       creatorUsername: creators.username,
-      creatorNickname: creators.nickname,
+      creatorNickname: creators.name,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
@@ -755,7 +755,7 @@ export async function getTeamTaskDetail(
     .select({
       comment: comments,
       authorUsername: users.username,
-      authorNickname: users.nickname,
+      authorNickname: users.name,
     })
     .from(comments)
     .innerJoin(users, eq(comments.authorId, users.id))

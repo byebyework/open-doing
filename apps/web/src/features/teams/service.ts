@@ -235,7 +235,7 @@ export async function listMembers(
         id: users.id,
         uid: users.uid,
         username: users.username,
-        nickname: users.nickname,
+        nickname: users.name,
         gender: users.gender,
         email: users.email,
         phone: users.phone,

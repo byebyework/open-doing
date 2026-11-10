@@ -244,7 +244,7 @@ async function selectTeamCalendarRows(
       projectName: projects.name,
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
-      assigneeNickname: users.nickname,
+      assigneeNickname: users.name,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))

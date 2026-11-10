@@ -34,12 +34,12 @@ if (!hasTestDatabase) {
   );
 }
 
-/** 直插用户，避免每个用例都走 argon2 哈希。 */
+/** 直插用户，避免每个用例都走 better-auth 密码哈希。 */
 async function createUser(db: DbClient, username: string): Promise<{ id: string }> {
   const id = crypto.randomUUID();
   await db
     .insert(users)
-    .values({ id, uid: generateUid(), username, passwordHash: "test-hash" });
+    .values({ id, uid: generateUid(), username, name: username, email: `${id}@test.local`, displayUsername: username });
   return { id };
 }
 

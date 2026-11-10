@@ -148,7 +148,7 @@ async function listTeamTaskSnapshots(
       dueDate: tasks.dueDate,
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
-      assigneeNickname: users.nickname,
+      assigneeNickname: users.name,
       projectId: projects.id,
       projectName: projects.name,
       projectSlug: projects.slug,
