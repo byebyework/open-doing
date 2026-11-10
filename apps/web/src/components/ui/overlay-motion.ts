@@ -4,10 +4,10 @@
  * 浮层动效基础件：时长 / 缓动常量 + 各类浮层的 motion variants + 受控关闭桥。
  *
  * 时长与 `apps/web/src/app/motion.css`（iOS 风格浮层动效）的各
- * animation-duration 逐一对应；缓动则取计划规定的 OD_EASE 曲线
- * （decelerate / accelerate / accelerate / springIn / sheetIn），
- * 与 motion.css 的原始 CSS 曲线有意不同（motion.css 将在后续任务中删除，
- * 动画全部迁移到 motion/react）。改动任一侧时长时必须同步另一侧。
+ * animation-duration 逐一对应；缓动取计划规定的 OD_EASE 曲线
+ * （standard / decelerate / accelerate / springIn / sheetIn）——
+ * 部分与 motion.css 曲线相同，部分有意不同（motion.css 将在后续任务中
+ * 删除，动画全部迁移到 motion/react）。改动任一侧时长时必须同步另一侧。
  *
  * - OD_MS：遮罩 / 弹窗 / 轻量浮层 / 抽屉的进出场时长（毫秒）；
  * - OD_EASE：standard 为通用曲线；decelerate 用于入场、accelerate 用于退场；
@@ -31,7 +31,7 @@ export const OD_MS = {
   sheetOut: 300,
 } as const;
 
-/** 缓动曲线（cubic-bezier 控制点），计划规定的 OD_EASE 曲线（非 motion.css 原始 CSS 曲线）。 */
+/** 缓动曲线（cubic-bezier 控制点），计划规定的 OD_EASE 曲线（部分与 motion.css 曲线相同，部分有意不同）。 */
 export const OD_EASE = {
   standard: [0.4, 0, 0.2, 1], // --ease-standard
   decelerate: [0, 0, 0.2, 1], // --ease-decelerate（入场）

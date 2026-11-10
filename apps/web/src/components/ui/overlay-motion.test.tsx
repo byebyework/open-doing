@@ -4,6 +4,7 @@
 import { act, useState } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { TargetAndTransition } from "motion/react";
 
 import {
   OD_EASE,
@@ -140,10 +141,12 @@ describe("overlay motion 常量与 variants", () => {
     expect(overlayVariants.closed).toMatchObject({ opacity: 0 });
 
     // 弹窗：scale 0.88→1，opacity 在 60% 关键帧处先到 1（同原 od-spring-in）；
-    // opacity 的 per-value transition 会整体替换父级 transition，须自带 duration / ease
-    expect(modalVariants.open).toMatchObject({ scale: [0.88, 1] });
-    expect(modalVariants.open.opacity).toEqual([0, 1, 1]);
-    expect(modalVariants.open.transition).toMatchObject({
+    // opacity 的 per-value transition 会整体替换父级 transition，须自带 duration / ease。
+    // Variant = TargetAndTransition | TargetResolver（函数类型），需先收窄才能取属性
+    const open = modalVariants.open as TargetAndTransition;
+    expect(open).toMatchObject({ scale: [0.88, 1] });
+    expect(open.opacity).toEqual([0, 1, 1]);
+    expect(open.transition).toMatchObject({
       duration: OD_MS.modalIn / 1000,
       ease: OD_EASE.springIn,
       opacity: {
