@@ -27,51 +27,74 @@ const OUTPUT_DIR = fileURLToPath(
 );
 
 async function main(): Promise<void> {
-  await mkdir(OUTPUT_DIR, { recursive: true });
-
   const browser = await chromium.launch();
-  const context = await browser.newContext({
-    viewport: { width: 1440, height: 900 },
-    deviceScaleFactor: 2,
-    locale: "zh-CN",
-  });
-  const page = await context.newPage();
 
-  await page.goto(`${BASE_URL}/login`, { waitUntil: "networkidle" });
-  await page.locator("#login-username").fill("林夏");
-  await page.locator("#login-password").fill("seed-password");
-  await page.locator('button[type="submit"]').click();
-  await page.waitForURL(/space/, { timeout: 30_000 });
+  // 任一步骤抛错也要关闭浏览器（失败仍由 main().catch 置非零退出码）。
+  try {
+    await mkdir(OUTPUT_DIR, { recursive: true });
 
-  for (const name of SHOTS) {
-    await page.goto(`${BASE_URL}/space/${TEAM_SLUG}/${name}`, {
-      waitUntil: "networkidle",
+    const context = await browser.newContext({
+      viewport: { width: 1440, height: 900 },
+      deviceScaleFactor: 2,
+      locale: "zh-CN",
     });
-    // 截图前统一修正两处「非产品」视觉：
-    // 1. 隐藏 Next.js dev tools 浮标；
-    // 2. 侧栏是 sticky h-screen，全页截图时背景只铺到 900px 视口高度、下方露出
-    //    灰底；截图期间改为随文档高度拉伸，保持侧栏背景连续。
-    await page.addStyleTag({
-      content: `
-        nextjs-portal { display: none !important; }
-        div[class*="group/sidebar"] {
-          position: static !important;
-          height: auto !important;
-          align-self: stretch !important;
-        }
-      `,
-    });
-    // 等首屏图表 / 看板列渲染稳定，避免截到骨架屏或过渡帧。
-    await page.waitForTimeout(1200);
-    await page.screenshot({
-      path: `${OUTPUT_DIR}${name}.png`,
-      fullPage: true,
-    });
-    console.log(`[landing:shots] captured ${name}.png`);
+    const page = await context.newPage();
+
+    // 登录后的页面语言取自种子用户的 users.language（数据库值，而非本脚本的
+    // locale 选项），因此截图假定该用户语言为 zh——与 `pnpm db:seed` 默认一致。
+    await page.goto(`${BASE_URL}/login`, { waitUntil: "networkidle" });
+    await page.locator("#login-username").fill("林夏");
+    await page.locator("#login-password").fill("seed-password");
+    await page.locator('button[type="submit"]').click();
+    await page.waitForURL(/space/, { timeout: 30_000 });
+
+    for (const name of SHOTS) {
+      await page.goto(`${BASE_URL}/space/${TEAM_SLUG}/${name}`, {
+        waitUntil: "networkidle",
+      });
+      // 截图前统一修正三处「非产品」视觉（仅捕获期生效，不写回产品代码）：
+      // 1. 隐藏 Next.js dev tools 浮标；
+      // 2. 侧栏是 sticky h-screen，全页截图时背景只铺到 900px 视口高度、下方
+      //    露出灰底；截图期间改为随文档高度拉伸，保持侧栏背景连续；
+      // 3. 月历网格按 overflow-x-auto 滚动容器实现，1440 视口只能完整显示
+      //    周一–周五（周六被裁、右侧还有滚动阴影）。捕获期用 table-layout:
+      //    fixed 让 7 列等分收进卡片，并隐藏滚动阴影，得到完整整月视图。
+      await page.addStyleTag({
+        content: `
+          nextjs-portal { display: none !important; }
+          div[class*="group/sidebar"] {
+            position: static !important;
+            height: auto !important;
+            align-self: stretch !important;
+          }
+          [data-testid="calendar-grid-scroll"] > div {
+            min-width: 0 !important;
+          }
+          [data-testid="calendar-grid-scroll"] table {
+            table-layout: fixed !important;
+            width: 100% !important;
+          }
+          [data-testid="calendar-scroll-shadow"] {
+            display: none !important;
+          }
+        `,
+      });
+      // 鼠标可能停在上次点击位置（如登录按钮），导致页面元素带 hover 底色入镜；
+      // 归位到左上角，随后的 1200ms 等待即作为状态回落的 settle 时间。
+      await page.mouse.move(0, 0);
+      // 等首屏图表 / 看板列渲染稳定，避免截到骨架屏或过渡帧。
+      await page.waitForTimeout(1200);
+      await page.screenshot({
+        path: `${OUTPUT_DIR}${name}.png`,
+        fullPage: true,
+      });
+      console.log(`[landing:shots] captured ${name}.png`);
+    }
+
+    await context.close();
+  } finally {
+    await browser.close();
   }
-
-  await context.close();
-  await browser.close();
 }
 
 main().catch((error) => {
