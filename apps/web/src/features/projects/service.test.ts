@@ -1,6 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
+import { getProjectHealthKind } from "@open-doing/types";
+
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
@@ -21,6 +23,7 @@ import {
   createTeamProject,
   deleteTeamProject,
   getTeamProjectBySlug,
+  getTeamProjectListWithStats,
   listTeamProjects,
   listTeamProjectsForTeams,
   updateTeamProject,
@@ -302,5 +305,129 @@ describe.skipIf(!hasTestDatabase)("团队项目 service", () => {
         db,
       ),
     ).rejects.toBeInstanceOf(DomainError);
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("getTeamProjectListWithStats", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  /** 直插团队任务（spaceType 固定 team）。 */
+  async function insertTask(input: {
+    projectId: string;
+    userId: string;
+    status?: "todo" | "in_progress" | "done";
+    dueDate?: string;
+  }): Promise<string> {
+    const id = crypto.randomUUID();
+    await db.insert(tasks).values({
+      id,
+      projectId: input.projectId,
+      spaceType: "team",
+      title: "任务",
+      status: input.status ?? "todo",
+      dueDate: input.dueDate,
+      createdById: input.userId,
+    });
+    return id;
+  }
+
+  it("按创建时间升序返回项目,附每项目聚合(进度/任务数/完成数/逾期/临期)", async () => {
+    const { owner, team } = await setupTeam(db);
+    const projectA = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Alpha" },
+      db,
+    );
+    const projectB = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Beta" },
+      db,
+    );
+
+    // A:done 任务(进度 1)+ 带 2 子任务完成 1 的 todo(进度 0.5)→ 0.75。
+    await insertTask({ projectId: projectA.id, userId: owner.id, status: "done" });
+    const taskA2 = await insertTask({ projectId: projectA.id, userId: owner.id });
+    await db
+      .insert(subtasks)
+      .values([
+        { taskId: taskA2, title: "子1", completed: true },
+        { taskId: taskA2, title: "子2", completed: false },
+      ]);
+
+    // B:逾期 todo(进度 0)+ 明天截止的 in_progress(进度 0.5)→ 0.25。
+    await insertTask({
+      projectId: projectB.id,
+      userId: owner.id,
+      status: "todo",
+      dueDate: "2026-11-09",
+    });
+    await insertTask({
+      projectId: projectB.id,
+      userId: owner.id,
+      status: "in_progress",
+      dueDate: "2026-11-12",
+    });
+
+    // 创建顺序需要稳定:显式回填 createdAt。
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-01-01T00:00:00Z") })
+      .where(eq(projects.id, projectA.id));
+    await db
+      .update(projects)
+      .set({ createdAt: new Date("2026-01-01T00:00:01Z") })
+      .where(eq(projects.id, projectB.id));
+
+    const list = await getTeamProjectListWithStats(team.id, "2026-11-11", db);
+
+    expect(list.map((item) => item.project.slug)).toEqual(["alpha", "beta"]);
+    expect(list[0]?.stats).toEqual({
+      progress: 0.75,
+      taskCount: 2,
+      doneCount: 1,
+      overdueCount: 0,
+      dueSoonCount: 0,
+    });
+    expect(list[1]?.stats).toEqual({
+      progress: 0.25,
+      taskCount: 2,
+      doneCount: 0,
+      overdueCount: 1,
+      dueSoonCount: 1,
+    });
+    // 已完成任务不算逾期/临期;B 因有逾期任务判 overdue。
+    expect(getProjectHealthKind(list[1]!.stats)).toBe("overdue");
+  });
+
+  it("空项目以零值聚合,健康徽标为未开始", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Empty" },
+      db,
+    );
+
+    const list = await getTeamProjectListWithStats(team.id, "2026-11-11", db);
+
+    expect(list).toHaveLength(1);
+    expect(list[0]?.project.id).toBe(project.id);
+    expect(list[0]?.stats).toEqual({
+      progress: 0,
+      taskCount: 0,
+      doneCount: 0,
+      overdueCount: 0,
+      dueSoonCount: 0,
+    });
+    expect(getProjectHealthKind(list[0]!.stats)).toBe("notStarted");
+  });
+
+  it("无项目返回空数组", async () => {
+    const { team } = await setupTeam(db);
+    expect(await getTeamProjectListWithStats(team.id, "2026-11-11", db)).toEqual([]);
   });
 });

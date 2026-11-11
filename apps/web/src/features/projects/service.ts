@@ -1,11 +1,17 @@
-import type { Project } from "@open-doing/types";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import type { Project, ProjectStats, TaskStatus } from "@open-doing/types";
+import {
+  averageProjectProgress,
+  getTaskProgress,
+  isDueSoon,
+  isOverdue,
+} from "@open-doing/types";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
 import { generateUniqueSlug } from "@/lib/slug";
 import type { DbClient } from "@/server/db/client";
 import { db } from "@/server/db/client";
-import { projects } from "@/server/db/schema";
+import { projects, subtasks, tasks } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 
 /** 项目名称长度上限（与表单校验一致）。 */
@@ -253,4 +259,153 @@ export async function deleteTeamProject(
   if (!row) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
+}
+
+/** 项目列表项:项目 + 聚合统计(空间级「项目」列表页)。 */
+export interface ProjectListItem {
+  project: Project;
+  stats: ProjectStats;
+}
+
+/** 任务聚合输入行:项目维度统计所需的最小字段集。 */
+export interface ProjectTaskStatRow {
+  projectId: string;
+  status: TaskStatus;
+  dueDate: string | null;
+  subtaskCount: number;
+  completedSubtaskCount: number;
+}
+
+/** 零值聚合(空项目)。 */
+export function emptyProjectStats(): ProjectStats {
+  return {
+    progress: 0,
+    taskCount: 0,
+    doneCount: 0,
+    overdueCount: 0,
+    dueSoonCount: 0,
+  };
+}
+
+/**
+ * 把单个项目的任务行聚合为 `ProjectStats`。
+ *
+ * 进度 = 各任务进度等权平均(空项目 0);逾期/临期只统计未完成任务,
+ * 判定走 types 的 `isOverdue` / `isDueSoon`(与 team-overview 同源)。
+ */
+export function buildProjectStats(
+  rows: ProjectTaskStatRow[],
+  today: string,
+): ProjectStats {
+  const stats = emptyProjectStats();
+  if (rows.length === 0) return stats;
+
+  const progresses: number[] = [];
+  for (const row of rows) {
+    progresses.push(
+      getTaskProgress({
+        status: row.status,
+        subtasks: Array.from({ length: row.subtaskCount }, (_, i) => ({
+          completed: i < row.completedSubtaskCount,
+        })),
+      }),
+    );
+    stats.taskCount += 1;
+    if (row.status === "done") stats.doneCount += 1;
+    if (row.dueDate && isOverdue(row.dueDate, row.status, today)) {
+      stats.overdueCount += 1;
+    }
+    if (row.dueDate && isDueSoon(row.dueDate, row.status, today)) {
+      stats.dueSoonCount += 1;
+    }
+  }
+  stats.progress = averageProjectProgress(progresses);
+  return stats;
+}
+
+/**
+ * 查询给定项目集合的任务统计行(子任务计数用派生表一次 group by,防 N+1;
+ * 与 team-overview 的任务快照同一模式)。空集合直接返回空,避免无谓 `IN ()`。
+ */
+export async function listProjectTaskStatRows(
+  projectIds: string[],
+  client: DbClient,
+): Promise<ProjectTaskStatRow[]> {
+  if (projectIds.length === 0) return [];
+
+  const subtaskStats = client
+    .select({
+      taskId: subtasks.taskId,
+      subtaskCount: sql<number>`count(*)::int`.as("subtask_count"),
+      completedSubtaskCount:
+        sql<number>`(count(*) filter (where ${subtasks.completed}))::int`.as(
+          "completed_subtask_count",
+        ),
+    })
+    .from(subtasks)
+    .groupBy(subtasks.taskId)
+    .as("subtask_stats");
+
+  const rows = await client
+    .select({
+      projectId: tasks.projectId,
+      status: tasks.status,
+      dueDate: tasks.dueDate,
+      subtaskCount: sql<number>`coalesce(${subtaskStats.subtaskCount}, 0)::int`,
+      completedSubtaskCount: sql<number>`coalesce(${subtaskStats.completedSubtaskCount}, 0)::int`,
+    })
+    .from(tasks)
+    .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
+    .where(inArray(tasks.projectId, projectIds));
+
+  return rows.flatMap((row) =>
+    row.projectId === null
+      ? []
+      : [
+          {
+            projectId: row.projectId,
+            status: row.status,
+            dueDate: row.dueDate ?? null,
+            subtaskCount: row.subtaskCount,
+            completedSubtaskCount: row.completedSubtaskCount,
+          },
+        ],
+  );
+}
+
+/**
+ * 团队项目列表(创建时间升序),附每项目聚合统计。
+ *
+ * 权限前置条件:调用方(页面 RSC)必须先用 `getTeamBySlug` + `getMembership`
+ * 校验团队存在且当前用户是成员;本函数只按 `teamId` 聚合,不做成员校验。
+ * `today` 由调用方注入(Asia/Shanghai 的 `YYYY-MM-DD`)。
+ */
+export async function getTeamProjectListWithStats(
+  teamId: string,
+  today: string,
+  client: DbClient = db,
+): Promise<ProjectListItem[]> {
+  const projectRows = await client
+    .select()
+    .from(projects)
+    .where(eq(projects.teamId, teamId))
+    .orderBy(asc(projects.createdAt));
+
+  if (projectRows.length === 0) return [];
+
+  const statRows = await listProjectTaskStatRows(
+    projectRows.map((row) => row.id),
+    client,
+  );
+  const rowsByProject = new Map<string, ProjectTaskStatRow[]>(
+    projectRows.map((row) => [row.id, []]),
+  );
+  for (const row of statRows) {
+    rowsByProject.get(row.projectId)?.push(row);
+  }
+
+  return projectRows.map((row) => ({
+    project: toProject(row),
+    stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
+  }));
 }
