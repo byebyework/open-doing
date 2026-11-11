@@ -89,6 +89,7 @@ const E2E_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/e2e/flows/10-team-join-by-code.spec.ts", reason: "凭码加入 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/11-space-switching.spec.ts", reason: "空间切换 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/12-en-locale-smoke.spec.ts", reason: "中文 describe/test 标题 + 「简体中文」语言名母语选项" },
+  { prefix: "apps/web/e2e/flows/13-projects-module.spec.ts", reason: "项目模块列表/空态/邀请 zh 文案断言" },
   { prefix: "apps/web/e2e/responsive.spec.ts", reason: "响应式路由 zh 就绪断言" },
 ];
 
