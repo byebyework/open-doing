@@ -1,6 +1,5 @@
 "use client";
 
-import { LanguagesIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
@@ -24,7 +23,11 @@ export interface LanguageSwitchProps {
 }
 
 /**
- * 落地页匿名语言切换 chip。
+ * 落地页匿名语言切换 chip（紧凑款，对齐 mockup 的 lang-chip：小号
+ * 「中 / EN」文字胶囊，当前语言加粗紫色，无图标、无底色切换）。
+ *
+ * 视觉高度只有 28px 以免在顶栏里突兀；触控命中区用伪元素纵向外扩
+ * 回 44px（`before:-inset-y-2`，横向不外扩避免相邻按钮命中区重叠）。
  *
  * 只调用 `setAnonymousLocaleAction` 写 od_locale cookie；action 内
  * `revalidatePath("/")` 让 RSC 以新语言重新渲染，切换后的整页淡入由
@@ -50,12 +53,8 @@ export function LanguageSwitch({ language }: LanguageSwitchProps) {
     <div
       role="group"
       aria-label={t("nav.languageLabel")}
-      className="inline-flex items-center gap-0.5 rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-(--surface-white)/70 p-0.5 pl-2"
+      className="inline-flex items-center gap-0.5 rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-(--surface-white)/70 p-[3px]"
     >
-      <LanguagesIcon
-        className="size-4 shrink-0 text-[var(--ink-400)]"
-        aria-hidden="true"
-      />
       {LOCALE_OPTIONS.map((option) => {
         const active = language === option.value;
         return (
@@ -67,7 +66,7 @@ export function LanguageSwitch({ language }: LanguageSwitchProps) {
             data-testid={`language-switch-${option.value}`}
             onClick={() => handleSelect(option.value)}
             className={cn(
-              "inline-flex h-11 min-w-11 items-center justify-center rounded-[var(--radius-pill)] px-2 text-[13px] transition-colors duration-150 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60",
+              "relative inline-flex h-7 items-center justify-center rounded-[var(--radius-pill)] px-2.5 text-[13px] leading-none transition-colors duration-150 before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60",
               active
                 ? "font-bold text-primary"
                 : "text-[var(--ink-500)] hover:text-[var(--ink-900)]",
