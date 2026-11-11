@@ -242,8 +242,6 @@
     "unassigned": "未指派",
     "leftMember": "已离开成员",
     "dueSoonTag": "临期",
-    "dueTodayFull": "今天 {date} 到期",
-    "dueTomorrowFull": "明天 {date} 到期",
     "creatorLabel": "创建人",
     "createdAtLine": "{name} · {date} 创建",
     "progressHintWithSubtasks": "由 {completed}/{total} 个子任务完成度自动计算",
@@ -329,7 +327,8 @@
     "opsColumn": "操作",
     "statusMenuAria": "更改状态：{title}",
     "editTaskAria": "编辑任务：{title}",
-    "deleteTaskAria": "删除任务：{title}"
+    "deleteTaskAria": "删除任务：{title}",
+    "dueSoonFull": "{date} 到期"
   },
   "teams": {
     "team": "团队",

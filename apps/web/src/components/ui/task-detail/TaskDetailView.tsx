@@ -1,11 +1,12 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
-import type { Subtask, TaskStatus } from "@open-doing/types";
+import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
 import {
   getTaskProgress,
   isDueSoon,
   isOverdue,
+  TASK_PRIORITIES,
 } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
@@ -16,6 +17,7 @@ import { useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { PriorityChip, priorityLabelKey } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -45,6 +47,7 @@ import {
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { CommentBox } from "@/features/personal/tasks/components/CommentBox";
 import { SubtaskList } from "@/features/personal/tasks/components/SubtaskList";
+import { formatTaskDate } from "@/lib/date-display";
 import { spaceDashboardHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
@@ -60,11 +63,6 @@ const STATUS_LABEL_KEY: Record<TaskStatus, "notStarted" | "inProgress" | "comple
   in_progress: "inProgress",
   done: "completed",
 };
-
-/** 将 `YYYY-MM-DD` 显示为 `MM-DD`。 */
-function shortDate(date: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(5) : date;
-}
 
 /**
  * ISO 时间戳 -> Asia/Shanghai 时区的 `YYYY-MM-DD`。
@@ -353,6 +351,15 @@ export function TaskDetailView({
   }
   const [assigneePending, setAssigneePending] = useState(false);
 
+  // 优先级（spec D8）：乐观选中，失败回滚；服务端刷新后以 props 为准。
+  const [priority, setPriority] = useState<TaskPriority>(task.priority);
+  const [syncedPriority, setSyncedPriority] = useState<TaskPriority>(task.priority);
+  if (task.priority !== syncedPriority) {
+    setSyncedPriority(task.priority);
+    setPriority(task.priority);
+  }
+  const [priorityPending, setPriorityPending] = useState(false);
+
   const [statusPending, setStatusPending] = useState<TaskStatus | null>(null);
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -383,6 +390,23 @@ export function TaskDetailView({
       setStatus(previous);
     } finally {
       setStatusPending(null);
+    }
+  }
+
+  async function changePriority(next: TaskPriority) {
+    if (priorityPending || next === priority) return;
+
+    const previous = priority;
+    setPriorityPending(true);
+    setPriority(next);
+
+    try {
+      await onAction.updateTask({ priority: next });
+    } catch {
+      // 失败提示由 onAction 实现负责；回滚乐观状态。
+      setPriority(previous);
+    } finally {
+      setPriorityPending(false);
     }
   }
 
@@ -506,9 +530,7 @@ export function TaskDetailView({
               <DueTag tone="overdue">{tDate("overdue")}</DueTag>
             ) : dueSoon && task.dueDate ? (
               <DueTag tone="soon">
-                {task.dueDate === today
-                  ? t("dueTodayFull", { date: shortDate(task.dueDate) })
-                  : t("dueTomorrowFull", { date: shortDate(task.dueDate) })}
+                {t("dueSoonFull", { date: formatTaskDate(task.dueDate) })}
               </DueTag>
             ) : null}
           </div>
@@ -604,6 +626,39 @@ export function TaskDetailView({
               ) : null}
             </MetaRow>
 
+            <MetaRow label={t("priority")}>
+              {permissions.canEdit ? (
+                <Select
+                  value={priority}
+                  onValueChange={(value) => {
+                    void changePriority(value as TaskPriority);
+                  }}
+                  disabled={priorityPending}
+                >
+                  <SelectTrigger
+                    className="h-8 w-[130px]"
+                    aria-label={t("priority")}
+                    data-testid="detail-priority-select"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TASK_PRIORITIES.map((candidate) => (
+                      <SelectItem
+                        key={candidate}
+                        value={candidate}
+                        disabled={candidate === priority}
+                      >
+                        {t(priorityLabelKey(candidate))}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <PriorityChip priority={priority} />
+              )}
+            </MetaRow>
+
             <MetaRow label={t("assigneeLabel")}>
               {space === "team" &&
               permissions.canAssign &&
@@ -668,7 +723,7 @@ export function TaskDetailView({
 
             <MetaRow label={t("startDateLabel")}>
               {task.startDate ? (
-                <span>{shortDate(task.startDate)}</span>
+                <span>{formatTaskDate(task.startDate)}</span>
               ) : (
                 <span className="font-normal text-[var(--ink-400)]">—</span>
               )}
@@ -677,16 +732,10 @@ export function TaskDetailView({
             <MetaRow label={t("dueDateLabel")}>
               {task.dueDate ? (
                 <>
-                  <span>{shortDate(task.dueDate)}</span>
+                  <span>{formatTaskDate(task.dueDate)}</span>
                   {overdue ? (
                     <span className="font-semibold text-[var(--status-overdue)]">
                       {tDate("overdue")}
-                    </span>
-                  ) : dueSoon ? (
-                    <span className="text-[#a66b00]">
-                      {task.dueDate === today
-                        ? tDate("today")
-                        : tDate("tomorrow")}
                     </span>
                   ) : null}
                   {dueSoon ? (

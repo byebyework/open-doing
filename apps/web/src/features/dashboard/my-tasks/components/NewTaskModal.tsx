@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -30,6 +31,7 @@ import {
   SelectValue,
 } from "@/components/ui/shadcn/select";
 import { Textarea } from "@/components/ui/shadcn/textarea";
+import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
 import { createPersonalTaskAction } from "@/features/personal/tasks/actions";
 import { createTeamTaskAction } from "@/features/tasks/actions";
@@ -125,6 +127,7 @@ export function NewTaskModal({
       .min(1, t("titleRequired"))
       .max(200, t("titleTooLong", { max: 200 })),
     projectId: z.string(),
+    priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
     description: z.string(),
@@ -144,6 +147,7 @@ export function NewTaskModal({
     defaultValues: {
       title: "",
       projectId: NO_PROJECT,
+      priority: "medium",
       dueDate: "",
       startDate: "",
       description: "",
@@ -156,6 +160,7 @@ export function NewTaskModal({
       reset({
         title: "",
         projectId: NO_PROJECT,
+        priority: "medium",
         dueDate: "",
         startDate: "",
         description: "",
@@ -186,6 +191,7 @@ export function NewTaskModal({
       const dueDate = values.dueDate.trim() ? values.dueDate : null;
       const startDate = values.startDate.trim() ? values.startDate : null;
       const description = values.description ?? "";
+      const priority = values.priority as TaskPriority;
 
       const result =
         selected && selected.teamId !== null
@@ -194,6 +200,7 @@ export function NewTaskModal({
               projectId: selected.projectId,
               title: values.title,
               description,
+              priority,
               dueDate,
               startDate,
             })
@@ -201,6 +208,7 @@ export function NewTaskModal({
               projectId: selectedProjectId,
               title: values.title,
               description,
+              priority,
               dueDate,
               startDate,
             });
@@ -281,6 +289,25 @@ export function NewTaskModal({
                       </SelectItem>
                     ))}
                   </SelectGroup>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2">
+            <Label>{t("priority")}</Label>
+            <Select
+              value={watch("priority")}
+              onValueChange={(value) => setValue("priority", value)}
+            >
+              <SelectTrigger className="w-full" data-testid="task-priority-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_PRIORITIES.map((candidate) => (
+                  <SelectItem key={candidate} value={candidate}>
+                    {t(priorityLabelKey(candidate))}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>

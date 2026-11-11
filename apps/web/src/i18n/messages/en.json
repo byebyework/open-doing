@@ -242,8 +242,6 @@
     "unassigned": "Unassigned",
     "leftMember": "Former member",
     "dueSoonTag": "Due soon",
-    "dueTodayFull": "Due today {date}",
-    "dueTomorrowFull": "Due tomorrow {date}",
     "creatorLabel": "Created by",
     "createdAtLine": "{name} · created {date}",
     "progressHintWithSubtasks": "Calculated from {completed}/{total} subtasks completed",
@@ -329,7 +327,8 @@
     "opsColumn": "Actions",
     "statusMenuAria": "Change status: {title}",
     "editTaskAria": "Edit task: {title}",
-    "deleteTaskAria": "Delete task: {title}"
+    "deleteTaskAria": "Delete task: {title}",
+    "dueSoonFull": "Due {date}"
   },
   "teams": {
     "team": "Team",

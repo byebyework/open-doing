@@ -82,6 +82,21 @@ describe("TaskDetailView 状态控件权限门", () => {
   });
 });
 
+describe("TaskDetailView 优先级行", () => {
+  it("元信息渲染优先级行（chip 档位）", () => {
+    const html = render(readOnly, { priority: "high" });
+
+    expect(html).toContain("优先级");
+    expect(html).toContain('data-priority="high"');
+  });
+
+  it("可编辑时渲染优先级选择器", () => {
+    const html = render({ canEdit: true, canDelete: true, canAssign: true });
+
+    expect(html).toContain('data-testid="detail-priority-select"');
+  });
+});
+
 describe("TaskDetailView 负责人信息处邮箱", () => {
   it("责任人填写邮箱时渲染在负责人信息处", () => {
     const html = render(readOnly, { assigneeEmail: "owner@example.com" });

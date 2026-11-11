@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -27,6 +28,7 @@ import {
   SelectValue,
 } from "@/components/ui/shadcn/select";
 import { Textarea } from "@/components/ui/shadcn/textarea";
+import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
 
 import { createTeamTaskAction } from "../actions";
@@ -99,6 +101,7 @@ export function NewTeamTaskModal({
       .max(200, t("titleTooLong", { max: 200 })),
     projectId: z.string().min(1, t("projectRequired")),
     assigneeId: z.string(),
+    priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
     description: z.string(),
@@ -119,6 +122,7 @@ export function NewTeamTaskModal({
       title: "",
       projectId: defaultProject,
       assigneeId: defaultAssignee,
+      priority: "medium",
       dueDate: dueDateDefault,
       startDate: "",
       description: "",
@@ -132,6 +136,7 @@ export function NewTeamTaskModal({
         title: "",
         projectId: defaultProject,
         assigneeId: defaultAssignee,
+        priority: "medium",
         dueDate: dueDateDefault,
         startDate: "",
         description: "",
@@ -153,6 +158,7 @@ export function NewTeamTaskModal({
         projectId: values.projectId,
         title: values.title,
         description: values.description ?? "",
+        priority: values.priority as TaskPriority,
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
         assigneeId: values.assigneeId || null,
@@ -270,6 +276,25 @@ export function NewTeamTaskModal({
               </SelectContent>
             </Select>
             <p className="text-[12.5px] text-[var(--ink-400)]">{t("assigneeHelp")}</p>
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2">
+            <Label>{t("priority")}</Label>
+            <Select
+              value={watch("priority")}
+              onValueChange={(value) => setValue("priority", value)}
+            >
+              <SelectTrigger className="w-full" data-testid="task-priority-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_PRIORITIES.map((candidate) => (
+                  <SelectItem key={candidate} value={candidate}>
+                    {t(priorityLabelKey(candidate))}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
 
           {/* 开始 / 截止同行排布（两列）。 */}

@@ -28,6 +28,8 @@ import {
 } from "@/components/ui/shadcn/select";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { applyActionErrors } from "@/lib/action-form";
+import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
+import { priorityLabelKey } from "@/components/ui/PriorityChip";
 
 import { createPersonalTaskAction } from "../actions";
 
@@ -85,6 +87,7 @@ export function NewTaskModal({
       .min(1, t("titleRequired"))
       .max(200, t("titleTooLong", { max: 200 })),
     projectId: z.string(),
+    priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
     description: z.string(),
@@ -106,6 +109,7 @@ export function NewTaskModal({
     defaultValues: {
       title: "",
       projectId: defaultProject,
+      priority: "medium",
       dueDate: dueDateDefault,
       startDate: "",
       description: "",
@@ -118,6 +122,7 @@ export function NewTaskModal({
       reset({
         title: "",
         projectId: defaultProject,
+        priority: "medium",
         dueDate: dueDateDefault,
         startDate: "",
         description: "",
@@ -137,6 +142,7 @@ export function NewTaskModal({
       const result = await createPersonalTaskAction({
         title: values.title,
         description: values.description ?? "",
+        priority: values.priority as TaskPriority,
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
         projectId: values.projectId === NO_PROJECT ? null : values.projectId,
@@ -216,6 +222,25 @@ export function NewTaskModal({
                   </SelectItem>
                 ))}
                 <SelectItem value={NO_PROJECT}>{t("personalLooseOption")}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="mb-4 flex flex-col gap-2">
+            <Label>{t("priority")}</Label>
+            <Select
+              value={watch("priority")}
+              onValueChange={(value) => setValue("priority", value)}
+            >
+              <SelectTrigger className="w-full" data-testid="task-priority-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {TASK_PRIORITIES.map((candidate) => (
+                  <SelectItem key={candidate} value={candidate}>
+                    {t(priorityLabelKey(candidate))}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>

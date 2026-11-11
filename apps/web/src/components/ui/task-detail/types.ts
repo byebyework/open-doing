@@ -64,8 +64,9 @@ export interface TaskDetailViewActions {
   toggleSubtask: (subtaskId: string, completed: boolean) => Promise<void>;
   updateStatus: (status: TaskStatus) => Promise<void>;
   updateTask: (input: {
-    title: string;
+    title?: string;
     description?: string;
+    priority?: TaskPriority;
     dueDate?: string | null;
     startDate?: string | null;
   }) => Promise<void>;
