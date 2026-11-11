@@ -543,7 +543,23 @@
     "newProjectHint": "团队项目对全体成员可见；任务可指派给团队内任何人。",
     "boardDragHint": "拖动卡片即可改变任务状态（手动切换）",
     "teamProjectMeta": "{tasks} 个任务 · {members} 位成员参与",
-    "personalProjectMeta": "个人项目 · 仅自己可见 · {tasks} 个任务"
+    "personalProjectMeta": "个人项目 · 仅自己可见 · {tasks} 个任务",
+    "newProjectButton": "新建项目",
+    "listTitle": "项目",
+    "listSubtitleTeam": "团队项目总览：进度自任务自动聚合，点击卡片进入项目。",
+    "listSubtitlePersonal": "个人项目总览：仅自己可见，与团队项目相互独立。",
+    "summaryTeam": "{count} 个项目 · 整体进度 {percent}%（按项目等权平均）",
+    "summaryPersonal": "{count} 个个人项目",
+    "sortNote": "排序：按创建时间",
+    "cardTasks": "{count} 个任务",
+    "cardDone": "{count} 已完成",
+    "cardOverdue": "逾期 {count}",
+    "healthOverdue": "已逾期",
+    "healthDueSoon": "临期",
+    "healthNotStarted": "未开始",
+    "healthNormal": "正常",
+    "listEmptyTitle": "还没有项目",
+    "listEmptyHint": "创建第一个项目，把任务归集到一起。"
   },
   "dashboard": {
     "title": "仪表盘",
@@ -802,8 +818,22 @@
     "backHome": "返回首页"
   },
   "landing": {
-    "meta": { "title": "Open Doing — 个人与团队的任务管理", "description": "个人待办与团队项目同处一个系统。看板、日历、提醒、数据分析,开箱即用。" },
-    "nav": { "features": "功能", "audiences": "个人 vs 团队", "faq": "常见问题", "login": "登录", "start": "免费开始", "languageLabel": "切换语言", "brand": "Open Doing", "skipToContent": "跳到主要内容", "primaryNav": "站点导航", "footerNav": "页脚导航" },
+    "meta": {
+      "title": "Open Doing — 个人与团队的任务管理",
+      "description": "个人待办与团队项目同处一个系统。看板、日历、提醒、数据分析,开箱即用。"
+    },
+    "nav": {
+      "features": "功能",
+      "audiences": "个人 vs 团队",
+      "faq": "常见问题",
+      "login": "登录",
+      "start": "免费开始",
+      "languageLabel": "切换语言",
+      "brand": "Open Doing",
+      "skipToContent": "跳到主要内容",
+      "primaryNav": "站点导航",
+      "footerNav": "页脚导航"
+    },
     "hero": {
       "badge": "为小团队打造",
       "titleLine1": "把想法,",
@@ -818,28 +848,70 @@
       "label": "功能",
       "title": "一个入口,看清所有事",
       "items": {
-        "dashboard": { "tag": "仪表盘", "title": "项目健康度,一眼见底", "body": "在办项目、整体进度、临期与逾期任务自动聚合;每个项目的健康状态按任务完成度实时计算,不用追问、不用催。", "alt": "仪表盘截图:项目健康度与重要节点" },
-        "kanban": { "tag": "看板", "title": "拖一下,任务就动了", "body": "待办、进行中、已完成三列看板,拖拽即流转;负责人、截止日、标签一目了然,团队谁在做什么,board 上见。", "alt": "看板截图:三列任务看板" },
-        "calendar": { "tag": "日历", "title": "截止日,不用记", "body": "任务按日历铺开,临期自动提醒;今天该做什么、这周压着什么,打开日历就知道。", "alt": "日历截图:月历视图与任务分布" },
-        "analysis": { "tag": "分析", "title": "团队负载,数据说话", "body": "完成趋势、成员负载、逾期分布自动成图;周会汇报,直接投这一页。", "alt": "分析截图:趋势与负载图表" }
+        "dashboard": {
+          "tag": "仪表盘",
+          "title": "项目健康度,一眼见底",
+          "body": "在办项目、整体进度、临期与逾期任务自动聚合;每个项目的健康状态按任务完成度实时计算,不用追问、不用催。",
+          "alt": "仪表盘截图:项目健康度与重要节点"
+        },
+        "kanban": {
+          "tag": "看板",
+          "title": "拖一下,任务就动了",
+          "body": "待办、进行中、已完成三列看板,拖拽即流转;负责人、截止日、标签一目了然,团队谁在做什么,board 上见。",
+          "alt": "看板截图:三列任务看板"
+        },
+        "calendar": {
+          "tag": "日历",
+          "title": "截止日,不用记",
+          "body": "任务按日历铺开,临期自动提醒;今天该做什么、这周压着什么,打开日历就知道。",
+          "alt": "日历截图:月历视图与任务分布"
+        },
+        "analysis": {
+          "tag": "分析",
+          "title": "团队负载,数据说话",
+          "body": "完成趋势、成员负载、逾期分布自动成图;周会汇报,直接投这一页。",
+          "alt": "分析截图:趋势与负载图表"
+        }
       }
     },
     "audiences": {
       "label": "个人 vs 团队",
       "title": "一个人用得起,一群人用得开",
-      "individual": { "title": "独立工作者", "body": "私人空间管理自己的待办与项目,想法不过夜;哪天拉上伙伴,邀请进团队空间即可,数据无缝延续。" },
-      "team": { "title": "小团队", "body": "团队空间里按项目分工,看板协作、日历对齐、分析复盘;权限清清楚楚,成员只动自己的任务。" }
+      "individual": {
+        "title": "独立工作者",
+        "body": "私人空间管理自己的待办与项目,想法不过夜;哪天拉上伙伴,邀请进团队空间即可,数据无缝延续。"
+      },
+      "team": {
+        "title": "小团队",
+        "body": "团队空间里按项目分工,看板协作、日历对齐、分析复盘;权限清清楚楚,成员只动自己的任务。"
+      }
     },
     "faq": {
       "title": "常见问题",
       "items": {
-        "free": { "q": "免费吗?", "a": "免费。注册后全部功能均可使用,没有功能墙。" },
-        "solo": { "q": "一个人也能用吗?", "a": "能。每个账号都有私人空间;之后随时创建团队空间,把伙伴邀请进来。" },
-        "install": { "q": "需要安装吗?", "a": "不需要。浏览器打开即用,数据存在你自己的部署里。" }
+        "free": {
+          "q": "免费吗?",
+          "a": "免费。注册后全部功能均可使用,没有功能墙。"
+        },
+        "solo": {
+          "q": "一个人也能用吗?",
+          "a": "能。每个账号都有私人空间;之后随时创建团队空间,把伙伴邀请进来。"
+        },
+        "install": {
+          "q": "需要安装吗?",
+          "a": "不需要。浏览器打开即用,数据存在你自己的部署里。"
+        }
       }
     },
-    "cta": { "title": "现在,把第一件事做完", "subtitle": "免费创建账号,和团队一起把事做成", "start": "免费开始使用", "login": "登录" },
-    "footer": { "copyright": "© 2026 Open Doing" }
+    "cta": {
+      "title": "现在,把第一件事做完",
+      "subtitle": "免费创建账号,和团队一起把事做成",
+      "start": "免费开始使用",
+      "login": "登录"
+    },
+    "footer": {
+      "copyright": "© 2026 Open Doing"
+    }
   },
   "meta": {
     "appTitle": "Open Doing",

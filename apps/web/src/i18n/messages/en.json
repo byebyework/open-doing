@@ -543,7 +543,23 @@
     "newProjectHint": "Team projects are visible to every member; tasks can be assigned to anyone in the team.",
     "boardDragHint": "Drag a card to another column to change its status (manual switching)",
     "teamProjectMeta": "{tasks} tasks · {members} participants",
-    "personalProjectMeta": "Personal project · visible only to you · {tasks} tasks"
+    "personalProjectMeta": "Personal project · visible only to you · {tasks} tasks",
+    "newProjectButton": "New project",
+    "listTitle": "Projects",
+    "listSubtitleTeam": "Team projects overview: progress aggregates from tasks automatically; open a project from any card.",
+    "listSubtitlePersonal": "Personal projects overview: visible only to you, independent from team projects.",
+    "summaryTeam": "{count} projects · overall progress {percent}% (equal-weight average of projects)",
+    "summaryPersonal": "{count} personal projects",
+    "sortNote": "Sorted by creation time",
+    "cardTasks": "{count} tasks",
+    "cardDone": "{count} completed",
+    "cardOverdue": "{count} overdue",
+    "healthOverdue": "Overdue",
+    "healthDueSoon": "Due soon",
+    "healthNotStarted": "Not started",
+    "healthNormal": "On track",
+    "listEmptyTitle": "No projects yet",
+    "listEmptyHint": "Create your first project to gather related tasks in one place."
   },
   "dashboard": {
     "title": "Dashboard",
@@ -802,8 +818,22 @@
     "backHome": "Back to home"
   },
   "landing": {
-    "meta": { "title": "Open Doing — Task management for individuals and teams", "description": "Personal to-dos and team projects in one system. Kanban, calendar, reminders, and analytics — ready out of the box." },
-    "nav": { "features": "Features", "audiences": "Personal vs team", "faq": "FAQ", "login": "Log in", "start": "Get started", "languageLabel": "Switch language", "brand": "Open Doing", "skipToContent": "Skip to main content", "primaryNav": "Primary navigation", "footerNav": "Footer navigation" },
+    "meta": {
+      "title": "Open Doing — Task management for individuals and teams",
+      "description": "Personal to-dos and team projects in one system. Kanban, calendar, reminders, and analytics — ready out of the box."
+    },
+    "nav": {
+      "features": "Features",
+      "audiences": "Personal vs team",
+      "faq": "FAQ",
+      "login": "Log in",
+      "start": "Get started",
+      "languageLabel": "Switch language",
+      "brand": "Open Doing",
+      "skipToContent": "Skip to main content",
+      "primaryNav": "Primary navigation",
+      "footerNav": "Footer navigation"
+    },
     "hero": {
       "badge": "Built for small teams",
       "titleLine1": "Turn ideas into",
@@ -818,28 +848,70 @@
       "label": "Features",
       "title": "One place to see everything",
       "items": {
-        "dashboard": { "tag": "Dashboard", "title": "Project health at a glance", "body": "Active projects, overall progress, due-soon and overdue tasks, aggregated automatically. Each project's health is computed live from task completion — no chasing, no nudging.", "alt": "Dashboard screenshot: project health and milestones" },
-        "kanban": { "tag": "Kanban", "title": "Drag it, and the task moves", "body": "Three columns — to do, in progress, done. Drag to move. Assignee, due date, and labels at a glance; see who is doing what on the board.", "alt": "Kanban screenshot: three-column task board" },
-        "calendar": { "tag": "Calendar", "title": "Deadlines you don't have to memorize", "body": "Tasks laid out on the calendar with automatic due-soon reminders. Open the calendar to see what's due today and what's pressing this week.", "alt": "Calendar screenshot: month view with tasks" },
-        "analysis": { "tag": "Analysis", "title": "Team workload, in numbers", "body": "Completion trends, member workload, and overdue distribution, charted automatically. For the weekly meeting, just project this page.", "alt": "Analysis screenshot: trend and workload charts" }
+        "dashboard": {
+          "tag": "Dashboard",
+          "title": "Project health at a glance",
+          "body": "Active projects, overall progress, due-soon and overdue tasks, aggregated automatically. Each project's health is computed live from task completion — no chasing, no nudging.",
+          "alt": "Dashboard screenshot: project health and milestones"
+        },
+        "kanban": {
+          "tag": "Kanban",
+          "title": "Drag it, and the task moves",
+          "body": "Three columns — to do, in progress, done. Drag to move. Assignee, due date, and labels at a glance; see who is doing what on the board.",
+          "alt": "Kanban screenshot: three-column task board"
+        },
+        "calendar": {
+          "tag": "Calendar",
+          "title": "Deadlines you don't have to memorize",
+          "body": "Tasks laid out on the calendar with automatic due-soon reminders. Open the calendar to see what's due today and what's pressing this week.",
+          "alt": "Calendar screenshot: month view with tasks"
+        },
+        "analysis": {
+          "tag": "Analysis",
+          "title": "Team workload, in numbers",
+          "body": "Completion trends, member workload, and overdue distribution, charted automatically. For the weekly meeting, just project this page.",
+          "alt": "Analysis screenshot: trend and workload charts"
+        }
       }
     },
     "audiences": {
       "label": "Personal vs team",
       "title": "Works for one, scales to many",
-      "individual": { "title": "Solo workers", "body": "Manage your own tasks and projects in your personal space. When you bring in partners, invite them to a team space — everything carries over seamlessly." },
-      "team": { "title": "Small teams", "body": "Split work by project in the team space: collaborate on the kanban, align on the calendar, review with analytics. Permissions stay clear — members only touch their own tasks." }
+      "individual": {
+        "title": "Solo workers",
+        "body": "Manage your own tasks and projects in your personal space. When you bring in partners, invite them to a team space — everything carries over seamlessly."
+      },
+      "team": {
+        "title": "Small teams",
+        "body": "Split work by project in the team space: collaborate on the kanban, align on the calendar, review with analytics. Permissions stay clear — members only touch their own tasks."
+      }
     },
     "faq": {
       "title": "Frequently asked questions",
       "items": {
-        "free": { "q": "Is it free?", "a": "Yes. Every feature is available once you register — no feature paywall." },
-        "solo": { "q": "Can I use it alone?", "a": "Yes. Every account has a personal space; create a team space and invite partners whenever you're ready." },
-        "install": { "q": "Do I need to install anything?", "a": "No. It runs in your browser, and your data lives in your own deployment." }
+        "free": {
+          "q": "Is it free?",
+          "a": "Yes. Every feature is available once you register — no feature paywall."
+        },
+        "solo": {
+          "q": "Can I use it alone?",
+          "a": "Yes. Every account has a personal space; create a team space and invite partners whenever you're ready."
+        },
+        "install": {
+          "q": "Do I need to install anything?",
+          "a": "No. It runs in your browser, and your data lives in your own deployment."
+        }
       }
     },
-    "cta": { "title": "Now, get that first thing done", "subtitle": "Create a free account and get things done with your team", "start": "Start for free", "login": "Log in" },
-    "footer": { "copyright": "© 2026 Open Doing" }
+    "cta": {
+      "title": "Now, get that first thing done",
+      "subtitle": "Create a free account and get things done with your team",
+      "start": "Start for free",
+      "login": "Log in"
+    },
+    "footer": {
+      "copyright": "© 2026 Open Doing"
+    }
   },
   "meta": {
     "appTitle": "Open Doing",
