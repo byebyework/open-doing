@@ -8,10 +8,13 @@ import type { DbClient } from "@/server/db/client";
 import { comments, projects, subtasks, tasks, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
+import { getProjectHealthKind } from "@open-doing/types";
+
 import {
   createPersonalProject,
   deletePersonalProject,
   getPersonalProjectBySlug,
+  getPersonalProjectListWithStats,
   listPersonalProjects,
   updatePersonalProject,
 } from "./service";
@@ -320,5 +323,99 @@ describe.skipIf(!hasTestDatabase)("个人项目 service", () => {
         db,
       ),
     ).rejects.toMatchObject({ field: "description" });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("getPersonalProjectListWithStats", () => {
+  let db: DbClient;
+  let userSeq = 100;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    userSeq = 100;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  async function createUser() {
+    const id = crypto.randomUUID();
+    const seq = (userSeq += 1);
+    await db
+      .insert(users)
+      .values({ id, uid: generateUid(), username: `user_${seq}`, name: `user_${seq}`, email: `${id}@test.local`, displayUsername: `user_${seq}` });
+    return id;
+  }
+
+  async function insertTask(input: {
+    projectId: string;
+    userId: string;
+    status?: "todo" | "in_progress" | "done";
+    dueDate?: string;
+  }): Promise<string> {
+    const id = crypto.randomUUID();
+    await db.insert(tasks).values({
+      id,
+      projectId: input.projectId,
+      spaceType: "personal",
+      title: "任务",
+      status: input.status ?? "todo",
+      dueDate: input.dueDate,
+      createdById: input.userId,
+    });
+    return id;
+  }
+
+  it("只返回本人项目(创建升序),他人项目不可见;逾期任务计入统计", async () => {
+    const userId = await createUser();
+    const otherId = await createUser();
+
+    const mineA = await createPersonalProject(userId, { name: "Mine A" }, db);
+    const mineB = await createPersonalProject(userId, { name: "Mine B" }, db);
+    const others = await createPersonalProject(otherId, { name: "Others" }, db);
+
+    // Mine A:1 个逾期 todo。
+    await insertTask({ projectId: mineA.id, userId, status: "todo", dueDate: "2026-11-09" });
+    // Mine B:1 个明天截止的 in_progress(临期,进度 0.5)。
+    await insertTask({ projectId: mineB.id, userId, status: "in_progress", dueDate: "2026-11-12" });
+    // 他人项目里的团队/个人任务不得泄入。
+    await insertTask({ projectId: others.id, userId: otherId, status: "todo", dueDate: "2026-11-09" });
+
+    await db.update(projects).set({ createdAt: new Date("2026-01-01T00:00:00Z") }).where(eq(projects.id, mineA.id));
+    await db.update(projects).set({ createdAt: new Date("2026-01-01T00:00:01Z") }).where(eq(projects.id, mineB.id));
+
+    const list = await getPersonalProjectListWithStats(userId, "2026-11-11", db);
+
+    expect(list.map((item) => item.project.slug)).toEqual(["mine-a", "mine-b"]);
+    expect(list[0]?.stats).toEqual({
+      progress: 0,
+      taskCount: 1,
+      doneCount: 0,
+      overdueCount: 1,
+      dueSoonCount: 0,
+    });
+    expect(getProjectHealthKind(list[0]!.stats)).toBe("overdue");
+    expect(list[1]?.stats.dueSoonCount).toBe(1);
+    expect(getProjectHealthKind(list[1]!.stats)).toBe("dueSoon");
+  });
+
+  it("空项目零值聚合;无项目返回空数组", async () => {
+    const userId = await createUser();
+    const empty = await createPersonalProject(userId, { name: "Empty" }, db);
+    void empty;
+
+    const list = await getPersonalProjectListWithStats(userId, "2026-11-11", db);
+    expect(list).toHaveLength(1);
+    expect(list[0]?.stats).toEqual({
+      progress: 0,
+      taskCount: 0,
+      doneCount: 0,
+      overdueCount: 0,
+      dueSoonCount: 0,
+    });
+
+    const nobody = await createUser();
+    expect(await getPersonalProjectListWithStats(nobody, "2026-11-11", db)).toEqual([]);
   });
 });

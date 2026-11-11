@@ -1,7 +1,13 @@
 import type { Project } from "@open-doing/types";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
+import {
+  buildProjectStats,
+  listProjectTaskStatRows,
+  type ProjectListItem,
+  type ProjectTaskStatRow,
+} from "@/features/projects/service";
 import { generateUniqueSlug } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { projects, tasks } from "@/server/db/schema";
@@ -233,4 +239,43 @@ export async function deletePersonalProject(
   if (!row) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
+}
+
+/**
+ * 个人项目列表(创建时间升序),附每项目聚合统计。
+ *
+ * 只按 `owner_id` + `spaceType='personal'` 过滤,他人项目不可见;聚合与
+ * 健康口径复用 `features/projects` 的共享实现(`buildProjectStats` /
+ * `listProjectTaskStatRows`)。注意与 `listPersonalProjects` 的"最近活动
+ * 降序"是两套排序:后者是日历/看板/详情页的既有行为,本函数仅服务列表页。
+ * `today` 由调用方注入(Asia/Shanghai 的 `YYYY-MM-DD`)。
+ */
+export async function getPersonalProjectListWithStats(
+  userId: string,
+  today: string,
+  client: DbClient = db,
+): Promise<ProjectListItem[]> {
+  const projectRows = await client
+    .select()
+    .from(projects)
+    .where(and(eq(projects.ownerId, userId), isNull(projects.teamId)))
+    .orderBy(asc(projects.createdAt));
+
+  if (projectRows.length === 0) return [];
+
+  const statRows = await listProjectTaskStatRows(
+    projectRows.map((row) => row.id),
+    client,
+  );
+  const rowsByProject = new Map<string, ProjectTaskStatRow[]>(
+    projectRows.map((row) => [row.id, []]),
+  );
+  for (const row of statRows) {
+    rowsByProject.get(row.projectId)?.push(row);
+  }
+
+  return projectRows.map((row) => ({
+    project: toProject(row),
+    stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
+  }));
 }
