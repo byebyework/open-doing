@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
+  <title>增长突击队 项目 · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* 空间级项目列表专用样式（生产以 shadcn/ui + Tailwind 还原） */
+    .proj-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-4); }
+    a.proj-card { display: block; text-decoration: none; color: inherit; transition: border-color .15s ease, box-shadow .15s ease; }
+    a.proj-card:hover { border-color: var(--primary); box-shadow: 0 6px 18px rgba(15, 23, 42, .08); }
+    .proj-card .pc-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+    .proj-card .pc-head .spacer { flex: 1; }
+    .proj-card .pc-name { font-size: 15px; font-weight: 600; color: var(--ink-900); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .proj-card .pc-desc { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 14px; min-height: 34px; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .proj-card .pc-foot { display: flex; align-items: baseline; gap: 8px; margin-top: 8px; }
+    .proj-card .pc-foot .pct { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .proj-card .pc-foot .pc-count { margin-left: auto; font-size: 12px; color: var(--text-faint); font-variant-numeric: tabular-nums; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 侧边栏（v1.1 新 IA + v1.2 新增「项目」模块） ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="index.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <div class="popover-wrap switcher-wrap">
+        <button class="team-switcher" type="button" data-popover-trigger="space-menu">
+          <span class="dot"></span>
+          <span class="name">增长突击队</span>
+          <span class="chev">▾</span>
+        </button>
+        <div class="popover switcher-menu" id="space-menu">
+          <div class="dropdown-menu-label">个人</div>
+          <a class="dropdown-menu-item" href="space-dashboard-personal.html">
+            <span class="m-icon"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></span>
+            <span class="m-name">个人空间</span>
+          </a>
+          <div class="dropdown-menu-label">我的团队</div>
+          <a class="dropdown-menu-item active" href="space-dashboard-team.html">
+            <span class="m-dot" style="background:var(--accent-lavender);"></span>
+            <span class="m-name">增长突击队</span>
+            <span class="check">✓</span>
+          </a>
+          <div class="dropdown-menu-separator"></div>
+          <button class="dropdown-menu-item ghost" type="button">＋ 创建团队</button>
+        </div>
+      </div>
+
+      <nav>
+        <div class="nav-group-label">增长突击队</div>
+        <a class="nav-item" href="space-dashboard-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item active" href="space-projects-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          项目
+        </a>
+        <a class="nav-item" href="space-kanban-team.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="5" height="18" rx="1"/><rect x="10" y="3" width="5" height="12" rx="1"/><rect x="17" y="3" width="4" height="8" rx="1"/></svg>
+          Kanban
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a class="nav-item" href="#">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21.21 15.89A10 10 0 1 1 8 2.83"/><path d="M22 12A10 10 0 0 0 12 2v10z"/></svg>
+          Analysis
+        </a>
+        <a class="nav-item" href="team-settings.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.6 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9c.15.35.23.72.23 1.09"/></svg>
+          设置
+        </a>
+
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">
+          <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          待处理邀请
+          <span class="count-badge">2</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">增长突击队 <span class="sep">/</span> <strong>项目</strong></div>
+        <div class="topbar-search">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+          搜索任务… <kbd>⌘K</kbd>
+        </div>
+        <div class="popover-wrap">
+          <button class="icon-button" data-popover-trigger="notif-pop" aria-label="通知">
+            <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
+            <span class="notif-dot">5</span>
+          </button>
+          <div class="popover" id="notif-pop">
+            <div class="popover-head">通知 <button class="button button-ghost button-sm">全部已读</button></div>
+            <div style="max-height:340px;overflow:auto;">
+              <div class="notif-item unread">
+                <span class="notif-icon" style="background:var(--error-bg);color:var(--error);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                </span>
+                <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">今天 09:00</div></div>
+              </div>
+              <div class="notif-item">
+                <span class="notif-icon" style="background:var(--accent-mint-bg);color:var(--accent-mint);">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                </span>
+                <div class="notif-body"><b>苏晓</b> 评论了「完成首页新版视觉稿」<div class="notif-time">昨天 17:42</div></div>
+              </div>
+            </div>
+            <div class="popover-foot"><a href="#" class="text-sm">查看全部通知</a></div>
+          </div>
+        </div>
+        <span class="avatar av-lavender">林</span>
+      </header>
+
+      <main class="content">
+        <div class="page-header anim-in">
+          <div class="text">
+            <h1 class="h1">项目</h1>
+            <div class="sub">团队项目总览：进度自任务自动聚合，点击卡片进入项目；新建项目仅 owner/admin 可用。</div>
+          </div>
+          <div class="page-actions">
+            <button class="button button-outline button-sm" type="button" data-modal-open="new-team-project-modal">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新建项目
+            </button>
+          </div>
+        </div>
+
+        <!-- 摘要行：整体进度按项目等权平均（与 Dashboard「团队整体进度」同口径） -->
+        <div class="filterbar anim-in">
+          <span class="text-caption">3 个项目 · 整体进度 <b style="color:var(--primary);">48%</b>（按项目等权平均）· 排序：按创建时间</span>
+          <div class="spacer"></div>
+          <span class="text-caption">基准日期 2026-10-21（周三）</span>
+        </div>
+
+        <!-- 项目卡片：健康徽标与进度色同 Dashboard「项目健康度」口径 -->
+        <div class="proj-grid stagger">
+
+          <a class="card proj-card" href="project-list.html">
+            <div class="pc-head">
+              <div class="pc-name">移动端 2.0</div>
+              <span class="spacer"></span>
+              <span class="badge badge-overdue">已逾期</span>
+            </div>
+            <div class="pc-desc">iOS / Android 双端 2.0 改版：崩溃率治理、推送体验与深色模式预研。</div>
+            <div class="progress is-error"><span style="width:48%;"></span></div>
+            <div class="pc-foot">
+              <span class="pct" style="color:var(--error);">48%</span>
+              <span class="pc-count">25 个任务 · 12 已完成 · 逾期 2</span>
+            </div>
+          </a>
+
+          <a class="card proj-card" href="project-list.html">
+            <div class="pc-head">
+              <div class="pc-name">官网改版</div>
+              <span class="spacer"></span>
+              <span class="badge badge-due-soon">临期</span>
+            </div>
+            <div class="pc-desc">品牌官网视觉与信息架构升级，含首页新版视觉稿与旧版帮助中心内容迁移。</div>
+            <div class="progress is-warning"><span style="width:62%;"></span></div>
+            <div class="pc-foot">
+              <span class="pct" style="color:#a66b00;">62%</span>
+              <span class="pc-count">18 个任务 · 11 已完成</span>
+            </div>
+          </a>
+
+          <a class="card proj-card" href="project-list.html">
+            <div class="pc-head">
+              <div class="pc-name">Q4 用户增长活动</div>
+              <span class="spacer"></span>
+              <span class="badge badge-done">正常</span>
+            </div>
+            <div class="pc-desc">Q4 增长专项：注册转化漏斗、落地页 A/B 实验与用户访谈。</div>
+            <div class="progress is-success"><span style="width:35%;"></span></div>
+            <div class="pc-foot">
+              <span class="pct" style="color:var(--success);">35%</span>
+              <span class="pc-count">20 个任务 · 7 已完成</span>
+            </div>
+          </a>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ========== 新建团队项目弹窗 ========== -->
+  <div class="dialog-overlay" id="new-team-project-modal">
+    <div class="dialog" role="dialog" aria-modal="true" aria-label="新建团队项目">
+      <button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>
+      <div class="dialog-header">
+        <h2 class="h2">新建团队项目</h2>
+        <button class="icon-button" data-modal-close aria-label="关闭">✕</button>
+      </div>
+      <div class="alert alert-info" style="margin-bottom:20px;">
+        <span>ℹ</span>
+        <span>团队项目对全部成员可见；仅 owner / admin 可创建、编辑与删除项目。</span>
+      </div>
+      <div class="form-row">
+        <label class="label" for="ntp-name">项目名称</label>
+        <input class="input" id="ntp-name" name="project-name" placeholder="例如：数据看板 2.0、官网国际化" />
+      </div>
+      <div class="form-row">
+        <label class="label" for="ntp-desc">描述（可选）</label>
+        <textarea class="textarea" id="ntp-desc" name="project-desc" placeholder="这个项目要达成什么目标？"></textarea>
+      </div>
+      <div class="dialog-footer">
+        <button class="button button-outline" data-modal-close>取消</button>
+        <button class="button button-primary" data-modal-close id="ntp-submit">创建项目</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+  <script>
+    // 演示：创建按钮关闭弹窗并给出 toast（生产为 Server Action + router.refresh + sonner）
+    (function () {
+      var btn = document.getElementById("ntp-submit");
+      if (!btn) return;
+      btn.addEventListener("click", function () {
+        var input = document.getElementById("ntp-name");
+        var name = (input && input.value.trim()) || "新项目";
+        window.toast("项目「" + name + "」已创建");
+      });
+    })();
+  </script>
+</body>
+</html>
