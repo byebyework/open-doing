@@ -45,6 +45,7 @@ import type {
   Gender,
   NotificationType,
   SpaceType,
+  TaskPriority,
   TaskStatus,
   TeamJoinStatus,
 } from "@open-doing/types";
@@ -303,6 +304,8 @@ export const tasks = pgTable(
     title: text("title").notNull(),
     description: text("description"),
     status: text("status").$type<TaskStatus>().notNull().default("todo"),
+    // 优先级三档，存量任务由默认值自动归入「中」。
+    priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
     // 成员被移除/退出时置空，不删除任务。
     assigneeId: uuidRef("assignee_id").references(() => users.id, { onDelete: "set null" }),
     dueDate: date("due_date", { mode: "string" }),

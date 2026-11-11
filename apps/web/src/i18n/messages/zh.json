@@ -310,6 +310,7 @@
     "startDateInvalid": "开始时间不是有效日期",
     "startAfterDue": "开始时间不能晚于截止时间",
     "statusInvalid": "任务状态不合法",
+    "priorityInvalid": "任务优先级不合法",
     "commentRequired": "请输入评论内容",
     "commentTooLong": "评论不能超过 {max} 个字符",
     "add": "添加",

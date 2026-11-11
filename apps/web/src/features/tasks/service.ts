@@ -65,6 +65,7 @@ function toTask(row: TaskRow): Task {
     title: row.title,
     description: row.description ?? undefined,
     status: row.status,
+    priority: row.priority,
     assigneeId: row.assigneeId,
     dueDate: row.dueDate ?? undefined,
     startDate: row.startDate ?? undefined,

@@ -73,6 +73,7 @@ const fakeTask: Task = {
   title: "写周报",
   description: undefined,
   status: "todo",
+  priority: "medium",
   assigneeId: MEMBER_ID,
   dueDate: undefined,
   createdAt: "2026-10-23T00:00:00.000Z",

@@ -310,6 +310,7 @@
     "startDateInvalid": "Start date is not a valid date",
     "startAfterDue": "Start date cannot be after the due date",
     "statusInvalid": "Invalid task status",
+    "priorityInvalid": "Invalid task priority",
     "commentRequired": "Enter a comment",
     "commentTooLong": "Comment cannot exceed {max} characters",
     "add": "Add",

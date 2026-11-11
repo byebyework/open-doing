@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@open-doing/types";
+import type { TaskPriority, TaskStatus } from "@open-doing/types";
 
 import { DomainError } from "@/lib/domain-error";
 
@@ -25,6 +25,9 @@ const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** 任务状态全集（用于运行时校验）。 */
 const TASK_STATUSES: readonly TaskStatus[] = ["todo", "in_progress", "done"];
+
+/** 任务优先级全集（用于运行时校验）。 */
+const TASK_PRIORITIES: readonly TaskPriority[] = ["low", "medium", "high"];
 
 /** 路由参数可能不是 UUID（例如手工拼出的地址），提前拦截。 */
 export function isUuid(value: string): boolean {
@@ -130,6 +133,17 @@ export function validateTaskStatus(value: unknown): TaskStatus {
   }
 
   throw new DomainError("任务状态不合法", "status", { key: "statusInvalid" });
+}
+
+/** 优先级只允许三档，防止外部传入任意字符串。 */
+export function validateTaskPriority(value: unknown): TaskPriority {
+  if (TASK_PRIORITIES.includes(value as TaskPriority)) {
+    return value as TaskPriority;
+  }
+
+  throw new DomainError("任务优先级不合法", "priority", {
+    key: "priorityInvalid",
+  });
 }
 
 /** 评论内容去空白后校验 1–2000 字。 */

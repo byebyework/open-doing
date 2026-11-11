@@ -7,6 +7,7 @@ import {
   isUuid,
   validateCommentContent,
   validateTaskDueDate,
+  validateTaskPriority,
   validateTaskStartDate,
   validateTaskStatus,
   validateTaskTitle,
@@ -118,6 +119,17 @@ describe("validateTaskStatus", () => {
     expect(validateTaskStatus("done")).toBe("done");
     expect(() => validateTaskStatus("archived")).toThrow(
       expect.objectContaining({ field: "status", message: "任务状态不合法" }),
+    );
+  });
+});
+
+describe("validateTaskPriority", () => {
+  it("接受三档，拒绝其他值", () => {
+    expect(validateTaskPriority("low")).toBe("low");
+    expect(validateTaskPriority("medium")).toBe("medium");
+    expect(validateTaskPriority("high")).toBe("high");
+    expect(() => validateTaskPriority("urgent")).toThrow(
+      expect.objectContaining({ field: "priority", message: "任务优先级不合法" }),
     );
   });
 });

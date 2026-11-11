@@ -24,6 +24,7 @@ function makeTask(overrides: Partial<TeamTaskRow> = {}): TeamTaskRow {
     spaceType: "team",
     title: "首页视觉稿评审",
     status: "todo",
+    priority: "medium",
     assigneeId: ASSIGNEE_ID,
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",

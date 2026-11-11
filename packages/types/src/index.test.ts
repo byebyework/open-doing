@@ -6,7 +6,14 @@ import {
   getTaskProgress,
   isDueSoon,
   isOverdue,
+  TASK_PRIORITIES,
 } from "./index";
+
+describe("TASK_PRIORITIES", () => {
+  it("三档按 low → medium → high 排列", () => {
+    expect(TASK_PRIORITIES).toEqual(["low", "medium", "high"]);
+  });
+});
 
 const completed = { completed: true };
 const pending = { completed: false };

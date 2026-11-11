@@ -11,6 +11,15 @@
 /** 任务状态：手动切换 */
 export type TaskStatus = "todo" | "in_progress" | "done";
 
+/** 任务优先级：三档，默认 medium */
+export type TaskPriority = "low" | "medium" | "high";
+
+/** 优先级全集（low → medium → high；排序即索引序，高在前取反） */
+export const TASK_PRIORITIES: readonly TaskPriority[] = ["low", "medium", "high"];
+
+/** 排序语义别名：与 TASK_PRIORITIES 相同（索引越大优先级越高） */
+export const TASK_PRIORITY_ORDER = TASK_PRIORITIES;
+
 /** 性别：可选资料，未填写为 null */
 export type Gender = "male" | "female" | "secret";
 
@@ -127,6 +136,8 @@ export interface Task {
   title: string;
   description?: string;
   status: TaskStatus;
+  /** 优先级：三档，默认 medium */
+  priority: TaskPriority;
   /** 责任人；个人任务恒为本人，未指派时为 null */
   assigneeId: string | null;
   /** 截止日期，`YYYY-MM-DD` */
