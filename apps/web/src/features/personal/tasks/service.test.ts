@@ -110,6 +110,40 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
     expect(loose.dueDate).toBeUndefined();
   });
 
+  it("优先级：创建可选三档，更新未传不改、非法值拒绝", async () => {
+    const userId = await createUser();
+    const task = await createPersonalTask(
+      userId,
+      { title: "带优先级", priority: "high" },
+      db,
+    );
+    expect(task.priority).toBe("high");
+
+    const detail = await getPersonalTaskDetail(userId, task.id, db);
+    expect(detail?.priority).toBe("high");
+
+    const lowered = await updatePersonalTask(
+      userId,
+      task.id,
+      { priority: "low" },
+      db,
+    );
+    expect(lowered.priority).toBe("low");
+
+    // 未传 priority 的更新不改既有值。
+    const untouched = await updatePersonalTask(
+      userId,
+      task.id,
+      { title: "改名不改优先级" },
+      db,
+    );
+    expect(untouched.priority).toBe("low");
+
+    await expect(
+      updatePersonalTask(userId, task.id, { priority: "urgent" as never }, db),
+    ).rejects.toMatchObject({ field: "priority" });
+  });
+
   it("创建到他人项目：抛出 DomainError 且不落库", async () => {
     const owner = await createUser("owner");
     const other = await createUser("other");

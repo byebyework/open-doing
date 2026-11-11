@@ -290,6 +290,53 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       expect(row).toMatchObject({ userId: member.id, actorId: owner.id });
     });
 
+    it("优先级：创建可带三档，更新未传不改、非法值拒绝", async () => {
+      const { team, project } = await setupTeamWithProject(db);
+      const member = await createUser(db, uniqueName("member"));
+      await addMember(db, team.id, member.id, "member");
+
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: member.id,
+          title: "带优先级",
+          priority: "high",
+        },
+        db,
+      );
+      expect(task.priority).toBe("high");
+
+      const lowered = await updateTeamTask(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: member.id,
+          priority: "low",
+        },
+        db,
+      );
+      expect(lowered.priority).toBe("low");
+
+      const untouched = await updateTeamTask(
+        { teamId: team.id, taskId: task.id, actorId: member.id, title: "改名" },
+        db,
+      );
+      expect(untouched.priority).toBe("low");
+
+      await expect(
+        updateTeamTask(
+          {
+            teamId: team.id,
+            taskId: task.id,
+            actorId: member.id,
+            priority: "urgent" as never,
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({ field: "priority" });
+    });
+
     it("owner 原样保存（字段值未变）不产生 task_changed_by_admin，也不推进 updatedAt", async () => {
       const { owner, team, project } = await setupTeamWithProject(db);
       const member = await createUser(db, uniqueName("member"));

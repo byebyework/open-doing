@@ -18,6 +18,7 @@ const task: TaskDetailModel = {
   spaceType: "team",
   title: "整理项目里程碑",
   status: "todo",
+  priority: "medium",
   assigneeId: "33333333-3333-3333-3333-333333333333",
   assigneeName: "owner_smoke",
   createdAt: "2026-10-01T00:00:00.000Z",

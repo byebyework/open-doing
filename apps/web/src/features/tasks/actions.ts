@@ -1,6 +1,12 @@
 "use server";
 
-import type { Comment, Subtask, Task, TaskStatus } from "@open-doing/types";
+import type {
+  Comment,
+  Subtask,
+  Task,
+  TaskPriority,
+  TaskStatus,
+} from "@open-doing/types";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
@@ -55,6 +61,7 @@ export async function createTeamTaskAction(input: {
   projectId: string;
   title: string;
   description?: string;
+  priority?: TaskPriority;
   dueDate?: string | null;
   startDate?: string | null;
   assigneeId?: string | null;
@@ -70,13 +77,14 @@ export async function createTeamTaskAction(input: {
   }
 }
 
-/** 更新团队任务（标题 / 描述 / 截止日期 / 开始时间 / 状态 / 责任人）。 */
+/** 更新团队任务（标题 / 描述 / 优先级 / 截止日期 / 开始时间 / 状态 / 责任人）。 */
 export async function updateTeamTaskAction(
   taskId: string,
   input: {
     teamId: string;
     title?: string;
     description?: string;
+    priority?: TaskPriority;
     dueDate?: string | null;
     startDate?: string | null;
     status?: TaskStatus;

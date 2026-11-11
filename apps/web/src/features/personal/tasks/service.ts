@@ -2,6 +2,7 @@ import type {
   Comment,
   Subtask,
   Task,
+  TaskPriority,
   TaskStatus,
 } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
@@ -31,6 +32,8 @@ export const COMMENT_MAX_LENGTH = 2000;
 export interface PersonalTaskInput {
   title: string;
   description?: string;
+  /** 优先级三档；缺省由列默认值落为 medium。 */
+  priority?: TaskPriority;
   dueDate?: string | null;
   /** 开始日期（`YYYY-MM-DD`，可空）；与 dueDate 同粒度，不得晚于截止日期。 */
   startDate?: string | null;
@@ -48,6 +51,9 @@ const DUE_DATE_PATTERN = /^\d{4}-\d{2}-\d{2}$/;
 
 /** 任务状态全集（用于运行时校验）。 */
 const TASK_STATUSES: readonly TaskStatus[] = ["todo", "in_progress", "done"];
+
+/** 任务优先级全集（用于运行时校验）。 */
+const TASK_PRIORITIES: readonly TaskPriority[] = ["low", "medium", "high"];
 
 /**
  * 路由参数可能不是 UUID（例如手工拼出的地址）。
@@ -192,6 +198,17 @@ function validateStatus(value: unknown): TaskStatus {
   throw new DomainError("任务状态不合法", "status", { key: "statusInvalid" });
 }
 
+/** 优先级只允许三档，防止外部传入任意字符串。 */
+function validatePriority(value: unknown): TaskPriority {
+  if (TASK_PRIORITIES.includes(value as TaskPriority)) {
+    return value as TaskPriority;
+  }
+
+  throw new DomainError("任务优先级不合法", "priority", {
+    key: "priorityInvalid",
+  });
+}
+
 /** 评论内容去空白后校验 1–2000 字。 */
 function validateCommentContent(value: unknown): string {
   const content = typeof value === "string" ? value.trim() : "";
@@ -285,6 +302,7 @@ export async function createPersonalTask(
 ): Promise<Task> {
   const title = validateTitle(input?.title, "任务");
   const description = normalizeDescription(input?.description);
+  const priority = validatePriority(input?.priority ?? "medium");
   const dueDate = validateDueDate(input?.dueDate);
   const startDate = validateStartDate(input?.startDate);
   const projectId = normalizeProjectId(input?.projectId);
@@ -303,6 +321,7 @@ export async function createPersonalTask(
       title,
       description,
       status: "todo",
+      priority,
       assigneeId: userId,
       dueDate,
       startDate,
@@ -428,6 +447,7 @@ export async function getPersonalTaskDetail(
     title: task.title,
     description: task.description ?? undefined,
     status: task.status,
+    priority: task.priority,
     assigneeId: task.assigneeId,
     // 展示名：昵称优先，未填写回退到用户名。
     assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
@@ -466,6 +486,7 @@ export async function updatePersonalTask(
   input: {
     title?: string;
     description?: string;
+    priority?: TaskPriority;
     dueDate?: string | null;
     startDate?: string | null;
     status?: TaskStatus;
@@ -477,7 +498,7 @@ export async function updatePersonalTask(
   const changes: Partial<
     Pick<
       TaskRow,
-      "title" | "description" | "dueDate" | "startDate" | "status" | "updatedAt"
+      "title" | "description" | "priority" | "dueDate" | "startDate" | "status" | "updatedAt"
     >
   > = {};
 
@@ -495,6 +516,9 @@ export async function updatePersonalTask(
   }
   if (input?.status !== undefined) {
     changes.status = validateStatus(input.status);
+  }
+  if (input?.priority !== undefined) {
+    changes.priority = validatePriority(input.priority);
   }
 
   // 与新值组合出最终日期对，校验开始不晚于截止。

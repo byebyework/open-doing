@@ -1,4 +1,10 @@
-import type { Comment, Subtask, Task, TaskStatus } from "@open-doing/types";
+import type {
+  Comment,
+  Subtask,
+  Task,
+  TaskPriority,
+  TaskStatus,
+} from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import { and, asc, eq, inArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -16,6 +22,7 @@ import {
   normalizeTaskDescription,
   validateCommentContent,
   validateTaskDueDate,
+  validateTaskPriority,
   validateTaskStartDate,
   validateTaskStatus,
   validateTaskTitle,
@@ -228,6 +235,8 @@ export async function createTeamTask(
     actorId: string;
     title: string;
     description?: string;
+    /** 优先级三档；缺省由列默认值落为 medium。 */
+    priority?: TaskPriority;
     dueDate?: string | null;
     startDate?: string | null;
     assigneeId?: string | null;
@@ -237,6 +246,7 @@ export async function createTeamTask(
   const { teamId, projectId, actorId } = input;
   const title = validateTaskTitle(input?.title);
   const description = normalizeTaskDescription(input?.description);
+  const priority = validateTaskPriority(input?.priority ?? "medium");
   const dueDate = validateTaskDueDate(input?.dueDate);
   const startDate = validateTaskStartDate(input?.startDate);
   assertStartNotAfterTaskDue(startDate, dueDate);
@@ -255,6 +265,7 @@ export async function createTeamTask(
         title,
         description,
         status: "todo",
+        priority,
         assigneeId,
         dueDate,
         startDate,
@@ -288,6 +299,8 @@ export interface UpdateTeamTaskInput {
   actorId: string;
   title?: string;
   description?: string;
+  /** 优先级三档；作为内容字段纳入 `task:edit` 权限判定。 */
+  priority?: TaskPriority;
   dueDate?: string | null;
   /** 开始日期；`null` 清空。作为内容字段纳入 `task:edit` 权限判定。 */
   startDate?: string | null;
@@ -315,6 +328,7 @@ export async function updateTeamTask(
       TaskRow,
       | "title"
       | "description"
+      | "priority"
       | "dueDate"
       | "startDate"
       | "status"
@@ -364,6 +378,14 @@ export async function updateTeamTask(
     const status = validateTaskStatus(input.status);
     if (status !== existing.task.status) {
       changes.status = status;
+      hasValueChange = true;
+    }
+  }
+  if (input.priority !== undefined) {
+    hasContentChange = true;
+    const priority = validateTaskPriority(input.priority);
+    if (priority !== existing.task.priority) {
+      changes.priority = priority;
       hasValueChange = true;
     }
   }
@@ -773,6 +795,7 @@ export async function getTeamTaskDetail(
     title: task.title,
     description: task.description ?? undefined,
     status: task.status,
+    priority: task.priority,
     assigneeId: task.assigneeId,
     // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。
     assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,

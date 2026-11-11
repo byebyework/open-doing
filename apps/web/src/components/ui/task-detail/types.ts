@@ -1,4 +1,4 @@
-import type { Subtask, TaskStatus } from "@open-doing/types";
+import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
 
 /** 任务详情里的评论：额外带上作者用户名。 */
 export interface TaskDetailComment {
@@ -24,6 +24,8 @@ export interface TaskDetailModel {
   title: string;
   description?: string;
   status: TaskStatus;
+  /** 优先级三档（与领域 Task 同源，恒有值） */
+  priority: TaskPriority;
   assigneeId: string | null;
   assigneeName: string | null;
   /**
