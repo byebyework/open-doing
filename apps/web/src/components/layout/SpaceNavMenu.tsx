@@ -176,13 +176,38 @@ function InvitesIcon() {
 /** 导航项：模块 + i18n 标签 key + 图标（顺序与原型侧栏一致）。 */
 interface SpaceNavModule {
   module: SpaceModule;
-  labelKey: "dashboard" | "kanban" | "calendar" | "analysis" | "teamManagement";
+  labelKey:
+    | "dashboard"
+    | "projects"
+    | "kanban"
+    | "calendar"
+    | "analysis"
+    | "teamManagement";
   Icon: ComponentType;
 }
 
-/** 个人空间四模块：个人设置已上移为系统级 `/settings`，不再出现在空间导航。 */
+/** 项目模块图标（对齐原型 folder icon，v1.2 新增模块）。 */
+function ProjectsIcon() {
+  return (
+    <svg
+      className={ICON_CLASS}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+    </svg>
+  );
+}
+
+/** 个人空间五模块：个人设置已上移为系统级 `/settings`，不再出现在空间导航。 */
 const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
+  { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
   { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
@@ -233,8 +258,9 @@ export function resolveSpaceLabel(
  * 统一空间导航菜单（v1.1 M2 新 IA）。
  *
  * 结构对照原型 `space-dashboard-*.html` 侧栏：
- * - 当前空间名作为分组标题；个人空间 4 项（Dashboard / Kanban / Calendar /
- *   Analysis），团队空间额外第 5 项「团队管理」（团队的 settings 路由）；
+ * - 当前空间名作为分组标题；个人空间 5 项（Dashboard / 项目 / Kanban /
+ *   Calendar / Analysis，v1.2 新增「项目」），团队空间额外第 6 项「团队
+ *   管理」（团队的 settings 路由）；
  * - 「账号」分组待处理邀请入口，pending 数 > 0 时显示红色角标；
  * - 未登录（`data.loggedIn === false`）整体不渲染。
  */
