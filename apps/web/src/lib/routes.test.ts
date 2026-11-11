@@ -26,6 +26,11 @@ describe("moduleHref", () => {
     expect(moduleHref("growth", "analysis")).toBe("/space/growth/analysis");
     expect(moduleHref("growth", "settings")).toBe("/space/growth/settings");
   });
+
+  it("支持 projects 模块", () => {
+    expect(moduleHref("personal", "projects")).toBe("/space/personal/projects");
+    expect(moduleHref("growth", "projects")).toBe("/space/growth/projects");
+  });
 });
 
 describe("personalTaskHref", () => {

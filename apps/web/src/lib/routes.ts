@@ -3,7 +3,13 @@
 // 纯函数,无依赖;不校验入参(slug/taskId 由调用方保证已编码安全)。
 
 export type SpaceRef = string; // "personal" 或团队 slug
-export type SpaceModule = "dashboard" | "kanban" | "calendar" | "analysis" | "settings";
+export type SpaceModule =
+  | "dashboard"
+  | "projects"
+  | "kanban"
+  | "calendar"
+  | "analysis"
+  | "settings";
 
 export function spaceDashboardHref(spaceRef: SpaceRef): string {
   return `/space/${spaceRef}/dashboard`;
