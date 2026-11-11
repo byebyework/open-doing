@@ -147,6 +147,30 @@ pnpm dev
 
 > **排障：浏览器一直转圈 / 无法访问** —— 首先确认本机 3000 端口没有被其他进程占用，最常见的是 ssh 隧道 / VSCode Remote 转发抢占了 3000（流量被转发到远端而非本地应用，表现为一直转圈）。检查：`lsof -nP -iTCP:3000 -sTCP:LISTEN`；若监听进程是 `ssh`，断开隧道 / 关闭对应转发后重试。
 
+## Docker 部署（生产镜像）
+
+仓库根目录的 `Dockerfile` 构建生产镜像（多阶段：全量依赖 → Turbopack 构建 → 仅运行时依赖的最终层，不含 devDependencies 与源码外的构建工具），构建上下文为仓库根。镜像构建设 `NEXT_SKIP_TYPECHECK=1` 跳过 TypeScript 检查（Docker 虚拟机内存有限，`tsc` 阶段易被 OOM kill）；类型安全由本地/CI 的 `pnpm typecheck` 保证：
+
+```bash
+docker build -t open-doing:latest .
+```
+
+**数据库迁移在容器启动时自动执行**：entrypoint（`docker/entrypoint.sh`）在 `next start` 之前运行 `apps/web/scripts/migrate.mjs`（只依赖运行时依赖 `drizzle-orm` + `postgres`，重放 `apps/web/drizzle` 的 journal，与 drizzle-kit 迁移语义一致、幂等，可安全地随每次部署重复执行）。数据库暂时不可达时会自动重试（`MIGRATE_MAX_RETRIES`，默认 30 次 × 2s）；迁移 SQL 本身的错误会立即失败退出。
+
+- 多副本 / 由外部工具（如 init container 或独立迁移 Job）统一迁移时，设 `SKIP_DB_MIGRATION=1` 跳过容器内迁移。
+- 运行时必须提供的环境变量：`DATABASE_URL`（生产库）、`BETTER_AUTH_SECRET`（生产必填）、`CRON_SECRET`；可选 `PORT`（默认 3000）、`BETTER_AUTH_URL`。
+
+单机部署可直接用根目录的 `docker-compose.prod.yml`（web + PostgreSQL 16；密钥从仓库根 `.env` 读取，见 `.env.example` 末尾的「Docker 生产部署」一节）：
+
+```bash
+cat > .env <<EOF
+POSTGRES_PASSWORD=换成强口令
+BETTER_AUTH_SECRET=$(openssl rand -base64 32)
+CRON_SECRET=$(openssl rand -base64 32)
+EOF
+docker compose -f docker-compose.prod.yml up -d --wait
+```
+
 ## 常用命令
 
 以下命令均在仓库根目录执行：

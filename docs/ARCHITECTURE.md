@@ -385,6 +385,7 @@ CRON_SECRET=...
 
 - `docker-compose.yml` at the repo root starts the local PostgreSQL 16 (host port 5433, overridable via `PG_PORT`).
 - Drizzle config and migration files live in the web package (`src/server/db/` + `drizzle/`), run via `pnpm --filter @open-doing/web db:generate / db:migrate`.
+- **Production image**: the root `Dockerfile` builds the web app (multi-stage; pnpm workspace + Turbopack build, runtime stage without devDependencies). Its entrypoint (`docker/entrypoint.sh`) replays migrations via `apps/web/scripts/migrate.mjs` (runtime deps only, same journal as drizzle-kit, idempotent) before `next start`; set `SKIP_DB_MIGRATION=1` to migrate externally instead. A single-node deploy example lives in `docker-compose.prod.yml`.
 - **Full dev-DB reset after regenerating migrations**: run
   `DROP SCHEMA public CASCADE; DROP SCHEMA IF EXISTS drizzle CASCADE;` (re-create `public` if your client requires it) before `db:migrate`. Drizzle-kit records applied migrations in its own `drizzle` schema; dropping only `public` leaves the journal behind, so `db:migrate` thinks migrations are applied and silently skips table creation.
 - Playwright e2e injects `BETTER_AUTH_URL=http://localhost:3100` and a test-only `BETTER_AUTH_SECRET`; it never reads `.env.local`.

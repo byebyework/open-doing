@@ -14,3 +14,10 @@
 .DS_Store
 docs
 **/*.log
+
+# 测试与 e2e 产物不进镜像
+**/e2e
+**/test-results
+**/playwright-report
+apps/web/playwright.config.ts
+apps/web/scripts/e2e-with-db-guard.sh

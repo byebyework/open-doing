@@ -3,6 +3,12 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@open-doing/types"],
+  // Docker 镜像构建（Dockerfile 设 NEXT_SKIP_TYPECHECK=1）跳过 TS 检查：
+  // Docker Desktop 虚拟机内存有限，tsc 阶段易被 OOM kill（exit 137）。
+  // 类型安全仍由本地/CI 的 `pnpm typecheck` 保证（AGENTS.md 要求 PR 前执行）。
+  ...(process.env.NEXT_SKIP_TYPECHECK === "1"
+    ? { typescript: { ignoreBuildErrors: true } }
+    : {}),
   // 暂不启用 cacheComponents/partialPrefetching：
   // @ant-design/cssinjs 在 AntdRegistry 的 useState 初始化中调用 Math.random()，
   // 会被 Cache Components 的 prerender 校验判为不稳定值并导致构建失败。
