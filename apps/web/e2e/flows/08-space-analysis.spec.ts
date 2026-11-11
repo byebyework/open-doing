@@ -238,7 +238,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
     await expect(
       throughput.getByText("近 30 天 · 按日 · 共完成 1 项"),
     ).toBeVisible();
-    await expect(throughput.getByTitle(/今天 .* · 完成 1/)).toBeVisible();
+    await expect(throughput.getByTitle(`今天 ${today} · 完成 1`)).toBeVisible();
 
     // 项目健康度：该项目行出现，进度条按任务数分母渲染（1/2 完成 + 进行中）。
     const health = sectionByHeading(page, "项目健康度");

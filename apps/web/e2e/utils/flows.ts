@@ -131,7 +131,7 @@ export async function openPersonalProject(
  */
 export async function createPersonalTask(
   page: Page,
-  input: { title: string; dueDate?: string },
+  input: { title: string; dueDate?: string; priority?: "low" | "medium" | "high" },
 ): Promise<void> {
   await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
@@ -140,6 +140,14 @@ export async function createPersonalTask(
   // 同上：等 afterOpenChange 的 resetFields 执行完再填写。
   await page.waitForTimeout(500);
   await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(input.title);
+  if (input.priority) {
+    // shadcn Select 的选项带 role="option"；档位文案取 zh 消息包固定值。
+    const PRIORITY_LABELS = { low: "低", medium: "中", high: "高" } as const;
+    await dialog.getByTestId(TEST_IDS.tasks.prioritySelect).click();
+    await page
+      .getByRole("option", { name: PRIORITY_LABELS[input.priority] })
+      .click();
+  }
   if (input.dueDate) {
     await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);
   }

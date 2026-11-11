@@ -35,6 +35,20 @@ export const TEST_IDS = {
     subtaskHeading: "subtask-heading",
     subtaskInput: "subtask-input",
     subtaskAddButton: "subtask-add-button",
+    /** 新建 / 编辑弹窗里的优先级 Select 触发器。 */
+    prioritySelect: "task-priority-select",
+    /** 列表页优先级 chip（含 data-priority 档位）。 */
+    priorityChip: "priority-chip",
+    /** 看板卡优先级色点（含 data-priority 档位）。 */
+    priorityDot: "priority-dot",
+    /** 任务详情页优先级 MetaRow 的 Select 触发器（可编辑时渲染）。 */
+    detailPrioritySelect: "detail-priority-select",
+    /** 列表页状态列的下拉触发器（StatusTag 徽标本体）。 */
+    statusMenuTrigger: "status-menu-trigger",
+    /** 操作列编辑按钮。 */
+    rowEdit: "row-edit",
+    /** 操作列删除按钮（无删除权时不渲染）。 */
+    rowDelete: "row-delete",
     cardStatusButton: (status: "todo" | "in_progress" | "done") =>
       `task-status-button-${status}`,
   },

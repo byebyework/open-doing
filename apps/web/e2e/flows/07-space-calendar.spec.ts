@@ -89,7 +89,7 @@ test.describe("flow 7: 空间级 Calendar", () => {
 
     const weekCard = page.getByTestId(TEST_IDS.calendar.weekCard);
     await expect(
-      weekCard.getByText(`今天 · ${weekdayLabel(today)} ${today.slice(5)}`),
+      weekCard.getByText(`今天 · ${weekdayLabel(today)} ${today}`),
     ).toBeVisible();
 
     // done 任务留在本周清单原位，标题划线 + 右侧「已完成」。
