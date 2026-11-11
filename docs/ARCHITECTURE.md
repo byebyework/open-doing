@@ -58,6 +58,7 @@ packages/
 | UI components | **shadcn/ui (vendored) on Radix primitives** | Accessible headless behavior (dialog, dropdown, select, alert…) styled with Tailwind; vendored under `components/ui/shadcn/` with per-file adaptation notes |
 | Toasts | sonner | Single Toaster in root `providers.tsx`; position/shadow/icons aligned to the prototype `.toast` spec |
 | Styling | **Tailwind CSS 4 (preflight enabled)** | theme + preflight + utilities layers; utilities handle layout/spacing/fine-tuning |
+| Animation | **Motion (`motion/react`)** | Single animation lib for all UI motion (no CSS keyframes); vendored overlays share an exit-hold bridge (`components/ui/overlay-motion.ts`) so Radix unmount waits for the exit animation; reduced motion via `MotionConfig` + explicit `useReducedMotion()` gates |
 | Theme/locale | Design tokens in `tokens.css` (light only) + dayjs locale per request | No runtime theming (`theme.ts` removed); tokens stay 1:1 with the prototypes; locale switches next-intl + dayjs + `<html lang>` |
 | Database | PostgreSQL 16 | Relational integrity, cascade deletes, unique constraints (username, UID) |
 | ORM | Drizzle | Lightweight, close to SQL, good type inference, built-in migration tooling |
@@ -83,6 +84,7 @@ features/
 ├── analysis/   Space-level Analysis: completion trends / throughput / member load / project health
 ├── personal/   Personal space: personal tasks (kanban/detail) and personal projects
 ├── dashboard/  Personal Dashboard (personal-dashboard / my-tasks) and team Dashboard (team-dashboard / team-overview)
+├── landing/    Anonymous landing page at `/`: nav/hero/features/audiences/faq/cta/footer, anonymous locale action (cookie only)
 └── notifications/ Notifications, read state, due-date scan
 ```
 
@@ -95,6 +97,7 @@ features/
 - **The vendored shadcn/ui set is the component baseline**: dialogs, dropdowns, selects, popovers, tabs, etc. come from `components/ui/shadcn/` (Radix primitives + cva + Tailwind) — do not build your own; each vendored file's header comment documents its adaptations (e.g. next-themes removed, sr-only copy routed through next-intl). `components/ui/` additionally holds project-level composites (ConfirmModal, StatCard, EmptyState, UserAvatar, …). **antd must not be reintroduced** — a guard test (`AtomsShadcn.test.tsx`) fails on any `from "antd"` import or hardcoded sr-only copy.
 - **Tailwind handles layout and fine-tuning**: page skeletons, spacing, flex/grid via Tailwind utilities; `globals.css` imports Tailwind 4's theme + preflight + utilities layers (preflight was re-enabled after the antd removal).
 - **Client boundary**: Radix interactive components (Dialog, AlertDialog, DropdownMenu, Popover, Select, Sheet, etc.) may only be used in Client Components. Pages stay RSC for data fetching; interactions are pushed down into `"use client"` components that receive serializable data via props.
+- **Animation is Motion (`motion/react`), never CSS keyframes**: all UI motion (landing entrance/parallax, overlay enter/exit) uses variants with shared timing tokens (`OD_MS`/`OD_EASE` in `components/ui/overlay-motion.ts`). The vendored overlays share an exit-hold bridge (`createHeldOverlayRoot`): `onOpenChange` fires immediately while the exiting content stays mounted 150–300ms (dialog/alert-dialog/sheet hold the Root open; the pop family closes the Root immediately and keeps Content mounted via `forceMount`). Exiting overlays remain in the DOM, so destructive/submit handlers gate on dialog state (`!open || loading`) to avoid double-fire. Reduced motion is handled by `MotionConfig reducedMotion="user"` (providers) plus explicit `useReducedMotion()` gates for MotionValue-driven styles (e.g. scroll parallax).
 - **Root layout**: `providers.tsx` sets the request's dayjs locale and mounts the single sonner Toaster; there is no runtime theme — colors/spacing come from design tokens in `tokens.css`.
 - Style conflict rule: prefer token CSS variables (`var(--ink-900)`) over literal hex values; Tailwind must not override shadcn/Radix component internals — never global selectors.
 - Kanban drag-and-drop is implemented with `@dnd-kit/core` + `@dnd-kit/sortable` (cards are Tailwind-styled elements using design tokens).
@@ -106,11 +109,11 @@ The app is unified as a space tree: `/space/{spaceRef}/{module}`, where `spaceRe
 
 ```
 app/
+├── page.tsx                         # `/`: landing page for anonymous visitors; logged-in users redirect to /space/personal/dashboard
 ├── (auth)/
 │   ├── login/page.tsx
 │   └── register/page.tsx
 ├── (dashboard)/                     # logged-in layout: sidebar + top bar (with notification badge)
-│   ├── page.tsx                     # `/` → /space/personal/dashboard
 │   ├── settings/page.tsx            # personal settings (system-level): profile, password, reminders, language, project ordering
 │   ├── invites/page.tsx             # pending invites (accept/decline), not a space page
 │   ├── teams/
@@ -142,6 +145,7 @@ app/
 ```
 
 - Both space types render the same domain pages; personal space has four modules (`dashboard` / `kanban` / `calendar` / `analysis`), team space has five (the same four plus `settings`, displayed as 团队管理). The pages share domain components, differentiated by `spaceType` / variant (see §5.2–§5.5).
+- The root `/` route (`app/page.tsx`) calls `getCurrentUser()`: logged-in users are redirected to `/space/personal/dashboard`; anonymous visitors get the landing page (`features/landing`), a client-motion showcase whose copy is fully localized. Anonymous locale preference lives in the `od_locale` cookie (`setAnonymousLocaleAction`, no DB access); logged-in language preference stays `users.language` via personal settings.
 - Personal settings are a **system-level page** at `/settings`, inside the `(dashboard)` group so it inherits AppShell and `requireUser()`: profile fields, change password, reminder toggles, language, project ordering. The former `/space/personal/settings` route was removed outright (404, no redirect).
 - `personal` is a reserved spaceRef: team slug generation treats `personal` as taken (`RESERVED_SPACE_SLUGS` in `lib/slug.ts`); a team named "Personal" falls back to `personal-2`, leaving personal-space routing unaffected.
 - Route parameters always use slugs (teams/projects); task details use opaque internal IDs.

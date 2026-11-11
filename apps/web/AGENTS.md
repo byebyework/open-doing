@@ -17,6 +17,7 @@ The only application in the monorepo: pages + Server Actions + Route Handlers + 
 - Next.js App Router, React Server Components by default; mutations go through Server Actions (no public REST API — Route Handlers exist only for cron).
 - PostgreSQL 16 via Drizzle ORM (`pg-core`); schema at `src/server/db/schema.ts`, migrations in `drizzle/`. Primary keys are native `uuid`s with `gen_random_uuid()`; timestamps are `timestamptz` (absolute instants, no custom timestamp type).
 - UI is the vendored shadcn/ui set (`src/components/ui/shadcn/`, Radix + cva) + Tailwind 4 (preflight enabled in `globals.css`); there is no runtime theme — colors come from design tokens in `src/app/tokens.css` (1:1 with the prototypes), and antd must not be reintroduced (a guard test pins this).
+- All UI animation is Motion (`motion/react`) — no CSS keyframes. Vendored overlays share the exit-hold bridge in `src/components/ui/overlay-motion.ts` (`createHeldOverlayRoot`: `onOpenChange` fires immediately, exiting content stays mounted 150–300ms; the pop family runs in immediate mode with a `forceMount` exit). Gate destructive/submit handlers on `open`/`loading` so they cannot double-fire during the exit window.
 - All user-visible copy lives in `src/i18n/messages/{zh,en}.json` (next-intl). Hardcoded CJK strings fail the cjk-guard test; new features must ship both locales.
 - "Today" is computed in Asia/Shanghai (`src/lib/today.ts`); RSCs pass `today` down as a prop — never read the local timezone in components.
 - Authentication is better-auth (`features/auth/server.ts`): DB-backed sessions (`sessions`), password in `accounts.password`, `users` as its user model, email required at registration, registration codes consumed via hooks. `nextCookies()` must remain the last plugin.
@@ -24,11 +25,13 @@ The only application in the monorepo: pages + Server Actions + Route Handlers + 
 ## Directory map (`src/`)
 
 ```
-app/            Routes: (auth)/, (dashboard)/, api/cron/. (dashboard) is guarded by requireUser()
+app/            Routes: page.tsx (landing for anonymous / redirect for logged in),
+                (auth)/, (dashboard)/, api/cron/. (dashboard) is guarded by requireUser()
 features/       Domain modules: auth, users, teams, projects, tasks, kanban,
-                calendar, analysis, notifications, personal, dashboard.
+                calendar, analysis, notifications, personal, dashboard, landing.
                 Each has actions.ts (Server Actions) / service.ts (data access +
-                business rules) / components/
+                business rules) / components/ — landing is the exception (showcase
+                components + one anonymous locale action, no service/DB access)
 components/     ui/ shared components (ConfirmModal, StatCard, … + vendored shadcn/
                 primitives in ui/shadcn/), layout/ frame layout (AppShell etc.)
 hooks/          Generic client hooks
@@ -74,3 +77,4 @@ pnpm --filter @open-doing/web exec playwright install chromium   # first e2e run
 - Radix-based interactive components (Dialog, AlertDialog, DropdownMenu, Popover, Select, Sheet) only inside `"use client"` components; pages pass serializable props. Optimistic updates use the "sync props → state during render" pattern with `router.refresh()`. `ConfirmModal` does not auto-close on confirm — the consumer closes in its success branch; `loading` disables Esc and the cancel button.
 - Domain errors: service throws `<X>Error(zh fallback, field, { key, params })`; never display the constructor's Chinese directly — it is translated per request locale.
 - Routes use slugs for teams/projects and opaque IDs for task details. `personal` is a reserved spaceRef.
+- Component interaction tests use jsdom (`@vitest-environment jsdom` pragma) + `createRoot` + React `act` + `vi.useFakeTimers` — there is no @testing-library in this repo; static components may use `renderToStaticMarkup`. Overlay tests assert the exit-hold contract (content present during the hold window, removed after `OD_MS.* + 50`).
