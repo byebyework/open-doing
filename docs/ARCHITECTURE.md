@@ -10,6 +10,8 @@ A monolithic web application (no microservices):
 
 - **Next.js (App Router, React, Turbopack)** hosts pages, Server Actions, and Route Handlers in one app.
 - **PostgreSQL 16** is the only persistent store; **Drizzle ORM** handles schema, migrations, and queries.
+- **better-auth** owns authentication: username + email/password login, DB-backed sessions (`sessions` table), registration gated by registration codes consumed in better-auth hooks (see §6).
+- **Motion (`motion/react`)** is the single animation library for all UI motion — landing page effects and the vendored overlays' enter/exit (exit-hold bridge, see §4.1).
 - Scheduled scans (due-soon/overdue notifications) run through a protected Route Handler triggered by an external cron — no separate worker process.
 - No email sending, no third-party services; no external dependencies other than the database and cron.
 
