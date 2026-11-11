@@ -2,7 +2,6 @@
 
 import { displayName } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
-import dayjs from "dayjs";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -12,6 +11,7 @@ import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { Button } from "@/components/ui/shadcn/button";
+import { formatTaskTimestamp } from "@/lib/date-display";
 
 import { respondToJoinRequestAction } from "../actions";
 import type { TeamJoinRequestView } from "../service";
@@ -96,7 +96,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
               {user.uid}
             </span>
             <span className="ml-auto text-[12px] text-[var(--ink-400)]">
-              {t("requestedAtSuffix", { time: dayjs(request.createdAt).format("MM-DD HH:mm") })}
+              {t("requestedAtSuffix", { time: formatTaskTimestamp(request.createdAt) })}
             </span>
             <span className="flex flex-none items-center gap-1.5">
               <Button
@@ -151,7 +151,7 @@ export function JoinRequestList({ teamId, requests }: JoinRequestListProps) {
               {user.uid}
             </span>
             <span className="ml-auto text-[12px] text-[var(--ink-400)]">
-              {dayjs(time).format("MM-DD HH:mm")}
+              {formatTaskTimestamp(time)}
             </span>
           </div>
         );

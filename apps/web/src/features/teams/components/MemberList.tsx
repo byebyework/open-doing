@@ -1,8 +1,8 @@
 import { displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
-import dayjs from "dayjs";
 
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { formatTaskTimestamp } from "@/lib/date-display";
 import { Badge } from "@/components/ui/shadcn/badge";
 
 import { RemoveMemberButton } from "../members/components/RemoveMemberButton";
@@ -94,7 +94,7 @@ export async function MemberList({
                 </td>
                 <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{user.email ?? "—"}</td>
                 <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{user.phone ?? "—"}</td>
-                <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{dayjs(membership.joinedAt).format("MM-DD")}</td>
+                <td className="whitespace-nowrap py-2.5 text-[var(--ink-500)]">{formatTaskTimestamp(membership.joinedAt)}</td>
                 {actionTeamSlug ? (
                   <td className="py-2.5 text-right">
                     {membership.role === "owner" || membership.userId === currentUserId ? null : (

@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { MilestoneTaskItem } from "@/features/dashboard/team-overview/service";
+import { formatTaskDate } from "@/lib/date-display";
 import { moduleHref } from "@/lib/routes";
 
 /** 三态节点的原型配色与图标。 */
@@ -23,11 +24,6 @@ const KIND_META = {
     background: "#e8eaed",
   },
 } as const;
-
-/** 将 `YYYY-MM-DD` 显示为原型同款 `MM-DD`。 */
-function shortDate(date: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(5) : date;
-}
 
 /** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
 function daysBetween(later: string, earlier: string): number {
@@ -122,10 +118,10 @@ export async function MilestoneList({
                       <span className="whitespace-nowrap" title={task.dueDate}>
                         {task.kind === "overdue"
                           ? t("dueOverdueLine", {
-                              date: shortDate(task.dueDate),
+                              date: formatTaskDate(task.dueDate),
                               days: overdueDays,
                             })
-                          : t("dueLine", { date: shortDate(task.dueDate) })}
+                          : t("dueLine", { date: formatTaskDate(task.dueDate) })}
                       </span>
                     </div>
                   </div>

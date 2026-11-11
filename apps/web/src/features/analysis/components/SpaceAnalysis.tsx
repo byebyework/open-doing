@@ -454,7 +454,7 @@ async function TeamBody({
           label={t("statDoneThisWeek")}
           value={stats.doneThisWeek}
           hint={tDashboard("statDoneThisWeekHint", {
-            date: weekStart.slice(5),
+            date: weekStart,
           })}
           color="#00b894"
         />
@@ -642,7 +642,7 @@ async function TeamBody({
                     {task.projectName} ·{" "}
                     {task.assigneeName ?? tTasks("unassigned")} ·{" "}
                     {t("lastUpdatedLine", {
-                      date: addDays(today, -task.stalledDays).slice(5),
+                      date: addDays(today, -task.stalledDays),
                       days: task.stalledDays,
                     })}
                   </div>

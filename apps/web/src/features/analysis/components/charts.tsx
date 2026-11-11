@@ -213,7 +213,7 @@ function lastPeakIndex(values: number[]): number {
 }
 
 /**
- * 柱列的原生悬停说明：单系列「MM-DD · 完成 N」，双系列「· 新增 N / 完成 N」。
+ * 柱列的原生悬停说明：单系列「YYYY-MM-DD · 完成 N」，双系列「· 新增 N / 完成 N」。
  * 数值与「无变化」文案由调用方按当前语言传入。
  */
 function columnTitle(

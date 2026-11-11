@@ -72,7 +72,6 @@
   },
   "date": {
     "today": "Today",
-    "tomorrow": "Tomorrow",
     "overdue": "Overdue",
     "overdueWithDate": "Overdue · {date}",
     "weekdaySun": "Sun",
@@ -82,8 +81,6 @@
     "weekdayThu": "Thu",
     "weekdayFri": "Fri",
     "weekdaySat": "Sat",
-    "dueToday": "Due today",
-    "dueTomorrow": "Due tomorrow",
     "todayCaption": "Reference date {date} ({weekday})",
     "todayHintAria": "Reference date explanation",
     "todayHintTitle": "Reference date",

@@ -1,7 +1,6 @@
 import { displayName } from "@open-doing/types";
 import type { Metadata } from "next";
 import Link from "next/link";
-import dayjs from "dayjs";
 import { getTranslations } from "next-intl/server";
 
 import { CARD_SHELL } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { requireUser } from "@/features/auth/session";
+import { formatTaskTimestamp } from "@/lib/date-display";
 import { listReceivedInvites } from "@/features/teams/invites/service";
 import { InviteRespondButtons } from "@/features/teams/invites/components/InviteRespondButtons";
 import { CancelJoinRequestButton } from "@/features/teams/joins/components/CancelJoinRequestButton";
@@ -102,7 +102,7 @@ export default async function InvitesPage() {
                       <span>·</span>
                       <span>{t("teamMemberCount", { count: memberCount })}</span>
                       <span>·</span>
-                      <span>{dayjs(invite.createdAt).format("MM-DD HH:mm")}</span>
+                      <span>{formatTaskTimestamp(invite.createdAt)}</span>
                     </div>
                   </div>
                   <InviteRespondButtons inviteId={invite.id} />
@@ -133,7 +133,7 @@ export default async function InvitesPage() {
                         <span className="flex items-center gap-2.5 text-[var(--ink-500)]">
                           {/* 原型 invites.html 用 .badge-done / .badge-neutral */}
                           <Badge variant={result.variant}>{t(result.labelKey)}</Badge>
-                          {dayjs(time).format("MM-DD")}
+                          {formatTaskTimestamp(time)}
                         </span>
                       </td>
                     </tr>
@@ -175,7 +175,7 @@ export default async function InvitesPage() {
                     </div>
                     <div className="mt-0.5 text-[12px] text-[var(--ink-400)]">
                       {t("requestedAt", {
-                        time: dayjs(request.createdAt).format("MM-DD HH:mm"),
+                        time: formatTaskTimestamp(request.createdAt),
                       })}
                     </div>
                   </div>
@@ -206,7 +206,7 @@ export default async function InvitesPage() {
                       <td className="py-2.5">
                         <span className="flex items-center gap-2.5 text-[var(--ink-500)]">
                           <Badge variant={result.variant}>{t(result.labelKey)}</Badge>
-                          {dayjs(time).format("MM-DD HH:mm")}
+                          {formatTaskTimestamp(time)}
                         </span>
                       </td>
                     </tr>

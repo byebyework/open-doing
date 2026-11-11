@@ -24,6 +24,7 @@ import {
   getWeekStart,
   weekdayIndex,
 } from "@/lib/today";
+import { formatTaskDate } from "@/lib/date-display";
 
 import {
   dateKey,
@@ -123,11 +124,6 @@ function hashAssigneeId(assigneeId: string): number {
 /** 负责人头像底色（定色盘，非 antd 头像）。 */
 function assigneeColor(assigneeId: string): string {
   return ASSIGNEE_COLORS[hashAssigneeId(assigneeId) % ASSIGNEE_COLORS.length]!;
-}
-
-/** `YYYY-MM-DD` → 原型口径的 `MM-DD`。 */
-function shortDate(date: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(5) : date;
 }
 
 /** 任务紧迫度（done 优先，不按逾期着色）。 */
@@ -880,8 +876,8 @@ export function SpaceCalendar({
               </h3>
               <span className="ml-auto text-[11px] tabular-nums text-[var(--ink-400)]">
                 {tCalendar("weekRange", {
-                  start: shortDate(weekStart),
-                  end: shortDate(weekEnd),
+                  start: formatTaskDate(weekStart),
+                  end: formatTaskDate(weekEnd),
                   count: data.weekItems.length,
                 })}
               </span>
@@ -920,7 +916,7 @@ export function SpaceCalendar({
                             <b className="font-semibold text-[var(--purple-600)]">
                               {tDate("today")} ·{" "}
                               {tDate(WEEKDAY_KEYS[weekdayIndex(today)])}{" "}
-                              {shortDate(today)}
+                              {formatTaskDate(today)}
                             </b>
                             <span className="rounded-full bg-[var(--accent-lavender-bg)] px-1.5 py-px text-[10px] font-medium text-[var(--purple-600)]">
                               {tCalendar("countItems", {
@@ -931,7 +927,7 @@ export function SpaceCalendar({
                         ) : (
                           <span className="tabular-nums">
                             {tDate(WEEKDAY_KEYS[weekdayIndex(group.date)])}{" "}
-                            {shortDate(group.date)}
+                            {formatTaskDate(group.date)}
                           </span>
                         )}
                       </div>

@@ -116,11 +116,6 @@ function firstError(errors: Record<string, string>, fallback: string): string {
   return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
-/** 将 `YYYY-MM-DD` 显示为全站统一的绝对日期（`YYYY-MM-DD`）。 */
-function shortDate(date: string): string {
-  return formatTaskDate(date);
-}
-
 /** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
 function daysBetween(later: string, earlier: string): number {
   const toUtc = (date: string) => {
@@ -206,7 +201,7 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
         title={card.dueDate}
       >
         {t("overdueShort", {
-          date: shortDate(card.dueDate),
+          date: formatTaskDate(card.dueDate),
           days: daysBetween(today, card.dueDate),
         })}
       </span>
@@ -219,7 +214,7 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
         className="whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
         title={card.dueDate}
       >
-        {shortDate(card.dueDate)}
+        {formatTaskDate(card.dueDate)}
       </span>
     );
   }
@@ -229,7 +224,7 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
       className="whitespace-nowrap text-[12.5px] text-[var(--ink-500)]"
       title={card.dueDate}
     >
-      {shortDate(card.dueDate)}
+      {formatTaskDate(card.dueDate)}
     </span>
   );
 }

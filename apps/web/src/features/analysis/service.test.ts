@@ -182,8 +182,8 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
 
     // range 30 → 30 个逐日桶（含 0）。
     expect(data.completionTrend).toHaveLength(30);
-    expect(data.completionTrend[0]).toEqual({ label: "10-01", count: 0 });
-    expect(data.completionTrend[29]).toEqual({ label: "10-30", count: 0 });
+    expect(data.completionTrend[0]).toEqual({ label: "2026-10-01", count: 0 });
+    expect(data.completionTrend[29]).toEqual({ label: "2026-10-30", count: 0 });
     expect(data.completionTrend.every((point) => point.count === 0)).toBe(true);
 
     expect(data.createdVsCompleted).toHaveLength(30);
@@ -195,8 +195,8 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
 
     // 未来截止固定 14 个逐日桶。
     expect(data.futureDue).toHaveLength(14);
-    expect(data.futureDue[0]).toEqual({ label: "10-30", count: 0 });
-    expect(data.futureDue[13]).toEqual({ label: "11-12", count: 0 });
+    expect(data.futureDue[0]).toEqual({ label: "2026-10-30", count: 0 });
+    expect(data.futureDue[13]).toEqual({ label: "2026-11-12", count: 0 });
     expect(data.futureDue.every((point) => point.count === 0)).toBe(true);
 
     expect(data.projectComparison).toEqual([]);
@@ -215,7 +215,7 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     const wide = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
     const wideByLabel = new Map(wide.completionTrend.map((point) => [point.label, point.count]));
     // 上海 2026-10-15 落 10-15 桶（不是 UTC 日期的 10-14/10-15 漂移）。
-    expect(wideByLabel.get("10-15")).toBe(1);
+    expect(wideByLabel.get("2026-10-15")).toBe(1);
     expect(wide.completionTrend.reduce((sum, point) => sum + point.count, 0)).toBe(1);
 
     // range 7 窗口 = 10-24 ~ 10-30，10-15 不在其中。
@@ -255,10 +255,10 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
     const byLabel = new Map(data.createdVsCompleted.map((point) => [point.label, point]));
 
-    expect(byLabel.get("10-10")).toEqual({ label: "10-10", created: 1, completed: 1 });
-    expect(byLabel.get("10-12")).toEqual({ label: "10-12", created: 1, completed: 0 });
+    expect(byLabel.get("2026-10-10")).toEqual({ label: "2026-10-10", created: 1, completed: 1 });
+    expect(byLabel.get("2026-10-12")).toEqual({ label: "2026-10-12", created: 1, completed: 0 });
     // 09-20 不在窗口内：该桶 created 必须为 0，completed 只来自完成日。
-    expect(byLabel.get("10-13")).toEqual({ label: "10-13", created: 0, completed: 1 });
+    expect(byLabel.get("2026-10-13")).toEqual({ label: "2026-10-13", created: 0, completed: 1 });
 
     expect(data.createdVsCompleted.reduce((sum, point) => sum + point.created, 0)).toBe(2);
     expect(data.createdVsCompleted.reduce((sum, point) => sum + point.completed, 0)).toBe(2);
@@ -449,8 +449,8 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     const data = await getPersonalSpaceAnalysis(member.id, 30, TODAY, db);
 
     expect(data.futureDue).toHaveLength(14);
-    expect(data.futureDue[0]).toEqual({ label: "10-30", count: 1 });
-    expect(data.futureDue[13]).toEqual({ label: "11-12", count: 1 });
+    expect(data.futureDue[0]).toEqual({ label: "2026-10-30", count: 1 });
+    expect(data.futureDue[13]).toEqual({ label: "2026-11-12", count: 1 });
     expect(data.futureDue.reduce((sum, point) => sum + point.count, 0)).toBe(2);
   });
 
@@ -679,7 +679,7 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
       data.createdVsCompleted.map((point) => [point.label, point.created]),
     );
     expect(data.createdVsCompleted.reduce((sum, point) => sum + point.created, 0)).toBe(4);
-    expect(createdByLabel.get("10-20")).toBe(1);
+    expect(createdByLabel.get("2026-10-20")).toBe(1);
 
     // 未来到期分布只有 member 的 1 条。
     expect(data.futureDue.reduce((sum, point) => sum + point.count, 0)).toBe(1);
@@ -704,13 +704,13 @@ describe.skipIf(!hasTestDatabase)("个人空间 Analysis 聚合", () => {
     const trendByLabel = new Map(
       data.completionTrend.map((point) => [point.label, point.count]),
     );
-    expect(trendByLabel.get("10-15")).toBe(1);
-    expect(trendByLabel.get("10-14")).toBe(0);
+    expect(trendByLabel.get("2026-10-15")).toBe(1);
+    expect(trendByLabel.get("2026-10-14")).toBe(0);
 
     const byLabel = new Map(data.createdVsCompleted.map((point) => [point.label, point]));
-    expect(byLabel.get("10-16")).toEqual({ label: "10-16", created: 1, completed: 0 });
-    expect(byLabel.get("10-15")).toEqual({ label: "10-15", created: 0, completed: 1 });
-    expect(byLabel.get("10-14")).toEqual({ label: "10-14", created: 0, completed: 0 });
+    expect(byLabel.get("2026-10-16")).toEqual({ label: "2026-10-16", created: 1, completed: 0 });
+    expect(byLabel.get("2026-10-15")).toEqual({ label: "2026-10-15", created: 0, completed: 1 });
+    expect(byLabel.get("2026-10-14")).toEqual({ label: "2026-10-14", created: 0, completed: 0 });
   });
 });
 
@@ -759,8 +759,8 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       doneThisWeek: 0,
     });
     expect(data.throughput).toHaveLength(30);
-    expect(data.throughput[0]).toEqual({ label: "10-01", count: 0 });
-    expect(data.throughput[29]).toEqual({ label: "10-30", count: 0 });
+    expect(data.throughput[0]).toEqual({ label: "2026-10-01", count: 0 });
+    expect(data.throughput[29]).toEqual({ label: "2026-10-30", count: 0 });
     expect(data.throughput.every((point) => point.count === 0)).toBe(true);
     expect(data.members).toEqual([
       {
@@ -1064,7 +1064,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       db,
     );
     expect(seven.throughput).toHaveLength(7);
-    expect(seven.throughput[0]).toEqual({ label: "10-24", count: 1 });
+    expect(seven.throughput[0]).toEqual({ label: "2026-10-24", count: 1 });
     expect(seven.throughput.every((point, index) => point.count === (index === 0 ? 1 : 0))).toBe(true);
 
     const thirty = await getTeamSpaceAnalysis(
@@ -1075,10 +1075,10 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
       thirty.throughput.map((point) => [point.label, point.count]),
     );
     expect(thirty.throughput).toHaveLength(30);
-    expect(thirtyByLabel.get("10-24")).toBe(1);
-    expect(thirtyByLabel.get("10-23")).toBe(1);
+    expect(thirtyByLabel.get("2026-10-24")).toBe(1);
+    expect(thirtyByLabel.get("2026-10-23")).toBe(1);
     // 09-30 是 30 天窗口起点（10-01）前一天，只能落在 90 天窗口。
-    expect(thirtyByLabel.has("09-30")).toBe(false);
+    expect(thirtyByLabel.has("2026-09-30")).toBe(false);
     expect(
       thirty.throughput.reduce((sum, point) => sum + point.count, 0),
     ).toBe(2);
@@ -1093,10 +1093,10 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
     // 周桶数 = floor(daysBetween("2026-07-27", "2026-10-30") / 7) + 1
     //        = floor(95 / 7) + 1 = 14。
     expect(ninety.throughput).toHaveLength(14);
-    expect(ninety.throughput[0]).toEqual({ label: "07-27", count: 1 });
-    expect(ninety.throughput[13]).toEqual({ label: "10-26", count: 0 });
-    expect(ninetyByLabel.get("09-28")).toBe(1);
-    expect(ninetyByLabel.get("10-19")).toBe(2);
+    expect(ninety.throughput[0]).toEqual({ label: "2026-07-27", count: 1 });
+    expect(ninety.throughput[13]).toEqual({ label: "2026-10-26", count: 0 });
+    expect(ninetyByLabel.get("2026-09-28")).toBe(1);
+    expect(ninetyByLabel.get("2026-10-19")).toBe(2);
     expect(
       ninety.throughput.reduce((sum, point) => sum + point.count, 0),
     ).toBe(4);
@@ -1391,7 +1391,7 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
     const throughputByLabel = new Map(
       data.throughput.map((point) => [point.label, point.count]),
     );
-    expect(throughputByLabel.get("10-27")).toBe(1);
+    expect(throughputByLabel.get("2026-10-27")).toBe(1);
     expect(
       data.throughput.reduce((sum, point) => sum + point.count, 0),
     ).toBe(1);

@@ -59,12 +59,12 @@ describe("trendBuckets", () => {
     const buckets = trendBuckets("2026-10-30", 30);
     expect(buckets).toHaveLength(30);
     expect(buckets[0]).toEqual({
-      label: "10-01",
+      label: "2026-10-01",
       start: "2026-10-01",
       end: "2026-10-01",
     });
     expect(buckets[29]).toEqual({
-      label: "10-30",
+      label: "2026-10-30",
       start: "2026-10-30",
       end: "2026-10-30",
     });
@@ -79,12 +79,12 @@ describe("trendBuckets", () => {
     const buckets = trendBuckets("2027-01-05", 90);
     expect(buckets).toHaveLength(14);
     expect(buckets[0]).toEqual({
-      label: "10-05",
+      label: "2026-10-05",
       start: "2026-10-05",
       end: "2026-10-11",
     });
     expect(buckets[13]).toEqual({
-      label: "01-04",
+      label: "2027-01-04",
       start: "2027-01-04",
       end: "2027-01-05",
     });
@@ -93,12 +93,12 @@ describe("trendBuckets", () => {
     const buckets = trendBuckets("2026-11-20", 90);
     expect(buckets).toHaveLength(14);
     expect(buckets[0]).toEqual({
-      label: "08-17",
+      label: "2026-08-17",
       start: "2026-08-17",
       end: "2026-08-23",
     });
     expect(buckets[13]).toEqual({
-      label: "11-16",
+      label: "2026-11-16",
       start: "2026-11-16",
       end: "2026-11-20",
     });
@@ -121,12 +121,12 @@ describe("futureDueBuckets", () => {
     const buckets = futureDueBuckets("2026-10-30");
     expect(buckets).toHaveLength(14);
     expect(buckets[0]).toEqual({
-      label: "10-30",
+      label: "2026-10-30",
       start: "2026-10-30",
       end: "2026-10-30",
     });
     expect(buckets[13]).toEqual({
-      label: "11-12",
+      label: "2026-11-12",
       start: "2026-11-12",
       end: "2026-11-12",
     });
@@ -165,8 +165,8 @@ describe("bucketIndexForDay", () => {
     expect(bucketIndexForDay(buckets, "2026-11-13")).toBe(-1);
 
     const gapped: TrendBucket[] = [
-      { label: "01-01", start: "2026-01-01", end: "2026-01-02" },
-      { label: "01-05", start: "2026-01-05", end: "2026-01-06" },
+      { label: "2026-01-01", start: "2026-01-01", end: "2026-01-02" },
+      { label: "2026-01-05", start: "2026-01-05", end: "2026-01-06" },
     ];
     expect(bucketIndexForDay(gapped, "2026-01-03")).toBe(-1);
     expect(bucketIndexForDay(gapped, "2026-01-05")).toBe(1);

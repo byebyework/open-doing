@@ -7,6 +7,7 @@ import { useState } from "react";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
+import { formatTaskTimestamp } from "@/lib/date-display";
 
 /** 评论列表项（作者名由服务端组装）。 */
 export interface CommentBoxItem {
@@ -30,28 +31,16 @@ export interface CommentBoxProps {
 }
 
 /**
- * 评论时间显示为原型同款 `MM-DD HH:mm`。
+ * 评论时间显示为全站统一的 `YYYY-MM-DD HH:mm`（Asia/Shanghai）。
  *
- * 固定 Asia/Shanghai 时区并手动拼接，避免服务端 / 客户端本地时区不同
+ * formatTaskTimestamp 固定时区格式化，避免服务端 / 客户端本地时区不同
  * 造成水合文本不一致。
  */
 function formatCommentTime(value: string): string {
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return "";
 
-  const parts = new Intl.DateTimeFormat("zh-CN", {
-    timeZone: "Asia/Shanghai",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    hourCycle: "h23",
-  }).formatToParts(date);
-
-  const read = (type: string) =>
-    parts.find((part) => part.type === type)?.value ?? "";
-
-  return `${read("month")}-${read("day")} ${read("hour")}:${read("minute")}`;
+  return formatTaskTimestamp(value);
 }
 
 /**

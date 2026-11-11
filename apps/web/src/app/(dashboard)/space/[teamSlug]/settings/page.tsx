@@ -4,6 +4,7 @@ import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 import dayjs from "dayjs";
 
+import { formatTaskTimestamp } from "@/lib/date-display";
 import { requireUser } from "@/features/auth/session";
 import { CARD_SHELL } from "@/components/ui/card";
 import { HintBadge } from "@/components/ui/HintBadge";
@@ -124,7 +125,7 @@ export default async function TeamSettingsPage(
                 <span className="text-[13px] font-medium text-[var(--ink-900)]">{displayName(invitee)}</span>
                 <span className="font-mono text-[12px] text-[var(--ink-400)]">{invitee.uid}</span>
                 <span className="ml-auto text-[12px] text-[var(--ink-400)]">
-                  {t("sentAtLine", { time: dayjs(invite.createdAt).format("MM-DD HH:mm") })}
+                  {t("sentAtLine", { time: formatTaskTimestamp(invite.createdAt) })}
                 </span>
                 <RescindInviteButton inviteId={invite.id} teamId={team.id} />
               </div>

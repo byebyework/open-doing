@@ -11,6 +11,7 @@ import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import type { MyTaskListItem } from "@/features/dashboard/my-tasks/service";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
+import { formatTaskDate } from "@/lib/date-display";
 import { moduleHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, weekdayIndex } from "@/lib/today";
 
@@ -26,11 +27,6 @@ export interface TodayTaskListProps {
   overdueCount: number;
   /** 全量今天到期数（不封顶，来自 getMyTaskStats）。 */
   todayCount: number;
-}
-
-/** 将 `YYYY-MM-DD` 显示为原型同款 `MM-DD`。 */
-function shortDate(date: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(5) : date;
 }
 
 /** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
@@ -75,7 +71,7 @@ function SourceTag({ task }: { task: MyTaskListItem }) {
   );
 }
 
-/** 右侧截止文案：逾期红「截止 MM-DD · 已逾期 N 天」/ 今天 warning「今天到期」。 */
+/** 右侧截止文案：逾期红「截止 YYYY-MM-DD · 已逾期 N 天」/ 今日琥珀色完整日期（徽标样式保留）。 */
 function DueLabel({
   dueDate,
   today,
@@ -84,7 +80,6 @@ function DueLabel({
   today: string;
 }) {
   const t = useTranslations("dashboard");
-  const tDate = useTranslations("date");
   if (!dueDate) return null;
 
   if (dueDate < today) {
@@ -93,7 +88,7 @@ function DueLabel({
         className="whitespace-nowrap text-[12.5px] font-semibold text-[var(--status-overdue)]"
         title={dueDate}
       >
-        {t("dueOverdueBadge", { date: shortDate(dueDate), days: daysBetween(today, dueDate) })}
+        {t("dueOverdueBadge", { date: formatTaskDate(dueDate), days: daysBetween(today, dueDate) })}
       </span>
     );
   }
@@ -103,7 +98,7 @@ function DueLabel({
       className="whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
       title={dueDate}
     >
-      {tDate("dueToday")}
+      {formatTaskDate(dueDate)}
     </span>
   );
 }

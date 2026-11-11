@@ -10,7 +10,7 @@ const DEFAULT_RANGE: AnalysisRange = 30;
 
 /** 分析桶：闭区间 `[start, end]` 的日历日集合，日期均为 `YYYY-MM-DD`。 */
 export interface TrendBucket {
-  /** 桶起点日期的 `MM-DD` 短标签。 */
+  /** 桶起点日期的 `YYYY-MM-DD` 轴标签（全站绝对日期口径）。 */
   label: string;
   start: string;
   end: string;
@@ -67,9 +67,9 @@ function dailyBuckets(start: string, end: string): TrendBucket[] {
   return buckets;
 }
 
-/** `YYYY-MM-DD` → `MM-DD` 短标签。 */
+/** 桶起点日期 → 轴标签（全站绝对日期口径，原样 `YYYY-MM-DD`）。 */
 function toBucketLabel(start: string): string {
-  return start.slice(5);
+  return start;
 }
 
 /**

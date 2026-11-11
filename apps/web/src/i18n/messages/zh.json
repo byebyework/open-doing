@@ -72,7 +72,6 @@
   },
   "date": {
     "today": "今天",
-    "tomorrow": "明天",
     "overdue": "已逾期",
     "overdueWithDate": "已逾期 · {date}",
     "weekdaySun": "周日",
@@ -82,8 +81,6 @@
     "weekdayThu": "周四",
     "weekdayFri": "周五",
     "weekdaySat": "周六",
-    "dueToday": "今天到期",
-    "dueTomorrow": "明天到期",
     "todayCaption": "基准日期 {date}（{weekday}）",
     "todayHintAria": "基准日期说明",
     "todayHintTitle": "基准日期",
