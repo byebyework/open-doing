@@ -21,6 +21,9 @@ export const TEST_IDS = {
     projectSubmitButton: "personal-project-submit-button",
     teamProjectNameInput: "team-project-name-input",
     teamProjectSubmitButton: "team-project-submit-button",
+    projectsListPage: "projects-list-page",
+    projectsNewTeamButton: "projects-new-team-button",
+    projectsListCard: "projects-list-card",
   },
   tasks: {
     newTaskButton: "new-task-button",
