@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/shadcn/select";
 
 import { DueText } from "@/components/ui/DueText";
+import { PriorityDot } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useIsDesktop } from "@/features/kanban/components/useIsDesktop";
@@ -192,6 +193,7 @@ function TeamKanbanCard({
         ) : null}
 
         <div className="mt-2.5 flex items-center gap-2">
+          <PriorityDot priority={task.priority} />
           {assigneeName ? (
             <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
               {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}

@@ -1,4 +1,8 @@
-import type { SpaceType as SharedSpaceType, TaskStatus } from "@open-doing/types";
+import type {
+  SpaceType as SharedSpaceType,
+  TaskPriority,
+  TaskStatus,
+} from "@open-doing/types";
 import { addDays, aggregateProjectProgress, getTaskProgress } from "@open-doing/types";
 import {
   and,
@@ -46,6 +50,7 @@ export interface KanbanCardItem {
   id: string;
   title: string;
   status: TaskStatus;
+  priority: TaskPriority;
   dueDate: string | null;
   projectId: string;
   projectName: string;
@@ -89,6 +94,7 @@ interface KanbanCardRow {
   id: string;
   title: string;
   status: TaskStatus;
+  priority: TaskPriority;
   dueDate: string | null;
   projectId: string | null;
   projectName: string | null;
@@ -489,6 +495,7 @@ async function selectCards(
       id: tasks.id,
       title: tasks.title,
       status: tasks.status,
+      priority: tasks.priority,
       dueDate: tasks.dueDate,
       projectId: projects.id,
       projectName: projects.name,
@@ -532,6 +539,7 @@ async function selectTeamCards(
       id: tasks.id,
       title: tasks.title,
       status: tasks.status,
+      priority: tasks.priority,
       dueDate: tasks.dueDate,
       projectId: projects.id,
       projectName: projects.name,
@@ -560,6 +568,7 @@ function toCard(row: KanbanCardRow): KanbanCardItem {
     id: row.id,
     title: row.title,
     status: row.status,
+    priority: row.priority,
     dueDate: row.dueDate ?? null,
     projectId: row.projectId ?? "",
     projectName: row.projectName ?? "",

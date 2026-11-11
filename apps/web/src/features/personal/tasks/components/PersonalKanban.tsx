@@ -20,6 +20,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
 import { DueText } from "@/components/ui/DueText";
+import { PriorityDot } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
 import { Button } from "@/components/ui/shadcn/button";
@@ -129,6 +130,7 @@ function KanbanCard({
             left ? "justify-between" : "justify-start"
           }`}
         >
+          <PriorityDot priority={task.priority} />
           {left}
           {task.dueDate ? (
             <DueText dueDate={task.dueDate} status={task.status} today={today} />

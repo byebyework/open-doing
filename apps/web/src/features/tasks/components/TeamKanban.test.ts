@@ -93,3 +93,12 @@ describe("TeamKanban 移动端状态按钮", () => {
     expect(button).toContain('disabled=""');
   });
 });
+
+describe("TeamKanban 优先级色点", () => {
+  it("卡片渲染优先级色点（title 显示档位）", () => {
+    const html = render("owner", makeTask({ priority: "high" }));
+
+    expect(html).toContain('data-testid="priority-dot"');
+    expect(html).toContain('data-priority="high"');
+  });
+});

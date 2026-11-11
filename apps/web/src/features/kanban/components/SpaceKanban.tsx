@@ -1,7 +1,6 @@
 "use client";
 
 import type { TaskStatus } from "@open-doing/types";
-import { addDays } from "@open-doing/types";
 import {
   DndContext,
   KeyboardSensor,
@@ -21,6 +20,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
+import { formatTaskDate } from "@/lib/date-display";
+import { PriorityDot } from "@/components/ui/PriorityChip";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
@@ -115,9 +116,9 @@ function firstError(errors: Record<string, string>, fallback: string): string {
   return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
-/** 将 `YYYY-MM-DD` 显示为原型同款 `MM-DD`。 */
+/** 将 `YYYY-MM-DD` 显示为全站统一的绝对日期（`YYYY-MM-DD`）。 */
 function shortDate(date: string): string {
-  return /^\d{4}-\d{2}-\d{2}$/.test(date) ? date.slice(5) : date;
+  return formatTaskDate(date);
 }
 
 /** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
@@ -130,16 +131,14 @@ function daysBetween(later: string, earlier: string): number {
   return Math.round((toUtc(later) - toUtc(earlier)) / 86_400_000);
 }
 
-/** ISO 时间戳 → Asia/Shanghai 日历日的 `MM-DD`（完成日期口径）。 */
-function completedShortDate(iso: string): string {
-  const calendarDate = new Intl.DateTimeFormat("en-CA", {
+/** ISO 时间戳 → Asia/Shanghai 日历日的 `YYYY-MM-DD`（完成日期口径）。 */
+function completedCalendarDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-CA", {
     timeZone: "Asia/Shanghai",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
   }).format(new Date(iso));
-
-  return calendarDate.slice(5);
 }
 
 /** 完成时间是否落在本周（含本周一零点，Asia/Shanghai）。 */
@@ -177,20 +176,19 @@ function ProjectTag({
 }
 
 /**
- * 卡片底部截止文案（对照原型口径）：
- * 逾期红「MM-DD · 已逾期 N 天」/ 今天「今天到期」/ 明天「明天到期」/
- * 未来灰「MM-DD」/ 无「—」；done 卡显示完成日期「MM-DD 完成」。
+ * 卡片底部截止文案（全站绝对日期口径）：
+ * 逾期红「YYYY-MM-DD · 已逾期 N 天」/ 临期琥珀色「YYYY-MM-DD」/
+ * 未来灰「YYYY-MM-DD」/ 无「—」；done 卡显示完成日期「YYYY-MM-DD 完成」。
  */
 function DueLabel({ card, today }: { card: BoardCard; today: string }) {
   const t = useTranslations("kanban");
-  const tDate = useTranslations("date");
   if (card.status === "done") {
     return card.completedAt ? (
       <span
         className="whitespace-nowrap text-[12.5px] text-[var(--ink-400)]"
         title={card.completedAt}
       >
-        {t("completedOn", { date: completedShortDate(card.completedAt) })}
+        {t("completedOn", { date: completedCalendarDate(card.completedAt) })}
       </span>
     ) : (
       <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
@@ -215,13 +213,13 @@ function DueLabel({ card, today }: { card: BoardCard; today: string }) {
     );
   }
 
-  if (card.dueDate === today || card.dueDate === addDays(today, 1)) {
+  if (card.dueDate === today || daysBetween(today, card.dueDate) === 1) {
     return (
       <span
         className="whitespace-nowrap text-[12.5px] font-semibold text-[#a66b00]"
         title={card.dueDate}
       >
-        {card.dueDate === today ? tDate("dueToday") : tDate("dueTomorrow")}
+        {shortDate(card.dueDate)}
       </span>
     );
   }
@@ -391,6 +389,7 @@ function SpaceKanbanCard({
             variant === "team" ? "" : "justify-between"
           }`}
         >
+          <PriorityDot priority={card.priority} />
           {variant === "team" ? (
             card.assigneeName ? (
               <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
