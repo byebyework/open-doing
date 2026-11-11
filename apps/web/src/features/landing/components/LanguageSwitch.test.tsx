@@ -102,16 +102,16 @@ describe("LanguageSwitch", () => {
     expect(button("en").disabled).toBe(false);
   });
 
-  it("highlights the current locale with a bold text-primary button", () => {
+  it("highlights the current locale with a semibold text-primary button", () => {
     renderSwitch("zh");
 
     expect(button("zh").getAttribute("aria-pressed")).toBe("true");
-    expect(button("zh").className).toContain("font-bold");
+    expect(button("zh").className).toContain("font-semibold");
     expect(button("zh").className).toContain("text-primary");
 
     expect(button("en").getAttribute("aria-pressed")).toBe("false");
     expect(button("en").className).not.toContain("text-primary");
-    expect(button("en").className).not.toContain("font-bold");
+    expect(button("en").className).not.toContain("font-semibold");
   });
 
   it("labels the switch group with the landing nav language label", () => {

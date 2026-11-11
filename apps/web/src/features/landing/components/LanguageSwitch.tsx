@@ -1,5 +1,6 @@
 "use client";
 
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
@@ -23,8 +24,15 @@ export interface LanguageSwitchProps {
 }
 
 /**
- * 落地页匿名语言切换 chip（紧凑款，对齐 mockup 的 lang-chip：小号
- * 「中 / EN」文字胶囊，当前语言加粗紫色，无图标、无底色切换）。
+ * 当前语言指示胶囊的 layoutId：两颗按钮共享，切换时 Motion 把胶囊
+ * 从旧语言滑到新语言（transform 类动画，MotionConfig reducedMotion
+ * "user" 下自动失效为瞬时定位）。
+ */
+const ACTIVE_PILL_LAYOUT_ID = "landing-language-active-pill";
+
+/**
+ * 落地页匿名语言切换 chip（分段控件款：浅灰轨道 + 白色指示胶囊 +
+ * 弱投影，当前语言加粗主题紫，对齐 mockup lang-chip 的紧凑观感）。
  *
  * 视觉高度只有 28px 以免在顶栏里突兀；触控命中区用伪元素纵向外扩
  * 回 44px（`before:-inset-y-2`，横向不外扩避免相邻按钮命中区重叠）。
@@ -53,7 +61,7 @@ export function LanguageSwitch({ language }: LanguageSwitchProps) {
     <div
       role="group"
       aria-label={t("nav.languageLabel")}
-      className="inline-flex items-center gap-0.5 rounded-[var(--radius-pill)] border border-[var(--border-default)] bg-(--surface-white)/70 p-[3px]"
+      className="inline-flex items-center gap-0.5 rounded-[var(--radius-pill)] bg-(--ink-900)/[0.04] p-[3px]"
     >
       {LOCALE_OPTIONS.map((option) => {
         const active = language === option.value;
@@ -66,13 +74,21 @@ export function LanguageSwitch({ language }: LanguageSwitchProps) {
             data-testid={`language-switch-${option.value}`}
             onClick={() => handleSelect(option.value)}
             className={cn(
-              "relative inline-flex h-7 items-center justify-center rounded-[var(--radius-pill)] px-2.5 text-[13px] leading-none transition-colors duration-150 before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60",
+              "relative inline-flex h-7 items-center justify-center rounded-[var(--radius-pill)] px-3 text-[13px] leading-none transition-colors duration-150 before:absolute before:inset-x-0 before:-inset-y-2 before:content-[''] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)] disabled:cursor-not-allowed disabled:opacity-60",
               active
-                ? "font-bold text-primary"
+                ? "font-semibold text-primary"
                 : "text-[var(--ink-500)] hover:text-[var(--ink-900)]",
             )}
           >
-            {option.label}
+            {active && (
+              <motion.span
+                layoutId={ACTIVE_PILL_LAYOUT_ID}
+                aria-hidden="true"
+                className="absolute inset-0 rounded-[var(--radius-pill)] bg-(--surface-white) shadow-[var(--shadow-rest)]"
+                transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+              />
+            )}
+            <span className="relative z-10">{option.label}</span>
           </button>
         );
       })}
