@@ -7,6 +7,47 @@
   <title>官网改版 · Open Doing</title>
   <link rel="stylesheet" href="assets/design-tokens.css" />
   <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* v1.3 任务列表：状态徽标可点 + 显式操作列（与实现对齐） */
+    .badge-clickable {
+      cursor: pointer;
+      border: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      font: inherit;
+      transition: box-shadow var(--duration-quick) var(--ease-standard);
+    }
+    .badge-clickable:hover { box-shadow: 0 0 0 2px var(--border-strong); }
+    .badge-clickable .chev { font-size: 9px; opacity: 0.7; }
+    .popover.status-menu {
+      top: calc(100% + 6px);
+      left: 0;
+      right: auto;
+      width: 148px;
+      padding: 6px;
+      transform-origin: top left;
+    }
+    .popover.status-menu .dropdown-menu-item { font-size: 13px; }
+    .icon-button.sm { width: 28px; height: 28px; border-radius: var(--radius-8); color: var(--text-faint); }
+    .icon-button.sm:hover { color: var(--foreground); }
+    .icon-button.sm.danger:hover { background: var(--status-overdue-bg); color: var(--status-overdue); }
+    .ops-cell { white-space: nowrap; }
+    .ops-cell .icon-button { display: inline-grid; vertical-align: middle; }
+    .ops-cell .icon-button + .icon-button { margin-left: 2px; }
+  </style>
+  <style>
+    /* v1.3 任务优先级（低/中/高，默认中） */
+    .pri { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; white-space: nowrap; }
+    .pri i { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+    .pri.high { color: var(--status-overdue); } .pri.high i { background: var(--status-overdue); }
+    .pri.mid { color: #a66b00; } .pri.mid i { background: #f0a01e; }
+    .pri.low { color: var(--text-faint); } .pri.low i { background: #c3c8cf; }
+    .pri-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex: none; }
+    .pri-dot.high { background: var(--status-overdue); }
+    .pri-dot.mid { background: #f0a01e; }
+    .pri-dot.low { background: #c3c8cf; }
+  </style>
 </head>
 <body>
   <div class="app-shell">
@@ -116,19 +157,19 @@
                 <span class="notif-icon" style="background:var(--error-bg);color:var(--error);">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
                 </span>
-                <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">今天 09:00</div></div>
+                <div class="notif-body">你负责的「推送权限引导弹窗交互」<b>已逾期</b><div class="notif-time">2026-10-21 09:00</div></div>
               </div>
               <div class="notif-item">
                 <span class="notif-icon" style="background:var(--accent-mint-bg);color:var(--accent-mint);">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                 </span>
-                <div class="notif-body"><b>苏晓</b> 评论了「完成首页新版视觉稿」<div class="notif-time">昨天 17:42</div></div>
+                <div class="notif-body"><b>苏晓</b> 评论了「完成首页新版视觉稿」<div class="notif-time">2026-10-20 17:42</div></div>
               </div>
               <div class="notif-item">
                 <span class="notif-icon" style="background:var(--surface-inset);color:var(--muted-foreground);">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z"/></svg>
                 </span>
-                <div class="notif-body"><b>周牧</b> 将「Hero 区文案终审」截止日期改为 10-26<div class="notif-time">周二 14:08</div></div>
+                <div class="notif-body"><b>周牧</b> 将「Hero 区文案终审」截止日期改为 2026-10-26<div class="notif-time">2026-10-20 14:08</div></div>
               </div>
             </div>
             <div class="popover-foot"><a href="#" class="text-sm">查看全部通知</a></div>
@@ -173,6 +214,7 @@
           </select>
           <select class="select" style="width:140px;" aria-label="排序方式">
             <option>排序：按截止日期</option>
+            <option>按优先级（高→低）</option>
             <option>按状态</option>
             <option>按责任人</option>
           </select>
@@ -185,90 +227,92 @@
             <thead>
               <tr>
                 <th>任务</th>
+                <th style="width:72px;">优先级</th>
                 <th style="width:96px;">状态</th>
                 <th style="width:130px;">责任人</th>
                 <th style="width:170px;">进度</th>
                 <th style="width:130px;">截止日期</th>
+                <th style="width:88px;">操作</th>
               </tr>
             </thead>
             <tbody>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">完成首页新版视觉稿</a></td>
-                <td><span class="badge badge-progress">进行中</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">完成首页新版视觉稿</a></td><td><span class="pri high"><i></i>高</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-progress badge-clickable" data-popover-trigger="stmenu-1" aria-haspopup="menu" aria-expanded="false">进行中 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-1" role="menu"><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-lavender sm">林</span>林夏</span></td>
                 <td>
                   <div class="progress sm" style="width:110px;margin-bottom:4px;"><span style="width:60%;"></span></div>
                   <span class="text-caption">3/5 子任务</span>
                 </td>
-                <td><span class="due soon">明天 10-22</span></td>
+                <td><span class="due soon">2026-10-22</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">首页 Lighthouse 性能达标</a></td>
-                <td><span class="badge badge-progress">进行中</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">首页 Lighthouse 性能达标</a></td><td><span class="pri high"><i></i>高</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-progress badge-clickable" data-popover-trigger="stmenu-2" aria-haspopup="menu" aria-expanded="false">进行中 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-2" role="menu"><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-sky sm">陈</span>陈默</span></td>
                 <td>
                   <div class="progress sm" style="width:110px;margin-bottom:4px;"><span style="width:67%;"></span></div>
                   <span class="text-caption">4/6 子任务</span>
                 </td>
-                <td><span class="due soon">10-23</span></td>
+                <td><span class="due soon">2026-10-23</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">组件库 Token 迁移</a></td>
-                <td><span class="badge badge-progress">进行中</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">组件库 Token 迁移</a></td><td><span class="pri mid"><i></i>中</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-progress badge-clickable" data-popover-trigger="stmenu-3" aria-haspopup="menu" aria-expanded="false">进行中 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-3" role="menu"><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-tangerine sm">高</span>高远</span></td>
                 <td>
                   <div class="progress sm" style="width:110px;margin-bottom:4px;"><span style="width:40%;"></span></div>
                   <span class="text-caption">2/5 子任务</span>
                 </td>
-                <td><span class="due">10-24</span></td>
+                <td><span class="due">2026-10-24</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">定价页响应式适配</a></td>
-                <td><span class="badge badge-progress">进行中</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">定价页响应式适配</a></td><td><span class="pri mid"><i></i>中</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-progress badge-clickable" data-popover-trigger="stmenu-4" aria-haspopup="menu" aria-expanded="false">进行中 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-4" role="menu"><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-sky sm">陈</span>陈默</span></td>
                 <td>
                   <div class="progress sm" style="width:110px;margin-bottom:4px;"><span style="width:33%;"></span></div>
                   <span class="text-caption">1/3 子任务</span>
                 </td>
-                <td><span class="due">10-27</span></td>
+                <td><span class="due">2026-10-27</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">新版字体授权采购</a></td>
-                <td><span class="badge badge-progress">进行中</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">新版字体授权采购</a></td><td><span class="pri low"><i></i>低</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-progress badge-clickable" data-popover-trigger="stmenu-5" aria-haspopup="menu" aria-expanded="false">进行中 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-5" role="menu"><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-coral sm">牧</span>周牧</span></td>
                 <td>
                   <div class="progress sm" style="width:110px;margin-bottom:4px;"><span style="width:0%;"></span></div>
                   <span class="text-caption">0/2 子任务</span>
                 </td>
-                <td><span class="due">10-30</span></td>
+                <td><span class="due">2026-10-30</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">Hero 区文案终审</a></td>
-                <td><span class="badge badge-todo">未开始</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">Hero 区文案终审</a></td><td><span class="pri mid"><i></i>中</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-todo badge-clickable" data-popover-trigger="stmenu-6" aria-haspopup="menu" aria-expanded="false">未开始 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-6" role="menu"><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-lavender sm">林</span>林夏</span></td>
                 <td><span class="text-caption">无子任务，按状态计 0%</span></td>
-                <td><span class="due">10-26</span></td>
+                <td><span class="due">2026-10-26</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">旧版帮助中心内容迁移</a></td>
-                <td><span class="badge badge-todo">未开始</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">旧版帮助中心内容迁移</a></td><td><span class="pri low"><i></i>低</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-todo badge-clickable" data-popover-trigger="stmenu-7" aria-haspopup="menu" aria-expanded="false">未开始 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-7" role="menu"><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="badge badge-info">未指派</span></td>
                 <td><span class="text-faint">—</span></td>
-                <td><span class="due">10-28</span></td>
+                <td><span class="due">2026-10-28</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr>
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">404/500 空状态插画</a></td>
-                <td><span class="badge badge-todo">未开始</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;">404/500 空状态插画</a></td><td><span class="pri low"><i></i>低</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-todo badge-clickable" data-popover-trigger="stmenu-8" aria-haspopup="menu" aria-expanded="false">未开始 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-8" role="menu"><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-mint sm">苏</span>苏晓</span></td>
                 <td><span class="text-faint">—</span></td>
-                <td><span class="due text-faint">无日期</span></td>
+                <td><span class="due text-faint">无日期</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
               <tr style="opacity:.62;">
-                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;color:var(--text-faint);text-decoration:line-through;">导航栏信息架构梳理</a></td>
-                <td><span class="badge badge-done">已完成</span></td>
+                <td><a class="link-undecorated" href="task-detail.html" style="font-weight:500;color:var(--text-faint);text-decoration:line-through;">导航栏信息架构梳理</a></td><td><span class="pri mid"><i></i>中</span></td>
+                <td><div class="popover-wrap" style="display:inline-block;"><button type="button" class="badge badge-done badge-clickable" data-popover-trigger="stmenu-9" aria-haspopup="menu" aria-expanded="false">已完成 <span class="chev">▾</span></button><div class="popover status-menu" id="stmenu-9" role="menu"><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-todo);"></span>未开始</button><button type="button" class="dropdown-menu-item" role="menuitem"><span class="m-dot" style="background:var(--status-progress);"></span>进行中</button><button type="button" class="dropdown-menu-item active" role="menuitem"><span class="m-dot" style="background:var(--status-done);"></span>已完成</button></div></div></td>
                 <td><span class="assignee"><span class="avatar av-mint sm">苏</span>苏晓</span></td>
                 <td><span class="text-faint">—</span></td>
-                <td><span class="due text-faint">10-15</span></td>
+                <td><span class="due text-faint">2026-10-15</span></td><td class="ops-cell"><a class="icon-button sm" href="task-detail.html" aria-label="编辑任务" title="编辑"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></a><button type="button" class="icon-button sm danger" aria-label="删除任务" title="删除"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/></svg></button></td>
               </tr>
             </tbody>
           </table>
@@ -319,7 +363,15 @@
           <div class="hint">可指派给团队内任意成员</div>
         </div>
       </div>
-      <div class="form-row">
+            <div class="form-row">
+        <label class="label" for="npt-priority">优先级</label>
+        <select class="select" id="npt-priority" name="task-priority" style="max-width:220px;">
+          <option>低</option>
+          <option selected>中</option>
+          <option>高</option>
+        </select>
+      </div>
+<div class="form-row">
         <label class="label" for="t2-due">截止日期</label>
         <input class="input" id="t2-due" name="task-due" type="date" style="max-width:220px;" />
       </div>
