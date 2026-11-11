@@ -1,0 +1,6 @@
+{
+  "nodeVersion": "22.11.0",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter @open-doing/web build",
+  "outputDirectory": "apps/web/.next"
+}
