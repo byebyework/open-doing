@@ -257,10 +257,8 @@
     "deleteTask": "Delete task",
     "deleteConfirm": "Subtasks and comments will be deleted with it and cannot be recovered. Delete “{title}”?",
     "backToMyTasks": "← Back to my tasks",
-    "markAs": "Mark as {status}",
     "taskDeleted": "Task deleted",
     "taskCreated": "Task created",
-    "rowActionsAria": "Actions for task “{title}”",
     "deleteRowConfirm": "This cannot be undone. Delete “{title}”?",
     "viewList": "List",
     "viewBoard": "Board",
@@ -322,7 +320,16 @@
     "okCreateTask": "Create task",
     "teamGroupLabel": "Team",
     "personalSpaceGroup": "Personal space",
-    "noProjectOption": "Not in a project"
+    "noProjectOption": "Not in a project",
+    "priority": "Priority",
+    "priorityLow": "Low",
+    "priorityMedium": "Medium",
+    "priorityHigh": "High",
+    "sortPriority": "Sort: by priority (high → low)",
+    "opsColumn": "Actions",
+    "statusMenuAria": "Change status: {title}",
+    "editTaskAria": "Edit task: {title}",
+    "deleteTaskAria": "Delete task: {title}"
   },
   "teams": {
     "team": "Team",

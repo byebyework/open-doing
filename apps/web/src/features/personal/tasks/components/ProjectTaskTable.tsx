@@ -9,8 +9,8 @@ import { useMemo, useState } from "react";
 
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PriorityChip } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { StatusTag } from "@/components/ui/StatusTag";
 import { Button } from "@/components/ui/shadcn/button";
 import {
   Select,
@@ -19,6 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/shadcn/select";
+import { compareByPriority } from "@/lib/task-sort";
 import { personalTaskHref } from "@/lib/routes";
 
 import { NewTaskModal } from "./NewTaskModal";
@@ -26,6 +27,7 @@ import {
   TASK_STATUS_KEYS,
   TASK_STATUS_ORDER,
   TaskRowActions,
+  TaskStatusMenu,
   type ProjectTask,
 } from "./TaskRowActions";
 
@@ -33,7 +35,7 @@ import {
 type StatusFilter = "all" | TaskStatus;
 
 /** 排序方式（「按截止日期」为默认）。 */
-type SortKey = "dueDate" | "status" | "createdAt";
+type SortKey = "dueDate" | "priority" | "status" | "createdAt";
 
 /** 无截止日期的任务排在最后。 */
 const NO_DUE_DATE = "9999-12-31";
@@ -77,7 +79,7 @@ export interface ProjectTaskTableProps {
 /**
  * 个人项目列表视图（对照 `personal-project.html` 表格）。
  *
- * 4 列：任务 / 状态 / 进度 / 截止日期，无责任人列；
+ * 6 列：任务 / 优先级 / 状态 / 进度 / 截止日期 / 操作，无责任人列；
  * 行进度由客户端 `getTaskProgress({ status, subtasks })` 计算。
  */
 export function ProjectTaskTable({
@@ -100,11 +102,13 @@ export function ProjectTaskTable({
         : tasks.filter((task) => task.status === statusFilter);
 
     const comparator =
-      sort === "status"
-        ? compareByStatus
-        : sort === "createdAt"
-          ? compareByCreatedAt
-          : compareByDueDate;
+      sort === "priority"
+        ? compareByPriority
+        : sort === "status"
+          ? compareByStatus
+          : sort === "createdAt"
+            ? compareByCreatedAt
+            : compareByDueDate;
 
     return [...filtered].sort(comparator);
   }, [tasks, statusFilter, sort]);
@@ -147,6 +151,7 @@ export function ProjectTaskTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="dueDate">{t("sortDueDate")}</SelectItem>
+            <SelectItem value="priority">{t("sortPriority")}</SelectItem>
             <SelectItem value="status">{t("sortStatus")}</SelectItem>
             <SelectItem value="createdAt">{t("sortCreatedAt")}</SelectItem>
           </SelectContent>
@@ -174,11 +179,14 @@ export function ProjectTaskTable({
         ) : (
           // 窄屏沿用原型策略：表格在卡片内横向滚动，页面本身不横向溢出。
           <div className="min-w-0 overflow-x-auto">
-            <table className="w-full min-w-[680px] border-collapse text-left text-[13.5px]">
+            <table className="w-full min-w-[760px] border-collapse text-left text-[13.5px]">
               <thead>
                 <tr>
                   <th className="border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("colTask")}
+                  </th>
+                  <th className="w-[72px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                    {t("priority")}
                   </th>
                   <th className="w-24 border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("statusLabel")}
@@ -188,6 +196,9 @@ export function ProjectTaskTable({
                   </th>
                   <th className="w-[130px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("dueDateLabel")}
+                  </th>
+                  <th className="w-[88px] border-b border-[var(--border-default)] px-3 pb-3 text-center text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                    {t("opsColumn")}
                   </th>
                 </tr>
               </thead>
@@ -210,26 +221,27 @@ export function ProjectTaskTable({
                       }`}
                     >
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                        <div className="flex min-w-0 items-center gap-1">
-                          <Link
-                            href={personalTaskHref(task.id)}
-                            className={`min-w-0 break-words font-medium ${
-                              done
-                                ? "text-[var(--ink-400)] line-through"
-                                : "text-[var(--ink-900)] no-underline hover:underline"
-                            }`}
-                          >
-                            {task.title}
-                          </Link>
-                          <TaskRowActions
-                            task={task}
-                            onChanged={() => router.refresh()}
-                          />
-                        </div>
+                        <Link
+                          href={personalTaskHref(task.id)}
+                          className={`min-w-0 break-words font-medium ${
+                            done
+                              ? "text-[var(--ink-400)] line-through"
+                              : "text-[var(--ink-900)] no-underline hover:underline"
+                          }`}
+                        >
+                          {task.title}
+                        </Link>
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                        <StatusTag status={task.status} />
+                        <PriorityChip priority={task.priority} />
+                      </td>
+
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                        <TaskStatusMenu
+                          task={task}
+                          onChanged={() => router.refresh()}
+                        />
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
@@ -269,6 +281,13 @@ export function ProjectTaskTable({
                             —
                           </span>
                         )}
+                      </td>
+
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 text-center align-middle">
+                        <TaskRowActions
+                          task={task}
+                          onChanged={() => router.refresh()}
+                        />
                       </td>
                     </tr>
                   );

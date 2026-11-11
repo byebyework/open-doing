@@ -257,10 +257,8 @@
     "deleteTask": "删除任务",
     "deleteConfirm": "删除后子任务与评论一并删除，且不可恢复。确定删除「{title}」吗？",
     "backToMyTasks": "← 返回我的任务",
-    "markAs": "标记为{status}",
     "taskDeleted": "任务已删除",
     "taskCreated": "任务已创建",
-    "rowActionsAria": "任务「{title}」的操作",
     "deleteRowConfirm": "删除后不可恢复，确定删除「{title}」吗？",
     "viewList": "列表",
     "viewBoard": "看板",
@@ -322,7 +320,16 @@
     "okCreateTask": "创建任务",
     "teamGroupLabel": "团队",
     "personalSpaceGroup": "个人空间",
-    "noProjectOption": "不属于项目"
+    "noProjectOption": "不属于项目",
+    "priority": "优先级",
+    "priorityLow": "低",
+    "priorityMedium": "中",
+    "priorityHigh": "高",
+    "sortPriority": "排序：按优先级（高→低）",
+    "opsColumn": "操作",
+    "statusMenuAria": "更改状态：{title}",
+    "editTaskAria": "编辑任务：{title}",
+    "deleteTaskAria": "删除任务：{title}"
   },
   "teams": {
     "team": "团队",

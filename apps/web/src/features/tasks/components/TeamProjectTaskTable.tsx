@@ -10,8 +10,8 @@ import { useMemo, useState } from "react";
 
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { PriorityChip } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { StatusTag } from "@/components/ui/StatusTag";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import {
@@ -28,6 +28,7 @@ import {
   PaginationItem,
 } from "@/components/ui/shadcn/pagination";
 import type { TeamRole } from "@/features/teams/permissions";
+import { compareByPriority } from "@/lib/task-sort";
 import { teamTaskHref } from "@/lib/routes";
 
 import type { TeamTaskRow } from "../service";
@@ -36,6 +37,7 @@ import {
   TEAM_TASK_STATUS_KEYS,
   TEAM_TASK_STATUS_ORDER,
   TeamTaskRowActions,
+  TeamTaskStatusMenu,
 } from "./TeamTaskRowActions";
 
 /** 状态筛选值：全部 + 三种状态。 */
@@ -45,7 +47,7 @@ type StatusFilter = "all" | TaskStatus;
 type AssigneeFilter = string;
 
 /** 排序方式（「按截止日期」为默认）。 */
-type SortKey = "dueDate" | "status" | "createdAt";
+type SortKey = "dueDate" | "priority" | "status" | "createdAt";
 
 /** 每页条数（原型 9 行密度）。 */
 const PAGE_SIZE = 9;
@@ -121,8 +123,8 @@ export interface TeamProjectTaskTableProps {
 /**
  * 团队项目列表视图（对照 `project-list.html`）。
  *
- * 5 列：任务 / 状态 / 责任人 / 进度 / 截止日期；筛选状态、责任人、排序，
- * 每页 9 条；已完成行置灰 + 标题删除线。
+ * 7 列：任务 / 优先级 / 状态 / 责任人 / 进度 / 截止日期 / 操作；
+ * 筛选状态、责任人、排序，每页 9 条；已完成行置灰 + 标题删除线。
  */
 export function TeamProjectTaskTable({
   teamId,
@@ -169,11 +171,13 @@ export function TeamProjectTaskTable({
     });
 
     const comparator =
-      sort === "status"
-        ? compareByStatus
-        : sort === "createdAt"
-          ? compareByCreatedAt
-          : compareByDueDate;
+      sort === "priority"
+        ? compareByPriority
+        : sort === "status"
+          ? compareByStatus
+          : sort === "createdAt"
+            ? compareByCreatedAt
+            : compareByDueDate;
 
     return [...filtered].sort(comparator);
   }, [tasks, statusFilter, assigneeFilter, sort]);
@@ -244,6 +248,7 @@ export function TeamProjectTaskTable({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="dueDate">{t("sortDueDate")}</SelectItem>
+            <SelectItem value="priority">{t("sortPriority")}</SelectItem>
             <SelectItem value="status">{t("sortStatus")}</SelectItem>
             <SelectItem value="createdAt">{t("sortCreatedAt")}</SelectItem>
           </SelectContent>
@@ -271,20 +276,22 @@ export function TeamProjectTaskTable({
         ) : (
           // 窄屏：表格在卡片内横向滚动，页面本身不横向溢出。
           <div className="min-w-0 overflow-x-auto">
-            <table className="w-full min-w-[860px] border-collapse text-left text-[13.5px]">
+            <table className="w-full min-w-[920px] border-collapse text-left text-[13.5px]">
               <thead>
                 <tr>
                   {[
-                    t("colTask"),
-                    t("statusLabel"),
-                    t("assigneeLabel"),
-                    t("colProgress"),
-                    t("dueDateLabel"),
+                    { label: t("colTask"), className: "" },
+                    { label: t("priority"), className: "w-[72px]" },
+                    { label: t("statusLabel"), className: "w-24" },
+                    { label: t("assigneeLabel"), className: "w-[120px]" },
+                    { label: t("colProgress"), className: "w-[170px]" },
+                    { label: t("dueDateLabel"), className: "w-[130px]" },
+                    { label: t("opsColumn"), className: "w-[88px] text-center" },
                   ].map(
-                    (label) => (
+                    ({ label, className }) => (
                       <th
                         key={label}
-                        className="border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]"
+                        className={`border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)] ${className}`}
                       >
                         {label}
                       </th>
@@ -319,30 +326,30 @@ export function TeamProjectTaskTable({
                       }`}
                     >
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                        <div className="flex min-w-0 items-center gap-1">
-                          <Link
-                            href={detailHref}
-                            className={`min-w-0 break-words font-medium ${
-                              done
-                                ? "text-[var(--ink-400)] line-through"
-                                : "text-[var(--ink-900)] no-underline hover:underline"
-                            }`}
-                          >
-                            {task.title}
-                          </Link>
-                          <TeamTaskRowActions
-                            teamId={teamId}
-                            task={task}
-                            role={role}
-                            actorId={actorId}
-                            detailHref={detailHref}
-                            onChanged={() => router.refresh()}
-                          />
-                        </div>
+                        <Link
+                          href={detailHref}
+                          className={`min-w-0 break-words font-medium ${
+                            done
+                              ? "text-[var(--ink-400)] line-through"
+                              : "text-[var(--ink-900)] no-underline hover:underline"
+                          }`}
+                        >
+                          {task.title}
+                        </Link>
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                        <StatusTag status={task.status} />
+                        <PriorityChip priority={task.priority} />
+                      </td>
+
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                        <TeamTaskStatusMenu
+                          teamId={teamId}
+                          task={task}
+                          role={role}
+                          actorId={actorId}
+                          onChanged={() => router.refresh()}
+                        />
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
@@ -400,6 +407,17 @@ export function TeamProjectTaskTable({
                             —
                           </span>
                         )}
+                      </td>
+
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 text-center align-middle">
+                        <TeamTaskRowActions
+                          teamId={teamId}
+                          task={task}
+                          role={role}
+                          actorId={actorId}
+                          detailHref={detailHref}
+                          onChanged={() => router.refresh()}
+                        />
                       </td>
                     </tr>
                   );

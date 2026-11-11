@@ -1,19 +1,19 @@
 "use client";
 
 import type { Subtask, Task, TaskStatus } from "@open-doing/types";
-import { Loader2Icon } from "lucide-react";
+import { ChevronDownIcon, Loader2Icon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { StatusTag } from "@/components/ui/StatusTag";
 import { Button } from "@/components/ui/shadcn/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/shadcn/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
@@ -51,7 +51,7 @@ function firstError(errors: Record<string, string>, fallback: string): string {
   return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
-/** 行内状态切换的共享逻辑（列表下拉与看板移动端按钮共用）。 */
+/** 行内状态切换的共享逻辑（状态徽标菜单与看板移动端按钮共用）。 */
 function useStatusChange(task: ProjectTask, onChanged: () => void) {
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -80,43 +80,94 @@ function useStatusChange(task: ProjectTask, onChanged: () => void) {
   return { pending, change };
 }
 
-/** 列表行内操作入参。 */
-export interface TaskRowActionsProps {
+/** 状态徽标菜单入参。 */
+export interface TaskStatusMenuProps {
   /** 目标任务。 */
   task: ProjectTask;
-  /** 状态变更 / 删除成功后的回调（父组件刷新服务端数据）。 */
+  /** 状态变更成功后的回调（父组件刷新服务端数据）。 */
   onChanged: () => void;
+  /** 无编辑权时整组禁用（个人列表恒为 true，团队列表按权限传入）。 */
+  editable?: boolean;
 }
 
 /**
- * 列表行内操作：切换状态 / 编辑 / 删除（「⋯」菜单）。
+ * 状态列的可点徽标（spec D2）：点击弹三态菜单，当前态高亮。
  *
- * 编辑统一跳转任务详情页（Task 4）；删除走 ConfirmModal 二次确认。
- * 原型表格没有操作列，因此入口收在任务标题右侧，不额外占一列。
+ * 菜单优于循环切换——避免一次点击跨多个状态；无编辑权时 trigger 禁用，
+ * 徽标退化为纯展示。
  */
-export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
-  const router = useRouter();
+export function TaskStatusMenu({
+  task,
+  onChanged,
+  editable = true,
+}: TaskStatusMenuProps) {
   const t = useTranslations("tasks");
   const tStatus = useTranslations("status");
+  const { pending, change } = useStatusChange(task, onChanged);
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild disabled={!editable || pending !== null}>
+        <button
+          type="button"
+          aria-label={t("statusMenuAria", { title: task.title })}
+          data-testid="status-menu-trigger"
+          className="inline-flex cursor-pointer items-center gap-1 rounded-[var(--radius-pill)] outline-offset-2 focus-visible:outline-2 focus-visible:outline-[var(--brand)] disabled:cursor-default"
+        >
+          <StatusTag status={task.status} />
+          <ChevronDownIcon
+            aria-hidden
+            className={`size-3 text-[var(--ink-400)] ${
+              editable ? "" : "opacity-0"
+            }`}
+          />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="start">
+        {TASK_STATUS_ORDER.map((status) => (
+          <DropdownMenuItem
+            key={status}
+            disabled={status === task.status}
+            className={status === task.status ? "font-semibold" : ""}
+            onClick={() => {
+              void change(status);
+            }}
+          >
+            {tStatus(TASK_STATUS_KEYS[status])}
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** 操作列单元格入参。 */
+export interface TaskRowActionsProps {
+  /** 目标任务。 */
+  task: ProjectTask;
+  /** 删除成功后的回调（父组件刷新服务端数据）。 */
+  onChanged: () => void;
+  /** 无删除权时不渲染删除图标（spec D1；个人列表恒为 true）。 */
+  deletable?: boolean;
+}
+
+/**
+ * 列表「操作」列单元格（spec D1）：编辑铅笔（恒显，跳转详情页）+
+ * 删除垃圾桶（仅 deletable，二次确认）。
+ *
+ * 原型的「⋯」下拉由显式操作列与本文件的 `TaskStatusMenu` 替代。
+ */
+export function TaskRowActions({
+  task,
+  onChanged,
+  deletable = true,
+}: TaskRowActionsProps) {
+  const router = useRouter();
+  const t = useTranslations("tasks");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
-  const { pending, change } = useStatusChange(task, onChanged);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
-
-  function handleMenuClick(key: string) {
-    if (key === "edit") {
-      router.push(personalTaskHref(task.id));
-      return;
-    }
-    if (key === "delete") {
-      setDeleteOpen(true);
-      return;
-    }
-    if (key.startsWith("status:")) {
-      void change(key.slice("status:".length) as TaskStatus);
-    }
-  }
 
   async function handleDelete() {
     setDeleting(true);
@@ -141,51 +192,35 @@ export function TaskRowActions({ task, onChanged }: TaskRowActionsProps) {
 
   return (
     <>
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild disabled={pending !== null || deleting}>
+      <div className="flex items-center justify-center gap-1">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-7 shrink-0 text-[var(--ink-400)]"
+          aria-label={t("editTaskAria", { title: task.title })}
+          data-testid="row-edit"
+          onClick={() => {
+            router.push(personalTaskHref(task.id));
+          }}
+        >
+          <PencilIcon aria-hidden className="size-4" />
+        </Button>
+        {deletable ? (
           <Button
             variant="ghost"
             size="icon"
-            className="size-7 shrink-0 text-[var(--ink-400)]"
-            aria-label={t("rowActionsAria", { title: task.title })}
+            className="size-7 shrink-0 text-[var(--ink-400)] hover:text-destructive"
+            aria-label={t("deleteTaskAria", { title: task.title })}
+            data-testid="row-delete"
+            disabled={deleting}
+            onClick={() => {
+              setDeleteOpen(true);
+            }}
           >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="currentColor"
-              aria-hidden="true"
-            >
-              <circle cx="5" cy="12" r="1.7" />
-              <circle cx="12" cy="12" r="1.7" />
-              <circle cx="19" cy="12" r="1.7" />
-            </svg>
+            <Trash2Icon aria-hidden className="size-4" />
           </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          {TASK_STATUS_ORDER.map((status) => (
-            <DropdownMenuItem
-              key={`status:${status}`}
-              disabled={status === task.status}
-              onClick={() => {
-                handleMenuClick(`status:${status}`);
-              }}
-            >
-              {t("markAs", { status: tStatus(TASK_STATUS_KEYS[status]) })}
-            </DropdownMenuItem>
-          ))}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={() => handleMenuClick("edit")}>
-            {tCommon("edit")}
-          </DropdownMenuItem>
-          <DropdownMenuItem
-            className="text-destructive"
-            onClick={() => handleMenuClick("delete")}
-          >
-            {tCommon("delete")}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+        ) : null}
+      </div>
 
       <ConfirmModal
         open={deleteOpen}
