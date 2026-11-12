@@ -35,6 +35,9 @@ jobs:
           tags: |
             ${{ vars.ACR_REGISTRY }}/${{ env.WEB_IMAGE }}:latest
             ${{ vars.ACR_REGISTRY }}/${{ env.WEB_IMAGE }}:${{ github.sha }}
+          # ACR 个人版不认 buildx 默认附加的 attestation manifest（OCI empty
+          # descriptor），push 报 unknown manifest class，必须关掉
+          provenance: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
