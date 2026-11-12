@@ -57,8 +57,8 @@ ECS 控制台 → 安全组 → 入方向添加规则：
 
 ```bash
 # 阿里云软件源安装 docker-ce + compose 插件（Alibaba Cloud Linux / CentOS 系）
+sudo dnf install -y dnf-plugins-core   # config-manager 依赖它，最小化镜像常不带
 sudo dnf config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-sudo sed -i 's+download.example.com+mirrors.aliyun.com+' /etc/yum.repos.d/docker-ce.repo
 sudo dnf install -y docker-ce docker-compose-plugin
 sudo systemctl enable --now docker
 docker compose version   # 判定：输出 compose 版本号
@@ -87,6 +87,10 @@ grep server_name /opt/open-doing/docker/nginx/aliyun.conf   # 判定：两处均
 
 ```bash
 ssh root@<ECS公网IP>
+# ACR 个人版仓库默认私有，ECS 必须先登录才能 pull（密码走 stdin，不进 shell 历史/进程列表）
+docker login <ACR_REGISTRY> --username <ACR_USERNAME> --password-stdin
+# 提示符处粘贴 1.3 设置的固定密码后回车；判定：Login Succeeded
+
 cat > /opt/open-doing/.env <<'EOF'
 WEB_IMAGE=<ACR_REGISTRY>/<ns>/open-doing:latest
 NGINX_IMAGE=<ACR_REGISTRY>/<ns>/open-doing-nginx:1.27-alpine
@@ -126,7 +130,8 @@ export Ali_Secret=<子账号 AccessKey Secret>
 ### 3.3 安装到部署目录（续期钩子在此绑定）
 
 ```bash
-~/.acme.sh/acme.sh --install-cert -d <域名> \
+# --ecc 必须带：3.2 签发用的是 ECC 证书（证书目录 <域名>_ecc），不带会找不到证书
+~/.acme.sh/acme.sh --install-cert -d <域名> --ecc \
   --fullchain-file /opt/open-doing/certs/fullchain.pem \
   --key-file /opt/open-doing/certs/privkey.pem \
   --reloadcmd "docker compose -f /opt/open-doing/docker-compose.aliyun.yml exec nginx nginx -s reload"
@@ -179,7 +184,7 @@ docker compose -f docker-compose.aliyun.yml ps   # 判定：web、nginx 均为 r
 | 4 | 续期钩子路径可用 | `docker compose -f docker-compose.aliyun.yml exec nginx nginx -s reload` | 无报错（3.3 的 reloadcmd 依赖此命令） |
 | 5 | 公网 HTTPS | 浏览器开 `https://<域名>:8443` | 落地页正常渲染，证书有效 |
 | 6 | **登录流程走通** | 注册/登录一个真实账号 | **登录后不被登出、跳转正常**（`BETTER_AUTH_URL` 缺 `:8443` 时会在这里爆，见 2.3） |
-| 7 | cron 端点可用 | `curl -fsS -X POST -H "Authorization: Bearer $(grep -E '^CRON_SECRET=' /opt/open-doing/.env \| cut -d= -f2)" http://127.0.0.1:3000/api/cron/due-scan` | 成功响应；对应通知产生（如果今天确有到期任务） |
+| 7 | cron 端点可用 | `curl -fsS -X POST -H "Authorization: Bearer $(grep -E '^CRON_SECRET=' /opt/open-doing/.env \| cut -d= -f2-)" http://127.0.0.1:3000/api/cron/due-scan` | 成功响应；对应通知产生（如果今天确有到期任务）。注意 `cut -d= -f2-` 保留完整值——secret 末尾可能有 `=`，截掉会 401 |
 
 ## 6. crontab（每日 09:00 到期扫描）
 
@@ -187,11 +192,12 @@ docker compose -f docker-compose.aliyun.yml ps   # 判定：web、nginx 均为 r
 sudo crontab -e
 ```
 
-写入（`TZ` 行必须在 crontab 里，ECS 默认 UTC，不钉时区提醒会在凌晨 1 点发）：
+写入（`CRON_TZ` 行必须在 crontab 里——cronie/Alibaba Cloud Linux 用它解释时间表，ECS 默认 UTC，不钉的话任务在 UTC 09:00 = 北京 17:00 才跑；`TZ` 行只是让作业进程里的 `date` 等也是北京时间）：
 
 ```cron
+CRON_TZ=Asia/Shanghai
 TZ=Asia/Shanghai
-0 9 * * * curl -fsS -X POST -H "Authorization: Bearer $(grep -E '^CRON_SECRET=' /opt/open-doing/.env | cut -d= -f2)" http://127.0.0.1:3000/api/cron/due-scan >> /var/log/od-due-scan.log 2>&1
+0 9 * * * curl -fsS -X POST -H "Authorization: Bearer $(grep -E '^CRON_SECRET=' /opt/open-doing/.env | cut -d= -f2-)" http://127.0.0.1:3000/api/cron/due-scan >> /var/log/od-due-scan.log 2>&1
 ```
 
 **验证**：手动把时间改成两分钟后观察一次触发（或直接按 5.2 表第 7 项手动 curl）；`grep TZ /var/log/syslog` 不一定有输出，以「手动跑 5.2-7 成功 + crontab 里 TZ 行存在」为准。Debian 系 cron 支持 crontab 内 `TZ=` 变量；Alibaba Cloud Linux（vixie-cron）同样支持。
