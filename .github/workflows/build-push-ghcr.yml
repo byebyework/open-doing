@@ -1,0 +1,54 @@
+name: build-push-ghcr
+
+on:
+  workflow_dispatch:
+
+env:
+  # github.repository = <owner>/<repo>，GHCR 要求全小写，本仓库天然满足
+  WEB_IMAGE: ghcr.io/${{ github.repository }}
+  NGINX_IMAGE: ghcr.io/${{ github.repository }}-nginx
+  NGINX_SRC: nginx:1.27-alpine
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.WEB_IMAGE }}:latest
+            ${{ env.WEB_IMAGE }}:${{ github.sha }}
+          # 原 workflow 为兼容 ACR 个人版关掉了 provenance；GHCR 支持 attestation，
+          # 这里沿用关闭以保持一致，需要供应链证明时删除本行即可。
+          provenance: false
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  nginx:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Mirror nginx base image to GHCR
+        run: |
+          docker pull "$NGINX_SRC"
+          docker tag "$NGINX_SRC" "${NGINX_IMAGE}:1.27-alpine"
+          docker push "${NGINX_IMAGE}:1.27-alpine"
