@@ -10,7 +10,7 @@ name: open-doing-hk
 # 密钥与配置从仓库根 .env 读取（compose 自动加载；不要提交真实值）：
 #   DATABASE_URL             Supabase session pooler 连接串（带 ?sslmode=require，必填）
 #   BETTER_AUTH_SECRET / CRON_SECRET / BETTER_AUTH_URL   必填
-#   CERT_DIR                 宿主机证书目录（acme.sh install-cert 目标，必填）
+#   CERT_DIR                 宿主机证书目录（Cloudflare Origin CA 证书，必填）
 
 services:
   web:
@@ -33,6 +33,6 @@ services:
       - "443:443"
     volumes:
       - ./docker/nginx/hk.conf:/etc/nginx/conf.d/default.conf:ro
-      - ${CERT_DIR:?set CERT_DIR in .env (acme.sh install-cert 目标目录)}:/etc/nginx/certs:ro
+      - ${CERT_DIR:?set CERT_DIR in .env (Cloudflare Origin CA 证书目录)}:/etc/nginx/certs:ro
     depends_on:
       - web

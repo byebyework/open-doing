@@ -4,21 +4,67 @@
 > 部署目录统一为 `/opt/open-doing`。本文所有 `<域名>` / 密钥均为占位符，执行前替换；任何真实凭据不得提交进仓库。
 
 ```
-浏览器 ── https://<域名> ──▶ 香港服务器
-                              ├─ nginx 容器（TLS 终结 + 反代，监听 443）
+浏览器 ── https://<域名> ──▶ Cloudflare 边缘（大陆可达；Always Use HTTPS）
+                                │ TLS（边缘证书）
+                                ▼
+                            香港服务器
+                              ├─ nginx 容器（TLS 终结 + 反代，监听 443，CF Origin CA 证书）
                               └─ web 容器（Next.js，只绑 127.0.0.1:3000）
                                    │ TLS（session pooler）
                                    ▼
                               Supabase（亚洲区）
 ```
 
+> **为什么前面套 Cloudflare**：实测大陆到该香港 IP（阿里云轻量）的跨境链路被劣化（TCP 全端口超时、ping 丢包），而服务器本身完全正常（海外可达 + 本机自测 200）。CF 边缘节点大陆可达性好，CF→香港源站走海外段不受影响，同时顺带解决 http→https 跳转与源站 IP 隐藏。
+
 ## 1. 前置准备
 
-### 1.1 阿里云 DNS
+### 1.1 DNS 迁到 Cloudflare（大陆可达性的关键）
 
-给裸域与 `www` 各加一条 **A 记录**指向香港服务器公网 IP。
+1. 注册/登录 Cloudflare → Add a domain → 填 `byebyework.cn`（Free 计划）；
+2. Cloudflare 会分配两个 NS（形如 `xxx.ns.cloudflare.com`）；
+3. 阿里云域名控制台（`dc.console.aliyun.com`）→ 域名 `byebyework.cn` → **管理 → DNS 修改 → 修改 DNS 服务器**，把默认的阿里云 DNS 换成 Cloudflare 的两个 NS（.cn 域名允许使用境外解析服务，实名认证不受影响）；
+4. 等待 NS 生效（Cloudflare 页面会显示 Pending，通常几分钟到几小时，最长 48h）；
+5. 生效后在 Cloudflare **DNS** 页添加两条记录（**橙色云朵 = Proxied 必须开启**，这就是回源香港的通道）：
 
-> 香港服务器无备案约束，443 可直接用；DNS 记录仍在阿里云管理（不影响 acme.sh 的 DNS 验证）。
+| 类型 | 名称 | 内容 | 代理 |
+|------|------|------|------|
+| A | `@` | `8.217.57.28`（服务器公网 IP） | Proxied |
+| A | `www` | `8.217.57.28` | Proxied |
+
+6. Cloudflare **SSL/TLS → Overview**：模式设为 **Full (strict)**；
+7. Cloudflare **SSL/TLS → Edge Certificates**：开启 **Always Use HTTPS**（从此 `http://` 请求在 CF 边缘直接 301 到 https，80 端口不需要源站监听）。
+
+> NS 迁移后阿里云 DNS 上的原记录即作废——之后所有解析都在 Cloudflare 管。
+
+### 1.2 安全组 / 防火墙
+
+入方向放行（轻量应用服务器控制台 → 实例 → 防火墙）：
+
+| 协议 | 端口 | 授权对象 | 说明 |
+|------|------|----------|------|
+| TCP | 443 | 0.0.0.0/0 | Cloudflare 回源通道（CF 回源 IP 段固定，也可收紧为 CF IP 列表） |
+| TCP | 22 | 你的常用 IP | SSH |
+
+> 不放行 80：Always Use HTTPS 已在 CF 边缘处理跳转，源站无需 80。
+
+### 1.3 触发镜像构建
+
+镜像由 `.github/workflows/build-push-ghcr.yml`（手动触发）构建并 push 到 GHCR：
+
+- `ghcr.io/byebyework/open-doing:{latest,<git-sha>}`
+- `ghcr.io/byebyework/open-doing-nginx:1.27-alpine`
+
+到仓库 **Actions → build-push-ghcr → Run workflow**（选 main 分支）触发。**判定**：Actions 两个 job（`web`、`nginx`）都绿，仓库 Packages 页出现两个包。
+
+**GHCR 包可见性**：首次 push 后包是**私有的**。本方案保持私有（镜像含编译产物，不公开），服务器拉取用 PAT 登录，见 2.3。
+
+### 1.4 创建 GHCR 拉取凭据（PAT）
+
+GitHub → Settings → Developer settings → **Personal access tokens (classic)** → Generate new token：
+
+- 勾选权限：**`read:packages`**（只读，足够 pull；不要给 write）
+- 生成的 token 记为 `<GHCR_PAT>`，只在服务器登录时用一次
 
 ### 1.2 安全组 / 防火墙
 
@@ -104,38 +150,43 @@ chmod 600 /opt/open-doing/.env
 > **`DATABASE_URL` 必须用 Supabase 的 session pooler（5432 端口）**并带 `?sslmode=require`；不要用直连地址（仅 IPv6），也不要用 transaction pooler（6543，prepared statements 会失效）。
 > `BETTER_AUTH_URL` 写 `https://<域名>` 即可——443 是 https 默认端口，不需要端口号。
 
-## 3. TLS 证书（acme.sh，DNS-01）
+## 3. TLS 证书（Cloudflare Origin CA，15 年免续期）
 
-### 3.1 RAM 子账号
+> 域名的 NS 已迁到 Cloudflare（1.1），浏览器看到的证书由 CF 边缘自动签发和维护；
+> 源站只需要一张 **CF Origin CA 证书**，仅用于 CF→源站这一跳的加密与校验（配合 SSL/TLS 模式 Full (strict)）。
+> Origin CA 证书浏览器不信任，但 CF 信任——所以本机自测要加 `-k`，公网访问不需要。
+> 原方案的 acme.sh + 阿里云 RAM AccessKey 整套不再需要（DNS 验证依赖 NS 在阿里云，已迁走）。
 
-阿里云控制台 → RAM 访问控制 → 创建子用户（仅编程访问），授权 **`AliyunDNSFullAccess`**，生成 AccessKey。**只给 DNS 权限**，不要用主账号 AK。
+### 3.1 签发 Origin CA 证书
 
-### 3.2 安装与签发
+Cloudflare 控制台 → SSL/TLS → **Origin Server** → Create Certificate：
+
+- 私钥类型：RSA (2048)；Hosts：`byebyework.cn, *.byebyework.cn`；有效期：15 years
+- 页面会给出 **Origin Certificate**（证书）与 **Private Key**（私钥）两段 PEM 文本
+
+**判定**：证书信息页显示有效期为 15 年。
+
+### 3.2 安装到服务器
+
+本机把两段文本分别存成文件后送上去（对应 nginx 挂载约定）：
 
 ```bash
-curl https://get.acme.sh | sh -m <email>
-# 安装失败时：本机 git clone https://github.com/acmesh-official/acme.sh 后 scp 到服务器，在目录内 ./acme.sh --install
-
-export Ali_Key=<子账号 AccessKey ID>
-export Ali_Secret=<子账号 AccessKey Secret>
-~/.acme.sh/acme.sh --issue --dns dns_ali -d <域名> -d www.<域名>
+# 本机执行；文件名必须与 docker/nginx/hk.conf 引用一致
+cat > fullchain.pem   # 粘贴 Origin Certificate 内容，Ctrl-D 结束
+cat > privkey.pem     # 粘贴 Private Key 内容，Ctrl-D 结束
+scp fullchain.pem privkey.pem <user>@<HK公网IP>:/opt/open-doing/certs/
+rm fullchain.pem privkey.pem   # 本机不留私钥副本
 ```
 
-**判定**：输出 `Cert success`，证书落在 `~/.acme.sh/<域名>_ecc/`。
-
-### 3.3 安装到部署目录（续期钩子在此绑定）
+服务器上核对：
 
 ```bash
-# --ecc 必须带：3.2 签发用的是 ECC 证书（证书目录 <域名>_ecc），不带会找不到证书
-~/.acme.sh/acme.sh --install-cert -d <域名> --ecc \
-  --fullchain-file /opt/open-doing/certs/fullchain.pem \
-  --key-file /opt/open-doing/certs/privkey.pem \
-  --reloadcmd "docker compose -f /opt/open-doing/docker-compose.hk.yml exec nginx nginx -s reload"
+ls -l /opt/open-doing/certs/          # 判定：fullchain.pem、privkey.pem 都在
+openssl x509 -in /opt/open-doing/certs/fullchain.pem -noout -subject -enddate
+# 判定：subject 含 Cloudflare/byebyework.cn，有效期 15 年
 ```
 
-**判定**：`/opt/open-doing/certs/` 下出现 `fullchain.pem` 与 `privkey.pem`。
-
-> reloadcmd 此刻报 reload 失败属预期（nginx 容器还没起）——acme.sh 每次续期成功后都会重跑这条命令，容器在跑时它就是续期后的平滑重载。首次 `up` 之后手动跑一遍这条 reload 命令确认路径可用（见 5.2 第 4 项）。
+> Origin CA 证书 15 年免续期，crontab / acme.sh 续期钩子都不需要；若将来重建证书，覆盖这两个文件后 `docker compose -f docker-compose.hk.yml exec nginx nginx -s reload` 即可。
 
 ## 4. 数据库迁移前检查（存量数据保护）
 
@@ -176,9 +227,9 @@ docker compose -f docker-compose.hk.yml ps   # 判定：web、nginx 均为 runni
 |---|------|------|------|
 | 1 | 迁移日志无报错 | `docker compose -f docker-compose.hk.yml logs web \| grep -i migrat` | 无 error/conflict；对照第 4 节基线重跑行数查询，存量数据完好 |
 | 2 | 3000 只绑回环 | `ss -tlnp \| grep 3000` | `127.0.0.1:3000`，**不是** `0.0.0.0:3000`（否则公网绕过 nginx 直达 web） |
-| 3 | 443 本机可服务 | `curl -sk https://127.0.0.1 -H 'Host: <域名>' -o /dev/null -w '%{http_code}'` | 返回 200 或 30x |
-| 4 | 续期钩子路径可用 | `docker compose -f docker-compose.hk.yml exec nginx nginx -s reload` | 无报错（3.3 的 reloadcmd 依赖此命令） |
-| 5 | 公网 HTTPS | 浏览器开 `https://<域名>` | 落地页正常渲染，证书有效 |
+| 3 | 443 本机可服务（源站自测） | `curl -sk https://127.0.0.1 -H 'Host: <域名>' -o /dev/null -w '%{http_code}'` | 返回 200 或 30x（`-k` 必须加：Origin CA 证书仅 CF 信任） |
+| 4 | 公网域名已走 CF | 本机或服务器上 `dig +short <域名>` | 返回 Cloudflare 的 anycast IP（`104.x` / `172.67.x` 等），**不再是** `8.217.57.28`；若仍是源站 IP 说明 NS 未生效，等 1.1 第 4 步 |
+| 5 | 公网 HTTPS（浏览器） | 浏览器开 `https://<域名>` | 落地页正常渲染，证书为 CF 边缘证书；再试 `http://<域名>` 应 301 到 https |
 | 6 | **登录流程走通** | 注册/登录一个真实账号 | 登录后不被登出、跳转正常 |
 | 7 | cron 端点可用 | `curl -fsS -X POST -H "Authorization: Bearer $(grep -E '^CRON_SECRET=' /opt/open-doing/.env \| cut -d= -f2-)" http://127.0.0.1:3000/api/cron/due-scan` | 成功响应；对应通知产生（如果今天确有到期任务）。注意 `cut -d= -f2-` 保留完整值——secret 末尾可能有 `=`，截掉会 401 |
 
