@@ -1,20 +1,20 @@
-name: open-doing-aliyun
+name: open-doing-hk
 
-# 阿里云 ECS 生产编排：未备案域名走非标端口 8443，数据库为 Supabase（session pooler），
+# 香港服务器生产编排：标准 443（无备案约束），镜像来自 GHCR，数据库为 Supabase（session pooler），
 # 故不含 postgres 服务。与 docker-compose.prod.yml（本机 web+postgres 场景）互不影响。
 #
-# 镜像由 GitHub Actions（.github/workflows/build-push-acr.yml）构建并 push 到阿里云 ACR，
-# ECS 只 pull 运行。web 容器启动时先对 DATABASE_URL 执行幂等迁移（docker/entrypoint.sh）。
+# 镜像由 GitHub Actions（.github/workflows/build-push-ghcr.yml）构建并 push 到 GHCR，
+# 服务器上 docker login ghcr.io 后 pull（GHCR 包默认私有，需 read:packages 的 PAT）。
+# web 容器启动时先对 DATABASE_URL 执行幂等迁移（docker/entrypoint.sh）。
 #
-# 密钥与镜像地址从仓库根 .env 读取（compose 自动加载；不要提交真实值）：
-#   WEB_IMAGE / NGINX_IMAGE  ACR 镜像地址（必填）
+# 密钥与配置从仓库根 .env 读取（compose 自动加载；不要提交真实值）：
 #   DATABASE_URL             Supabase session pooler 连接串（带 ?sslmode=require，必填）
 #   BETTER_AUTH_SECRET / CRON_SECRET / BETTER_AUTH_URL   必填
 #   CERT_DIR                 宿主机证书目录（acme.sh install-cert 目标，必填）
 
 services:
   web:
-    image: ${WEB_IMAGE:?set WEB_IMAGE in .env (ACR 镜像地址)}
+    image: ghcr.io/byebyework/open-doing:latest
     restart: unless-stopped
     # 只发布到回环地址：公网流量一律经 nginx，cron 从宿主机 127.0.0.1 触发
     ports:
@@ -23,16 +23,16 @@ services:
       DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env (openssl rand -base64 32)}
       CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in .env}
-      # 非标端口必须显式设置，否则 better-auth 从请求推断的 base URL 缺端口
-      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env (https://<domain>:8443)}
+      # 443 是 https 默认端口，URL 不需要带端口号
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env (https://<domain>)}
 
   nginx:
-    image: ${NGINX_IMAGE:?set NGINX_IMAGE in .env (ACR nginx 镜像地址)}
+    image: ghcr.io/byebyework/open-doing-nginx:1.27-alpine
     restart: unless-stopped
     ports:
-      - "8443:8443"
+      - "443:443"
     volumes:
-      - ./docker/nginx/aliyun.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./docker/nginx/hk.conf:/etc/nginx/conf.d/default.conf:ro
       - ${CERT_DIR:?set CERT_DIR in .env (acme.sh install-cert 目标目录)}:/etc/nginx/certs:ro
     depends_on:
       - web
