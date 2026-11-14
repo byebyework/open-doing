@@ -100,7 +100,7 @@
     "usernameLabel": "帐号",
     "usernameRequired": "请输入帐号",
     "usernamePlaceholder": "请输入帐号",
-    "usernameExtra": "仅用于登录；支持字母、数字、下划线，不支持中文",
+    "usernameExtra": "仅用于登录，支持字母、数字和下划线",
     "usernameRegisterPlaceholder": "给自己起个名字，全局唯一",
     "usernameLength": "帐号需为 {min}–{max} 个字符",
     "usernameTaken": "帐号已存在",

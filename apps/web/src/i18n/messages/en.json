@@ -100,7 +100,7 @@
     "usernameLabel": "Username",
     "usernameRequired": "Enter a username",
     "usernamePlaceholder": "Enter a username",
-    "usernameExtra": "Used for sign-in only; letters, digits and underscores — no Chinese",
+    "usernameExtra": "Used for sign-in only; letters, digits and underscores",
     "usernameRegisterPlaceholder": "Pick a name, globally unique",
     "usernameLength": "Username must be {min}–{max} characters",
     "usernameTaken": "Username already taken",
