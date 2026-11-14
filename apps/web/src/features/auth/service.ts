@@ -5,8 +5,10 @@ import type { Gender } from "@open-doing/types";
 import type { DomainErrorI18n } from "@/lib/domain-error";
 
 import {
+  EMAIL_MAX_LENGTH,
   EMAIL_PATTERN,
   NICKNAME_MAX_LENGTH,
+  PASSWORD_MAX_BYTES,
   PASSWORD_MIN_LENGTH,
   PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
@@ -167,6 +169,12 @@ export function validateRegistration(input: AuthInput): {
       { key: "passwordMinLength", params: { min: PASSWORD_MIN_LENGTH } },
     );
   }
+  // 字节上限：bcrypt 只取前 72 字节，按字节校验防静默截断。
+  if (Buffer.byteLength(password, "utf8") > PASSWORD_MAX_BYTES) {
+    throw new AuthError("VALIDATION", "密码过长", "password", {
+      key: "passwordTooLong",
+    });
+  }
 
   const nickname = normalizeOptionalText(input?.nickname);
   if (nickname.length > NICKNAME_MAX_LENGTH) {
@@ -198,6 +206,12 @@ export function validateRegistration(input: AuthInput): {
   if (!EMAIL_PATTERN.test(emailValue)) {
     throw new AuthError("VALIDATION", "邮箱格式不正确", "email", {
       key: "emailInvalid",
+    });
+  }
+  // 邮箱长度上限（RFC 5321：转发路径最大 254 字符）。
+  if (emailValue.length > EMAIL_MAX_LENGTH) {
+    throw new AuthError("VALIDATION", "邮箱过长", "email", {
+      key: "emailTooLong",
     });
   }
 

@@ -20,6 +20,15 @@ export const USERNAME_PATTERN = /^[A-Za-z0-9_]+$/;
 /** 密码最短 8 位。 */
 export const PASSWORD_MIN_LENGTH = 8;
 
+/**
+ * 密码字节上限：bcrypt 只取前 72 字节，超长部分会被静默丢弃——
+ * 按字节（而非字符）校验，防 72 个汉字（216 字节）这类输入被截断。
+ */
+export const PASSWORD_MAX_BYTES = 72;
+
+/** 邮箱长度上限（RFC 5321 转发路径最大 254 字符）。 */
+export const EMAIL_MAX_LENGTH = 254;
+
 /** 昵称最大长度（展示名写入 better-auth 的 users.name 列）。 */
 export const NICKNAME_MAX_LENGTH = 50;
 

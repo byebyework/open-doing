@@ -135,6 +135,7 @@
     "emailLabel": "邮箱",
     "emailPlaceholder": "例如 name@example.com",
     "emailInvalid": "邮箱格式不正确",
+    "emailTooLong": "邮箱过长",
     "emailRequired": "请输入邮箱",
     "emailTaken": "邮箱已被使用",
     "emailNotVerified": "邮箱尚未验证",

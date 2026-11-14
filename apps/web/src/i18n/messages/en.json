@@ -135,6 +135,7 @@
     "emailLabel": "Email",
     "emailPlaceholder": "e.g. name@example.com",
     "emailInvalid": "Invalid email format",
+    "emailTooLong": "Email is too long",
     "emailRequired": "Enter your email",
     "emailTaken": "Email already in use",
     "emailNotVerified": "Email not verified",

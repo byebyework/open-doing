@@ -3,6 +3,9 @@
 import type { User } from "@open-doing/types";
 import { headers } from "next/headers";
 
+import { Buffer } from "node:buffer";
+
+import { PASSWORD_MAX_BYTES } from "./constants";
 import { mapAuthError, readAuthErrorCode } from "./auth-error";
 import { normalizeRegistrationCode } from "./registration-codes";
 import {
@@ -178,6 +181,18 @@ export async function changePasswordAction(input: {
     typeof input?.oldPassword === "string" ? input.oldPassword : "";
   const newPassword =
     typeof input?.newPassword === "string" ? input.newPassword : "";
+
+  // 字节上限预检（2026-11-14）：本链路无领域服务层，action 预检即权威——
+  // 必须发生在 auth.api.changePassword 之前，防 bcrypt 静默截断。
+  if (Buffer.byteLength(newPassword, "utf8") > PASSWORD_MAX_BYTES) {
+    const failures = await standardFailuresForRequest();
+    return {
+      ok: false,
+      errors: {
+        newPassword: failures.custom("auth.passwordTooLong").errors.form!,
+      },
+    };
+  }
 
   try {
     await auth.api.changePassword({

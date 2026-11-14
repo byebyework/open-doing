@@ -65,3 +65,50 @@ describe("validateRegistration username charset", () => {
     expect(result.username).toBe("alice_01");
   });
 });
+
+describe("validateRegistration 密码字节上限与邮箱长度", () => {
+  const base = {
+    username: "alice",
+    password: "password123",
+    email: "alice@test.com",
+  };
+
+  it("注册密码 73 个 ASCII 字符（73 字节）→ auth.passwordTooLong", () => {
+    try {
+      validateRegistration({ ...base, password: "a".repeat(73) });
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect(error).toBeInstanceOf(AuthError);
+      expect((error as AuthError).i18n).toEqual({ key: "passwordTooLong" });
+    }
+  });
+
+  it("注册密码 25 个汉字（75 字节）→ 同样拒绝（字节口径）", () => {
+    try {
+      validateRegistration({ ...base, password: "密".repeat(25) });
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect((error as AuthError).i18n).toEqual({ key: "passwordTooLong" });
+    }
+  });
+
+  it("注册密码 72 个 ASCII 字符（72 字节）通过", () => {
+    expect(() =>
+      validateRegistration({ ...base, password: "a".repeat(72) }),
+    ).not.toThrow();
+  });
+
+  it("注册邮箱 255 字符 → auth.emailTooLong；254 通过", () => {
+    // "a".repeat(246) + "@test.com"（9 字符）= 255
+    try {
+      validateRegistration({ ...base, email: "a".repeat(246) + "@test.com" });
+      expect.unreachable("should have thrown");
+    } catch (error) {
+      expect((error as AuthError).i18n).toEqual({ key: "emailTooLong" });
+    }
+    // 245 + 9 = 254，边界通过
+    expect(() =>
+      validateRegistration({ ...base, email: "a".repeat(245) + "@test.com" }),
+    ).not.toThrow();
+  });
+});

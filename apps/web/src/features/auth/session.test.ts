@@ -280,6 +280,14 @@ describe.skipIf(!hasTestDatabase)("better-auth 会话", () => {
       newPassword: "short",
     });
     expect(tooShort).toEqual({ ok: false, errors: { newPassword: "密码至少 8 位" } });
+
+    // 字节上限预检（2026-11-14）：73 字符 = 73 字节 > 72，在调用
+    // better-auth 之前由 action 拦截，落 newPassword 字段。
+    const tooLong = await changePasswordAction({
+      oldPassword: PASSWORD,
+      newPassword: "a".repeat(73),
+    });
+    expect(tooLong).toEqual({ ok: false, errors: { newPassword: "密码过长" } });
   });
 
   it("未登录时 requireUser 重定向到 /login", async () => {

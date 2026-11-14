@@ -22,8 +22,10 @@ import { createTranslator, type TranslateFn } from "@/i18n/translate";
 
 import { registerAction } from "../actions";
 import {
+  EMAIL_MAX_LENGTH,
   EMAIL_PATTERN,
   NICKNAME_MAX_LENGTH,
+  PASSWORD_MAX_BYTES,
   PASSWORD_MIN_LENGTH,
   PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
@@ -113,7 +115,8 @@ export function createRegisterSchema(t: TranslateFn) {
       password: z
         .string()
         .min(1, t("passwordRequired"))
-        .min(PASSWORD_MIN_LENGTH, t("passwordMinLength", { min: PASSWORD_MIN_LENGTH })),
+        .min(PASSWORD_MIN_LENGTH, t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }))
+        .max(PASSWORD_MAX_BYTES, t("passwordTooLong")),
       confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
       registrationCode: z.string().min(1, t("registrationCodeRequired")),
       nickname: z
@@ -128,6 +131,7 @@ export function createRegisterSchema(t: TranslateFn) {
         .string()
         .trim()
         .min(1, t("emailRequired"))
+        .max(EMAIL_MAX_LENGTH, t("emailTooLong"))
         .refine((value) => value === "" || EMAIL_PATTERN.test(value), t("emailInvalid")),
       phone: z
         .string()

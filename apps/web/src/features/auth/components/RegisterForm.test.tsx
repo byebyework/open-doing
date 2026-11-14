@@ -242,3 +242,34 @@ describe("RegisterForm required-field marks", () => {
     expect(nicknameBlock).not.toContain("auth-required-mark");
   });
 });
+
+describe("createRegisterSchema password byte-limit hint & email length", () => {
+  it("rejects a 73-character password with passwordTooLong", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse({
+      ...validRegisterValues,
+      password: "a".repeat(73),
+      confirmPassword: "a".repeat(73),
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]).toMatchObject({
+        path: ["password"],
+        message: zh.auth.passwordTooLong,
+      });
+    }
+  });
+
+  it("rejects a 255-character email with emailTooLong", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse({
+      ...validRegisterValues,
+      email: "a".repeat(246) + "@test.com", // 246 + 9 = 255
+    });
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]).toMatchObject({
+        path: ["email"],
+        message: zh.auth.emailTooLong,
+      });
+    }
+  });
+});
