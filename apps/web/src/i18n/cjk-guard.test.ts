@@ -28,6 +28,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/features/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
   { prefix: "apps/web/src/features/tasks/permissions.ts", reason: "TaskPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
   { prefix: "apps/web/src/features/teams/service.ts", reason: "TeamError zh 兜底" },
+  { prefix: "apps/web/src/features/admin/service.ts", reason: "AdminError zh 兜底（构造参数均携带 admin i18n key）" },
   { prefix: "apps/web/src/features/teams/permissions.ts", reason: "TeamPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
   { prefix: "apps/web/src/features/teams/joins/service.ts", reason: "JoinError zh 兜底" },
   { prefix: "apps/web/src/features/teams/invites/service.ts", reason: "InviteError zh 兜底" },
