@@ -12,11 +12,14 @@ import { DomainError } from "@/lib/domain-error";
 /** 任务标题长度上限（与表单校验一致）。 */
 export const TASK_TITLE_MAX_LENGTH = 200;
 
-/** 子任务标题长度上限（与任务标题保持一致）。 */
-export const SUBTASK_TITLE_MAX_LENGTH = 200;
+/** 子任务标题长度上限（2026-11-14 收紧：200 → 100）。 */
+export const SUBTASK_TITLE_MAX_LENGTH = 100;
 
-/** 评论内容长度上限（与表单校验一致）。 */
-export const COMMENT_MAX_LENGTH = 2000;
+/** 任务描述长度上限（2026-11-14 新增）。 */
+export const TASK_DESCRIPTION_MAX_LENGTH = 800;
+
+/** 评论内容长度上限（2026-11-14 收紧：2000 → 500）。 */
+export const COMMENT_MAX_LENGTH = 500;
 
 const UUID_PATTERN =
   /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,10 +62,20 @@ export function validateTaskTitle(
   return title;
 }
 
-/** 描述清空统一存 null，读取时映射为 undefined。 */
-export function normalizeTaskDescription(value: unknown): string | null {
+/** 描述清空统一存 null，读取时映射为 undefined；超长（>800）按 descriptionTooLong 拒绝。 */
+export function validateTaskDescription(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
+  if (trimmed.length > TASK_DESCRIPTION_MAX_LENGTH) {
+    throw new DomainError(
+      `任务描述不能超过 ${TASK_DESCRIPTION_MAX_LENGTH} 个字符`,
+      "description",
+      {
+        key: "descriptionTooLong",
+        params: { max: TASK_DESCRIPTION_MAX_LENGTH },
+      },
+    );
+  }
   return trimmed.length > 0 ? trimmed : null;
 }
 

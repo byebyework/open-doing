@@ -58,6 +58,8 @@ describe("邀请 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "2026-10-01T00:00:00.000Z",
     });
     mockCreateInvite.mockRejectedValue(new TeamPermissionError("team:invite"));
@@ -76,6 +78,8 @@ describe("邀请 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "2026-10-01T00:00:00.000Z",
     });
     mockCreateInvite.mockRejectedValue(new InviteError("UID_NOT_FOUND", "UID 无效", "uid"));
@@ -94,6 +98,8 @@ describe("邀请 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "2026-10-01T00:00:00.000Z",
     });
     mockCreateInvite.mockResolvedValue(fakeInvite);
@@ -115,6 +121,8 @@ describe("邀请 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "2026-10-01T00:00:00.000Z",
     });
     mockRescindInvite.mockResolvedValue({ ...fakeInvite, status: "rescinded" });
@@ -138,6 +146,8 @@ describe("邀请 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "2026-10-01T00:00:00.000Z",
     });
     mockRespondToInvite.mockResolvedValue({
@@ -167,6 +177,8 @@ describe("邀请 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "2026-10-01T00:00:00.000Z",
     });
     mockRespondToInvite.mockRejectedValue(new InviteError("INVALID", "邀请不存在或已失效", "form"));

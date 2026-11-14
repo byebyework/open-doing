@@ -235,7 +235,7 @@ export function TodayTaskList({
                   <div className="min-w-0 flex-1">
                     <Link
                       href={task.href}
-                      className={`block break-words text-[13.5px] font-medium ${
+                      className={`block truncate text-[13.5px] font-medium ${
                         done
                           ? "text-[var(--ink-400)] line-through"
                           : "text-[var(--ink-900)] no-underline hover:underline"

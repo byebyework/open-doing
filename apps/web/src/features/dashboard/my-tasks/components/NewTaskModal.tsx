@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
 import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -34,6 +35,10 @@ import { Textarea } from "@/components/ui/shadcn/textarea";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
 import { createPersonalTaskAction } from "@/features/personal/tasks/actions";
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 import { createTeamTaskAction } from "@/features/tasks/actions";
 
 import type { CrossSpaceProjectOption } from "../service";
@@ -125,12 +130,17 @@ export function NewTaskModal({
       .string()
       .trim()
       .min(1, t("titleRequired"))
-      .max(200, t("titleTooLong", { max: 200 })),
+      .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
-    description: z.string(),
+    description: z
+      .string()
+      .refine(
+        (value) => value.trim().length <= TASK_DESCRIPTION_MAX_LENGTH,
+        t("descriptionTooLong", { max: TASK_DESCRIPTION_MAX_LENGTH }),
+      ),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -170,6 +180,9 @@ export function NewTaskModal({
   }, [open, reset]);
 
   const projectGroups = buildProjectGroups(projects, t);
+
+  const titleValue = watch("title");
+  const descriptionValue = watch("description");
 
   const onSubmit = handleSubmit(async (values) => {
     // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
@@ -256,14 +269,15 @@ export function NewTaskModal({
               id="dashboard-task-title"
               type="text"
               placeholder={t("titlePlaceholder")}
-              maxLength={200}
+              maxLength={TASK_TITLE_MAX_LENGTH}
               autoFocus
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "dashboard-task-title-error" : undefined}
               disabled={submitting}
               {...register("title")}
             />
-            {errors.title ? (
+                        <CharCounter value={titleValue} max={TASK_TITLE_MAX_LENGTH} />
+{errors.title ? (
               <p id="dashboard-task-title-error" className="text-[12.5px] text-[var(--error)]">
                 {errors.title.message}
               </p>
@@ -356,9 +370,22 @@ export function NewTaskModal({
               id="dashboard-task-description"
               rows={4}
               placeholder={t("descriptionPlaceholder")}
+              aria-invalid={errors.description ? true : undefined}
+              aria-describedby={
+                errors.description ? "dashboard-task-description-error" : undefined
+              }
               disabled={submitting}
               {...register("description")}
             />
+                        <CharCounter value={descriptionValue} max={TASK_DESCRIPTION_MAX_LENGTH} />
+{errors.description ? (
+              <p
+                id="dashboard-task-description-error"
+                className="text-[12.5px] text-[var(--error)]"
+              >
+                {errors.description.message}
+              </p>
+            ) : null}
           </div>
 
           <DialogFooter>

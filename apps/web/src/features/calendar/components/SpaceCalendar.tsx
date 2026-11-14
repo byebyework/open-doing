@@ -751,7 +751,8 @@ export function SpaceCalendar({
         />
       </div>
 
-      <div className="flex flex-col items-stretch gap-4 min-[861px]:flex-row min-[861px]:items-start">
+      {/* 桌面端 items-stretch：侧栏随月历列拉伸到底，底边对齐（见 aside 的 mt 偏移）。 */}
+      <div className="flex flex-col items-stretch gap-4 min-[861px]:flex-row min-[861px]:items-stretch">
         {/* ===== 左：月历 ===== */}
         <div className="min-w-0 flex-1">
           {/* 月历标题行：网格卡片之外（原型 .cal2-header）。 */}
@@ -832,7 +833,8 @@ export function SpaceCalendar({
                     classNames={{
                       months: "w-full",
                       month: "w-full",
-                      month_grid: "w-full border-collapse",
+                      // table-fixed：列宽均分于容器，无空格长串在 chip 层截断，不再撑爆列宽。
+                      month_grid: "w-full table-fixed border-collapse",
                       weekdays: "border-b border-b-[var(--border-default)]",
                       // 表头行高：上 12 / 下 10（对照原型 .cal2-headrow .h）。
                       weekday:
@@ -864,7 +866,9 @@ export function SpaceCalendar({
         </div>
 
         {/* ===== 右：侧栏 ===== */}
-        <aside className="flex w-full flex-col gap-3 min-[861px]:w-[320px] min-[861px]:flex-none">
+        {/* 侧栏顶对齐月历网格（而非标题行）：mt = 月标题行高（22px leading-none
+            + mb-3 12px）。改标题字号/间距时需同步这个偏移。末卡 flex-1 沉底。 */}
+        <aside className="flex w-full flex-col gap-3 min-[861px]:mt-[34px] min-[861px]:w-[320px] min-[861px]:flex-none">
           {/* 本周任务：竖向时间线（脊线 + 日节点，今天为紫色发光点）。 */}
           <section
             data-testid="calendar-week-card"
@@ -948,8 +952,8 @@ export function SpaceCalendar({
             )}
           </section>
 
-          {/* 本月即将到期：迷你日期块列表。 */}
-          <section className="rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)]">
+          {/* 本月即将到期：迷你日期块列表；桌面端 flex-1 填满侧栏剩余高度，与月历底边对齐。 */}
+          <section className="min-[861px]:flex-1 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)]">
             <div className="mb-2 flex items-baseline">
               <h3 className="text-[14px] font-semibold text-[var(--ink-900)]">
                 {tCalendar("upcomingTitle")}

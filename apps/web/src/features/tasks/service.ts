@@ -19,8 +19,8 @@ import { DomainError } from "@/lib/domain-error";
 import {
   assertStartNotAfterTaskDue,
   isUuid,
-  normalizeTaskDescription,
   validateCommentContent,
+  validateTaskDescription,
   validateTaskDueDate,
   validateTaskPriority,
   validateTaskStartDate,
@@ -245,7 +245,7 @@ export async function createTeamTask(
 ): Promise<Task> {
   const { teamId, projectId, actorId } = input;
   const title = validateTaskTitle(input?.title);
-  const description = normalizeTaskDescription(input?.description);
+  const description = validateTaskDescription(input?.description);
   const priority = validateTaskPriority(input?.priority ?? "medium");
   const dueDate = validateTaskDueDate(input?.dueDate);
   const startDate = validateTaskStartDate(input?.startDate);
@@ -351,7 +351,7 @@ export async function updateTeamTask(
   }
   if (input.description !== undefined) {
     hasContentChange = true;
-    const description = normalizeTaskDescription(input.description);
+    const description = validateTaskDescription(input.description);
     if ((description ?? null) !== (existing.task.description ?? null)) {
       changes.description = description;
       hasValueChange = true;

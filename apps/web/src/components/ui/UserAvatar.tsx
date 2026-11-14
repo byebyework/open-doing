@@ -1,3 +1,5 @@
+import { cn } from "@/lib/utils";
+
 /** UserAvatar 入参。 */
 export interface UserAvatarProps {
   /** 用户 ID：只用于头像底色哈希，改名 / 改昵称都不影响颜色。 */
@@ -6,6 +8,8 @@ export interface UserAvatarProps {
   name: string;
   /** 头像边长（px），默认 30。 */
   size?: number;
+  /** 附加样式：仅用于调整圆角等外观（如详情页 xl 头像的 12px 圆角）。 */
+  className?: string;
 }
 
 /** 6 个分类点缀色：5 个 accent + 品牌紫（与原型 av-* 类一致）。 */
@@ -43,7 +47,12 @@ export function avatarColor(userId: string): string {
  *
  * 纯展示组件（无交互），可在服务端组件中直接使用。
  */
-export function UserAvatar({ userId, name, size = 30 }: UserAvatarProps) {
+export function UserAvatar({
+  userId,
+  name,
+  size = 30,
+  className,
+}: UserAvatarProps) {
   const firstChar = Array.from(name.trim())[0] ?? "?";
   const backgroundColor = avatarColor(userId);
 
@@ -52,7 +61,10 @@ export function UserAvatar({ userId, name, size = 30 }: UserAvatarProps) {
       role="img"
       aria-label={name}
       title={name}
-      className="inline-grid shrink-0 select-none place-items-center rounded-full font-bold text-white"
+      className={cn(
+        "inline-grid shrink-0 select-none place-items-center rounded-full font-bold text-white",
+        className,
+      )}
       style={{
         width: size,
         height: size,

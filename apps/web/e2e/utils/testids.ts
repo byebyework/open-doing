@@ -105,6 +105,23 @@ export const TEST_IDS = {
     dissolveConfirmInput: "dissolve-confirm-input",
     dissolveConfirmButton: "dissolve-confirm-button",
   },
+  admin: {
+    /** 用户列表搜索框（停止输入后写回 `?q=`）。 */
+    usersSearch: "admin-users-search",
+    /** 用户列表状态分段按钮（all / active / disabled）。 */
+    usersStatus: (status: "all" | "active" | "disabled") =>
+      `admin-users-status-${status}`,
+    /** 注册码页「新增注册码」按钮与弹窗字段。 */
+    createCodeTrigger: "create-code-trigger",
+    codeMaxUsesInput: "code-max-uses-input",
+    createCodeSubmit: "create-code-submit",
+    /** 注册码行「使用者」展开按钮（按码值命名）。 */
+    codeUsersToggle: (code: string) => `code-users-toggle-${code}`,
+    /** 用户详情页的禁用 / 解禁按钮与确认弹窗确认钮。 */
+    userDisable: "user-disable",
+    userEnable: "user-enable",
+    userActionConfirm: "user-action-confirm",
+  },
   shell: {
     spaceSwitcherTrigger: "space-switcher-trigger",
     notificationBellButton: "notification-bell-button",

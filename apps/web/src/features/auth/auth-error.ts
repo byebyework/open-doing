@@ -58,6 +58,8 @@ const ERROR_CODE_MAP: Record<string, MappedAuthError> = {
   INVALID_PASSWORD: { field: "form", i18nKey: "invalidCredentials" },
   INVALID_USERNAME_OR_PASSWORD: { field: "form", i18nKey: "invalidCredentials" },
   EMAIL_NOT_VERIFIED: { field: "form", i18nKey: "emailNotVerified" },
+  // 登录钩子（hooks.ts）：禁用账号在 `/sign-in/username` 前置拒绝。
+  ACCOUNT_DISABLED: { field: "form", i18nKey: "accountDisabled" },
 
   // 注册码 / UID / 手机号（hooks.ts 自定义令牌）
   REG_CODE_INVALID: { field: "registrationCode", i18nKey: "registrationCodeInvalid" },

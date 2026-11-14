@@ -13,7 +13,7 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
 import { changePasswordAction } from "@/features/auth/actions";
-import { PASSWORD_MIN_LENGTH } from "@/features/auth/constants";
+import { PASSWORD_MAX_BYTES, PASSWORD_MIN_LENGTH } from "@/features/auth/constants";
 
 /**
  * 修改密码表单（个人设置页客户端交互层）。
@@ -24,6 +24,8 @@ import { PASSWORD_MIN_LENGTH } from "@/features/auth/constants";
  */
 export function ChangePasswordForm() {
   const t = useTranslations("settings");
+  // 密码规则文案在 auth 命名空间（settings 里只有密码改成功的反馈文案）。
+  const tAuth = useTranslations("auth");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -38,7 +40,8 @@ export function ChangePasswordForm() {
         .min(
           PASSWORD_MIN_LENGTH,
           t("passwordMinLength", { min: PASSWORD_MIN_LENGTH }),
-        ),
+        )
+        .max(PASSWORD_MAX_BYTES, tAuth("passwordTooLong")),
       confirmPassword: z.string().min(1, t("confirmPasswordRequired")),
     })
     .refine((values) => values.newPassword === values.confirmPassword, {

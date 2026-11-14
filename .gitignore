@@ -48,3 +48,7 @@ next-env.d.ts
 .codebuddy
 # claude plugin scratch dirs
 .superpowers/
+
+# 设计原型与实施计划：本地维护，不入库
+docs/prototypes/
+docs/superpowers/

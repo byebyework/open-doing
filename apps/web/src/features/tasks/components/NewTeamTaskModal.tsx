@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
 import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -30,6 +31,10 @@ import {
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 
 import { createTeamTaskAction } from "../actions";
 
@@ -98,13 +103,18 @@ export function NewTeamTaskModal({
       .string()
       .trim()
       .min(1, t("titleRequired"))
-      .max(200, t("titleTooLong", { max: 200 })),
+      .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string().min(1, t("projectRequired")),
     assigneeId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
-    description: z.string(),
+    description: z
+      .string()
+      .refine(
+        (value) => value.trim().length <= TASK_DESCRIPTION_MAX_LENGTH,
+        t("descriptionTooLong", { max: TASK_DESCRIPTION_MAX_LENGTH }),
+      ),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -144,6 +154,9 @@ export function NewTeamTaskModal({
       setFormError(null);
     }
   }, [open, reset, defaultProject, defaultAssignee, dueDateDefault]);
+
+  const titleValue = watch("title");
+  const descriptionValue = watch("description");
 
   const onSubmit = handleSubmit(async (values) => {
     // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
@@ -208,14 +221,15 @@ export function NewTeamTaskModal({
               type="text"
               data-testid="task-title-input"
               placeholder={t("titlePlaceholder")}
-              maxLength={200}
+              maxLength={TASK_TITLE_MAX_LENGTH}
               autoFocus
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "team-task-title-error" : undefined}
               disabled={submitting}
               {...register("title")}
             />
-            {errors.title ? (
+                        <CharCounter value={titleValue} max={TASK_TITLE_MAX_LENGTH} />
+{errors.title ? (
               <p id="team-task-title-error" className="text-[12.5px] text-[var(--error)]">
                 {errors.title.message}
               </p>
@@ -340,9 +354,22 @@ export function NewTeamTaskModal({
               id="team-task-description"
               rows={4}
               placeholder={t("descriptionPlaceholder")}
+              aria-invalid={errors.description ? true : undefined}
+              aria-describedby={
+                errors.description ? "team-task-description-error" : undefined
+              }
               disabled={submitting}
               {...register("description")}
             />
+                        <CharCounter value={descriptionValue} max={TASK_DESCRIPTION_MAX_LENGTH} />
+{errors.description ? (
+              <p
+                id="team-task-description-error"
+                className="text-[12.5px] text-[var(--error)]"
+              >
+                {errors.description.message}
+              </p>
+            ) : null}
           </div>
 
           <DialogFooter>

@@ -86,6 +86,14 @@ export const users = pgTable("users", {
   overdueReminderEnabled: boolean("overdue_reminder_enabled").notNull().default(true),
   // 个人设置：界面语言（'zh' | 'en'），默认中文；账号级偏好，登录后每请求生效。
   language: text("language").notNull().default("zh"),
+  // 管理员工作台（2026-11-14）：is_admin 权限标记；is_disabled 禁用标记（登录被拒 + 会话清除）；
+  // registration_code_id 记录注册时消费的码，支撑管理台「使用者列表」，存量用户为 NULL。
+  isAdmin: boolean("is_admin").notNull().default(false),
+  isDisabled: boolean("is_disabled").notNull().default(false),
+  registrationCodeId: uuidRef("registration_code_id").references(
+    () => registrationCodes.id,
+    { onDelete: "set null" },
+  ),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

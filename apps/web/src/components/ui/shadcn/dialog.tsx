@@ -107,7 +107,7 @@ function DialogContent({
         <motion.div
           data-slot="dialog-content"
           className={cn(
-            "bg-card fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] gap-4 rounded-[var(--radius-12)] p-6 shadow-lg sm:max-w-lg",
+            "bg-card fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[calc(100dvh-4rem)] overflow-y-auto gap-4 rounded-[var(--radius-12)] p-6 shadow-lg sm:max-w-lg",
             className,
           )}
           style={{ x: "-50%", y: "-50%" }}

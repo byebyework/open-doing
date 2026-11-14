@@ -19,14 +19,22 @@ import {
   users,
 } from "@/server/db/schema";
 
-/** 任务标题长度上限（与表单校验一致）。 */
-export const TASK_TITLE_MAX_LENGTH = 200;
+// 任务字段限长常量的唯一来源是 lib/task-fields.ts（客户端安全，可被表单
+// 组件直接导入）；本服务是 server-only 模块，常量从这里重导出仅为兼容
+// 既有引用。校验器本体仍为本轨逐字副本（见文件头决策）。
+import {
+  COMMENT_MAX_LENGTH,
+  SUBTASK_TITLE_MAX_LENGTH,
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 
-/** 子任务标题长度上限（与任务标题保持一致）。 */
-export const SUBTASK_TITLE_MAX_LENGTH = 200;
-
-/** 评论内容长度上限（与表单校验一致）。 */
-export const COMMENT_MAX_LENGTH = 2000;
+export {
+  COMMENT_MAX_LENGTH,
+  SUBTASK_TITLE_MAX_LENGTH,
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 
 /** 创建任务入参；`projectId` 为空表示不属于任何项目的零散个人任务。 */
 export interface PersonalTaskInput {
@@ -128,9 +136,19 @@ function validateTitle(value: unknown, label: "任务" | "子任务"): string {
 }
 
 /** 描述清空统一存 null，读取时映射为 undefined。 */
-function normalizeDescription(value: unknown): string | null {
+function validateDescription(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
+  if (trimmed.length > TASK_DESCRIPTION_MAX_LENGTH) {
+    throw new DomainError(
+      `任务描述不能超过 ${TASK_DESCRIPTION_MAX_LENGTH} 个字符`,
+      "description",
+      {
+        key: "descriptionTooLong",
+        params: { max: TASK_DESCRIPTION_MAX_LENGTH },
+      },
+    );
+  }
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -301,7 +319,7 @@ export async function createPersonalTask(
   client: DbClient = db,
 ): Promise<Task> {
   const title = validateTitle(input?.title, "任务");
-  const description = normalizeDescription(input?.description);
+  const description = validateDescription(input?.description);
   const priority = validatePriority(input?.priority ?? "medium");
   const dueDate = validateDueDate(input?.dueDate);
   const startDate = validateStartDate(input?.startDate);
@@ -506,7 +524,7 @@ export async function updatePersonalTask(
     changes.title = validateTitle(input.title, "任务");
   }
   if (input?.description !== undefined) {
-    changes.description = normalizeDescription(input.description);
+    changes.description = validateDescription(input.description);
   }
   if (input?.dueDate !== undefined) {
     changes.dueDate = validateDueDate(input.dueDate);

@@ -182,14 +182,15 @@ describe.skipIf(!hasTestDatabase)("认证注册链路（better-auth）", () => {
     expect(rows.map((row) => row.username).sort()).toEqual(["Alice", "alice"]);
   });
 
-  it("沿用现有用户名字符语义：允许中文用户名", async () => {
-    const user = await registerOk({
+  it("2026-11-14 起：注册拒绝中文用户名（存量帐号登录不受影响）", async () => {
+    const errors = await registerFail({
       username: "林夏",
       password: "password123",
       email: "cn@test.com",
     });
 
-    expect(user.username).toBe("林夏");
+    // 错误经 action 层翻译为 auth.usernameInvalid（zh 兜底文案）。
+    expect(errors.username).toBe("帐号包含不支持的字符");
   });
 
   it("邮箱必填：空邮箱 → email 字段错误", async () => {

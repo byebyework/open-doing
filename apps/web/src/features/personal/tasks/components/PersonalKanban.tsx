@@ -112,7 +112,7 @@ function KanbanCard({
         }`}
       >
         <div
-          className={`text-[13.5px] font-semibold leading-[1.35] ${
+          className={`truncate text-[13.5px] font-semibold leading-[1.35] ${
             done ? "text-[var(--ink-400)] line-through" : "text-[var(--ink-900)]"
           }`}
         >

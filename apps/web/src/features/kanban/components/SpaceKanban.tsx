@@ -329,7 +329,7 @@ function SpaceKanbanCard({
     useDraggable({ id: card.id, disabled: !draggable });
 
   const done = card.status === "done";
-  const titleClassName = `text-[13.5px] font-semibold leading-[1.35] ${
+  const titleClassName = `block truncate text-[13.5px] font-semibold leading-[1.35] ${
     done ? "text-[#3c4043]" : "text-[var(--ink-900)]"
   }`;
 
