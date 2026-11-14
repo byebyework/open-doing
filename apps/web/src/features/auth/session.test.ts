@@ -13,6 +13,8 @@ import type { DbClient } from "@/server/db/client";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 import { registrationCodes, sessions, users } from "@/server/db/schema";
 
+import { requireAdmin } from "@/features/admin/guard";
+
 import { changePasswordAction, loginAction } from "./actions";
 import {
   generateRegistrationCodes,
@@ -145,6 +147,10 @@ describe.skipIf(!hasTestDatabase)("better-auth 会话", () => {
       gender: null,
       email: "alice@example.com",
       phone: null,
+      // Task 3 的 additionalFields 必须真正进入会话用户；若 better-auth 静默丢弃
+      // 这两个字段，管理台守卫会永久放行/误拒，故在此显式断言。
+      isAdmin: false,
+      isDisabled: false,
     });
     expect(Number.isNaN(Date.parse(user!.createdAt))).toBe(false);
 
@@ -282,5 +288,83 @@ describe.skipIf(!hasTestDatabase)("better-auth 会话", () => {
     await requireUser();
 
     expect(redirectState.redirect).toHaveBeenCalledWith("/login");
+  });
+
+  describe("disabled session enforcement", () => {
+    it("getCurrentUser clears all sessions and returns null for a disabled user", async () => {
+      const { id, cookie } = await signUpCookie(code, {
+        username: "alice",
+        email: "alice@example.com",
+        name: "阿岚",
+      });
+      // 再登录一次，确认清除覆盖该用户的「全部」会话，而不只是当前 cookie。
+      const secondCookie = await signInCookie("alice");
+      await db.update(users).set({ isDisabled: true }).where(eq(users.id, id));
+
+      requestState.cookieHeader = cookie;
+      await expect(getCurrentUser()).resolves.toBeNull();
+
+      // 库存会话必须清空：即便旧 cookie 仍在客户端，也无法再次通过校验。
+      expect(
+        await db
+          .select({ userId: sessions.userId })
+          .from(sessions)
+          .where(eq(sessions.userId, id)),
+      ).toEqual([]);
+
+      requestState.cookieHeader = secondCookie;
+      await expect(getCurrentUser()).resolves.toBeNull();
+    });
+
+    it("returns null when no session cookie is present", async () => {
+      requestState.cookieHeader = null;
+      await expect(getCurrentUser()).resolves.toBeNull();
+    });
+  });
+
+  describe("requireAdmin guard", () => {
+    beforeEach(() => {
+      // 真实 next/navigation 的 redirect() 以抛出 NEXT_REDIRECT 结束控制流；
+      // mock 必须复刻该语义，否则 null 分支会在后续 user.isAdmin 上崩溃。
+      redirectState.redirect.mockImplementation((url: string) => {
+        throw new Error(`NEXT_REDIRECT:${url}`);
+      });
+    });
+
+    it("redirects anonymous visitors to /login", async () => {
+      requestState.cookieHeader = null;
+
+      await expect(requireAdmin()).rejects.toThrow("NEXT_REDIRECT:/login");
+      expect(redirectState.redirect).toHaveBeenCalledWith("/login");
+    });
+
+    it("redirects non-admin users to the personal dashboard", async () => {
+      const { cookie } = await signUpCookie(code, {
+        username: "alice",
+        email: "alice@example.com",
+        name: "阿岚",
+      });
+      requestState.cookieHeader = cookie;
+
+      await expect(requireAdmin()).rejects.toThrow(
+        "NEXT_REDIRECT:/space/personal/dashboard",
+      );
+      expect(redirectState.redirect).toHaveBeenCalledWith("/space/personal/dashboard");
+    });
+
+    it("returns the admin user and never redirects", async () => {
+      const { id, uid, cookie } = await signUpCookie(code, {
+        username: "admin",
+        email: "admin@example.com",
+        name: "管理员",
+      });
+      await db.update(users).set({ isAdmin: true }).where(eq(users.id, id));
+      requestState.cookieHeader = cookie;
+
+      const user = await requireAdmin();
+
+      expect(user).toMatchObject({ id, uid, username: "admin", isAdmin: true });
+      expect(redirectState.redirect).not.toHaveBeenCalled();
+    });
   });
 });
