@@ -19,17 +19,22 @@ import {
   users,
 } from "@/server/db/schema";
 
-/** 任务标题长度上限（与表单校验一致）。 */
-export const TASK_TITLE_MAX_LENGTH = 200;
+// 任务字段限长常量的唯一来源是 lib/task-fields.ts（客户端安全，可被表单
+// 组件直接导入）；本服务是 server-only 模块，常量从这里重导出仅为兼容
+// 既有引用。校验器本体仍为本轨逐字副本（见文件头决策）。
+import {
+  COMMENT_MAX_LENGTH,
+  SUBTASK_TITLE_MAX_LENGTH,
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 
-/** 子任务标题长度上限（2026-11-14 收紧：200 → 100）。 */
-export const SUBTASK_TITLE_MAX_LENGTH = 100;
-
-/** 任务描述长度上限（2026-11-14 新增）。 */
-export const TASK_DESCRIPTION_MAX_LENGTH = 800;
-
-/** 评论内容长度上限（2026-11-14 收紧：2000 → 500）。 */
-export const COMMENT_MAX_LENGTH = 500;
+export {
+  COMMENT_MAX_LENGTH,
+  SUBTASK_TITLE_MAX_LENGTH,
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 
 /** 创建任务入参；`projectId` 为空表示不属于任何项目的零散个人任务。 */
 export interface PersonalTaskInput {

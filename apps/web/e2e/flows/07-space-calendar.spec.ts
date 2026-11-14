@@ -331,6 +331,33 @@ test.describe("flow 7: 空间级 Calendar", () => {
       page.getByRole("heading", { name: "日历", level: 1 }),
     ).toBeVisible();
   });
+
+  test("无空格超长任务标题不撑宽月格（table-fixed）", async ({ page }) => {
+    const username = uniqueUsername("e2e_cal7");
+    const projectName = uniqueLabel("E2E cal long project");
+    // 200 字符无空格串（合法上限）：auto table layout 下列宽会被它撑开。
+    const taskTitle = "1".repeat(200);
+    const today = shanghaiToday();
+
+    await seedPersonalTask(page, {
+      username,
+      projectName,
+      taskTitle,
+      dueDate: today,
+    });
+
+    await page.goto("/space/personal/calendar");
+
+    const todayCell = dayCell(page, today);
+    await expect(todayCell.getByText(taskTitle, { exact: false })).toBeVisible();
+
+    // 布局断言：月格表格宽度不超过其滚动容器（table-fixed 后列宽均分，
+    // 长串在 chip 层截断，容器不出现内容性横向溢出）。
+    const overflow = await page
+      .getByTestId(TEST_IDS.calendar.gridScroll)
+      .evaluate((el) => el.scrollWidth - el.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  });
 });
 
 /** 注册账号 → 建个人项目 → 建任务（可带 `YYYY-MM-DD` 截止日期）。 */

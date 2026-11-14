@@ -35,7 +35,7 @@ import { createPersonalTaskAction } from "../actions";
 import {
   TASK_DESCRIPTION_MAX_LENGTH,
   TASK_TITLE_MAX_LENGTH,
-} from "../service";
+} from "@/lib/task-fields";
 
 /** 新建任务弹窗入参。 */
 export interface NewTaskModalProps {

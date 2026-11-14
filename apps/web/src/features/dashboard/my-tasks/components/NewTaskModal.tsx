@@ -37,7 +37,7 @@ import { createPersonalTaskAction } from "@/features/personal/tasks/actions";
 import {
   TASK_DESCRIPTION_MAX_LENGTH,
   TASK_TITLE_MAX_LENGTH,
-} from "@/features/personal/tasks/service";
+} from "@/lib/task-fields";
 import { createTeamTaskAction } from "@/features/tasks/actions";
 
 import type { CrossSpaceProjectOption } from "../service";

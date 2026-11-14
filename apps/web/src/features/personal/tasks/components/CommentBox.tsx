@@ -8,7 +8,7 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { formatTaskTimestamp } from "@/lib/date-display";
-import { COMMENT_MAX_LENGTH } from "../service";
+import { COMMENT_MAX_LENGTH } from "@/lib/task-fields";
 
 /** 评论列表项（作者名由服务端组装）。 */
 export interface CommentBoxItem {

@@ -833,7 +833,8 @@ export function SpaceCalendar({
                     classNames={{
                       months: "w-full",
                       month: "w-full",
-                      month_grid: "w-full border-collapse",
+                      // table-fixed：列宽均分于容器，无空格长串在 chip 层截断，不再撑爆列宽。
+                      month_grid: "w-full table-fixed border-collapse",
                       weekdays: "border-b border-b-[var(--border-default)]",
                       // 表头行高：上 12 / 下 10（对照原型 .cal2-headrow .h）。
                       weekday:

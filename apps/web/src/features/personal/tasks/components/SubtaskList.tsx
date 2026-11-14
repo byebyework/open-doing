@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/shadcn/button";
 import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import { Input } from "@/components/ui/shadcn/input";
-import { SUBTASK_TITLE_MAX_LENGTH } from "../service";
+import { SUBTASK_TITLE_MAX_LENGTH } from "@/lib/task-fields";
 
 /** 子任务列表入参（`onToggle` / `onAdd` / `onRemove` 缺省时对应 UI 只读或隐藏）。 */
 export interface SubtaskListProps {
