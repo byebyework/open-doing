@@ -206,6 +206,7 @@
     "joinByCode": "凭码加入",
     "accountGroup": "账号",
     "pendingInvites": "待处理邀请",
+    "adminConsole": "管理控制台",
     "logout": "退出登录",
     "currentUserAria": "当前用户 {name}，打开用户菜单",
     "notSignedInAria": "未登录用户",

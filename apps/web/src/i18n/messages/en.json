@@ -206,6 +206,7 @@
     "joinByCode": "Join by code",
     "accountGroup": "Account",
     "pendingInvites": "Pending invites",
+    "adminConsole": "Admin console",
     "logout": "Sign out",
     "currentUserAria": "Signed in as {name}, open user menu",
     "notSignedInAria": "Not signed in",

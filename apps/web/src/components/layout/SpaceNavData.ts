@@ -10,6 +10,8 @@ export interface SpaceNavData {
   pendingInviteCount: number;
   /** 是否已登录；未登录时导航整体不渲染。 */
   loggedIn: boolean;
+  /** 系统管理员标记；账号分组里据此渲染「管理控制台」入口。 */
+  isAdmin: boolean;
 }
 
 /**
@@ -21,7 +23,9 @@ export interface SpaceNavData {
  */
 export async function getSpaceNavData(): Promise<SpaceNavData> {
   const user = await getCurrentUser();
-  if (!user) return { teams: [], pendingInviteCount: 0, loggedIn: false };
+  if (!user) {
+    return { teams: [], pendingInviteCount: 0, loggedIn: false, isAdmin: false };
+  }
 
   const [teams, received] = await Promise.all([
     listTeamsForUser(user.id),
@@ -34,5 +38,6 @@ export async function getSpaceNavData(): Promise<SpaceNavData> {
       (view) => view.invite.status === "pending",
     ).length,
     loggedIn: true,
+    isAdmin: user.isAdmin,
   };
 }

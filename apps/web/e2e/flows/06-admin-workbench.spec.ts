@@ -37,7 +37,7 @@ import {
 // 两个账号、两个浏览器上下文 + 多次 RSC 往返，放宽到 120s。
 test.describe.configure({ timeout: 120_000 });
 
-/** 文案 key（仅 admin / auth 命名空间；值取自 zh 消息包固定文本）。 */
+/** 文案 key（仅 admin / auth / nav 命名空间；值取自 zh 消息包固定文本）。 */
 function adminCopy(
   key: keyof typeof zhMessages.admin,
   params?: Record<string, string>,
@@ -46,6 +46,11 @@ function adminCopy(
   if (!params) return template;
 
   return template.replace(/\{(\w+)\}/g, (match, name: string) => params[name] ?? match);
+}
+
+/** 业务侧栏管理入口文案（nav.adminConsole，值取自 zh 消息包）。 */
+function navConsoleLabel(): string {
+  return zhMessages.nav.adminConsole;
 }
 
 /**
@@ -127,6 +132,11 @@ test.describe("flow 6: admin workbench", () => {
     await page.context().clearCookies();
     await loginUser(page, adminUsername);
 
+    // 业务侧栏「管理控制台」入口：仅 is_admin 用户可见（登录落在个人
+    // dashboard，桌面侧栏直接断言）。
+    const adminNavLink = page.getByRole("link", { name: navConsoleLabel() });
+    await expect(adminNavLink).toBeVisible();
+
     // ===== 2. /admin 概览可达，统计卡已渲染 =====
     await page.goto("/admin");
     await expect(
@@ -181,6 +191,11 @@ test.describe("flow 6: admin workbench", () => {
       await expect(
         victimPage.getByRole("heading", { level: 1 }),
       ).toBeVisible();
+
+      // 普通用户侧栏不出现管理入口（服务端按 is_admin 判定，无 DOM）。
+      await expect(
+        victimPage.getByRole("link", { name: navConsoleLabel() }),
+      ).toHaveCount(0);
 
       const victimId = await userIdOf(victimUsername);
 

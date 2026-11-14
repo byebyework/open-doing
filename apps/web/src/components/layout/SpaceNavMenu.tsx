@@ -173,6 +173,24 @@ function InvitesIcon() {
   );
 }
 
+/** 管理控制台图标（盾牌，权限语义）。 */
+function AdminConsoleIcon() {
+  return (
+    <svg
+      className={ICON_CLASS}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+    </svg>
+  );
+}
+
 /** 导航项：模块 + i18n 标签 key + 图标（顺序与原型侧栏一致）。 */
 interface SpaceNavModule {
   module: SpaceModule;
@@ -277,6 +295,8 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
   const spaceLabel = resolveSpaceLabel(spaceRef, data.teams) ?? t("personalSpace");
   const invitesActive =
     pathname === invitesHref() || pathname.startsWith(`${invitesHref()}/`);
+  // 管理控制台独立于业务 Space 体系，active 判定直接按 /admin 前缀。
+  const adminActive = pathname === "/admin" || pathname.startsWith("/admin/");
 
   return (
     <>
@@ -330,6 +350,22 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
             ) : null}
           </NavLinkBody>
         </Link>
+        {/* 管理控制台入口：仅系统管理员可见（服务端数据判定，普通用户拿不到 DOM）。 */}
+        {data.isAdmin ? (
+          <Link
+            href="/admin"
+            aria-current={adminActive ? "page" : undefined}
+            title={t("adminConsole")}
+            className={`${NAV_ITEM_BASE} ${
+              adminActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE
+            }`}
+          >
+            <NavLinkBody>
+              <AdminConsoleIcon />
+              <span className={NAV_LABEL_CLASS}>{t("adminConsole")}</span>
+            </NavLinkBody>
+          </Link>
+        ) : null}
       </div>
     </>
   );
