@@ -343,18 +343,21 @@ describe.skipIf(!hasTestDatabase)("admin service", () => {
         slug: "personal-project",
       });
 
-      // 4 任务。
+      // 4 任务：一条未完成且截止日为过去的任务计入逾期；已完成的不计。
       await db.insert(tasks).values([
         {
           projectId: teamProjectId,
           spaceType: "team",
           title: "Team task 1",
+          dueDate: "2020-01-01",
           createdById: alice,
         },
         {
           projectId: teamProjectId,
           spaceType: "team",
           title: "Team task 2",
+          status: "done",
+          dueDate: "2020-01-01",
           createdById: bob,
         },
         { spaceType: "personal", title: "Personal task 1", createdById: bob },
@@ -387,9 +390,15 @@ describe.skipIf(!hasTestDatabase)("admin service", () => {
 
       await expect(getAdminOverview(db)).resolves.toEqual({
         userCount: 2,
+        adminCount: 1,
+        disabledCount: 0,
         teamCount: 1,
+        membershipCount: 2,
         projectCount: 2,
+        personalProjectCount: 1,
+        teamProjectCount: 1,
         taskCount: 4,
+        overdueTaskCount: 1,
         regCodeCount: 2,
         regCodeTotalQuota: 15,
         regCodeUsed: 8,

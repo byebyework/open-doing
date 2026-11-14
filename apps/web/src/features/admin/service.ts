@@ -1,6 +1,7 @@
 import { asc, count, desc, eq, ilike, or, sql } from "drizzle-orm";
 
 import type { DomainErrorI18n } from "@/lib/domain-error";
+import { todayInShanghai } from "@/lib/today";
 import { db, type DbClient } from "@/server/db/client";
 import {
   projects,
@@ -15,9 +16,21 @@ import {
 /** 管理概览：全量计数与注册码余量（均为实时查询，无缓存）。 */
 export interface AdminOverviewStats {
   userCount: number;
+  /** 管理员账号数（`users.is_admin`）。 */
+  adminCount: number;
+  /** 已禁用账号数（`users.is_disabled`）。 */
+  disabledCount: number;
   teamCount: number;
+  /** 团队成员关系条数（`team_memberships` 行数）。 */
+  membershipCount: number;
   projectCount: number;
+  /** 个人项目数（`projects.owner_id` 非空）。 */
+  personalProjectCount: number;
+  /** 团队项目数（`projects.team_id` 非空）。 */
+  teamProjectCount: number;
   taskCount: number;
+  /** 当前逾期任务数（未完成且截止日早于 Asia/Shanghai 的今天）。 */
+  overdueTaskCount: number;
   regCodeCount: number;
   regCodeTotalQuota: number;
   regCodeUsed: number;
@@ -118,32 +131,63 @@ function escapeLikePattern(query: string): string {
  *
  * 注册码的 `totalQuota` / `used` 是 SUM（无行时 coalesce 为 0），
  * `remaining = totalQuota - used`（可能为负，表示历史码超发，原样暴露）。
+ * 逾期的口径与 `isOverdue` 一致：未完成（status !== "done"）且
+ * `due_date < 今天`；「今天」取 Asia/Shanghai，避免服务器时区漂移。
  */
 export async function getAdminOverview(
   client: DbClient = db,
 ): Promise<AdminOverviewStats> {
-  const [userRows, teamRows, projectRows, taskRows, codeRows] = await Promise.all([
-    client.select({ value: sql<number>`count(*)::int` }).from(users),
-    client.select({ value: sql<number>`count(*)::int` }).from(teams),
-    client.select({ value: sql<number>`count(*)::int` }).from(projects),
-    client.select({ value: sql<number>`count(*)::int` }).from(tasks),
-    client
-      .select({
-        count: sql<number>`count(*)::int`,
-        totalQuota: sql<number>`coalesce(sum(${registrationCodes.maxUses}), 0)::int`,
-        used: sql<number>`coalesce(sum(${registrationCodes.usedCount}), 0)::int`,
-      })
-      .from(registrationCodes),
-  ]);
+  const today = todayInShanghai();
+
+  const [userRows, teamRows, membershipRows, projectRows, taskRows, codeRows] =
+    await Promise.all([
+      client
+        .select({
+          userCount: sql<number>`count(*)::int`,
+          adminCount: sql<number>`(count(*) filter (where ${users.isAdmin}))::int`,
+          disabledCount: sql<number>`(count(*) filter (where ${users.isDisabled}))::int`,
+        })
+        .from(users),
+      client.select({ value: sql<number>`count(*)::int` }).from(teams),
+      client
+        .select({ value: sql<number>`count(*)::int` })
+        .from(teamMemberships),
+      client
+        .select({
+          projectCount: sql<number>`count(*)::int`,
+          personalProjectCount: sql<number>`(count(*) filter (where ${projects.ownerId} is not null))::int`,
+          teamProjectCount: sql<number>`(count(*) filter (where ${projects.teamId} is not null))::int`,
+        })
+        .from(projects),
+      client
+        .select({
+          taskCount: sql<number>`count(*)::int`,
+          overdueTaskCount: sql<number>`(count(*) filter (where ${tasks.status} <> 'done' and ${tasks.dueDate} < ${today}::date))::int`,
+        })
+        .from(tasks),
+      client
+        .select({
+          count: sql<number>`count(*)::int`,
+          totalQuota: sql<number>`coalesce(sum(${registrationCodes.maxUses}), 0)::int`,
+          used: sql<number>`coalesce(sum(${registrationCodes.usedCount}), 0)::int`,
+        })
+        .from(registrationCodes),
+    ]);
 
   const regCodeTotalQuota = codeRows[0]!.totalQuota;
   const regCodeUsed = codeRows[0]!.used;
 
   return {
-    userCount: userRows[0]!.value,
+    userCount: userRows[0]!.userCount,
+    adminCount: userRows[0]!.adminCount,
+    disabledCount: userRows[0]!.disabledCount,
     teamCount: teamRows[0]!.value,
-    projectCount: projectRows[0]!.value,
-    taskCount: taskRows[0]!.value,
+    membershipCount: membershipRows[0]!.value,
+    projectCount: projectRows[0]!.projectCount,
+    personalProjectCount: projectRows[0]!.personalProjectCount,
+    teamProjectCount: projectRows[0]!.teamProjectCount,
+    taskCount: taskRows[0]!.taskCount,
+    overdueTaskCount: taskRows[0]!.overdueTaskCount,
     regCodeCount: codeRows[0]!.count,
     regCodeTotalQuota,
     regCodeUsed,
