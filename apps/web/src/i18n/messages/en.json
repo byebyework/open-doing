@@ -100,7 +100,7 @@
     "usernameLabel": "Username",
     "usernameRequired": "Enter a username",
     "usernamePlaceholder": "Enter a username",
-    "usernameExtra": "Used for sign-in only",
+    "usernameExtra": "Used for sign-in only; letters, digits and underscores — no Chinese",
     "usernameRegisterPlaceholder": "Pick a name, globally unique",
     "usernameLength": "Username must be {min}–{max} characters",
     "usernameTaken": "Username already taken",
@@ -166,7 +166,8 @@
     "uidHintTitle": "Your Doing ID",
     "noPasswordRecoveryAria": "Password recovery note",
     "noPasswordRecoveryTitle": "Password recovery",
-    "noPasswordRecoveryDetail": "V1 has no self-service recovery; if you forget your password, ask a team admin to help reset it."
+    "noPasswordRecoveryDetail": "V1 has no self-service recovery; if you forget your password, ask a team admin to help reset it.",
+    "requiredMarkAria": "required"
   },
   "users": {
     "profile": {

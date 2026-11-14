@@ -9,6 +9,14 @@
 export const USERNAME_MIN_LENGTH = 2;
 export const USERNAME_MAX_LENGTH = 20;
 
+/**
+ * 用户名字符集：ASCII 字母 / 数字 / 下划线（2026-11-14 追加）。
+ *
+ * 帐号仅用于登录，不允许中文（含其他非 ASCII 字符）；展示名（昵称）
+ * 不受此限制。登录侧不校验字符集——存量中文帐号仍可正常登录。
+ */
+export const USERNAME_PATTERN = /^[A-Za-z0-9_]+$/;
+
 /** 密码最短 8 位。 */
 export const PASSWORD_MIN_LENGTH = 8;
 

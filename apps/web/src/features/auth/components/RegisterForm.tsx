@@ -28,11 +28,27 @@ import {
   PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
+  USERNAME_PATTERN,
 } from "../constants";
 import type { AuthInput } from "../service";
 
 /** 性别单选的三个取值（与服务端 AuthInput 的枚举一致）。 */
 const GENDER_VALUES = ["male", "female", "secret"] as const;
+
+/**
+ * 必填标记：红色 * 号（视觉）+ 屏读文案（i18n）。
+ *
+ * 星号 aria-hidden，屏幕阅读器读独立的「必填」文案；文案必须走消息包
+ * （AtomsShadcn 守卫测试禁止硬编码 sr-only 文案）。
+ */
+function RequiredMark({ translate }: { translate: (key: string) => string }) {
+  return (
+    <span className="text-[var(--error)]" data-testid="auth-required-mark">
+      <span aria-hidden="true"> *</span>
+      <span className="sr-only">{translate("requiredMarkAria")}</span>
+    </span>
+  );
+}
 
 const GENDER_OPTIONS = [
   { value: "male", labelKey: "genderMale" },
@@ -92,7 +108,8 @@ export function createRegisterSchema(t: TranslateFn) {
         .string()
         .min(1, t("usernameRequired"))
         .min(USERNAME_MIN_LENGTH, t("usernameLength", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH }))
-        .max(USERNAME_MAX_LENGTH, t("usernameLength", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH })),
+        .max(USERNAME_MAX_LENGTH, t("usernameLength", { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH }))
+        .regex(USERNAME_PATTERN, t("usernameInvalid")),
       password: z
         .string()
         .min(1, t("passwordRequired"))
@@ -139,7 +156,9 @@ export function RegisterForm() {
   const tCommon = useTranslations("common");
   // 校验规则由 createRegisterSchema 构建；取词用同一份 messages 的 auth
   // 子树构造 TranslateFn（key 为 string），与 next-intl 运行时同源。
-  const schema = createRegisterSchema(createTranslator(useMessages().auth));
+  // 同一 TranslateFn 也喂给 RequiredMark（屏读「必填」文案）。
+  const tPlain = createTranslator(useMessages().auth);
+  const schema = createRegisterSchema(tPlain);
   type RegisterValues = z.infer<typeof schema>;
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -206,7 +225,10 @@ export function RegisterForm() {
 
       <form onSubmit={onSubmit} noValidate>
         <div className="mb-4 flex flex-col gap-2">
-          <Label htmlFor="register-username">{t("usernameLabel")}</Label>
+          <Label htmlFor="register-username">
+            {t("usernameLabel")}
+            <RequiredMark translate={tPlain} />
+          </Label>
           <Input
             id="register-username"
             type="text"
@@ -234,7 +256,10 @@ export function RegisterForm() {
         </div>
 
         <div className="mb-4 flex flex-col gap-2">
-          <Label htmlFor="register-password">{t("passwordLabel")}</Label>
+          <Label htmlFor="register-password">
+            {t("passwordLabel")}
+            <RequiredMark translate={tPlain} />
+          </Label>
           <Input
             id="register-password"
             type="password"
@@ -255,7 +280,10 @@ export function RegisterForm() {
         </div>
 
         <div className="mb-4 flex flex-col gap-2">
-          <Label htmlFor="register-confirm-password">{t("confirmPasswordLabel")}</Label>
+          <Label htmlFor="register-confirm-password">
+            {t("confirmPasswordLabel")}
+            <RequiredMark translate={tPlain} />
+          </Label>
           <Input
             id="register-confirm-password"
             type="password"
@@ -346,7 +374,10 @@ export function RegisterForm() {
         </div>
 
         <div className="mb-4 flex flex-col gap-2">
-          <Label htmlFor="register-email">{t("emailLabel")}</Label>
+          <Label htmlFor="register-email">
+            {t("emailLabel")}
+            <RequiredMark translate={tPlain} />
+          </Label>
           <Input
             id="register-email"
             type="email"
@@ -390,7 +421,10 @@ export function RegisterForm() {
         </div>
 
         <div className="mb-4 flex flex-col gap-2">
-          <Label htmlFor="register-registration-code">{t("registrationCodeLabel")}</Label>
+          <Label htmlFor="register-registration-code">
+            {t("registrationCodeLabel")}
+            <RequiredMark translate={tPlain} />
+          </Label>
           <Input
             id="register-registration-code"
             type="text"

@@ -100,7 +100,7 @@
     "usernameLabel": "帐号",
     "usernameRequired": "请输入帐号",
     "usernamePlaceholder": "请输入帐号",
-    "usernameExtra": "仅用于登录",
+    "usernameExtra": "仅用于登录；支持字母、数字、下划线，不支持中文",
     "usernameRegisterPlaceholder": "给自己起个名字，全局唯一",
     "usernameLength": "帐号需为 {min}–{max} 个字符",
     "usernameTaken": "帐号已存在",
@@ -166,7 +166,8 @@
     "uidHintTitle": "专属 Doing ID",
     "noPasswordRecoveryAria": "密码找回说明",
     "noPasswordRecoveryTitle": "密码找回",
-    "noPasswordRecoveryDetail": "v1 不提供自助找回；如忘记密码，请联系团队管理员协助重置。"
+    "noPasswordRecoveryDetail": "v1 不提供自助找回；如忘记密码，请联系团队管理员协助重置。",
+    "requiredMarkAria": "必填"
   },
   "users": {
     "profile": {

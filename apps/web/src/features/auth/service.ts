@@ -11,6 +11,7 @@ import {
   PHONE_PATTERN,
   USERNAME_MAX_LENGTH,
   USERNAME_MIN_LENGTH,
+  USERNAME_PATTERN,
 } from "./constants";
 
 export {
@@ -146,6 +147,12 @@ export function validateRegistration(input: AuthInput): {
         params: { min: USERNAME_MIN_LENGTH, max: USERNAME_MAX_LENGTH },
       },
     );
+  }
+  // 字符集白名单：ASCII 字母 / 数字 / 下划线，禁止中文（含其他非 ASCII）。
+  if (!USERNAME_PATTERN.test(username)) {
+    throw new AuthError("VALIDATION", "帐号包含不支持的字符", "username", {
+      key: "usernameInvalid",
+    });
   }
   if (!password) {
     throw new AuthError("VALIDATION", "请输入密码", "password", {
