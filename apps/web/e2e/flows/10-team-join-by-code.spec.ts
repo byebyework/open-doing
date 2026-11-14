@@ -56,6 +56,9 @@ async function submitJoinCode(page: Page, code: string): Promise<void> {
   await page.getByTestId(TEST_IDS.teams.joinSubmitButton).click();
 }
 
+// 双账号注册 + 邀请/申请双链路，接近单用例 60s 预算——对齐 flow 6/7 的 120s。
+test.describe.configure({ timeout: 120_000 });
+
 test.describe("flow 10: 凭码加入团队", () => {
   test("A 建团，B 凭码申请被拒后再次申请并通过", async ({
     page,
@@ -133,11 +136,12 @@ test.describe("flow 10: 凭码加入团队", () => {
         page.getByText("暂无待处理的加入申请"),
       ).toBeVisible();
 
-      // B：刷新 /invites，看到「未通过」tag。
+      // B：刷新 /invites，看到「未通过」tag（已处理记录默认折叠，先展开）。
       await guestPage.goto("/invites");
       await expect(
         guestPage.getByRole("heading", { name: "我的加入申请（1）" }),
       ).toBeVisible();
+      await guestPage.getByText("已处理记录").evaluate((el) => (el as HTMLElement).click());
       await expect(
         guestPage.getByText("未通过", { exact: true }),
       ).toBeVisible();
@@ -167,6 +171,7 @@ test.describe("flow 10: 凭码加入团队", () => {
       await expect(
         guestPage.getByRole("heading", { name: "我的加入申请（2）" }),
       ).toBeVisible();
+      await guestPage.getByText("已处理记录").click();
       await expect(
         guestPage.getByText("已通过", { exact: true }),
       ).toBeVisible();

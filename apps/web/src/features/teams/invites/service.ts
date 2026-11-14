@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { asc, and, desc, eq, inArray, sql } from "drizzle-orm";
 import type { Team, TeamInvite } from "@open-doing/types";
 
 import { findByUid } from "@/features/users/service";
@@ -321,6 +321,8 @@ export interface ReceivedInviteView {
   };
   /** 邀请团队当前成员数（原型「团队 N 人」）。 */
   memberCount: number;
+  /** 成员头像栈（最多 4 个，按加入时间升序；与 memberCount 同源）。 */
+  memberAvatars: { userId: string; name: string }[];
 }
 
 /** 用户收到的全部邀请（全状态），pending 在前，其余按响应/发出时间倒序。 */
@@ -351,10 +353,32 @@ export async function listReceivedInvites(
       desc(teamInvites.createdAt),
     );
 
+  // 头像栈数据：一次取回涉及团队的成员（按加入时间升序），按团队分组截前 4 个。
+  const teamIds = [...new Set(rows.map((row) => row.team.id))];
+  const memberRows = teamIds.length
+    ? await client
+        .select({
+          teamId: teamMemberships.teamId,
+          userId: users.id,
+          name: users.name,
+        })
+        .from(teamMemberships)
+        .innerJoin(users, eq(users.id, teamMemberships.userId))
+        .where(inArray(teamMemberships.teamId, teamIds))
+        .orderBy(asc(teamMemberships.joinedAt))
+    : [];
+  const membersByTeam = new Map<string, { userId: string; name: string }[]>();
+  for (const member of memberRows) {
+    const list = membersByTeam.get(member.teamId) ?? [];
+    if (list.length < 4) list.push({ userId: member.userId, name: member.name });
+    membersByTeam.set(member.teamId, list);
+  }
+
   return rows.map((row) => ({
     invite: toInvite(row.invite),
     team: row.team,
     invitedBy: row.invitedBy,
     memberCount: row.memberCount,
+    memberAvatars: membersByTeam.get(row.team.id) ?? [],
   }));
 }
