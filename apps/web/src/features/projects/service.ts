@@ -14,11 +14,17 @@ import { db } from "@/server/db/client";
 import { projects, subtasks, tasks } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 
-/** 项目名称长度上限（与表单校验一致）。 */
-export const PROJECT_NAME_MAX_LENGTH = 50;
+// 限长常量唯一来源：features/projects/constants.ts（客户端安全）。
+// 服务端校验器仍在本模块（server-only），常量经重导出兼容既有引用。
+import {
+  PROJECT_DESCRIPTION_MAX_LENGTH,
+  PROJECT_NAME_MAX_LENGTH,
+} from "./constants";
 
-/** 项目描述长度上限（与表单校验一致）。 */
-export const PROJECT_DESCRIPTION_MAX_LENGTH = 500;
+export {
+  PROJECT_DESCRIPTION_MAX_LENGTH,
+  PROJECT_NAME_MAX_LENGTH,
+} from "./constants";
 
 type ProjectRow = typeof projects.$inferSelect;
 

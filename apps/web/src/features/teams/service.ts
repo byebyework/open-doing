@@ -14,8 +14,13 @@ import { assertCan, getMembership, toMembership } from "./permissions";
 const MAX_SLUG_SCAN = 50;
 const MAX_SLUG_ATTEMPTS = 5;
 
-const NAME_MIN_LENGTH = 2;
-export const NAME_MAX_LENGTH = 30;
+// 限长常量唯一来源：features/teams/constants.ts（客户端安全）。
+import {
+  NAME_MAX_LENGTH,
+  NAME_MIN_LENGTH,
+} from "./constants";
+
+export { NAME_MAX_LENGTH, NAME_MIN_LENGTH } from "./constants";
 
 export type TeamErrorCode = "VALIDATION" | "SLUG_FAILED";
 

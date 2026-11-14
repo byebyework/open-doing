@@ -5,7 +5,7 @@ import { CharCounter } from "@/components/ui/CharCounter";
 import {
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
-} from "@/features/projects/service";
+} from "@/features/projects/constants";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
