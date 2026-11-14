@@ -7,6 +7,7 @@ import { CARD_SHELL } from "@/components/ui/card";
 import { Alert } from "@/components/ui/shadcn/alert";
 import { Badge } from "@/components/ui/shadcn/badge";
 
+import { codeStatus, type CodeStatus } from "../code-status";
 import type { AdminCodeRow, AdminOverviewStats } from "../service";
 
 /** 14px 线性图标（与原型统计卡的 icon-chip 同款）。 */
@@ -84,17 +85,6 @@ function WarningIcon() {
       <path d="M12 17h.01" />
     </svg>
   );
-}
-
-/** 注册码余量状态（阈值写死：剩余 === 0 耗尽；0 < 剩余 ≤ 2 临近耗尽）。 */
-type CodeStatus = "normal" | "exhausted" | "low";
-
-function codeStatus(maxUses: number, usedCount: number): CodeStatus {
-  const remaining = maxUses - usedCount;
-  if (remaining <= 0) return "exhausted";
-  if (remaining <= 2) return "low";
-
-  return "normal";
 }
 
 /** 状态 → 文案 key 与徽标色组（原型 badge-done / badge-overdue / badge-due-soon）。 */
