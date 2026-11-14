@@ -55,7 +55,9 @@
     "pagination": "Pagination",
     "prevPage": "Previous page",
     "nextPage": "Next page",
-    "morePages": "More pages"
+    "morePages": "More pages",
+    "copyCopied": "Copied {value}",
+    "copyFailed": "Copy failed. Please select it manually."
   },
   "errors": {
     "notLoggedIn": "Please sign in first",
@@ -218,7 +220,8 @@
     "analysis": "Analysis",
     "openNavAria": "Open navigation",
     "collapseSidebar": "Collapse sidebar",
-    "expandSidebar": "Expand sidebar"
+    "expandSidebar": "Expand sidebar",
+    "aboutSystem": "About system"
   },
   "tasks": {
     "title": "Title",
@@ -1041,5 +1044,27 @@
     "calendarTitle": "Calendar · Open Doing",
     "analysisTitle": "Analysis · Open Doing",
     "teamModuleTitle": "{team} {module} · Open Doing"
+  },
+  "about": {
+    "title": "About system",
+    "subtitle": "Version and runtime details of the current deployment; read live, no refresh mechanism.",
+    "buildCardTitle": "Build & version",
+    "runtimeCardTitle": "Runtime environment",
+    "fieldVersion": "App version",
+    "fieldCommit": "Git commit",
+    "fieldBuildTime": "Built at",
+    "fieldEnv": "Environment",
+    "fieldNode": "Node version",
+    "fieldDatabase": "Database",
+    "fieldUptime": "Uptime",
+    "envProduction": "Production",
+    "envDevelopment": "Development",
+    "devUnknown": "Unknown (dev mode)",
+    "uptimeDaysHours": "{days}d {hours}h",
+    "uptimeHoursMinutes": "{hours}h {minutes}m",
+    "uptimeMinutes": "{minutes}m",
+    "uptimeMoments": "under a minute",
+    "buildFootnote": "Build metadata is injected at image build time; dev mode shows \"Unknown (dev mode)\".",
+    "uptimeFootnote": "Uptime is the accumulated time since the current process started."
   }
 }

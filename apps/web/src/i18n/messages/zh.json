@@ -55,7 +55,9 @@
     "pagination": "分页导航",
     "prevPage": "上一页",
     "nextPage": "下一页",
-    "morePages": "更多页"
+    "morePages": "更多页",
+    "copyCopied": "已复制 {value}",
+    "copyFailed": "复制失败，请手动选择"
   },
   "errors": {
     "notLoggedIn": "请先登录",
@@ -218,7 +220,8 @@
     "analysis": "分析",
     "openNavAria": "打开导航",
     "collapseSidebar": "收起侧栏",
-    "expandSidebar": "展开侧栏"
+    "expandSidebar": "展开侧栏",
+    "aboutSystem": "关于系统"
   },
   "tasks": {
     "title": "标题",
@@ -1041,5 +1044,27 @@
     "calendarTitle": "日历 · Open Doing",
     "analysisTitle": "分析 · Open Doing",
     "teamModuleTitle": "{team} {module} · Open Doing"
+  },
+  "about": {
+    "title": "关于系统",
+    "subtitle": "当前部署的版本与运行环境信息；数据实时读取，无需刷新机制。",
+    "buildCardTitle": "版本与构建",
+    "runtimeCardTitle": "运行环境",
+    "fieldVersion": "应用版本",
+    "fieldCommit": "Git 提交",
+    "fieldBuildTime": "构建时间",
+    "fieldEnv": "部署环境",
+    "fieldNode": "Node 版本",
+    "fieldDatabase": "数据库",
+    "fieldUptime": "运行时长",
+    "envProduction": "生产",
+    "envDevelopment": "开发",
+    "devUnknown": "未知（开发模式）",
+    "uptimeDaysHours": "{days} 天 {hours} 小时",
+    "uptimeHoursMinutes": "{hours} 小时 {minutes} 分钟",
+    "uptimeMinutes": "{minutes} 分钟",
+    "uptimeMoments": "不到 1 分钟",
+    "buildFootnote": "构建元数据在镜像构建时注入；开发模式下显示「未知（开发模式）」。",
+    "uptimeFootnote": "运行时长为当前进程自启动起的累计时间。"
   }
 }

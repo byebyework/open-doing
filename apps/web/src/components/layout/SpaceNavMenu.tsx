@@ -191,6 +191,26 @@ function AdminConsoleIcon() {
   );
 }
 
+/** 关于系统图标（圆圈 i，信息语义）。 */
+function AboutSystemIcon() {
+  return (
+    <svg
+      className={ICON_CLASS}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 16v-4" />
+      <path d="M12 8h.01" />
+    </svg>
+  );
+}
+
 /** 导航项：模块 + i18n 标签 key + 图标（顺序与原型侧栏一致）。 */
 interface SpaceNavModule {
   module: SpaceModule;
@@ -297,6 +317,7 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
     pathname === invitesHref() || pathname.startsWith(`${invitesHref()}/`);
   // 管理控制台独立于业务 Space 体系，active 判定直接按 /admin 前缀。
   const adminActive = pathname === "/admin" || pathname.startsWith("/admin/");
+  const aboutActive = pathname === "/about" || pathname.startsWith("/about/");
 
   return (
     <>
@@ -366,6 +387,20 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
             </NavLinkBody>
           </Link>
         ) : null}
+        {/* 关于系统入口：所有登录用户可见。 */}
+        <Link
+          href="/about"
+          aria-current={aboutActive ? "page" : undefined}
+          title={t("aboutSystem")}
+          className={`${NAV_ITEM_BASE} ${
+            aboutActive ? NAV_ITEM_ACTIVE : NAV_ITEM_IDLE
+          }`}
+        >
+          <NavLinkBody>
+            <AboutSystemIcon />
+            <span className={NAV_LABEL_CLASS}>{t("aboutSystem")}</span>
+          </NavLinkBody>
+        </Link>
       </div>
     </>
   );

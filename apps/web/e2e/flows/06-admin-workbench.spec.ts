@@ -53,6 +53,11 @@ function navConsoleLabel(): string {
   return zhMessages.nav.adminConsole;
 }
 
+/** 业务侧栏「关于系统」入口文案（nav.aboutSystem，值取自 zh 消息包）。 */
+function aboutNavLabel(): string {
+  return zhMessages.nav.aboutSystem;
+}
+
 /**
  * 在 e2e 库上执行一组查询：调用前校验库名，结束一定释放连接。
  *
@@ -137,6 +142,14 @@ test.describe("flow 6: admin workbench", () => {
     const adminNavLink = page.getByRole("link", { name: navConsoleLabel() });
     await expect(adminNavLink).toBeVisible();
 
+    // 「关于系统」入口：所有登录用户可见；进入 /about 断言标题渲染。
+    const aboutNavLink = page.getByRole("link", { name: aboutNavLabel() });
+    await expect(aboutNavLink).toBeVisible();
+    await aboutNavLink.click();
+    await expect(
+      page.getByRole("heading", { level: 1, name: zhMessages.about.title }),
+    ).toBeVisible();
+
     // ===== 2. /admin 概览可达，统计卡已渲染 =====
     await page.goto("/admin");
     await expect(
@@ -192,10 +205,14 @@ test.describe("flow 6: admin workbench", () => {
         victimPage.getByRole("heading", { level: 1 }),
       ).toBeVisible();
 
-      // 普通用户侧栏不出现管理入口（服务端按 is_admin 判定，无 DOM）。
+      // 普通用户侧栏不出现管理入口（服务端按 is_admin 判定，无 DOM）；
+      // 「关于系统」入口对所有登录用户可见。
       await expect(
         victimPage.getByRole("link", { name: navConsoleLabel() }),
       ).toHaveCount(0);
+      await expect(
+        victimPage.getByRole("link", { name: aboutNavLabel() }),
+      ).toBeVisible();
 
       const victimId = await userIdOf(victimUsername);
 

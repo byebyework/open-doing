@@ -33,6 +33,13 @@ RUN pnpm install --frozen-lockfile
 # ---- build：Turbopack 生产构建（产物 .next）----
 FROM base AS build
 ENV NEXT_TELEMETRY_DISABLED=1
+# 构建元数据（关于系统页展示）：构建时由 CI 传入，例如
+#   --build-arg GIT_COMMIT_SHA=$(git rev-parse HEAD) --build-arg BUILD_TIME="..."
+# Next 在构建期内联 process.env 读取；缺省为空，页面显示「未知（开发模式）」。
+ARG GIT_COMMIT_SHA=""
+ARG BUILD_TIME=""
+ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA} \
+    BUILD_TIME=${BUILD_TIME}
 # 根清单必须存在：Turbopack 靠最近的 lockfile 定位 monorepo workspace 根（/repo），
 # 缺失时会把解析根钉在 apps/web，导致 pnpm 符号链接的 node_modules 被视为根外文件。
 COPY --from=deps /repo/package.json /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml ./
