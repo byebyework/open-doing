@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
+  <meta name="description" content="Open Doing 关于系统页：版本与构建、运行环境信息。" />
+  <title>关于系统 · Open Doing</title>
+  <link rel="stylesheet" href="assets/design-tokens.css" />
+  <link rel="stylesheet" href="assets/prototype.css" />
+  <style>
+    /* Hallmark · v2.0.0 · shape: app screen; theme: open-doing design-tokens (locked baseline); scope: about page equal-height cards */
+    /* 两卡行数不等（3 vs 4）：等高拉伸 + 脚注沉底，保持双卡底边与脚注对齐 */
+    .grid-2.even { align-items: stretch; }
+    .grid-2.even > .card { display: flex; flex-direction: column; }
+    .grid-2.even > .card .card-footer { margin-top: auto; }
+    /* 基线 .card + .card 的 margin-top 在 grid 里仍生效，把右卡推低 16px，归零 */
+    .grid-2.even > .card + .card { margin-top: 0; }
+    /* Hallmark audit 门 40：badge-info 亮蓝 #0d99ff ≈3.1:1 < 4.5:1（11px 小字），
+       换基线 .alert-info 的深蓝对 #0b6fb8（≈4.6:1）——与 .badge-due-soon 用 #a66b00 同款修法 */
+    .badge-info { color: #0b6fb8; }
+  </style>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 业务侧栏（账号分组含「关于系统」，当前项高亮） ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="my-tasks.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <nav>
+        <div class="nav-group-label">个人空间</div>
+        <a class="nav-item" href="space-dashboard-personal.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+          Dashboard
+        </a>
+        <a class="nav-item" href="space-projects-personal.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          项目
+        </a>
+        <a class="nav-item" href="space-kanban-personal.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M9 3v18M15 3v18"/></svg>
+          Kanban
+        </a>
+        <a class="nav-item" href="space-calendar-personal.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+          Calendar
+        </a>
+        <a class="nav-item" href="space-analysis-personal.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          Analysis
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <nav>
+        <div class="nav-group-label">账号</div>
+        <a class="nav-item" href="invites.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          待处理邀请
+          <span class="count-badge">2</span>
+        </a>
+        <a class="nav-item active" href="about.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          关于系统
+        </a>
+      </nav>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">个人空间 <span class="sep">/</span> <strong>关于系统</strong></div>
+      </header>
+
+      <div class="content">
+        <div class="page-header">
+          <div class="text">
+            <h1 class="h1">关于系统</h1>
+            <div class="sub">当前部署的版本与运行环境信息；数据实时读取，无需刷新机制。</div>
+          </div>
+        </div>
+
+        <div class="grid-2 even">
+          <!-- 版本与构建 -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">版本与构建</span>
+            </div>
+            <div class="meta-list">
+              <div class="meta-row">
+                <span class="k">应用版本</span>
+                <span class="v mono">v0.1.0
+                  <button class="button button-ghost button-sm" type="button" data-copy="v0.1.0" aria-label="复制应用版本" style="padding:2px 6px;">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </button>
+                </span>
+              </div>
+              <div class="meta-row">
+                <span class="k">Git 提交</span>
+                <span class="v"><code class="mono">e3f1c2a7</code>
+                  <button class="button button-ghost button-sm" type="button" data-copy="e3f1c2a7" aria-label="复制 Git 提交号" style="padding:2px 6px;">
+                    <svg aria-hidden="true" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                  </button>
+                </span>
+              </div>
+              <div class="meta-row">
+                <span class="k">构建时间</span>
+                <span class="v">2026-11-14 10:32（Asia/Shanghai）</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <span class="text-caption">构建元数据在镜像构建时注入；开发模式下显示「未知（开发模式）」。</span>
+            </div>
+          </div>
+
+          <!-- 运行环境 -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">运行环境</span>
+            </div>
+            <div class="meta-list">
+              <div class="meta-row">
+                <span class="k">部署环境</span>
+                <span class="v"><span class="badge badge-info no-dot">生产</span></span>
+              </div>
+              <div class="meta-row">
+                <span class="k">Node 版本</span>
+                <span class="v mono">v24.11.0</span>
+              </div>
+              <div class="meta-row">
+                <span class="k">数据库</span>
+                <span class="v">PostgreSQL 16</span>
+              </div>
+              <div class="meta-row">
+                <span class="k">运行时长</span>
+                <span class="v">3 天 4 小时</span>
+              </div>
+            </div>
+            <div class="card-footer">
+              <span class="text-caption">运行时长为当前进程自启动起的累计时间。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/prototype.js"></script>
+  <script>
+    // 复制按钮：写剪贴板 + toast 反馈（原型演示；生产为 client 组件 + sonner）
+    document.querySelectorAll("[data-copy]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var value = btn.getAttribute("data-copy");
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(value).then(
+            function () { toast("已复制 " + value, "success"); },
+            function () { toast("复制失败，请手动选择", "error"); }
+          );
+        } else {
+          toast("当前浏览器不支持一键复制", "error");
+        }
+      });
+    });
+  </script>
+</body>
+</html>
