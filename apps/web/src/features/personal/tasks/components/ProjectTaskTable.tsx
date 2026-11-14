@@ -220,10 +220,11 @@ export function ProjectTaskTable({
                         done ? "opacity-[0.62]" : ""
                       }`}
                     >
-                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      {/* 标题列限宽 + 单行省略：无空格长串不再撑出横向滚动（2026-11-14） */}
+                      <td className="w-[40%] max-w-0 border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <Link
                           href={personalTaskHref(task.id)}
-                          className={`min-w-0 break-words font-medium ${
+                          className={`block truncate font-medium ${
                             done
                               ? "text-[var(--ink-400)] line-through"
                               : "text-[var(--ink-900)] no-underline hover:underline"
