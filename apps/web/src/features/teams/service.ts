@@ -15,7 +15,7 @@ const MAX_SLUG_SCAN = 50;
 const MAX_SLUG_ATTEMPTS = 5;
 
 const NAME_MIN_LENGTH = 2;
-const NAME_MAX_LENGTH = 30;
+export const NAME_MAX_LENGTH = 30;
 
 export type TeamErrorCode = "VALIDATION" | "SLUG_FAILED";
 

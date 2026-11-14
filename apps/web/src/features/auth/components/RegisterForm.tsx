@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
 import { Loader2Icon } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -173,6 +174,7 @@ export function RegisterForm() {
     setError,
     control,
     formState: { errors },
+    watch,
   } = useForm<RegisterValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -186,6 +188,9 @@ export function RegisterForm() {
       phone: "",
     },
   });
+
+  const usernameValue = watch("username");
+  const nicknameValue = watch("nickname");
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -248,7 +253,8 @@ export function RegisterForm() {
             disabled={submitting}
             {...register("username")}
           />
-          {errors.username ? (
+                      <CharCounter value={usernameValue} max={USERNAME_MAX_LENGTH} />
+{errors.username ? (
             <p id="register-username-error" className="text-[12.5px] text-[var(--error)]">
               {errors.username.message}
             </p>
@@ -326,7 +332,8 @@ export function RegisterForm() {
             disabled={submitting}
             {...register("nickname")}
           />
-          {errors.nickname ? (
+                      <CharCounter value={nicknameValue ?? ""} max={NICKNAME_MAX_LENGTH} />
+{errors.nickname ? (
             <p id="register-nickname-error" className="text-[12.5px] text-[var(--error)]">
               {errors.nickname.message}
             </p>

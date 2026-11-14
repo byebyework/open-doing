@@ -2,6 +2,11 @@
 
 import type { Project } from "@open-doing/types";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
+import {
+  PROJECT_DESCRIPTION_MAX_LENGTH,
+  PROJECT_NAME_MAX_LENGTH,
+} from "../service";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -69,6 +74,7 @@ export function TeamProjectForm({
     handleSubmit,
     setError,
     formState: { errors },
+    watch,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -76,6 +82,9 @@ export function TeamProjectForm({
       description: project?.description ?? "",
     },
   });
+
+  const nameValue = watch("name");
+  const descriptionValue = watch("description");
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -134,7 +143,8 @@ export function TeamProjectForm({
           disabled={submitting}
           {...register("name")}
         />
-        {errors.name ? (
+        <CharCounter value={nameValue} max={PROJECT_NAME_MAX_LENGTH} />
+          {errors.name ? (
           <p id="team-project-name-error" className="text-[12.5px] text-[var(--error)]">
             {errors.name.message}
           </p>
@@ -155,7 +165,8 @@ export function TeamProjectForm({
           disabled={submitting}
           {...register("description")}
         />
-        {errors.description ? (
+        <CharCounter value={descriptionValue} max={PROJECT_DESCRIPTION_MAX_LENGTH} />
+          {errors.description ? (
           <p id="team-project-description-error" className="text-[12.5px] text-[var(--error)]">
             {errors.description.message}
           </p>

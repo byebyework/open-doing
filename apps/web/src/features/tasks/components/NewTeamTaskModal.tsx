@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
 import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
@@ -154,6 +155,9 @@ export function NewTeamTaskModal({
     }
   }, [open, reset, defaultProject, defaultAssignee, dueDateDefault]);
 
+  const titleValue = watch("title");
+  const descriptionValue = watch("description");
+
   const onSubmit = handleSubmit(async (values) => {
     // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
     // 期间按钮恢复可点/可回车提交，这里按 open 作幂等闸门避免重复创建。
@@ -224,7 +228,8 @@ export function NewTeamTaskModal({
               disabled={submitting}
               {...register("title")}
             />
-            {errors.title ? (
+                        <CharCounter value={titleValue} max={TASK_TITLE_MAX_LENGTH} />
+{errors.title ? (
               <p id="team-task-title-error" className="text-[12.5px] text-[var(--error)]">
                 {errors.title.message}
               </p>
@@ -356,7 +361,8 @@ export function NewTeamTaskModal({
               disabled={submitting}
               {...register("description")}
             />
-            {errors.description ? (
+                        <CharCounter value={descriptionValue} max={TASK_DESCRIPTION_MAX_LENGTH} />
+{errors.description ? (
               <p
                 id="team-task-description-error"
                 className="text-[12.5px] text-[var(--error)]"

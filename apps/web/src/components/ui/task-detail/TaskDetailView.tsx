@@ -1,6 +1,7 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
 import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
 import {
   getTaskProgress,
@@ -168,6 +169,7 @@ function EditTaskModal({
     handleSubmit,
     reset,
     formState: { errors },
+    watch,
   } = useForm<EditTaskFormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
@@ -190,6 +192,9 @@ function EditTaskModal({
       });
     }
   }, [open, reset, task.title, task.description, task.dueDate, task.startDate]);
+
+  const titleValue = watch("title");
+  const descriptionValue = watch("description");
 
   const onSubmit = handleSubmit(async (values) => {
     // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
@@ -233,7 +238,8 @@ function EditTaskModal({
               disabled={submitting}
               {...register("title")}
             />
-            {errors.title ? (
+                          <CharCounter value={titleValue} max={TASK_TITLE_MAX_LENGTH} />
+{errors.title ? (
               <p id="edit-task-title-error" className="text-[12.5px] text-[var(--error)]">
                 {errors.title.message}
               </p>
@@ -288,7 +294,8 @@ function EditTaskModal({
               disabled={submitting}
               {...register("description")}
             />
-            {errors.description ? (
+                          <CharCounter value={descriptionValue} max={TASK_DESCRIPTION_MAX_LENGTH} />
+{errors.description ? (
               <p
                 id="edit-task-description-error"
                 className="text-[12.5px] text-[var(--error)]"

@@ -1,6 +1,11 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
+import {
+  PROJECT_DESCRIPTION_MAX_LENGTH,
+  PROJECT_NAME_MAX_LENGTH,
+} from "@/features/projects/service";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -99,6 +104,9 @@ export function PersonalProjectFormModal({
     }
   }, [open, reset, mode, project]);
 
+  const nameValue = watch("name");
+  const descriptionValue = watch("description");
+
   const onSubmit = handleSubmit(async (values) => {
     // 成功分支会关闭弹窗，但内容在退出保持窗口（约 200ms）内仍可交互；
     // 期间按钮恢复可点/可回车提交，这里按 open 作幂等闸门避免重复保存。
@@ -183,6 +191,7 @@ export function PersonalProjectFormModal({
               disabled={submitting}
               {...register("name")}
             />
+            <CharCounter value={nameValue} max={PROJECT_NAME_MAX_LENGTH} />
             {errors.name ? (
               <p id="personal-project-name-error" className="text-[12.5px] text-[var(--error)]">
                 {errors.name.message}
@@ -204,6 +213,7 @@ export function PersonalProjectFormModal({
             <div className="text-right text-[12px] text-[var(--ink-400)]">
               {watch("description").length} / 500
             </div>
+            <CharCounter value={descriptionValue} max={PROJECT_DESCRIPTION_MAX_LENGTH} />
             {errors.description ? (
               <p className="text-[12.5px] text-[var(--error)]">
                 {errors.description.message}

@@ -1,6 +1,8 @@
 "use client";
 
 import { zodResolver } from "@hookform/resolvers/zod";
+import { CharCounter } from "@/components/ui/CharCounter";
+import { NAME_MAX_LENGTH } from "../service";
 import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
@@ -41,10 +43,13 @@ export function CreateTeamForm() {
     handleSubmit,
     setError,
     formState: { errors },
+    watch,
   } = useForm<CreateTeamValues>({
     resolver: zodResolver(schema),
     defaultValues: { name: "" },
   });
+
+  const nameValue = watch("name");
 
   const onSubmit = handleSubmit(async (values) => {
     setSubmitting(true);
@@ -95,7 +100,8 @@ export function CreateTeamForm() {
             disabled={submitting}
             {...register("name")}
           />
-          {errors.name ? (
+          <CharCounter value={nameValue} max={NAME_MAX_LENGTH} />
+            {errors.name ? (
             <p id="create-team-name-error" className="text-[12.5px] text-[var(--error)]">
               {errors.name.message}
             </p>

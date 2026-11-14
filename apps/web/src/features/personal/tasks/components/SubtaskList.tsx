@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/shadcn/button";
 import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import { Input } from "@/components/ui/shadcn/input";
+import { CharCounter } from "@/components/ui/CharCounter";
 import { SUBTASK_TITLE_MAX_LENGTH } from "@/lib/task-fields";
 
 /** 子任务列表入参（`onToggle` / `onAdd` / `onRemove` 缺省时对应 UI 只读或隐藏）。 */
@@ -133,32 +134,35 @@ export function SubtaskList({
       )}
 
       {onAdd ? (
-        <div className="mt-2 flex items-center gap-2">
-          <Input
-            value={draft}
-            data-testid="subtask-input"
-            placeholder={t("subtaskPlaceholder")}
-            aria-label={t("subtaskAria")}
-            maxLength={SUBTASK_TITLE_MAX_LENGTH}
-            disabled={adding}
-            onChange={(event) => setDraft(event.target.value)}
-            onKeyDown={(event) => {
-              if (event.key === "Enter") {
-                event.preventDefault();
+        <div className="mt-2">
+          <div className="flex items-center gap-2">
+            <Input
+              value={draft}
+              data-testid="subtask-input"
+              placeholder={t("subtaskPlaceholder")}
+              aria-label={t("subtaskAria")}
+              maxLength={SUBTASK_TITLE_MAX_LENGTH}
+              disabled={adding}
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") {
+                  event.preventDefault();
+                  void handleAdd();
+                }
+              }}
+            />
+            <Button
+              data-testid="subtask-add-button"
+              onClick={() => {
                 void handleAdd();
-              }
-            }}
-          />
-          <Button
-            data-testid="subtask-add-button"
-            onClick={() => {
-              void handleAdd();
-            }}
-            disabled={adding || !draft.trim()}
-          >
-            {adding ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
-            {t("add")}
-          </Button>
+              }}
+              disabled={adding || !draft.trim()}
+            >
+              {adding ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
+              {t("add")}
+            </Button>
+          </div>
+          <CharCounter value={draft} max={SUBTASK_TITLE_MAX_LENGTH} />
         </div>
       ) : null}
     </div>
