@@ -38,6 +38,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   // ── Server Action / 客户端 console.error 日志前缀 ──
   // 面向开发者的服务端日志，无 UI。
   ...[
+    "apps/web/src/features/admin/actions.ts",
     "apps/web/src/features/auth/actions.ts",
     "apps/web/src/features/kanban/actions.ts",
     "apps/web/src/features/notifications/actions.ts",
