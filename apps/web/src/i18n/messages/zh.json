@@ -136,6 +136,7 @@
     "emailRequired": "请输入邮箱",
     "emailTaken": "邮箱已被使用",
     "emailNotVerified": "邮箱尚未验证",
+    "accountDisabled": "该账号已被禁用，无法登录；如有疑问请联系管理员",
     "phoneLabel": "电话",
     "phonePlaceholder": "选填，例如 13800138000",
     "phoneInvalid": "电话格式不正确",

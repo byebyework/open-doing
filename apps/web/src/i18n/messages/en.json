@@ -136,6 +136,7 @@
     "emailRequired": "Enter your email",
     "emailTaken": "Email already in use",
     "emailNotVerified": "Email not verified",
+    "accountDisabled": "This account has been disabled and cannot sign in. Contact an administrator if you believe this is a mistake.",
     "phoneLabel": "Phone",
     "phonePlaceholder": "Optional, e.g. 13800138000",
     "phoneInvalid": "Invalid phone number format",

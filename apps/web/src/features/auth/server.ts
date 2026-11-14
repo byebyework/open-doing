@@ -34,7 +34,8 @@ export function getSessionSecret(): string {
  *   **必须放在 plugins 数组最后**；
  * - username 插件关闭小写归一化：用户名大小写敏感（`Alice` 与 `alice` 可并存）；
  * - additionalFields 中 `input: false` 的字段不接受注册入参，由服务端补齐
- *   （uid 由注册 hook 生成；language / 提醒开关走默认值）。
+ *   （uid / 注册码 id 由注册 hook 生成；language / 提醒开关 / isAdmin /
+ *   isDisabled 走默认值，后两者由管理台写入）。
  */
 export const auth = betterAuth({
   secret: getSessionSecret(),
@@ -74,6 +75,10 @@ export const auth = betterAuth({
       uid: { type: "string", required: false, input: false },
       // 注册时消费的注册码 id，由 user.create.before 钩子写入，客户端不可传。
       registrationCodeId: { type: "string", required: false, input: false },
+      // 管理员工作台标记：进入会话用户（getCurrentUser / requireAdmin 读取），
+      // 由管理台服务端写入，客户端不可传。
+      isAdmin: { type: "boolean", required: false, input: false, defaultValue: false },
+      isDisabled: { type: "boolean", required: false, input: false, defaultValue: false },
       gender: { type: "string", required: false, input: true },
       phone: { type: "string", required: false, input: true },
       language: { type: "string", required: false, input: false, defaultValue: "zh" },

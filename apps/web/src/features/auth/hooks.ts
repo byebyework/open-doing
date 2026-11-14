@@ -22,18 +22,26 @@ export const AUTH_ERROR_TOKENS = {
   regCodeExhausted: "REG_CODE_EXHAUSTED",
   uidCollision: "UID_COLLISION",
   phoneTaken: "PHONE_TAKEN",
+  accountDisabled: "ACCOUNT_DISABLED",
 } as const;
 
 const SIGN_UP_PATH = "/sign-up/email";
+/** username 插件的登录端点（不是 `/sign-in/email`）。 */
+const SIGN_IN_USERNAME_PATH = "/sign-in/username";
 
-function signUpError(token: string): APIError {
+function authRequestError(token: string): APIError {
   return new APIError("BAD_REQUEST", { message: token, code: token });
 }
 
 /**
- * 注册请求的前置校验（仅 `/sign-up/email`）：
- * - 注册码去空白 + 大写归一化后重新挂回 body，供 database hook 读取；
- * - 码不存在时立即失败（无效码先于用户名/邮箱占用检查，避免泄露）。
+ * 请求级前置钩子：
+ * - `/sign-up/email`：注册码去空白 + 大写归一化后重新挂回 body，供
+ *   database hook 读取；码不存在时立即失败（无效码先于用户名/邮箱占用
+ *   检查，避免泄露）；
+ * - `/sign-in/username`：先按提交的用户名查询禁用标记，命中即拒绝登录
+ *   （禁用立即生效，不依赖会话清理）。username 大小写敏感
+ *   （`usernameNormalization: false`），查询用精确 eq；body 缺少字符串
+ *   username 时跳过，交给 better-auth 的常规校验。
  *
  * Spike 结论 (b)：databaseHooks.user.create.before 的第二参数就是本次
  * 请求的 endpoint context，`context.body.registrationCode` 可直接读取；
@@ -41,17 +49,31 @@ function signUpError(token: string): APIError {
  */
 export const authRequestHooks: NonNullable<BetterAuthOptions["hooks"]> = {
   before: createAuthMiddleware(async (ctx) => {
+    if (ctx.path === SIGN_IN_USERNAME_PATH) {
+      const body = (ctx.body ?? {}) as Record<string, unknown>;
+      const username = body.username;
+      if (typeof username !== "string") return;
+
+      const [disabled] = await db
+        .select({ isDisabled: users.isDisabled })
+        .from(users)
+        .where(eq(users.username, username))
+        .limit(1);
+      if (disabled?.isDisabled) throw authRequestError(AUTH_ERROR_TOKENS.accountDisabled);
+      return;
+    }
+
     if (ctx.path !== SIGN_UP_PATH) return;
 
     const code = normalizeRegistrationCode((ctx.body as Record<string, unknown>)?.registrationCode);
-    if (!code) throw signUpError(AUTH_ERROR_TOKENS.regCodeInvalid);
+    if (!code) throw authRequestError(AUTH_ERROR_TOKENS.regCodeInvalid);
 
     const [existing] = await db
       .select({ id: registrationCodes.id })
       .from(registrationCodes)
       .where(eq(registrationCodes.code, code))
       .limit(1);
-    if (!existing) throw signUpError(AUTH_ERROR_TOKENS.regCodeInvalid);
+    if (!existing) throw authRequestError(AUTH_ERROR_TOKENS.regCodeInvalid);
 
     (ctx.body as Record<string, unknown>).registrationCode = code;
   }),
@@ -89,7 +111,7 @@ export const authDatabaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> 
           .from(users)
           .where(eq(users.uid, uid))
           .limit(1);
-        if (uidOwner) throw signUpError(AUTH_ERROR_TOKENS.uidCollision);
+        if (uidOwner) throw authRequestError(AUTH_ERROR_TOKENS.uidCollision);
 
         const phone = typeof user.phone === "string" ? user.phone.trim() : "";
         if (phone) {
@@ -98,12 +120,12 @@ export const authDatabaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> 
             .from(users)
             .where(eq(users.phone, phone))
             .limit(1);
-          if (phoneOwner) throw signUpError(AUTH_ERROR_TOKENS.phoneTaken);
+          if (phoneOwner) throw authRequestError(AUTH_ERROR_TOKENS.phoneTaken);
         }
 
         const consumed = await consumeRegistrationCode(code, db);
-        if (consumed.outcome === "invalid") throw signUpError(AUTH_ERROR_TOKENS.regCodeInvalid);
-        if (consumed.outcome === "exhausted") throw signUpError(AUTH_ERROR_TOKENS.regCodeExhausted);
+        if (consumed.outcome === "invalid") throw authRequestError(AUTH_ERROR_TOKENS.regCodeInvalid);
+        if (consumed.outcome === "exhausted") throw authRequestError(AUTH_ERROR_TOKENS.regCodeExhausted);
 
         const name = typeof user.name === "string" ? user.name.trim() : "";
         const displayUsername =
