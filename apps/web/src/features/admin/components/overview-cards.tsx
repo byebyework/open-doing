@@ -94,10 +94,15 @@ const STATUS_LABEL_KEY = {
   low: "regCodeStatusLow",
 } as const;
 
+/**
+ * 状态徽标色组。临近耗尽（low）的文字用非 token 字面量 `#a66b00`（原型
+ * `.badge-due-soon` 的精确取值，与 DueText 等处的 due-soon 文案约定一致）；
+ * `--status-due-soon` 的亮黄只适合作为进度条填充。
+ */
 const STATUS_BADGE_CLASS: Record<CodeStatus, string> = {
   normal: "bg-[var(--status-done-bg)] text-[var(--status-done)]",
   exhausted: "bg-[var(--status-overdue-bg)] text-[var(--status-overdue)]",
-  low: "bg-[var(--status-due-soon-bg)] text-[var(--status-due-soon)]",
+  low: "bg-[var(--status-due-soon-bg)] text-[#a66b00]",
 };
 
 /** 状态 → 进度条填充色（原型 .progress.is-error / .is-warning）。 */
@@ -218,7 +223,10 @@ export async function OverviewCards({
           </div>
 
           {lowCount > 0 ? (
-            <Alert variant="warning" className="mb-4">
+            // 消费者级覆盖：vendored Alert 的 warning 变体文字用亮黄 `--warning`
+            // 在浅琥珀底上对比不足；改用原型 `.alert-warning` 的深琥珀字面量
+            // `#8a5b00`（非 token 属既有约定）。
+            <Alert variant="warning" className="mb-4 text-[#8a5b00]">
               <WarningIcon />
               <span>{t("regCodesLowWarning", { count: lowCount })}</span>
             </Alert>

@@ -103,6 +103,7 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 
 - Schema: `apps/web/src/server/db/schema.ts` (Drizzle `pg-core`); migrations in `apps/web/drizzle/` (replayable on an empty database). Tables use native `uuid` primary keys with `gen_random_uuid()`; timestamps are `timestamptz` (absolute instants, no custom timestamp type). Slugs locate teams/projects; task details use opaque IDs.
 - Auth tables: `users` doubles as better-auth's user model (`name` carries the display name); `sessions` / `accounts` / `verifications` are better-auth's core tables. There is no `users.password_hash` / `users.nickname` column — credentials live in `accounts.password` and `email` is NOT NULL.
+- First-admin bootstrap: run `UPDATE users SET is_admin = true WHERE uid = 'doing_xxxx';` manually once before the admin workbench is usable — there is no self-service escalation. After that, grant/revoke via the admin UI.
 - Cascading deletes rely on foreign keys `ON DELETE CASCADE` as the safety net; removing a member only deletes the membership and nulls the tasks' `assignee_id` — it does not delete tasks.
 - `server/db/testing.ts` replays migrations + truncates the test database.
 
