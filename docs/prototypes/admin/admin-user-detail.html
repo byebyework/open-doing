@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
+  <meta name="description" content="Open Doing 管理控制台：系统概览、注册码管理、用户管理。"
+  <title>用户详情 · 何川 · Open Doing 管理控制台</title>
+  <link rel="stylesheet" href="../assets/design-tokens.css" />
+  <link rel="stylesheet" href="../assets/prototype.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 管理侧边栏（同用户列表页） ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="admin-overview.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <nav>
+        <div class="nav-group-label">管理控制台</div>
+        <a class="nav-item" href="admin-overview.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          概览
+        </a>
+        <a class="nav-item" href="admin-registration-codes.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          注册码管理
+        </a>
+        <a class="nav-item active" href="admin-users.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          用户管理
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <nav>
+        <a class="nav-item" href="../my-tasks.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          返回业务区
+        </a>
+      </nav>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+        <span class="badge badge-role no-dot">管理员</span>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">管理控制台 <span class="sep">/</span> <a class="link-undecorated" href="admin-users.html">用户管理</a> <span class="sep">/</span> <strong>何川</strong></div>
+      </header>
+
+      <div class="content">
+        <div class="page-header">
+          <div class="identity">
+            <span class="avatar xl av-coral">何</span>
+            <div class="who">
+              <h1 class="h1">何川</h1>
+              <div class="sub">
+                <span class="mono">doing_p3n8wq</span>
+                <span class="badge badge-done no-dot">正常</span>
+                <span class="badge badge-neutral no-dot">普通用户</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="detail-grid">
+          <!-- 左列：团队归属 + 最近会话 -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">所属团队</span>
+              </div>
+              <div class="member-row">
+                <span class="avatar av-lavender">增</span>
+                <div class="meta">
+                  <div class="name">增长突击队</div>
+                  <div class="sub">2026-11-06 加入 · owner：林夏</div>
+                </div>
+                <span class="badge badge-role member no-dot">成员</span>
+              </div>
+              <div class="member-row">
+                <span class="avatar av-sky">效</span>
+                <div class="meta">
+                  <div class="name">效率工程部</div>
+                  <div class="sub">2026-11-09 加入 · owner：苏晓</div>
+                </div>
+                <span class="badge badge-role member no-dot">成员</span>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">最近会话</span>
+              </div>
+              <div class="session-row">
+                <span class="when">2026-11-14 09:12</span>
+                <span class="where">116.23.x.x</span>
+                <span class="agent" title="Chrome 141 · macOS">Chrome 141 · macOS</span>
+              </div>
+              <div class="session-row">
+                <span class="when">2026-11-13 21:47</span>
+                <span class="where">116.23.x.x</span>
+                <span class="agent" title="Chrome 141 · macOS">Chrome 141 · macOS</span>
+              </div>
+              <div class="session-row">
+                <span class="when">2026-11-12 08:30</span>
+                <span class="where">223.104.x.x</span>
+                <span class="agent" title="Safari · iOS">Safari · iOS</span>
+              </div>
+              <div class="card-footer">
+                <span class="text-caption">只读展示，供排查「账号异常使用」时参考。</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- 右列：账号信息 + 操作 -->
+          <div>
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">账号信息</span>
+              </div>
+              <div class="meta-list">
+                <div class="meta-row">
+                  <span class="k">UID</span>
+                  <span class="v mono">doing_p3n8wq</span>
+                </div>
+                <div class="meta-row">
+                  <span class="k">邮箱</span>
+                  <span class="v">hechuan@example.com</span>
+                </div>
+                <div class="meta-row">
+                  <span class="k">注册时间</span>
+                  <span class="v">2026-11-05 14:22</span>
+                </div>
+                <div class="meta-row">
+                  <span class="k">注册码</span>
+                  <span class="v"><code class="code-cell">OD-A7K2M9XQ</code></span>
+                </div>
+                <div class="meta-row">
+                  <span class="k">状态</span>
+                  <span class="v"><span class="badge badge-done no-dot">正常</span></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <span class="card-title">管理操作</span>
+              </div>
+              <div class="card-content" style="display:flex;flex-direction:column;gap:var(--space-2);">
+                <button class="button button-outline button-block" type="button" data-modal-open="grant-admin-modal">
+                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                  授予管理员
+                </button>
+                <button class="button button-destructive button-block" type="button" data-modal-open="disable-user-modal">
+                  <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M5.6 5.6l12.8 12.8"/></svg>
+                  禁用该用户
+                </button>
+                <span class="text-caption" style="margin-top:var(--space-2);">禁用立即生效：该用户将被强制下线，且无法再次登录；解禁后可正常登录。系统不提供删除用户。</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 禁用确认弹窗（ConfirmModal 语义：确认失败保持打开） ========== -->
+  <div class="dialog-overlay" id="disable-user-modal" role="dialog" aria-modal="true" aria-labelledby="disable-user-title">
+    <div class="dialog" style="width:440px;">
+      <button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>
+      <div class="dialog-header">
+        <h2 class="h2" id="disable-user-title">禁用「何川」？</h2>
+      </div>
+      <div class="alert alert-error" style="margin-bottom:var(--space-4);">
+        <span aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+        <span>该用户的所有会话将被立即删除并强制下线，再次登录会被拒绝。其团队、项目与任务数据保留不动。</span>
+      </div>
+      <div class="dialog-footer">
+        <button class="button button-outline" type="button" data-modal-close>取消</button>
+        <button class="button button-destructive" type="button">确认禁用</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 授予管理员确认弹窗 ========== -->
+  <div class="dialog-overlay" id="grant-admin-modal" role="dialog" aria-modal="true" aria-labelledby="grant-admin-title">
+    <div class="dialog" style="width:440px;">
+      <button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>
+      <div class="dialog-header">
+        <h2 class="h2" id="grant-admin-title">授予「何川」管理员身份？</h2>
+      </div>
+      <p class="card-content" style="margin:0;">
+        管理员可以进入管理控制台，查看全部用户与注册码，并执行禁用、授权等操作。撤销其管理员身份可随时在本页进行。
+      </p>
+      <div class="dialog-footer">
+        <button class="button button-outline" type="button" data-modal-close>取消</button>
+        <button class="button button-primary" type="button">确认授予</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/prototype.js"></script>
+</body>
+</html>

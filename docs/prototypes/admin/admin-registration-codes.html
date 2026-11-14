@@ -1,0 +1,228 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
+  <meta name="description" content="Open Doing 管理控制台：系统概览、注册码管理、用户管理。"
+  <title>注册码管理 · Open Doing 管理控制台</title>
+  <link rel="stylesheet" href="../assets/design-tokens.css" />
+  <link rel="stylesheet" href="../assets/prototype.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 管理侧边栏（同概览页，当前项高亮） ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="admin-overview.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <nav>
+        <div class="nav-group-label">管理控制台</div>
+        <a class="nav-item" href="admin-overview.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          概览
+        </a>
+        <a class="nav-item active" href="admin-registration-codes.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          注册码管理
+        </a>
+        <a class="nav-item" href="admin-users.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          用户管理
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <nav>
+        <a class="nav-item" href="../my-tasks.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          返回业务区
+        </a>
+      </nav>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+        <span class="badge badge-role no-dot">管理员</span>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">管理控制台 <span class="sep">/</span> <strong>注册码管理</strong></div>
+      </header>
+
+      <div class="content">
+        <div class="page-header">
+          <div class="text">
+            <h1 class="h1">注册码管理</h1>
+            <div class="sub">封测注册凭码进行；一码多用，固定次数上限，无过期时间。</div>
+          </div>
+          <div class="page-actions">
+            <button class="button button-primary" type="button" data-modal-open="create-code-modal">
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>
+              新增注册码
+            </button>
+          </div>
+        </div>
+
+        <div class="card">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>注册码</th>
+                <th>用量</th>
+                <th>已用 / 限额</th>
+                <th>创建时间</th>
+                <th>使用者</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><code class="code-cell">OD-A7K2M9XQ</code></td>
+                <td>
+                  <div class="code-usage">
+                    <div class="progress"><span style="width:70%;"></span></div>
+                    <span class="ratio">70%</span>
+                  </div>
+                </td>
+                <td>7 / 10</td>
+                <td>2026-11-02</td>
+                <td>
+                  <button class="code-users-toggle" type="button" data-users-toggle="users-a" aria-expanded="false" aria-controls="users-a">7 人</button>
+                </td>
+              </tr>
+              <tr class="code-users-row" id="users-a" hidden>
+                <td colspan="5">
+                  <div class="code-users">
+                    <div class="user-row">
+                      <span class="avatar sm av-coral">何</span>
+                      <span class="user-cell"><span class="meta"><span class="name">何川</span> <span class="uid">doing_p3n8wq</span></span></span>
+                      <span class="when">2026-11-05 注册</span>
+                    </div>
+                    <div class="user-row">
+                      <span class="avatar sm av-mint">苏</span>
+                      <span class="user-cell"><span class="meta"><span class="name">苏晓</span> <span class="uid">doing_v5r1tc</span></span></span>
+                      <span class="when">2026-11-08 注册</span>
+                    </div>
+                    <div class="user-row">
+                      <span class="avatar sm av-sky">陈</span>
+                      <span class="user-cell"><span class="meta"><span class="name">陈默</span> <span class="uid">doing_m2s7xe</span></span></span>
+                      <span class="when">2026-11-12 注册</span>
+                    </div>
+                    <div class="unknown">其余 4 名使用者略（原型演示）。</div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><code class="code-cell">OD-B3F8T2LR</code></td>
+                <td>
+                  <div class="code-usage">
+                    <div class="progress is-error"><span style="width:100%;"></span></div>
+                    <span class="ratio">100%</span>
+                  </div>
+                </td>
+                <td>5 / 5</td>
+                <td>2026-10-25</td>
+                <td>
+                  <button class="code-users-toggle" type="button" data-users-toggle="users-b" aria-expanded="false" aria-controls="users-b">5 人</button>
+                </td>
+              </tr>
+              <tr class="code-users-row" id="users-b" hidden>
+                <td colspan="5">
+                  <div class="code-users">
+                    <div class="unknown">此码名额已全部用完；使用者列表同上形态（原型演示省略）。</div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><code class="code-cell">OD-C9W4N6YP</code></td>
+                <td>
+                  <div class="code-usage">
+                    <div class="progress is-warning"><span style="width:90%;"></span></div>
+                    <span class="ratio">90%</span>
+                  </div>
+                </td>
+                <td>9 / 10</td>
+                <td>2026-10-28</td>
+                <td>
+                  <button class="code-users-toggle" type="button" data-users-toggle="users-c" aria-expanded="false" aria-controls="users-c">9 人</button>
+                </td>
+              </tr>
+              <tr class="code-users-row" id="users-c" hidden>
+                <td colspan="5">
+                  <div class="code-users">
+                    <div class="unknown">剩余 1 个名额；使用者列表同上形态（原型演示省略）。</div>
+                  </div>
+                </td>
+              </tr>
+
+              <tr>
+                <td><code class="code-cell">OD-D1H5S8VJ</code></td>
+                <td>
+                  <div class="code-usage">
+                    <div class="progress"><span style="width:15%;"></span></div>
+                    <span class="ratio">15%</span>
+                  </div>
+                </td>
+                <td>3 / 20</td>
+                <td>2026-11-10</td>
+                <td>
+                  <button class="code-users-toggle" type="button" data-users-toggle="users-d" aria-expanded="false" aria-controls="users-d">3 人</button>
+                </td>
+              </tr>
+              <tr class="code-users-row" id="users-d" hidden>
+                <td colspan="5">
+                  <div class="code-users">
+                    <div class="unknown">存量用户（2026-11-02 之前注册）未回填注册码，显示「未知」。</div>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== 新增注册码弹窗 ========== -->
+  <div class="dialog-overlay" id="create-code-modal" role="dialog" aria-modal="true" aria-labelledby="create-code-title">
+    <div class="dialog" style="width:440px;">
+      <button class="dialog-close" type="button" data-modal-close aria-label="关闭">×</button>
+      <div class="dialog-header">
+        <h2 class="h2" id="create-code-title">新增注册码</h2>
+      </div>
+      <div class="form-row">
+        <label class="label" for="max-uses">次数上限</label>
+        <input class="input" id="max-uses" name="maxUses" type="number" min="1" value="10" />
+        <div class="hint">该码可被使用的总次数（默认 10）。码值由系统生成，生成后即可分发给新用户。</div>
+      </div>
+      <div class="dialog-footer">
+        <button class="button button-outline" type="button" data-modal-close>取消</button>
+        <button class="button button-primary" type="button">生成注册码</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/prototype.js"></script>
+  <script>
+    // 使用者行展开 / 收起（原型演示；生产为行内展开或抽屉）
+    document.querySelectorAll("[data-users-toggle]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var row = document.getElementById(btn.getAttribute("data-users-toggle"));
+        var open = row.hasAttribute("hidden");
+        if (open) { row.removeAttribute("hidden"); } else { row.setAttribute("hidden", ""); }
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+      });
+    });
+  </script>
+</body>
+</html>

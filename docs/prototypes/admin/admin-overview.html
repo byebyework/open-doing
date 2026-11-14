@@ -1,0 +1,189 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f4f5f7" />
+  <meta name="description" content="Open Doing 管理控制台：系统概览、注册码管理、用户管理。"
+  <title>管理概览 · Open Doing 管理控制台</title>
+  <link rel="stylesheet" href="../assets/design-tokens.css" />
+  <link rel="stylesheet" href="../assets/prototype.css" />
+  <link rel="stylesheet" href="admin.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- ========== 管理侧边栏（独立于业务 Space 导航） ========== -->
+    <aside class="sidebar">
+      <a class="brand link-undecorated" href="admin-overview.html">
+        <span class="brand-mark">O</span>
+        <span class="brand-name">Open Doing</span>
+      </a>
+
+      <nav>
+        <div class="nav-group-label">管理控制台</div>
+        <a class="nav-item active" href="admin-overview.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg>
+          概览
+        </a>
+        <a class="nav-item" href="admin-registration-codes.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"/></svg>
+          注册码管理
+        </a>
+        <a class="nav-item" href="admin-users.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+          用户管理
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+      <nav>
+        <a class="nav-item" href="../my-tasks.html">
+          <svg aria-hidden="true" class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+          返回业务区
+        </a>
+      </nav>
+      <div class="sidebar-user">
+        <span class="avatar av-lavender">林</span>
+        <div class="meta">
+          <div class="username">林夏</div>
+          <div class="uid">doing_x7k2m9</div>
+        </div>
+        <span class="badge badge-role no-dot">管理员</span>
+      </div>
+    </aside>
+
+    <!-- ========== 主区域 ========== -->
+    <div class="main">
+      <header class="topbar">
+        <div class="breadcrumb">管理控制台 <span class="sep">/</span> <strong>概览</strong></div>
+      </header>
+
+      <div class="content">
+        <div class="page-header">
+          <div class="text">
+            <h1 class="h1">管理概览</h1>
+            <div class="sub">系统全量状态一览；数字为实时统计，无缓存。</div>
+          </div>
+        </div>
+
+        <!-- 关键数字 -->
+        <div class="stats-grid stagger">
+          <div class="card stat">
+            <div class="label-row">
+              <span class="icon-chip purple"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span class="label">用户总数</span>
+            </div>
+            <div class="value">12</div>
+            <div class="delta">含 1 名管理员 · 1 个已禁用账号</div>
+          </div>
+          <div class="card stat">
+            <div class="label-row">
+              <span class="icon-chip lavender"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+              <span class="label">团队数</span>
+            </div>
+            <div class="value">3</div>
+            <div class="delta">成员关系 8 条</div>
+          </div>
+          <div class="card stat">
+            <div class="label-row">
+              <span class="icon-chip mint"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>
+              <span class="label">项目数</span>
+            </div>
+            <div class="value">15</div>
+            <div class="delta">个人 6 · 团队 9</div>
+          </div>
+          <div class="card stat">
+            <div class="label-row">
+              <span class="icon-chip info"><svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+              <span class="label">任务数</span>
+            </div>
+            <div class="value">87</div>
+            <div class="delta">当前逾期 3 个</div>
+          </div>
+        </div>
+
+        <!-- 注册码余量 -->
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">注册码余量</span>
+              <a class="button button-ghost button-sm" href="admin-registration-codes.html">管理注册码</a>
+            </div>
+            <div class="alert alert-warning" style="margin-bottom:var(--space-4);">
+              <span aria-hidden="true"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
+              <span>2 个注册码已耗尽或临近耗尽（剩余 ≤ 2），需要时请新增。</span>
+            </div>
+            <div class="project-progress-row">
+              <div class="ppr-head">
+                <code class="code-cell">OD-A7K2M9XQ</code>
+                <span class="badge badge-done no-dot" style="margin-left:auto;">正常</span>
+              </div>
+              <div class="code-usage" style="margin-top:8px;">
+                <div class="progress"><span style="width:70%;"></span></div>
+                <span class="ratio">7 / 10</span>
+              </div>
+            </div>
+            <div class="project-progress-row">
+              <div class="ppr-head">
+                <code class="code-cell">OD-B3F8T2LR</code>
+                <span class="badge badge-overdue no-dot" style="margin-left:auto;">已耗尽</span>
+              </div>
+              <div class="code-usage" style="margin-top:8px;">
+                <div class="progress is-error"><span style="width:100%;"></span></div>
+                <span class="ratio">5 / 5</span>
+              </div>
+            </div>
+            <div class="project-progress-row">
+              <div class="ppr-head">
+                <code class="code-cell">OD-C9W4N6YP</code>
+                <span class="badge badge-due-soon no-dot" style="margin-left:auto;">临近耗尽</span>
+              </div>
+              <div class="code-usage" style="margin-top:8px;">
+                <div class="progress is-warning"><span style="width:90%;"></span></div>
+                <span class="ratio">9 / 10</span>
+              </div>
+            </div>
+            <div class="project-progress-row">
+              <div class="ppr-head">
+                <code class="code-cell">OD-D1H5S8VJ</code>
+                <span class="badge badge-done no-dot" style="margin-left:auto;">正常</span>
+              </div>
+              <div class="code-usage" style="margin-top:8px;">
+                <div class="progress"><span style="width:15%;"></span></div>
+                <span class="ratio">3 / 20</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-title">注册码汇总</span>
+            </div>
+            <div class="sum-row">
+              <span class="k">注册码总数</span>
+              <span class="v">4</span>
+            </div>
+            <div class="sum-row">
+              <span class="k">总名额</span>
+              <span class="v">45</span>
+            </div>
+            <div class="sum-row">
+              <span class="k">已使用</span>
+              <span class="v">24</span>
+            </div>
+            <div class="sum-row">
+              <span class="k">剩余名额</span>
+              <span class="v" style="color:var(--success);">21</span>
+            </div>
+            <div class="card-footer">
+              <span class="text-caption">剩余名额低于 5 时建议提前补充，注册码一经发出无法停用。</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="../assets/prototype.js"></script>
+</body>
+</html>
