@@ -34,6 +34,10 @@ import { Textarea } from "@/components/ui/shadcn/textarea";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
 import { createPersonalTaskAction } from "@/features/personal/tasks/actions";
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/features/personal/tasks/service";
 import { createTeamTaskAction } from "@/features/tasks/actions";
 
 import type { CrossSpaceProjectOption } from "../service";
@@ -125,12 +129,17 @@ export function NewTaskModal({
       .string()
       .trim()
       .min(1, t("titleRequired"))
-      .max(200, t("titleTooLong", { max: 200 })),
+      .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
-    description: z.string(),
+    description: z
+      .string()
+      .refine(
+        (value) => value.trim().length <= TASK_DESCRIPTION_MAX_LENGTH,
+        t("descriptionTooLong", { max: TASK_DESCRIPTION_MAX_LENGTH }),
+      ),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -256,7 +265,7 @@ export function NewTaskModal({
               id="dashboard-task-title"
               type="text"
               placeholder={t("titlePlaceholder")}
-              maxLength={200}
+              maxLength={TASK_TITLE_MAX_LENGTH}
               autoFocus
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "dashboard-task-title-error" : undefined}

@@ -8,6 +8,7 @@ import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { formatTaskTimestamp } from "@/lib/date-display";
+import { COMMENT_MAX_LENGTH } from "../service";
 
 /** 评论列表项（作者名由服务端组装）。 */
 export interface CommentBoxItem {
@@ -143,14 +144,14 @@ export function CommentBox({
         <Textarea
           value={draft}
           rows={3}
-          maxLength={2000}
+          maxLength={COMMENT_MAX_LENGTH}
           aria-label={t("commentAria")}
           placeholder={t("commentPlaceholder")}
           disabled={submitting}
           onChange={(event) => setDraft(event.target.value)}
         />
         <div className="mt-1 text-right text-[12px] text-[var(--ink-400)]">
-          {draft.length} / 2000
+          {draft.length} / {COMMENT_MAX_LENGTH}
         </div>
 
         <div className="mt-2.5 flex justify-end gap-2">

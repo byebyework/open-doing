@@ -30,6 +30,10 @@ import {
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 
 import { createTeamTaskAction } from "../actions";
 
@@ -98,13 +102,18 @@ export function NewTeamTaskModal({
       .string()
       .trim()
       .min(1, t("titleRequired"))
-      .max(200, t("titleTooLong", { max: 200 })),
+      .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string().min(1, t("projectRequired")),
     assigneeId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
-    description: z.string(),
+    description: z
+      .string()
+      .refine(
+        (value) => value.trim().length <= TASK_DESCRIPTION_MAX_LENGTH,
+        t("descriptionTooLong", { max: TASK_DESCRIPTION_MAX_LENGTH }),
+      ),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -208,7 +217,7 @@ export function NewTeamTaskModal({
               type="text"
               data-testid="task-title-input"
               placeholder={t("titlePlaceholder")}
-              maxLength={200}
+              maxLength={TASK_TITLE_MAX_LENGTH}
               autoFocus
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "team-task-title-error" : undefined}

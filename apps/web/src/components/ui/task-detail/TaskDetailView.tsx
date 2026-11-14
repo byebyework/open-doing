@@ -47,6 +47,10 @@ import {
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { CommentBox } from "@/features/personal/tasks/components/CommentBox";
 import { SubtaskList } from "@/features/personal/tasks/components/SubtaskList";
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "@/lib/task-fields";
 import { formatTaskDate } from "@/lib/date-display";
 import { spaceDashboardHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
@@ -147,8 +151,13 @@ function EditTaskModal({
       .string()
       .trim()
       .min(1, t("titleRequired"))
-      .max(200, t("titleTooLong", { max: 200 })),
-    description: z.string(),
+      .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
+    description: z
+      .string()
+      .refine(
+        (value) => value.trim().length <= TASK_DESCRIPTION_MAX_LENGTH,
+        t("descriptionTooLong", { max: TASK_DESCRIPTION_MAX_LENGTH }),
+      ),
     dueDate: z.string(),
     startDate: z.string(),
   });
@@ -217,7 +226,7 @@ function EditTaskModal({
               id="edit-task-title"
               type="text"
               placeholder={t("titlePlaceholder")}
-              maxLength={200}
+              maxLength={TASK_TITLE_MAX_LENGTH}
               autoFocus
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "edit-task-title-error" : undefined}

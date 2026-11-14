@@ -8,6 +8,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/shadcn/button";
 import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import { Input } from "@/components/ui/shadcn/input";
+import { SUBTASK_TITLE_MAX_LENGTH } from "../service";
 
 /** 子任务列表入参（`onToggle` / `onAdd` / `onRemove` 缺省时对应 UI 只读或隐藏）。 */
 export interface SubtaskListProps {
@@ -138,7 +139,7 @@ export function SubtaskList({
             data-testid="subtask-input"
             placeholder={t("subtaskPlaceholder")}
             aria-label={t("subtaskAria")}
-            maxLength={200}
+            maxLength={SUBTASK_TITLE_MAX_LENGTH}
             disabled={adding}
             onChange={(event) => setDraft(event.target.value)}
             onKeyDown={(event) => {

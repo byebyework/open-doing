@@ -32,6 +32,10 @@ import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 
 import { createPersonalTaskAction } from "../actions";
+import {
+  TASK_DESCRIPTION_MAX_LENGTH,
+  TASK_TITLE_MAX_LENGTH,
+} from "../service";
 
 /** 新建任务弹窗入参。 */
 export interface NewTaskModalProps {
@@ -85,12 +89,17 @@ export function NewTaskModal({
       .string()
       .trim()
       .min(1, t("titleRequired"))
-      .max(200, t("titleTooLong", { max: 200 })),
+      .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
-    description: z.string(),
+    description: z
+      .string()
+      .refine(
+        (value) => value.trim().length <= TASK_DESCRIPTION_MAX_LENGTH,
+        t("descriptionTooLong", { max: TASK_DESCRIPTION_MAX_LENGTH }),
+      ),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -192,7 +201,7 @@ export function NewTaskModal({
               type="text"
               data-testid="task-title-input"
               placeholder={t("titlePlaceholder")}
-              maxLength={200}
+              maxLength={TASK_TITLE_MAX_LENGTH}
               autoFocus
               aria-invalid={errors.title ? true : undefined}
               aria-describedby={errors.title ? "personal-task-title-error" : undefined}
