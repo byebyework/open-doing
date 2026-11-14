@@ -11,7 +11,7 @@ vi.hoisted(() => {
 
 import type { DbClient } from "@/server/db/client";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
-import { sessions, users } from "@/server/db/schema";
+import { registrationCodes, sessions, users } from "@/server/db/schema";
 
 import { changePasswordAction, loginAction } from "./actions";
 import {
@@ -149,10 +149,17 @@ describe.skipIf(!hasTestDatabase)("better-auth 会话", () => {
     expect(Number.isNaN(Date.parse(user!.createdAt))).toBe(false);
 
     const [row] = await db
-      .select({ language: users.language })
+      .select({ language: users.language, registrationCodeId: users.registrationCodeId })
       .from(users)
       .where(eq(users.id, id));
     expect(row!.language).toBe("zh");
+
+    // 注册钩子消费的码 id 必须落到 users.registration_code_id（管理台使用者列表）。
+    const [codeRow] = await db
+      .select({ id: registrationCodes.id })
+      .from(registrationCodes)
+      .where(eq(registrationCodes.code, code));
+    expect(row!.registrationCodeId).toBe(codeRow!.id);
   });
 
   it("无 cookie 时 getCurrentUser 返回 null", async () => {

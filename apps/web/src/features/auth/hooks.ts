@@ -61,7 +61,8 @@ export const authRequestHooks: NonNullable<BetterAuthOptions["hooks"]> = {
  * 用户创建前的注册钩子（随 better-auth 的 user.create 生命周期执行）：
  * 1. 生成 `doing_xxxx` UID 并预检唯一性（碰撞即中止，不重试）；
  * 2. 预检手机号唯一性（更好友好的字段错误；并发竞态由唯一索引兜底）；
- * 3. 原子消费注册码（invalid / exhausted 各自报错）；
+ * 3. 原子消费注册码（invalid / exhausted 各自报错），成功时把码 id 写入
+ *    `registration_code_id`；
  * 4. 兜底展示名（空则 `generateNickname(uid)`）与 `displayUsername`。
  *
  * Spike 结论 (a)：drizzleAdapter 默认 `transaction: false` 时 user+account
@@ -101,8 +102,8 @@ export const authDatabaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> 
         }
 
         const consumed = await consumeRegistrationCode(code, db);
-        if (consumed === "invalid") throw signUpError(AUTH_ERROR_TOKENS.regCodeInvalid);
-        if (consumed === "exhausted") throw signUpError(AUTH_ERROR_TOKENS.regCodeExhausted);
+        if (consumed.outcome === "invalid") throw signUpError(AUTH_ERROR_TOKENS.regCodeInvalid);
+        if (consumed.outcome === "exhausted") throw signUpError(AUTH_ERROR_TOKENS.regCodeExhausted);
 
         const name = typeof user.name === "string" ? user.name.trim() : "";
         const displayUsername =
@@ -116,6 +117,7 @@ export const authDatabaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> 
           data: {
             ...user,
             uid,
+            registrationCodeId: consumed.registrationCodeId,
             name: name || generateNickname(uid),
             displayUsername,
           },

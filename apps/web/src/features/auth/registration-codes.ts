@@ -11,8 +11,11 @@ export const REGISTRATION_CODE_MAX_USES = 10;
 /** 唯一冲突重试上限：码空间 31⁸ ≈ 8.5×10¹¹，碰撞概率可忽略，防御性上限。 */
 const MAX_CODE_ATTEMPTS = 5;
 
-/** 消费注册码的结果：成功 / 码不存在 / 次数已用尽。 */
-export type RegistrationCodeConsumeResult = "ok" | "invalid" | "exhausted";
+/** 消费注册码的结果：成功（携带码 id）/ 码不存在 / 次数已用尽。 */
+export type RegistrationCodeConsumeResult =
+  | { outcome: "ok"; registrationCodeId: string }
+  | { outcome: "invalid" }
+  | { outcome: "exhausted" };
 
 export interface RegistrationCodeSummary {
   code: string;
@@ -30,7 +33,8 @@ export function normalizeRegistrationCode(value: unknown): string {
 }
 
 /**
- * 生成 N 个注册码并落库（一码多用，上限固定为 REGISTRATION_CODE_MAX_USES）。
+ * 生成 N 个注册码并落库（一码多用，上限默认 REGISTRATION_CODE_MAX_USES，
+ * 可由 maxUses 覆盖）。
  *
  * 码复用入群码生成器（8 位大写字母数字，不含易混淆字符）；唯一冲突时
  * 重新生成重试，由 `registration_codes_code_unique` 唯一索引兜底。
@@ -38,6 +42,7 @@ export function normalizeRegistrationCode(value: unknown): string {
 export async function generateRegistrationCodes(
   count: number,
   client: DbClient = db,
+  maxUses: number = REGISTRATION_CODE_MAX_USES,
 ): Promise<string[]> {
   const codes: string[] = [];
 
@@ -47,7 +52,7 @@ export async function generateRegistrationCodes(
       try {
         await client.insert(registrationCodes).values({
           code,
-          maxUses: REGISTRATION_CODE_MAX_USES,
+          maxUses: maxUses ?? REGISTRATION_CODE_MAX_USES,
         });
         codes.push(code);
         break;
@@ -81,14 +86,15 @@ export async function listRegistrationCodes(
  * 用**原子条件更新**扣减（`WHERE code = ? AND used_count < max_uses`），
  * 并发下最多只有一个请求命中，不会超发。未命中时回查区分
  * 「码不存在」（invalid）与「次数用尽」（exhausted），供注册流程
- * 映射为不同的字段错误。
+ * 映射为不同的字段错误。命中时把码 id 带回给调用方（注册落库时写入
+ * `users.registration_code_id`）。
  */
 export async function consumeRegistrationCode(
   code: string,
   client: DbClient = db,
 ): Promise<RegistrationCodeConsumeResult> {
   const normalized = normalizeRegistrationCode(code);
-  if (!normalized) return "invalid";
+  if (!normalized) return { outcome: "invalid" };
 
   const rows = await client
     .update(registrationCodes)
@@ -101,7 +107,7 @@ export async function consumeRegistrationCode(
     )
     .returning({ id: registrationCodes.id });
 
-  if (rows.length > 0) return "ok";
+  if (rows.length > 0) return { outcome: "ok", registrationCodeId: rows[0]!.id };
 
   const [row] = await client
     .select({ usedCount: registrationCodes.usedCount })
@@ -109,5 +115,5 @@ export async function consumeRegistrationCode(
     .where(eq(registrationCodes.code, normalized))
     .limit(1);
 
-  return row ? "exhausted" : "invalid";
+  return row ? { outcome: "exhausted" } : { outcome: "invalid" };
 }

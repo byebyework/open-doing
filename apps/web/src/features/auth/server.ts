@@ -72,6 +72,8 @@ export const auth = betterAuth({
   user: {
     additionalFields: {
       uid: { type: "string", required: false, input: false },
+      // 注册时消费的注册码 id，由 user.create.before 钩子写入，客户端不可传。
+      registrationCodeId: { type: "string", required: false, input: false },
       gender: { type: "string", required: false, input: true },
       phone: { type: "string", required: false, input: true },
       language: { type: "string", required: false, input: false, defaultValue: "zh" },

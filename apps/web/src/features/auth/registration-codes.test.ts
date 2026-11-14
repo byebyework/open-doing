@@ -68,26 +68,30 @@ describe.skipIf(!hasTestDatabase)("注册码 service", () => {
   });
 
   describe("consumeRegistrationCode", () => {
-    it("有效且未用尽的码：返回 ok，使用次数 +1", async () => {
+    it("有效且未用尽的码：返回 ok（携带码 id），使用次数 +1", async () => {
       const [code] = await generateRegistrationCodes(1, db);
 
-      await expect(consumeRegistrationCode(code!, db)).resolves.toBe("ok");
+      const result = await consumeRegistrationCode(code!, db);
+      expect(result.outcome).toBe("ok");
 
       const [row] = await db
         .select()
         .from(registrationCodes)
         .where(eq(registrationCodes.code, code!));
       expect(row!.usedCount).toBe(1);
+      if (result.outcome === "ok") expect(result.registrationCodeId).toBe(row!.id);
     });
 
     it("输入带空白或小写：与入群码同规则归一化（去空白 + 大写）后命中", async () => {
       const [code] = await generateRegistrationCodes(1, db);
 
-      await expect(consumeRegistrationCode(` ${code!.toLowerCase()} `, db)).resolves.toBe("ok");
+      const result = await consumeRegistrationCode(` ${code!.toLowerCase()} `, db);
+      expect(result.outcome).toBe("ok");
     });
 
     it("不存在的码：返回 invalid，不产生任何写入", async () => {
-      await expect(consumeRegistrationCode("ZZZZZZZZ", db)).resolves.toBe("invalid");
+      const result = await consumeRegistrationCode("ZZZZZZZZ", db);
+      expect(result).toEqual({ outcome: "invalid" });
       expect(await db.select().from(registrationCodes)).toHaveLength(0);
     });
 
@@ -98,7 +102,8 @@ describe.skipIf(!hasTestDatabase)("注册码 service", () => {
         .set({ usedCount: REGISTRATION_CODE_MAX_USES })
         .where(eq(registrationCodes.code, code!));
 
-      await expect(consumeRegistrationCode(code!, db)).resolves.toBe("exhausted");
+      const result = await consumeRegistrationCode(code!, db);
+      expect(result).toEqual({ outcome: "exhausted" });
 
       const [row] = await db
         .select()
@@ -119,13 +124,47 @@ describe.skipIf(!hasTestDatabase)("注册码 service", () => {
         consumeRegistrationCode(code!, db),
       ]);
 
-      expect(results.filter((r) => r === "ok")).toHaveLength(1);
-      expect(results.filter((r) => r === "exhausted")).toHaveLength(1);
+      expect(results.filter((r) => r.outcome === "ok")).toHaveLength(1);
+      expect(results.filter((r) => r.outcome === "exhausted")).toHaveLength(1);
       const [row] = await db
         .select()
         .from(registrationCodes)
         .where(eq(registrationCodes.code, code!));
       expect(row!.usedCount).toBe(REGISTRATION_CODE_MAX_USES);
+    });
+
+    it("returns the code id on success", async () => {
+      const [code] = await generateRegistrationCodes(1, db, 5);
+      const result = await consumeRegistrationCode(code!, db);
+      expect(result.outcome).toBe("ok");
+      if (result.outcome === "ok") {
+        const [row] = await db
+          .select()
+          .from(registrationCodes)
+          .where(eq(registrationCodes.code, code!));
+        expect(result.registrationCodeId).toBe(row!.id);
+      }
+    });
+
+    it("never overspends under concurrent consumption of the last slot", async () => {
+      const [code] = await generateRegistrationCodes(1, db, 1);
+      const results = await Promise.all([
+        consumeRegistrationCode(code!, db),
+        consumeRegistrationCode(code!, db),
+      ]);
+      const ok = results.filter((r) => r.outcome === "ok");
+      expect(ok).toHaveLength(1);
+    });
+  });
+
+  describe("generateRegistrationCodes", () => {
+    it("persists a custom maxUses", async () => {
+      const [code] = await generateRegistrationCodes(1, db, 25);
+      const [row] = await db
+        .select()
+        .from(registrationCodes)
+        .where(eq(registrationCodes.code, code!));
+      expect(row!.maxUses).toBe(25);
     });
   });
 });
