@@ -22,11 +22,14 @@ import {
 /** 任务标题长度上限（与表单校验一致）。 */
 export const TASK_TITLE_MAX_LENGTH = 200;
 
-/** 子任务标题长度上限（与任务标题保持一致）。 */
-export const SUBTASK_TITLE_MAX_LENGTH = 200;
+/** 子任务标题长度上限（2026-11-14 收紧：200 → 100）。 */
+export const SUBTASK_TITLE_MAX_LENGTH = 100;
 
-/** 评论内容长度上限（与表单校验一致）。 */
-export const COMMENT_MAX_LENGTH = 2000;
+/** 任务描述长度上限（2026-11-14 新增）。 */
+export const TASK_DESCRIPTION_MAX_LENGTH = 800;
+
+/** 评论内容长度上限（2026-11-14 收紧：2000 → 500）。 */
+export const COMMENT_MAX_LENGTH = 500;
 
 /** 创建任务入参；`projectId` 为空表示不属于任何项目的零散个人任务。 */
 export interface PersonalTaskInput {
@@ -128,9 +131,19 @@ function validateTitle(value: unknown, label: "任务" | "子任务"): string {
 }
 
 /** 描述清空统一存 null，读取时映射为 undefined。 */
-function normalizeDescription(value: unknown): string | null {
+function validateDescription(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
+  if (trimmed.length > TASK_DESCRIPTION_MAX_LENGTH) {
+    throw new DomainError(
+      `任务描述不能超过 ${TASK_DESCRIPTION_MAX_LENGTH} 个字符`,
+      "description",
+      {
+        key: "descriptionTooLong",
+        params: { max: TASK_DESCRIPTION_MAX_LENGTH },
+      },
+    );
+  }
   return trimmed.length > 0 ? trimmed : null;
 }
 
@@ -301,7 +314,7 @@ export async function createPersonalTask(
   client: DbClient = db,
 ): Promise<Task> {
   const title = validateTitle(input?.title, "任务");
-  const description = normalizeDescription(input?.description);
+  const description = validateDescription(input?.description);
   const priority = validatePriority(input?.priority ?? "medium");
   const dueDate = validateDueDate(input?.dueDate);
   const startDate = validateStartDate(input?.startDate);
@@ -506,7 +519,7 @@ export async function updatePersonalTask(
     changes.title = validateTitle(input.title, "任务");
   }
   if (input?.description !== undefined) {
-    changes.description = normalizeDescription(input.description);
+    changes.description = validateDescription(input.description);
   }
   if (input?.dueDate !== undefined) {
     changes.dueDate = validateDueDate(input.dueDate);

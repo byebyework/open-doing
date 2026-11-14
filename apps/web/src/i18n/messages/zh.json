@@ -303,6 +303,7 @@
     "commentCreateFailed": "评论创建失败，请稍后重试",
     "subtaskTitleRequired": "请输入子任务标题",
     "subtaskTitleTooLong": "子任务标题不能超过 {max} 个字符",
+    "descriptionTooLong": "任务描述不能超过 {max} 个字符",
     "dueDateFormat": "截止日期格式应为 YYYY-MM-DD",
     "dueDateInvalid": "截止日期不是有效日期",
     "startDateFormat": "开始时间格式应为 YYYY-MM-DD",

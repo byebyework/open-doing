@@ -3,9 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   assertStartNotAfterTaskDue,
   COMMENT_MAX_LENGTH,
-  normalizeTaskDescription,
   isUuid,
   validateCommentContent,
+  validateTaskDescription,
   validateTaskDueDate,
   validateTaskPriority,
   validateTaskStartDate,
@@ -44,14 +44,14 @@ describe("validateTaskTitle", () => {
   });
 });
 
-describe("normalizeTaskDescription", () => {
+describe("validateTaskDescription（基础语义）", () => {
   it("非字符串与空白返回 null", () => {
-    expect(normalizeTaskDescription(undefined)).toBeNull();
-    expect(normalizeTaskDescription("   ")).toBeNull();
+    expect(validateTaskDescription(undefined)).toBeNull();
+    expect(validateTaskDescription("   ")).toBeNull();
   });
 
   it("保留去空白后的正文", () => {
-    expect(normalizeTaskDescription("  背景  ")).toBe("背景");
+    expect(validateTaskDescription("  背景  ")).toBe("背景");
   });
 });
 
@@ -146,5 +146,50 @@ describe("validateCommentContent", () => {
     expect(() => validateCommentContent("x".repeat(COMMENT_MAX_LENGTH + 1))).toThrow(
       expect.objectContaining({ field: "content" }),
     );
+  });
+});
+
+describe("字段长度上限（2026-11-14 收紧）", () => {
+  it("子任务标题 101 字 → subtaskTitleTooLong（max: 100）", () => {
+    expect(() => validateTaskTitle("1".repeat(101), "子任务")).toThrow(
+      expect.objectContaining({
+        field: "title",
+        i18n: { key: "subtaskTitleTooLong", params: { max: 100 } },
+      }),
+    );
+  });
+
+  it("子任务标题 100 字通过", () => {
+    expect(validateTaskTitle("1".repeat(100), "子任务")).toHaveLength(100);
+  });
+
+  it("评论 501 字 → commentTooLong（max: 500）；500 字通过", () => {
+    expect(() => validateCommentContent("1".repeat(501))).toThrow(
+      expect.objectContaining({
+        field: "content",
+        i18n: { key: "commentTooLong", params: { max: 500 } },
+      }),
+    );
+    expect(validateCommentContent("1".repeat(500))).toHaveLength(500);
+  });
+
+  it("描述 801 字 → descriptionTooLong（max: 800）", () => {
+    expect(() => validateTaskDescription("1".repeat(801))).toThrow(
+      expect.objectContaining({
+        field: "description",
+        i18n: { key: "descriptionTooLong", params: { max: 800 } },
+      }),
+    );
+  });
+
+  it("描述 800 字通过；空串/纯空白 → null", () => {
+    expect(validateTaskDescription("1".repeat(800))).toHaveLength(800);
+    expect(validateTaskDescription("   ")).toBeNull();
+    expect(validateTaskDescription(undefined)).toBeNull();
+  });
+
+  it("标题 201 字仍拒绝、200 字仍通过（口径不变）", () => {
+    expect(() => validateTaskTitle("1".repeat(201))).toThrow();
+    expect(validateTaskTitle("1".repeat(200))).toHaveLength(200);
   });
 });

@@ -303,6 +303,7 @@
     "commentCreateFailed": "Failed to create the comment. Please try again later.",
     "subtaskTitleRequired": "Enter a subtask title",
     "subtaskTitleTooLong": "Subtask title cannot exceed {max} characters",
+    "descriptionTooLong": "Task description cannot exceed {max} characters",
     "dueDateFormat": "Due date must be in YYYY-MM-DD format",
     "dueDateInvalid": "Due date is not a valid date",
     "startDateFormat": "Start date must be in YYYY-MM-DD format",
