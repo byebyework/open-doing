@@ -297,9 +297,21 @@ export function NewTaskModal({
               id="personal-task-description"
               rows={4}
               placeholder={t("descriptionPlaceholder")}
+              aria-invalid={errors.description ? true : undefined}
+              aria-describedby={
+                errors.description ? "personal-task-description-error" : undefined
+              }
               disabled={submitting}
               {...register("description")}
             />
+            {errors.description ? (
+              <p
+                id="personal-task-description-error"
+                className="text-[12.5px] text-[var(--error)]"
+              >
+                {errors.description.message}
+              </p>
+            ) : null}
           </div>
 
           <DialogFooter>

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import zhMessages from "../../src/i18n/messages/zh.json";
 import { TEST_IDS } from "../utils/testids";
 import {
   createPersonalProject,
@@ -78,4 +79,31 @@ test.describe("flow 1: 个人项目与子任务", () => {
       taskTitle,
     );
   });
+});
+
+test("超长描述提交被拦截并显示字段错误（不静默失败）", async ({ page }) => {
+  const username = uniqueUsername("e2e_p3");
+  const projectName = uniqueLabel("E2E desc project");
+
+  await registerUser(page, username);
+  await createPersonalProject(page, projectName);
+  await openPersonalProject(page, projectName);
+
+  await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
+  const dialog = page.getByRole("dialog");
+  await expect(dialog).toBeVisible();
+  await page.waitForTimeout(500);
+  await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(uniqueLabel("E2E desc task"));
+  // 900 字符描述 > 800 上限：zod 拦截，弹窗保持打开并显示字段错误行。
+  await dialog.locator("textarea").fill("1".repeat(900));
+  // 长描述使弹窗内容超出视口，先把提交钮滚进视口再点。
+  await dialog
+    .getByTestId(TEST_IDS.tasks.createSubmitButton)
+    .evaluate((el) => el.scrollIntoView({ block: "center" }));
+  await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
+
+  await expect(
+    dialog.getByText(zhMessages.tasks.descriptionTooLong.replace("{max}", "800")),
+  ).toBeVisible();
+  await expect(dialog).toBeVisible();
 });
