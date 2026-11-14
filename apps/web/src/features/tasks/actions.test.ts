@@ -104,6 +104,8 @@ const sessionUser = {
   gender: null,
   email: null,
   phone: null,
+  isAdmin: false,
+  isDisabled: false,
   createdAt: "",
 };
 

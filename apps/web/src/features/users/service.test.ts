@@ -13,6 +13,7 @@ import { NICKNAME_MAX_LENGTH } from "./constants";
 import {
   getProfile,
   getReminderPrefs,
+  toDomainUser,
   updateProfile,
   updateUserLanguage,
   updateReminderPrefs,
@@ -381,5 +382,21 @@ describe.skipIf(!hasTestDatabase)("个人资料读写", () => {
       name: "UserError",
       field: "form",
     });
+  });
+});
+
+describe("toDomainUser admin fields", () => {
+  it("maps isAdmin/isDisabled from the row", () => {
+    const user = toDomainUser({
+      id: "u1", name: "n", createdAt: new Date("2026-01-01"),
+      isAdmin: true, isDisabled: true,
+    });
+    expect(user.isAdmin).toBe(true);
+    expect(user.isDisabled).toBe(true);
+  });
+  it("defaults to false when better-auth omits the fields", () => {
+    const user = toDomainUser({ id: "u2", name: "n", createdAt: new Date("2026-01-01") });
+    expect(user.isAdmin).toBe(false);
+    expect(user.isDisabled).toBe(false);
   });
 });

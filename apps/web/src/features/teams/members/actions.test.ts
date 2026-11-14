@@ -70,6 +70,8 @@ const currentUser = {
   gender: null,
   email: null,
   phone: null,
+  isAdmin: false,
+  isDisabled: false,
   createdAt: "2026-10-01T00:00:00.000Z",
 };
 

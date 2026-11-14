@@ -53,6 +53,10 @@ export interface User {
   email: string | null;
   /** 电话：可选资料，全库唯一，未填写为 null */
   phone: string | null;
+  /** 系统管理员标记：可访问管理员工作台（管理台权限判定以此为准） */
+  isAdmin: boolean;
+  /** 禁用标记：禁用即拒绝登录，已有会话在登录校验时被清除 */
+  isDisabled: boolean;
   createdAt: string;
 }
 

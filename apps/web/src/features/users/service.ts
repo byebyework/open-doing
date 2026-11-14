@@ -22,6 +22,8 @@ type UserRow = {
   gender: Gender | null;
   email: string | null;
   phone: string | null;
+  isAdmin: boolean;
+  isDisabled: boolean;
   createdAt: Date;
 };
 
@@ -40,6 +42,8 @@ export function toDomainUser(user: {
   gender?: string | null;
   email?: string | null;
   phone?: string | null;
+  isAdmin?: boolean | null;
+  isDisabled?: boolean | null;
   createdAt: Date | string;
 }): User {
   return {
@@ -50,6 +54,8 @@ export function toDomainUser(user: {
     gender: (user.gender as Gender | null | undefined) ?? null,
     email: user.email ?? null,
     phone: user.phone ?? null,
+    isAdmin: user.isAdmin ?? false,
+    isDisabled: user.isDisabled ?? false,
     createdAt:
       user.createdAt instanceof Date ? user.createdAt.toISOString() : user.createdAt,
   };

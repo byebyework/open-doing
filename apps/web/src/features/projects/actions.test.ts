@@ -84,6 +84,8 @@ describe("团队项目 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "",
     });
     mockCreate.mockRejectedValue(new TeamPermissionError("team:manage_projects"));
@@ -102,6 +104,8 @@ describe("团队项目 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "",
     });
     mockCreate.mockRejectedValue(new DomainError("请输入项目名称", "name"));
@@ -120,6 +124,8 @@ describe("团队项目 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "",
     });
     mockDelete.mockRejectedValue(new Error("boom"));
@@ -138,6 +144,8 @@ describe("团队项目 actions", () => {
       gender: null,
       email: null,
       phone: null,
+      isAdmin: false,
+      isDisabled: false,
       createdAt: "",
     });
     mockCreate.mockResolvedValue(fakeProject);
