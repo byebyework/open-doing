@@ -33,6 +33,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/features/teams/joins/service.ts", reason: "JoinError zh 兜底" },
   { prefix: "apps/web/src/features/teams/invites/service.ts", reason: "InviteError zh 兜底" },
   { prefix: "apps/web/src/features/teams/members/service.ts", reason: "Member/Policy/GovernanceError zh 兜底" },
+  { prefix: "apps/web/src/features/teams/virtual/service.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
   { prefix: "apps/web/src/lib/task-fields.ts", reason: "DomainError zh 兜底 + 校验标签" },
 
   // ── Server Action / 客户端 console.error 日志前缀 ──
@@ -51,6 +52,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
     "apps/web/src/features/teams/invites/actions.ts",
     "apps/web/src/features/teams/joins/actions.ts",
     "apps/web/src/features/teams/members/actions.ts",
+    "apps/web/src/features/teams/virtual/actions.ts",
     "apps/web/src/features/users/actions.ts",
   ].map((prefix) => ({ prefix, reason: "console.error 服务端日志前缀" })),
 
