@@ -2,7 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
-import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
+import type {
+  AssigneeRef,
+  Subtask,
+  TaskPriority,
+  TaskStatus,
+} from "@open-doing/types";
 import {
   getTaskProgress,
   isDueSoon,
@@ -17,11 +22,11 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
+import { AssigneeAvatar } from "@/components/ui/AssigneeAvatar";
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { PriorityChip, priorityLabelKey } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
-import { UserAvatar } from "@/components/ui/UserAvatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -341,6 +346,7 @@ export function TaskDetailView({
   currentUserId,
   assigneeOptions,
   onAssign,
+  canModerateVirtualComments = false,
 }: TaskDetailViewProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -535,6 +541,28 @@ export function TaskDetailView({
       ? task.assigneeEmail ?? null
       : assigneeChoices.find((option) => option.id === assigneeId)?.email ?? null;
 
+  // 责任人身份引用：虚拟成员优先（与真人互斥）；被移除 / 未指派为 null。
+  const assigneeRef: AssigneeRef | null =
+    task.assigneeVirtualId !== null && task.assigneeVirtualName !== null
+      ? {
+          type: "virtual",
+          virtualMemberId: task.assigneeVirtualId,
+          name: task.assigneeVirtualName,
+          accentColor: task.assigneeAccentColor,
+        }
+      : task.assigneeId !== null && task.assigneeName !== null
+        ? {
+            type: "user",
+            userId: task.assigneeId,
+            name: task.assigneeName,
+            image: null,
+          }
+        : null;
+
+  // 虚拟责任人不走真人改派选择器（UI 只提供真人成员选项）；显示为只读信息，
+  // 改派入口留给「建任务表单 / MCP」链路。
+  const isVirtualAssignee = assigneeRef?.type === "virtual";
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <Link
@@ -620,6 +648,7 @@ export function TaskDetailView({
             currentUserId={currentUserId ?? task.assigneeId ?? ""}
             onAdd={onAction.addComment}
             onDelete={onAction.deleteComment}
+            canModerateVirtualComments={canModerateVirtualComments}
           />
         </div>
 
@@ -689,6 +718,7 @@ export function TaskDetailView({
 
             <MetaRow label={t("assigneeLabel")}>
               {space === "team" &&
+              !isVirtualAssignee &&
               permissions.canAssign &&
               assigneeOptions &&
               onAssign ? (
@@ -725,17 +755,12 @@ export function TaskDetailView({
                     </span>
                   ) : null}
                 </div>
-              ) : task.assigneeName ? (
+              ) : assigneeRef ? (
                 <>
-                  {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
-                  <UserAvatar
-                    userId={task.assigneeId ?? ""}
-                    name={task.assigneeName}
-                    size={24}
-                  />
+                  <AssigneeAvatar assigneeRef={assigneeRef} size={24} />
                   <div className="min-w-0">
-                    <div className="break-words">{task.assigneeName}</div>
-                    {assigneeEmail ? (
+                    <div className="break-words">{assigneeRef.name}</div>
+                    {assigneeRef.type === "user" && assigneeEmail ? (
                       <div className="break-all text-[12px] font-normal text-[var(--ink-400)]">
                         {assigneeEmail}
                       </div>

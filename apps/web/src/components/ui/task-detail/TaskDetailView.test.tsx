@@ -42,6 +42,7 @@ const readOnly: TaskDetailPermissions = {
 function render(
   permissions: TaskDetailPermissions,
   overrides: Partial<TaskDetailModel> = {},
+  extra: { canModerateVirtualComments?: boolean } = {},
 ): string {
   return renderToStaticMarkup(
     <NextIntlClientProvider
@@ -64,6 +65,7 @@ function render(
           removeSubtask: async () => {},
         }}
         currentUserId="44444444-4444-4444-4444-444444444444"
+        canModerateVirtualComments={extra.canModerateVirtualComments}
       />
     </NextIntlClientProvider>,
   );
@@ -111,6 +113,82 @@ describe("TaskDetailView 负责人信息处邮箱", () => {
     const html = render(readOnly, { assigneeEmail: null });
 
     expect(html).not.toContain("owner@example.com");
+  });
+});
+
+describe("TaskDetailView 虚拟成员责任人", () => {
+  const virtualAssignee = {
+    assigneeId: null,
+    assigneeName: "写作助手",
+    assigneeVirtualId: "66666666-6666-6666-6666-666666666666",
+    assigneeVirtualName: "写作助手",
+    assigneeAccentColor: "#a66b00",
+    assigneeEmail: "owner@example.com",
+  };
+
+  it("虚拟责任人显示名称 + 机器人角标，不渲染真人改派选择器", () => {
+    const html = render(
+      { canEdit: true, canDelete: true, canAssign: true },
+      virtualAssignee,
+    );
+
+    expect(html).toContain("写作助手");
+    expect(html).toContain('data-testid="assignee-avatar-bot-badge"');
+    expect(html).toContain('aria-label="虚拟成员"');
+    expect(html).not.toContain('data-testid="task-assignee-select"');
+  });
+
+  it("隐藏 email（服务端对虚拟责任人恒为 null）", () => {
+    const html = render(readOnly, virtualAssignee);
+
+    expect(html).toContain("写作助手");
+    expect(html).not.toContain("@example.com");
+  });
+});
+
+describe("TaskDetailView 评论代管权限", () => {
+  it("canModerateVirtualComments=true 时无署名评论显示删除入口", () => {
+    const html = render(
+      { canEdit: false, canDelete: false, canAssign: false },
+      {
+        comments: [
+          {
+            id: "comment-unsigned",
+            taskId: task.id,
+            authorId: null,
+            authorVirtualId: null,
+            authorName: null,
+            authorAccentColor: null,
+            content: "历史评论",
+            createdAt: "2026-10-01T00:00:00.000Z",
+          },
+        ],
+      },
+      { canModerateVirtualComments: true },
+    );
+
+    expect(html).toContain("已移除成员");
+    expect(html).toContain("删除");
+  });
+
+  it("缺省（真实团队 / 个人）不显示无署名评论删除入口", () => {
+    const html = render(readOnly, {
+      comments: [
+        {
+          id: "comment-unsigned",
+          taskId: task.id,
+          authorId: null,
+          authorVirtualId: null,
+          authorName: null,
+          authorAccentColor: null,
+          content: "历史评论",
+          createdAt: "2026-10-01T00:00:00.000Z",
+        },
+      ],
+    });
+
+    expect(html).toContain("已移除成员");
+    expect(html).not.toContain("删除");
   });
 });
 

@@ -15,6 +15,7 @@ import {
 } from "react";
 import { DayPicker, type DayProps } from "react-day-picker";
 
+import { AssigneeAvatar } from "@/components/ui/AssigneeAvatar";
 import { HintBadge } from "@/components/ui/HintBadge";
 import { NewTaskModal } from "@/features/personal/tasks/components/NewTaskModal";
 import { NewTeamTaskModal } from "@/features/tasks/components/NewTeamTaskModal";
@@ -76,16 +77,6 @@ const CELL_CHIP_LIMIT = 3;
 /** 固定格高（px）：内容只截断不撑格，整月行高恒定。 */
 const CELL_HEIGHT = 138;
 
-/** 负责人头像定色盘（含原型示例色：林紫 / 何蓝 / 苏粉）。 */
-const ASSIGNEE_COLORS = [
-  "#7d2ae8",
-  "#0088ff",
-  "#e91e63",
-  "#00b894",
-  "#ff9633",
-  "#9b87f5",
-] as const;
-
 /** 到期紧迫度：决定 chip 色条 / 底色 / meta 配色。 */
 type Tone = "done" | "overdue" | "today" | "soon" | "later";
 
@@ -109,22 +100,6 @@ const CHIP_BAR_CLASS: Record<Tone, string> = {
   soon: "bg-[var(--accent-tangerine)]",
   later: "bg-[var(--ink-400)]",
 };
-
-/** 负责人 id 哈希：同一负责人跨渲染恒定映射到同一头像底色。 */
-function hashAssigneeId(assigneeId: string): number {
-  let hash = 0;
-
-  for (const char of assigneeId) {
-    hash = (hash * 31 + (char.codePointAt(0) ?? 0)) >>> 0;
-  }
-
-  return hash;
-}
-
-/** 负责人头像底色（定色盘，非 antd 头像）。 */
-function assigneeColor(assigneeId: string): string {
-  return ASSIGNEE_COLORS[hashAssigneeId(assigneeId) % ASSIGNEE_COLORS.length]!;
-}
 
 /** 任务紧迫度（done 优先，不按逾期着色）。 */
 function toneOf(item: CalendarTaskItem, today: string): Tone {
@@ -173,36 +148,6 @@ function weekMeta(
   return { kind: "daysLeft", days: diff };
 }
 
-/** 团队负责人头像：首字 + 按 assigneeId 哈希的定色盘底色（chip 14px / 侧栏 16px）。 */
-function AssigneeBadge({
-  seed,
-  name,
-  size,
-}: {
-  seed: string;
-  name: string;
-  size: 14 | 16;
-}) {
-  const firstChar = Array.from(name.trim())[0] ?? "?";
-
-  return (
-    <span
-      role="img"
-      aria-label={name}
-      title={name}
-      className="inline-flex shrink-0 select-none items-center justify-center rounded-full font-semibold text-white"
-      style={{
-        width: size,
-        height: size,
-        fontSize: size === 14 ? 9 : 9.5,
-        backgroundColor: assigneeColor(seed),
-      }}
-    >
-      {firstChar}
-    </span>
-  );
-}
-
 /** 未指派 grid chip 描边 tag（颜色继承 chip 文字色，对照 `.tag-un`）。 */
 function ChipUnassignedTag() {
   const tTasks = useTranslations("tasks");
@@ -226,17 +171,11 @@ function SidebarUnassignedTag() {
   );
 }
 
-/** 侧栏负责人前缀：有负责人用头像，未指派用蓝色信息 tag。 */
+/** 侧栏负责人前缀：有负责人用头像（真人 / 虚拟），未指派用蓝色信息 tag。 */
 function SidebarAssignee({ item }: { item: CalendarTaskItem }) {
-  if (!item.assigneeName) return <SidebarUnassignedTag />;
+  if (!item.assigneeRef) return <SidebarUnassignedTag />;
 
-  return (
-    <AssigneeBadge
-      seed={item.assigneeId ?? item.assigneeName}
-      name={item.assigneeName}
-      size={16}
-    />
-  );
+  return <AssigneeAvatar assigneeRef={item.assigneeRef} size={16} />;
 }
 
 /** chip / 纯文本 done 条目的标题载体（href 有无决定 Link 或 span）。 */
@@ -297,12 +236,8 @@ function CalendarChip({
       <span className={`w-[3px] shrink-0 ${CHIP_BAR_CLASS[tone]}`} />
 
       {variant === "team" ? (
-        item.assigneeName ? (
-          <AssigneeBadge
-            seed={item.assigneeId ?? item.assigneeName}
-            name={item.assigneeName}
-            size={14}
-          />
+        item.assigneeRef ? (
+          <AssigneeAvatar assigneeRef={item.assigneeRef} size={14} />
         ) : (
           <ChipUnassignedTag />
         )

@@ -3,7 +3,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { projects, tasks, teams, users } from "@/server/db/schema";
+import { projects, tasks, teams, users, virtualMembers } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { getPersonalSpaceCalendar, getTeamSpaceCalendar } from "./service";
@@ -618,7 +618,7 @@ describe.skipIf(!hasTestDatabase)("团队空间日历聚合", () => {
     expect(data.noDueCount).toBe(1);
   });
 
-  it("⑩ assigneeName 来自 users join；未指派为 null", async () => {
+  it("⑩ assigneeName / assigneeRef 来自 users join；未指派为 null", async () => {
     const { alice, bob, teamA } = await seedTeamCalendar(db);
 
     const data = await getTeamSpaceCalendar(teamA.id, MONTH, TODAY, db);
@@ -627,6 +627,12 @@ describe.skipIf(!hasTestDatabase)("团队空间日历聚合", () => {
     expect(byTitle.get("团队周一")).toMatchObject({
       assigneeId: alice.id,
       assigneeName: alice.nickname,
+      assigneeRef: {
+        type: "user",
+        userId: alice.id,
+        name: alice.nickname,
+        image: null,
+      },
     });
     expect(byTitle.get("团队月末")).toMatchObject({
       assigneeId: bob.id,
@@ -635,6 +641,44 @@ describe.skipIf(!hasTestDatabase)("团队空间日历聚合", () => {
     expect(byTitle.get("团队未指派")).toMatchObject({
       assigneeId: null,
       assigneeName: null,
+      assigneeRef: null,
+    });
+  });
+
+  it("⑫ 虚拟成员指派：assigneeRef 为 virtual，含名称与头像色", async () => {
+    const { alice, teamA, growth } = await seedTeamCalendar(db);
+    const virtualMemberId = crypto.randomUUID();
+    await db.insert(virtualMembers).values({
+      id: virtualMemberId,
+      teamId: teamA.id,
+      name: "写作助手",
+      role: "member",
+      accentColor: "#a66b00",
+      createdById: alice.id,
+    });
+    await db.insert(tasks).values({
+      spaceType: "team",
+      projectId: growth.id,
+      title: "虚拟成员任务",
+      status: "todo",
+      dueDate: "2026-10-03",
+      assigneeId: null,
+      assigneeVirtualId: virtualMemberId,
+      createdById: alice.id,
+    });
+
+    const data = await getTeamSpaceCalendar(teamA.id, MONTH, TODAY, db);
+    const item = data.items.find((entry) => entry.title === "虚拟成员任务");
+
+    expect(item).toMatchObject({
+      assigneeId: null,
+      assigneeName: "写作助手",
+      assigneeRef: {
+        type: "virtual",
+        virtualMemberId,
+        name: "写作助手",
+        accentColor: "#a66b00",
+      },
     });
   });
 

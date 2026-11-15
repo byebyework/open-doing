@@ -29,10 +29,10 @@ import {
   SelectValue,
 } from "@/components/ui/shadcn/select";
 
+import { AssigneeAvatar } from "@/components/ui/AssigneeAvatar";
 import { DueText } from "@/components/ui/DueText";
 import { PriorityDot } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { UserAvatar } from "@/components/ui/UserAvatar";
 import { useIsDesktop } from "@/features/kanban/components/useIsDesktop";
 import type { TeamRole } from "@/features/teams/permissions";
 
@@ -52,6 +52,8 @@ export interface TeamKanbanProps {
   teamSlug: string;
   tasks: TeamTaskRow[];
   members: { id: string; name: string }[];
+  /** 虚拟团队成员（虚拟团队时用于责任人筛选选项）。 */
+  virtualMembers?: { id: string; name: string }[];
   today: string;
   projectId: string;
   projects: { id: string; name: string }[];
@@ -134,7 +136,6 @@ function TeamKanbanCard({
   teamId,
   task,
   today,
-  assigneeName,
   draggable,
   editable,
   onChanged,
@@ -142,7 +143,6 @@ function TeamKanbanCard({
   teamId: string;
   task: TeamTaskRow;
   today: string;
-  assigneeName: string | null;
   draggable: boolean;
   editable: boolean;
   onChanged: () => void;
@@ -194,15 +194,10 @@ function TeamKanbanCard({
 
         <div className="mt-2.5 flex items-center gap-2">
           <PriorityDot priority={task.priority} />
-          {assigneeName ? (
+          {task.assigneeRef ? (
             <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
-              {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
-              <UserAvatar
-                userId={task.assigneeId ?? ""}
-                name={assigneeName}
-                size={22}
-              />
-              <span className="truncate">{assigneeName}</span>
+              <AssigneeAvatar assigneeRef={task.assigneeRef} size={22} />
+              <span className="truncate">{task.assigneeRef.name}</span>
             </span>
           ) : (
             <span className="text-[12.5px] text-[var(--ink-400)]">{t("unassigned")}</span>
@@ -240,7 +235,6 @@ function TeamKanbanColumn({
   status,
   tasks,
   today,
-  assigneeNames,
   canDragTask,
   canEditThisTask,
   onNewTask,
@@ -250,7 +244,6 @@ function TeamKanbanColumn({
   status: TaskStatus;
   tasks: TeamTaskRow[];
   today: string;
-  assigneeNames: Map<string, string>;
   canDragTask: (task: TeamTaskRow) => boolean;
   canEditThisTask: (task: TeamTaskRow) => boolean;
   onNewTask: () => void;
@@ -309,11 +302,6 @@ function TeamKanbanColumn({
               teamId={teamId}
               task={task}
               today={today}
-              assigneeName={
-                task.assigneeId
-                  ? (assigneeNames.get(task.assigneeId) ?? null)
-                  : null
-              }
               draggable={canDragTask(task)}
               editable={canEditThisTask(task)}
               onChanged={onChanged}
@@ -336,6 +324,7 @@ export function TeamKanban({
   teamId,
   tasks,
   members,
+  virtualMembers = [],
   today,
   projectId,
   projects,
@@ -365,18 +354,21 @@ export function TeamKanban({
     useSensor(KeyboardSensor),
   );
 
-  const assigneeNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const member of members) map.set(member.id, member.name);
-    return map;
-  }, [members]);
-
   const filtered = useMemo(
     () =>
       items.filter((task) => {
         if (statusFilter !== "all" && task.status !== statusFilter) return false;
-        if (assigneeFilter === "unassigned") return task.assigneeId === null;
-        if (assigneeFilter !== "all") return task.assigneeId === assigneeFilter;
+        // 未指派口径以 assigneeRef 为准：真人与虚拟成员都被移除后 ref 为 null。
+        if (assigneeFilter === "unassigned") return task.assigneeRef === null;
+        if (assigneeFilter !== "all") {
+          if (task.assigneeRef?.type === "user") {
+            return task.assigneeRef.userId === assigneeFilter;
+          }
+          if (task.assigneeRef?.type === "virtual") {
+            return task.assigneeRef.virtualMemberId === assigneeFilter;
+          }
+          return false;
+        }
         return true;
       }),
     [items, statusFilter, assigneeFilter],
@@ -459,6 +451,10 @@ export function TeamKanban({
       value: member.id as AssigneeFilter,
       label: member.name,
     })),
+    ...virtualMembers.map((member) => ({
+      value: member.id as AssigneeFilter,
+      label: member.name,
+    })),
     { value: "unassigned" as AssigneeFilter, label: t("unassigned") },
   ];
 
@@ -516,7 +512,6 @@ export function TeamKanban({
               status={status}
               tasks={grouped[status]}
               today={today}
-              assigneeNames={assigneeNames}
               canDragTask={canDragTask}
               canEditThisTask={canEditThisTask}
               onNewTask={() => setNewTaskOpen(true)}

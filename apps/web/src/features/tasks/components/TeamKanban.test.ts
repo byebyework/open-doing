@@ -109,3 +109,48 @@ describe("TeamKanban 优先级色点", () => {
     expect(html).toContain('data-priority="high"');
   });
 });
+
+describe("TeamKanban 虚拟成员责任人", () => {
+  const VIRTUAL_ID = "66666666-6666-6666-6666-666666666666";
+
+  it("卡片责任人取 row.assigneeRef（不依赖真人 members 映射）并带机器人角标", () => {
+    const html = render(
+      "owner",
+      makeTask({
+        assigneeId: null,
+        assigneeVirtualId: VIRTUAL_ID,
+        assigneeName: "写作助手",
+        assigneeRef: {
+          type: "virtual",
+          virtualMemberId: VIRTUAL_ID,
+          name: "写作助手",
+          accentColor: "#a66b00",
+        },
+      }),
+    );
+
+    expect(html).toContain("写作助手");
+    expect(html).toContain('data-testid="assignee-avatar-bot-badge"');
+    expect(html).toContain('aria-label="虚拟成员"');
+    expect(html).toContain("background-color:#a66b00");
+  });
+
+  it("未指派（assigneeRef 为 null）卡片显示未指派文案", () => {
+    const html = render(
+      "owner",
+      makeTask({
+        assigneeId: null,
+        assigneeVirtualId: null,
+        assigneeName: null,
+        assigneeRef: null,
+      }),
+    );
+    const column = html
+      .split('data-testid="kanban-column')
+      .find((part) => part.includes("首页视觉稿评审"));
+
+    expect(column).toBeDefined();
+    expect(column).toContain("未指派");
+    expect(column).not.toContain('data-testid="assignee-avatar-bot-badge"');
+  });
+});

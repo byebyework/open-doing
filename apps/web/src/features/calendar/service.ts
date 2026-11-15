@@ -1,4 +1,4 @@
-import type { TaskStatus } from "@open-doing/types";
+import type { AssigneeRef, TaskStatus } from "@open-doing/types";
 import { addDays } from "@open-doing/types";
 import {
   and,
@@ -17,7 +17,7 @@ import {
 import { personalScope, teamScope } from "@/features/kanban/service";
 import { getMonthEnd, getMonthGrid, getWeekStart } from "@/lib/today";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks, users } from "@/server/db/schema";
+import { projects, tasks, users, virtualMembers } from "@/server/db/schema";
 
 /** 日历格 / 侧栏共用的一条任务（进本结构的一定有截止日期）。 */
 export interface CalendarTaskItem {
@@ -34,6 +34,8 @@ export interface CalendarTaskItem {
   assigneeId: string | null;
   /** 未指派为 null（成员被移除后不崩） */
   assigneeName: string | null;
+  /** 责任人身份引用（真人 / 虚拟成员）；未指派或被移除为 null */
+  assigneeRef: AssigneeRef | null;
 }
 
 /** 空间日历一次取数的全部数据（个人 / 团队共用结构）。 */
@@ -58,11 +60,15 @@ interface CalendarRow {
   projectName: string | null;
 }
 
-/** 团队日历查询行：公共字段 + 指派人（未指派为 null）。 */
+/** 团队日历查询行：公共字段 + 指派人（真人 / 虚拟成员，未指派为 null）。 */
 interface TeamCalendarRow extends CalendarRow {
   assigneeId: string | null;
   assigneeUsername: string | null;
   assigneeNickname: string | null;
+  assigneeImage: string | null;
+  assigneeVirtualId: string | null;
+  assigneeVirtualName: string | null;
+  assigneeVirtualAccentColor: string | null;
 }
 
 /**
@@ -245,10 +251,15 @@ async function selectTeamCalendarRows(
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
       assigneeNickname: users.name,
+      assigneeImage: users.image,
+      assigneeVirtualId: tasks.assigneeVirtualId,
+      assigneeVirtualName: virtualMembers.name,
+      assigneeVirtualAccentColor: virtualMembers.accentColor,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
+    .leftJoin(virtualMembers, eq(tasks.assigneeVirtualId, virtualMembers.id))
     .where(condition)
     .orderBy(...calendarOrder());
 }
@@ -300,11 +311,30 @@ function toPersonalItem(
     projectName: row.projectName ?? "",
     assigneeId: userId,
     assigneeName: null,
+    // 个人日历不渲染责任人，恒为 null（冻结契约）。
+    assigneeRef: null,
   };
 }
 
 /** 团队行 → 日历条目；未指派 / 成员被移除后置空均为 null。 */
 function toTeamItem(row: TeamCalendarRow): CalendarTaskItem {
+  const assigneeRef: AssigneeRef | null =
+    row.assigneeVirtualId !== null && row.assigneeVirtualName !== null
+      ? {
+          type: "virtual",
+          virtualMemberId: row.assigneeVirtualId,
+          name: row.assigneeVirtualName,
+          accentColor: row.assigneeVirtualAccentColor,
+        }
+      : row.assigneeId !== null && row.assigneeUsername !== null
+        ? {
+            type: "user",
+            userId: row.assigneeId,
+            name: row.assigneeNickname ?? row.assigneeUsername,
+            image: row.assigneeImage,
+          }
+        : null;
+
   return {
     id: row.id,
     title: row.title,
@@ -314,7 +344,12 @@ function toTeamItem(row: TeamCalendarRow): CalendarTaskItem {
     projectId: row.projectId ?? null,
     projectName: row.projectName ?? "",
     assigneeId: row.assigneeId ?? null,
-    // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。
-    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
+    // 展示名：昵称优先；虚拟成员名；未填写（或被移除成员）为 null。
+    assigneeName:
+      row.assigneeNickname ??
+      row.assigneeUsername ??
+      row.assigneeVirtualName ??
+      null,
+    assigneeRef,
   };
 }

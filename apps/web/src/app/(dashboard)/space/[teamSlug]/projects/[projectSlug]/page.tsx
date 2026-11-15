@@ -17,6 +17,7 @@ import { TeamKanban } from "@/features/tasks/components/TeamKanban";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
+import { listVirtualMembers } from "@/features/teams/virtual/service";
 import { teamProjectHref, teamSettingsHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
@@ -55,10 +56,11 @@ export default async function TeamProjectPage({
   const project = await getTeamProjectBySlug(team.id, projectSlug);
   if (!project) notFound();
 
-  const [tasks, projectList, memberList] = await Promise.all([
+  const [tasks, projectList, memberList, virtualMemberList] = await Promise.all([
     listTeamProjectTasks({ teamId: team.id, projectId: project.id, actorId: user.id }),
     listTeamProjects(team.id),
     listMembers(team.id),
+    team.kind === "virtual" ? listVirtualMembers(team.id) : Promise.resolve([]),
   ]);
 
   const projectOptions = projectList.map(({ id, name }) => ({ id, name }));
@@ -66,6 +68,7 @@ export default async function TeamProjectPage({
     id: member.id,
     name: displayName(member),
   }));
+  const virtualMembers = virtualMemberList.map(({ id, name }) => ({ id, name }));
   const participantCount = new Set(
     tasks.map((task) => task.assigneeId).filter((id): id is string => id !== null),
   ).size;
@@ -119,6 +122,7 @@ export default async function TeamProjectPage({
             teamSlug={team.slug}
             tasks={tasks}
             members={members}
+            virtualMembers={virtualMembers}
             today={today}
             projectId={project.id}
             projects={projectOptions}
@@ -132,6 +136,7 @@ export default async function TeamProjectPage({
             teamSlug={team.slug}
             tasks={tasks}
             members={members}
+            virtualMembers={virtualMembers}
             today={today}
             projectId={project.id}
             projects={projectOptions}

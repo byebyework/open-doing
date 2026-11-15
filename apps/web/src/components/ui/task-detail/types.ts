@@ -132,4 +132,11 @@ export interface TaskDetailViewProps {
    * 提示文案由调用方负责。
    */
   onAssign?: (assigneeId: string) => Promise<void>;
+  /**
+   * 虚拟团队 owner/admin：可代管删除虚拟作者 / 无署名评论。
+   *
+   * 仅团队详情页在虚拟团队且当前用户为 owner/admin 时传 true；个人页与
+   * 真实团队缺省 false，行为零变化。
+   */
+  canModerateVirtualComments?: boolean;
 }

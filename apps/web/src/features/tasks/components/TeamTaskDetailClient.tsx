@@ -54,6 +54,8 @@ export interface TeamTaskDetailClientProps {
   permissions: TaskDetailPermissions;
   /** 团队成员（责任人选择器选项）；email 选填，用于负责人信息处展示。 */
   assigneeOptions: { id: string; name: string; email?: string | null }[];
+  /** 虚拟团队 owner/admin：可代管删除虚拟作者 / 无署名评论。 */
+  canModerateVirtualComments?: boolean;
 }
 
 /**
@@ -70,6 +72,7 @@ export function TeamTaskDetailClient({
   currentUserId,
   permissions,
   assigneeOptions,
+  canModerateVirtualComments = false,
 }: TeamTaskDetailClientProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
@@ -163,6 +166,7 @@ export function TeamTaskDetailClient({
       currentUserId={currentUserId}
       assigneeOptions={assigneeOptions}
       onAssign={handleAssign}
+      canModerateVirtualComments={canModerateVirtualComments}
     />
   );
 }

@@ -8,11 +8,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { AssigneeAvatar } from "@/components/ui/AssigneeAvatar";
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
-import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import {
   Select,
@@ -106,6 +106,8 @@ export interface TeamProjectTaskTableProps {
   tasks: TeamTaskRow[];
   /** 团队成员（责任人筛选与新建任务弹窗使用）。 */
   members: { id: string; name: string }[];
+  /** 虚拟团队成员（虚拟团队时用于责任人筛选选项）。 */
+  virtualMembers?: { id: string; name: string }[];
   /** 今天（Asia/Shanghai，`YYYY-MM-DD`）。 */
   today: string;
   /** 当前项目 ID（新建任务默认选中）。 */
@@ -131,6 +133,7 @@ export function TeamProjectTaskTable({
   teamSlug,
   tasks,
   members,
+  virtualMembers = [],
   today,
   projectId,
   projects,
@@ -153,20 +156,27 @@ export function TeamProjectTaskTable({
       value: member.id as AssigneeFilter,
       label: member.name,
     })),
+    ...virtualMembers.map((member) => ({
+      value: member.id as AssigneeFilter,
+      label: member.name,
+    })),
     { value: "unassigned" as AssigneeFilter, label: t("unassigned") },
   ];
-
-  const assigneeNames = useMemo(() => {
-    const map = new Map<string, string>();
-    for (const member of members) map.set(member.id, member.name);
-    return map;
-  }, [members]);
 
   const visibleTasks = useMemo(() => {
     const filtered = tasks.filter((task) => {
       if (statusFilter !== "all" && task.status !== statusFilter) return false;
-      if (assigneeFilter === "unassigned") return task.assigneeId === null;
-      if (assigneeFilter !== "all") return task.assigneeId === assigneeFilter;
+      // 未指派口径以 assigneeRef 为准：真人与虚拟成员都被移除后 ref 为 null。
+      if (assigneeFilter === "unassigned") return task.assigneeRef === null;
+      if (assigneeFilter !== "all") {
+        if (task.assigneeRef?.type === "user") {
+          return task.assigneeRef.userId === assigneeFilter;
+        }
+        if (task.assigneeRef?.type === "virtual") {
+          return task.assigneeRef.virtualMemberId === assigneeFilter;
+        }
+        return false;
+      }
       return true;
     });
 
@@ -309,9 +319,6 @@ export function TeamProjectTaskTable({
                   const completedCount = task.subtasks.filter(
                     (subtask) => subtask.completed,
                   ).length;
-                  const assigneeName = task.assigneeId
-                    ? (assigneeNames.get(task.assigneeId) ?? null)
-                    : null;
                   const detailHref = teamTaskHref(
                     teamSlug,
                     projectSlug,
@@ -354,15 +361,10 @@ export function TeamProjectTaskTable({
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                        {assigneeName ? (
+                        {task.assigneeRef ? (
                           <span className="flex items-center gap-2 text-[13px] text-[var(--ink-900)]">
-                            {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
-                            <UserAvatar
-                              userId={task.assigneeId ?? ""}
-                              name={assigneeName}
-                              size={26}
-                            />
-                            {assigneeName}
+                            <AssigneeAvatar assigneeRef={task.assigneeRef} size={26} />
+                            {task.assigneeRef.name}
                           </span>
                         ) : (
                           <span className="text-[12.5px] text-[var(--ink-400)]">

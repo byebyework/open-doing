@@ -4,6 +4,7 @@ import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { AssigneeAvatar } from "@/components/ui/AssigneeAvatar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
@@ -37,6 +38,58 @@ export interface CommentBoxProps {
   onAdd: (content: string) => Promise<void>;
   /** 删除评论；缺省时隐藏删除入口。 */
   onDelete?: (commentId: string) => Promise<void>;
+  /**
+   * 虚拟团队成员（owner / admin）可代管删除虚拟作者评论与无署名的
+   * 已移除成员评论。仅虚拟团队的 owner/admin 应传 true；缺省 false。
+   */
+  canModerateVirtualComments?: boolean;
+}
+
+/**
+ * 评论作者头像（真人 / 虚拟成员 / 已移除成员）。
+ *
+ * - 真人作者保持既有 `UserAvatar` 渲染（首字 + userId 哈希底色）；
+ * - 虚拟作者复用 `AssigneeAvatar` 虚拟分支（accentColor 底色 + 机器人角标）；
+ * - 无署名（虚拟成员被移除后两列皆空）显示中性占位。
+ */
+function CommentAuthorAvatar({ comment }: { comment: CommentBoxItem }) {
+  const t = useTranslations("tasks");
+
+  if (comment.authorId !== null) {
+    return (
+      <UserAvatar
+        userId={comment.authorId}
+        name={comment.authorName ?? ""}
+        size={30}
+      />
+    );
+  }
+
+  if (
+    comment.authorVirtualId !== null &&
+    comment.authorVirtualId !== undefined &&
+    comment.authorName !== null
+  ) {
+    return (
+      <AssigneeAvatar
+        assigneeRef={{
+          type: "virtual",
+          virtualMemberId: comment.authorVirtualId,
+          name: comment.authorName,
+          accentColor: comment.authorAccentColor ?? null,
+        }}
+        size={30}
+      />
+    );
+  }
+
+  return (
+    <AssigneeAvatar
+      assigneeRef={null}
+      size={30}
+      nullLabel={t("removedVirtualAuthor")}
+    />
+  );
 }
 
 /**
@@ -63,6 +116,7 @@ export function CommentBox({
   currentUserId,
   onAdd,
   onDelete,
+  canModerateVirtualComments = false,
 }: CommentBoxProps) {
   const t = useTranslations("tasks");
   const tCommon = useTranslations("common");
@@ -104,53 +158,55 @@ export function CommentBox({
         <p className="py-2 text-[13px] text-[var(--ink-400)]">{t("noComments")}</p>
       ) : (
         <div className="flex flex-col gap-5">
-          {comments.map((comment) => (
-            <div key={comment.id} className="group flex gap-3">
-              <UserAvatar
-                userId={
-                  comment.authorId ??
-                  comment.authorVirtualId ??
-                  comment.id
-                }
-                name={comment.authorName ?? ""}
-                size={30}
-              />
+          {comments.map((comment) => {
+            // 真人本人可删；虚拟团队的 owner/admin 可代管删除虚拟作者
+            // 与无署名的已移除成员评论（服务层同样按此策略校验）。
+            const canDelete =
+              (comment.authorId !== null &&
+                comment.authorId === currentUserId) ||
+              (canModerateVirtualComments && comment.authorId === null);
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[13.5px] font-semibold text-[var(--ink-900)]">
-                    {comment.authorName}
-                  </span>
-                  <span className="text-[12px] text-[var(--ink-400)]">
-                    {formatCommentTime(comment.createdAt)}
-                  </span>
+            return (
+              <div key={comment.id} className="group flex gap-3">
+                <CommentAuthorAvatar comment={comment} />
 
-                  {onDelete &&
-                  comment.authorId !== null &&
-                  comment.authorId === currentUserId ? (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="ml-auto text-destructive opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
-                      disabled={deletingId === comment.id}
-                      onClick={() => {
-                        void handleDelete(comment.id);
-                      }}
-                    >
-                      {deletingId === comment.id ? (
-                        <Loader2Icon className="animate-spin" aria-hidden="true" />
-                      ) : null}
-                      {tCommon("delete")}
-                    </Button>
-                  ) : null}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-[13.5px] font-semibold text-[var(--ink-900)]">
+                      {comment.authorName ?? t("removedVirtualAuthor")}
+                    </span>
+                    <span className="text-[12px] text-[var(--ink-400)]">
+                      {formatCommentTime(comment.createdAt)}
+                    </span>
+
+                    {onDelete && canDelete ? (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="ml-auto text-destructive opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100"
+                        disabled={deletingId === comment.id}
+                        onClick={() => {
+                          void handleDelete(comment.id);
+                        }}
+                      >
+                        {deletingId === comment.id ? (
+                          <Loader2Icon
+                            className="animate-spin"
+                            aria-hidden="true"
+                          />
+                        ) : null}
+                        {tCommon("delete")}
+                      </Button>
+                    ) : null}
+                  </div>
+
+                  <p className="mt-1 whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-[#3c4043]">
+                    {comment.content}
+                  </p>
                 </div>
-
-                <p className="mt-1 whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-[#3c4043]">
-                  {comment.content}
-                </p>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

@@ -245,6 +245,7 @@
     "change": "Change",
     "assigneeLabel": "Assignee",
     "unassigned": "Unassigned",
+    "virtualMemberBadgeAria": "Virtual member",
     "leftMember": "Former member",
     "dueSoonTag": "Due soon",
     "creatorLabel": "Created by",

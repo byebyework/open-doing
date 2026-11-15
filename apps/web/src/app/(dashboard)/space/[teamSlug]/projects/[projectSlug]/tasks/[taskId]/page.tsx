@@ -67,6 +67,11 @@ export default async function TeamTaskDetailPage({
     assigneeId: task.assigneeId,
   };
 
+  // 虚拟团队的 owner/admin 可代管删除虚拟作者 / 无署名评论（服务层同策略）。
+  const canModerateVirtualComments =
+    team.kind === "virtual" &&
+    (membership.role === "owner" || membership.role === "admin");
+
   return (
     <TeamTaskDetailClient
       task={task}
@@ -79,6 +84,7 @@ export default async function TeamTaskDetailPage({
         canAssign: canAssignTask(permissionInput),
       }}
       assigneeOptions={assigneeOptions}
+      canModerateVirtualComments={canModerateVirtualComments}
     />
   );
 }
