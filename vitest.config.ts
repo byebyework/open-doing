@@ -11,6 +11,17 @@ export default defineConfig({
       {
         resolve: {
           alias: {
+            "@open-doing/server-core": path.resolve(
+              import.meta.dirname,
+              "packages/server-core/src",
+            ),
+          },
+        },
+        test: { name: "mcp", include: ["apps/mcp/**/*.test.ts"], environment: "node" },
+      },
+      {
+        resolve: {
+          alias: {
             "@": path.resolve(import.meta.dirname, "apps/web/src"),
             "@open-doing/server-core": path.resolve(
               import.meta.dirname,
