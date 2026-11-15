@@ -267,6 +267,7 @@ export async function respondToInvite(
       id: teamRow.id,
       name: teamRow.name,
       slug: teamRow.slug,
+      kind: teamRow.kind,
       ownerId: teamRow.ownerId,
       createdAt: teamRow.createdAt.toISOString(),
     };

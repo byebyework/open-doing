@@ -26,6 +26,7 @@ function makeTask(overrides: Partial<TeamTaskRow> = {}): TeamTaskRow {
     status: "todo",
     priority: "medium",
     assigneeId: ASSIGNEE_ID,
+    assigneeVirtualId: null,
     createdAt: "2026-10-01T00:00:00.000Z",
     updatedAt: "2026-10-01T00:00:00.000Z",
     subtasks: [],

@@ -79,6 +79,7 @@ const team = {
   id: "team-id",
   name: "增长突击队",
   slug: "growth-squad",
+  kind: "real" as const,
   ownerId: "owner-id",
   createdAt: "2026-10-01T00:00:00.000Z",
 };

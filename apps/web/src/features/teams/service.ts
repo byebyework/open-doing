@@ -63,6 +63,7 @@ function toTeam(row: typeof teams.$inferSelect): Team {
     id: row.id,
     name: row.name,
     slug: row.slug,
+    kind: row.kind,
     ownerId: row.ownerId,
     createdAt: row.createdAt.toISOString(),
   };

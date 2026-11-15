@@ -154,6 +154,7 @@ describe("邀请 actions", () => {
       id: "team-id",
       name: "效率工程部",
       slug: "team",
+      kind: "real",
       ownerId: "owner-id",
       createdAt: "2026-10-01T00:00:00.000Z",
     });

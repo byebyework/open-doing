@@ -75,6 +75,7 @@ const fakeTask: Task = {
   status: "todo",
   priority: "medium",
   assigneeId: MEMBER_ID,
+  assigneeVirtualId: null,
   dueDate: undefined,
   createdAt: "2026-10-23T00:00:00.000Z",
   updatedAt: "2026-10-23T00:00:00.000Z",
@@ -92,6 +93,7 @@ const fakeComment: Comment = {
   id: "00000000-0000-0000-0000-000000000007",
   taskId: TASK_ID,
   authorId: MEMBER_ID,
+  authorVirtualId: null,
   content: "收到",
   createdAt: "2026-10-23T00:00:00.000Z",
 };

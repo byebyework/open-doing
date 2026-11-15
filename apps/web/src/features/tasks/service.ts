@@ -74,6 +74,7 @@ function toTask(row: TaskRow): Task {
     status: row.status,
     priority: row.priority,
     assigneeId: row.assigneeId,
+    assigneeVirtualId: row.assigneeVirtualId,
     dueDate: row.dueDate ?? undefined,
     startDate: row.startDate ?? undefined,
     createdAt: row.createdAt.toISOString(),
@@ -100,6 +101,7 @@ function toComment(row: CommentRow): Comment {
     taskId: row.taskId,
     // 过渡期断言：Phase 1 评论恒为真人作者；虚拟作者列放宽后由后续任务接续。
     authorId: row.authorId as string,
+    authorVirtualId: row.authorVirtualId,
     content: row.content,
     createdAt: row.createdAt.toISOString(),
   };

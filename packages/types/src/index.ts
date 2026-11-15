@@ -68,12 +68,31 @@ export function displayName(user: {
   return user.nickname ?? user.username;
 }
 
+/** 团队类型：真实团队，或成员不登录的虚拟团队（agent 团队） */
+export type TeamKind = "real" | "virtual";
+
 /** 团队 */
 export interface Team {
   id: string;
   name: string;
   slug: string;
+  /** 团队类型：虚拟团队复用同一套空间/路由/模块栈，仅以 kind 标记 */
+  kind: TeamKind;
   ownerId: string;
+  createdAt: string;
+}
+
+/**
+ * 虚拟成员（团队级 agent 身份）：不属于 users、不能登录，
+ * 仅可通过 API Token 代表团队操作；角色仅影响团队内权限。
+ */
+export interface VirtualMember {
+  id: string;
+  teamId: string;
+  name: string;
+  role: "admin" | "member";
+  description?: string;
+  accentColor: string | null;
   createdAt: string;
 }
 
@@ -144,6 +163,8 @@ export interface Task {
   priority: TaskPriority;
   /** 责任人；个人任务恒为本人，未指派时为 null */
   assigneeId: string | null;
+  /** 虚拟成员责任人（团队任务可指派给虚拟成员）；与 assigneeId 互斥，未指派时为 null */
+  assigneeVirtualId: string | null;
   /** 截止日期，`YYYY-MM-DD` */
   dueDate?: string;
   /** 开始日期，`YYYY-MM-DD`；可空（按天排程，不早于校验在服务层） */
@@ -166,7 +187,10 @@ export interface Subtask {
 export interface Comment {
   id: string;
   taskId: string;
-  authorId: string;
+  /** 真人作者；虚拟成员评论时为 null */
+  authorId: string | null;
+  /** 虚拟成员作者；被移除后置 null（与 authorId 不可同时非空） */
+  authorVirtualId: string | null;
   content: string;
   createdAt: string;
 }
@@ -181,7 +205,28 @@ export interface Notification {
   projectId?: string;
   taskId?: string;
   actorId?: string;
+  /** 虚拟成员 actor；与 actorId 不可同时非空，被移除后为空 */
+  actorVirtualId?: string;
   createdAt: string;
+}
+
+/**
+ * 任务责任人引用：真人用户或虚拟成员，二者互斥。
+ *
+ * 承载展示所需的身份信息，避免下游为了显示责任人名再查库。
+ */
+export type AssigneeRef =
+  | { type: "user"; userId: string; name: string; image: string | null }
+  | {
+      type: "virtual";
+      virtualMemberId: string;
+      name: string;
+      accentColor: string | null;
+    };
+
+/** 责任人展示名：无责任人为 null。 */
+export function assigneeRefName(ref: AssigneeRef | null): string | null {
+  return ref === null ? null : ref.name;
 }
 
 export * from "./progress";

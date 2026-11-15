@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   addDays,
   aggregateProjectProgress,
+  assigneeRefName,
   displayName,
   getTaskProgress,
   isDueSoon,
@@ -100,6 +101,29 @@ describe("isOverdue / isDueSoon（today = 2026-10-21）", () => {
 describe("isDueSoon 跨月边界（today = 2026-10-31）", () => {
   it("2026-11-01 为明天：临期", () => {
     expect(isDueSoon("2026-11-01", "in_progress", "2026-10-31")).toBe(true);
+  });
+});
+
+describe("assigneeRefName", () => {
+  it("无责任人时返回 null", () => {
+    expect(assigneeRefName(null)).toBeNull();
+  });
+
+  it("真人责任人返回用户名", () => {
+    expect(
+      assigneeRefName({ type: "user", userId: "u1", name: "阿岚", image: null }),
+    ).toBe("阿岚");
+  });
+
+  it("虚拟责任人返回虚拟成员名", () => {
+    expect(
+      assigneeRefName({
+        type: "virtual",
+        virtualMemberId: "v1",
+        name: "Claude",
+        accentColor: "#7d2ae8",
+      }),
+    ).toBe("Claude");
   });
 });
 
