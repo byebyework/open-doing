@@ -1,11 +1,22 @@
 import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
 
-/** 任务详情里的评论：额外带上作者用户名。 */
+/**
+ * 任务详情里的评论：额外带上作者展示信息（真人与虚拟成员多态）。
+ *
+ * 虚拟成员被移除后 `authorId` / `authorVirtualId` 均为 null、`authorName`
+ * 也为 null，由 UI 侧按「已移除成员」占位展示。
+ */
 export interface TaskDetailComment {
   id: string;
   taskId: string;
-  authorId: string;
-  authorName: string;
+  /** 真人作者；虚拟成员评论时为 null。 */
+  authorId: string | null;
+  /** 虚拟成员作者；被移除后为 null。 */
+  authorVirtualId: string | null;
+  /** 展示名（昵称 → 用户名 → 虚拟成员名）；无署名时为 null。 */
+  authorName: string | null;
+  /** 虚拟成员头像色；真人作者或已移除时为 null。 */
+  authorAccentColor: string | null;
   content: string;
   createdAt: string;
 }

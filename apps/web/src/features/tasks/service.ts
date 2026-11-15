@@ -152,8 +152,7 @@ function toComment(row: CommentRow): Comment {
   return {
     id: row.id,
     taskId: row.taskId,
-    // 过渡期断言：Phase 1 评论恒为真人作者；虚拟作者列放宽后由后续任务接续。
-    authorId: row.authorId as string,
+    authorId: row.authorId,
     authorVirtualId: row.authorVirtualId,
     content: row.content,
     createdAt: row.createdAt.toISOString(),
@@ -239,6 +238,19 @@ async function requireAssignableMember(
   }
 }
 
+/** 读取团队类型；团队不存在返回 undefined（调用方自行决定拒绝语义）。 */
+async function findTeamKind(
+  teamId: string,
+  client: DbClient,
+): Promise<"real" | "virtual" | undefined> {
+  const [team] = await client
+    .select({ kind: teams.kind })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  return team?.kind;
+}
+
 /**
  * 指派目标必须是该团队的虚拟成员，且该团队本身是虚拟团队。
  *
@@ -258,12 +270,7 @@ async function requireAssignableVirtualMember(
   if (!isUuid(virtualMemberId)) throw notVirtualMember();
 
   // 团队类型校验独立于成员关系：真实团队不允许任何虚拟指派。
-  const [team] = await client
-    .select({ kind: teams.kind })
-    .from(teams)
-    .where(eq(teams.id, teamId))
-    .limit(1);
-  if (!team || team.kind !== "virtual") throw notVirtualMember();
+  if ((await findTeamKind(teamId, client)) !== "virtual") throw notVirtualMember();
 
   const [row] = await client
     .select({ id: virtualMembers.id })
@@ -276,6 +283,42 @@ async function requireAssignableVirtualMember(
     )
     .limit(1);
   if (!row) throw notVirtualMember();
+}
+
+/** 评论作者非法（虚拟成员不存在 / 不属于该虚拟团队 / 作者两列冲突）。 */
+function commentVirtualAuthorInvalid(): DomainError {
+  return new DomainError("虚拟成员作者无效", undefined, {
+    key: "commentVirtualAuthorInvalid",
+  });
+}
+
+/**
+ * 评论的虚拟作者必须是该团队的虚拟成员，且团队本身是虚拟团队。
+ *
+ * 真实团队、非法 UUID、不存在的虚拟成员、跨团队虚拟成员统一按
+ * 「虚拟作者非法」拒绝，不泄露团队 / 成员存在性。
+ */
+async function requireCommentVirtualAuthor(
+  teamId: string,
+  virtualMemberId: string,
+  client: DbClient,
+): Promise<void> {
+  if (!isUuid(virtualMemberId)) throw commentVirtualAuthorInvalid();
+  if ((await findTeamKind(teamId, client)) !== "virtual") {
+    throw commentVirtualAuthorInvalid();
+  }
+
+  const [row] = await client
+    .select({ id: virtualMembers.id })
+    .from(virtualMembers)
+    .where(
+      and(
+        eq(virtualMembers.id, virtualMemberId),
+        eq(virtualMembers.teamId, teamId),
+      ),
+    )
+    .limit(1);
+  if (!row) throw commentVirtualAuthorInvalid();
 }
 
 /**
@@ -774,9 +817,27 @@ export async function toggleTeamSubtask(
   return toSubtask(row);
 }
 
-/** 新增评论：任何成员可发；通知当前责任人（评论自己不发）。 */
+/**
+ * 新增评论：任何成员可发；真人作者评论通知当前责任人（评论自己不发）。
+ *
+ * 作者恰好多态（创建时恰好一者非空）：
+ * - 缺省以 `actorId` 为真人作者（现有 UI 行为不变）；
+ * - 提供 `authorVirtualId` 时落库 `authorId: null`，仅虚拟团队可使用，
+ *   且虚拟成员必须属于该团队（MCP agent 链路）；该链路不通知真人责任人。
+ * - `authorId` 为内部显式作者覆盖位，仅允许等于 `actorId`（防止伪造署名），
+ *   与 `authorVirtualId` 互斥；两列皆空同样拒绝。
+ */
 export async function addTeamComment(
-  input: { teamId: string; taskId: string; actorId: string; content: string },
+  input: {
+    teamId: string;
+    taskId: string;
+    actorId: string;
+    content: string;
+    /** 虚拟成员作者；提供时真人作者列落 null（仅虚拟团队 + 本团队虚拟成员）。 */
+    authorVirtualId?: string | null;
+    /** 真人作者覆盖位：缺省为 actorId；仅允许等于 actorId，与虚拟作者互斥。 */
+    authorId?: string | null;
+  },
   client: DbClient = db,
 ): Promise<Comment> {
   const { teamId, taskId, actorId } = input;
@@ -787,19 +848,55 @@ export async function addTeamComment(
   }
 
   const content = validateCommentContent(input?.content);
+
+  const virtualAuthorId = input.authorVirtualId ?? null;
+  // 真人作者：虚拟作者路径下恒为 null（除非显式传入以触发冲突校验）；
+  // 普通路径缺省为操作者本人。
+  const realAuthorId =
+    virtualAuthorId !== null
+      ? (input.authorId ?? null)
+      : input.authorId !== undefined
+        ? input.authorId
+        : actorId;
+
+  // 创建时恰好一者非空（DB 只保证「至多一者」，双空留给级联置空的历史评论）。
+  if (realAuthorId !== null && virtualAuthorId !== null) {
+    throw commentVirtualAuthorInvalid();
+  }
+  if (realAuthorId === null && virtualAuthorId === null) {
+    throw commentVirtualAuthorInvalid();
+  }
+  // 真人作者只能是操作者本人：不允许经由 service 伪造他人署名。
+  if (realAuthorId !== null && realAuthorId !== actorId) {
+    throw commentVirtualAuthorInvalid();
+  }
+  if (virtualAuthorId !== null) {
+    await requireCommentVirtualAuthor(teamId, virtualAuthorId, client);
+  }
+
   const assigneeId = existing.task.assigneeId;
 
   return client.transaction(async (tx) => {
     const [row] = await tx
       .insert(comments)
-      .values({ taskId, authorId: actorId, content })
+      .values({
+        taskId,
+        authorId: realAuthorId,
+        authorVirtualId: virtualAuthorId,
+        content,
+      })
       .returning();
 
     if (!row) {
       throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
     }
 
-    if (assigneeId !== null && assigneeId !== actorId) {
+    // 虚拟作者（agent 链路）不触发真人责任人通知；真人评论维持原逻辑。
+    if (
+      virtualAuthorId === null &&
+      assigneeId !== null &&
+      assigneeId !== actorId
+    ) {
       await notifySafely(tx, {
         userId: assigneeId,
         type: "task_commented",
@@ -814,7 +911,13 @@ export async function addTeamComment(
   });
 }
 
-/** 删除评论：仅作者本人（owner/admin 也不行）。 */
+/**
+ * 删除评论。
+ *
+ * - 真人作者评论：仅作者本人可删（owner/admin 也不能代删，维持现状）；
+ * - 虚拟作者评论：仅虚拟团队成员 kind='virtual' 且当前角色为 owner/admin
+ *   可代管删除（agent 无法自行登录）；其余一律按「评论不存在」处理。
+ */
 export async function deleteTeamComment(
   input: {
     teamId: string;
@@ -825,26 +928,43 @@ export async function deleteTeamComment(
   client: DbClient = db,
 ): Promise<void> {
   const { teamId, taskId, actorId, commentId } = input;
-  await requireTeamTask(teamId, taskId, actorId, client);
+  const existing = await requireTeamTask(teamId, taskId, actorId, client);
 
-  if (!isUuid(commentId)) {
-    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
+  const notFound = () =>
+    new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
+
+  if (!isUuid(commentId)) throw notFound();
+
+  const [comment] = await client
+    .select({
+      id: comments.id,
+      authorId: comments.authorId,
+      authorVirtualId: comments.authorVirtualId,
+    })
+    .from(comments)
+    .where(and(eq(comments.id, commentId), eq(comments.taskId, taskId)))
+    .limit(1);
+
+  if (!comment) throw notFound();
+
+  let canDelete = comment.authorId !== null && comment.authorId === actorId;
+
+  // 虚拟作者无法自行删除：虚拟团队的 owner/admin 可代管。
+  if (!canDelete && comment.authorVirtualId !== null) {
+    const isManager = existing.role === "owner" || existing.role === "admin";
+    if (isManager && (await findTeamKind(teamId, client)) === "virtual") {
+      canDelete = true;
+    }
   }
+
+  if (!canDelete) throw notFound();
 
   const [row] = await client
     .delete(comments)
-    .where(
-      and(
-        eq(comments.id, commentId),
-        eq(comments.taskId, taskId),
-        eq(comments.authorId, actorId),
-      ),
-    )
+    .where(and(eq(comments.id, commentId), eq(comments.taskId, taskId)))
     .returning({ id: comments.id });
 
-  if (!row) {
-    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
-  }
+  if (!row) throw notFound();
 }
 
 /**
@@ -985,9 +1105,15 @@ export async function getTeamTaskDetail(
       comment: comments,
       authorUsername: users.username,
       authorNickname: users.name,
+      authorVirtualName: virtualMembers.name,
+      authorAccentColor: virtualMembers.accentColor,
     })
     .from(comments)
-    .innerJoin(users, eq(comments.authorId, users.id))
+    .leftJoin(users, eq(comments.authorId, users.id))
+    .leftJoin(
+      virtualMembers,
+      eq(comments.authorVirtualId, virtualMembers.id),
+    )
     .where(eq(comments.taskId, taskId))
     .orderBy(asc(comments.createdAt));
 
@@ -1029,12 +1155,21 @@ export async function getTeamTaskDetail(
     }),
     subtasks: mappedSubtasks,
     comments: commentRows.map(
-      ({ comment, authorUsername, authorNickname }) => ({
+      ({
+        comment,
+        authorUsername,
+        authorNickname,
+        authorVirtualName,
+        authorAccentColor,
+      }) => ({
         id: comment.id,
         taskId: comment.taskId,
-        // 过渡期断言：Phase 1 评论恒为真人作者（虚拟作者由后续任务接入）。
-        authorId: comment.authorId as string,
-        authorName: authorNickname ?? authorUsername,
+        authorId: comment.authorId,
+        authorVirtualId: comment.authorVirtualId,
+        // 展示名：昵称 → 用户名 → 虚拟成员名；虚拟成员被移除后为 null。
+        authorName:
+          authorNickname ?? authorUsername ?? authorVirtualName ?? null,
+        authorAccentColor: authorAccentColor ?? null,
         content: comment.content,
         createdAt: comment.createdAt.toISOString(),
       }),

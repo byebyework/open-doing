@@ -5,7 +5,10 @@ import type { NotificationType, VirtualMember } from "@open-doing/types";
 
 import { createTeamProject } from "@/features/projects/service";
 import { createTeam } from "@/features/teams/service";
-import { createVirtualMember } from "@/features/teams/virtual/service";
+import {
+  createVirtualMember,
+  removeVirtualMember,
+} from "@/features/teams/virtual/service";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
@@ -784,6 +787,273 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         db,
       );
       expect(await db.select().from(comments).where(eq(comments.id, comment.id))).toHaveLength(0);
+    });
+  });
+
+  describe("虚拟作者评论", () => {
+    it("① 虚拟作者评论落库：authorId 为 null、authorVirtualId 有值；详情返回虚拟成员名与头像色、不通知真人", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const member = await createUser(db, uniqueName("member"));
+      await addMember(db, team.id, member.id, "member");
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "agent 汇报",
+          assigneeId: member.id,
+        },
+        db,
+      );
+
+      const comment = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "  进度 50%  ",
+        },
+        db,
+      );
+
+      expect(comment).toMatchObject({
+        taskId: task.id,
+        authorId: null,
+        authorVirtualId: virtualMember.id,
+        content: "进度 50%",
+      });
+
+      const [row] = await db
+        .select()
+        .from(comments)
+        .where(eq(comments.id, comment.id));
+      expect(row!.authorId).toBeNull();
+      expect(row!.authorVirtualId).toBe(virtualMember.id);
+
+      // agent 链路（虚拟作者）不触发真人责任人通知。
+      expect(await countNotifications(db, task.id, "task_commented")).toBe(0);
+
+      const detail = await getTeamTaskDetail(
+        { teamId: team.id, taskId: task.id, actorId: owner.id },
+        db,
+      );
+      expect(detail!.comments).toEqual([
+        expect.objectContaining({
+          id: comment.id,
+          authorId: null,
+          authorVirtualId: virtualMember.id,
+          authorName: virtualMember.name,
+          authorAccentColor: "#7d2ae8",
+        }),
+      ]);
+    });
+
+    it("② owner 可删除虚拟作者评论（owner 管理权）", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+      const comment = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "agent 评论",
+        },
+        db,
+      );
+
+      await deleteTeamComment(
+        { teamId: team.id, taskId: task.id, actorId: owner.id, commentId: comment.id },
+        db,
+      );
+
+      expect(
+        await db.select().from(comments).where(eq(comments.id, comment.id)),
+      ).toHaveLength(0);
+    });
+
+    it("③ owner 仍不能删除真人作者的评论（本人独占策略不变）", async () => {
+      const { owner, team, project } = await setupTeamWithProject(db);
+      const member = await createUser(db, uniqueName("member"));
+      await addMember(db, team.id, member.id, "member");
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+      const comment = await addTeamComment(
+        { teamId: team.id, taskId: task.id, actorId: member.id, content: "真人评论" },
+        db,
+      );
+
+      await expect(
+        deleteTeamComment(
+          { teamId: team.id, taskId: task.id, actorId: owner.id, commentId: comment.id },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        i18n: { key: "commentNotFound" },
+      });
+      expect(
+        await db.select().from(comments).where(eq(comments.id, comment.id)),
+      ).toHaveLength(1);
+    });
+
+    it("④ member 不能删除虚拟作者评论（仅 owner/admin 可代管）", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const member = await createUser(db, uniqueName("member"));
+      await addMember(db, team.id, member.id, "member");
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+      const comment = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "agent 评论",
+        },
+        db,
+      );
+
+      await expect(
+        deleteTeamComment(
+          { teamId: team.id, taskId: task.id, actorId: member.id, commentId: comment.id },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        i18n: { key: "commentNotFound" },
+      });
+      expect(
+        await db.select().from(comments).where(eq(comments.id, comment.id)),
+      ).toHaveLength(1);
+    });
+
+    it("⑤ 移除虚拟成员后：评论保留，详情 authorName / authorId / authorVirtualId 均为 null", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+      const comment = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "历史 agent 评论",
+        },
+        db,
+      );
+
+      await removeVirtualMember(
+        { teamId: team.id, virtualMemberId: virtualMember.id, actorId: owner.id },
+        db,
+      );
+
+      expect(
+        await db.select().from(comments).where(eq(comments.id, comment.id)),
+      ).toHaveLength(1);
+
+      const detail = await getTeamTaskDetail(
+        { teamId: team.id, taskId: task.id, actorId: owner.id },
+        db,
+      );
+      expect(detail!.comments).toEqual([
+        expect.objectContaining({
+          id: comment.id,
+          authorId: null,
+          authorVirtualId: null,
+          authorName: null,
+          authorAccentColor: null,
+          content: "历史 agent 评论",
+        }),
+      ]);
+    });
+
+    it("⑥ 作者恰好一人：两列同时提供 / 皆空均拒绝；真实团队不接受虚拟作者", async () => {
+      const virtual = await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        {
+          teamId: virtual.team.id,
+          projectId: virtual.project.id,
+          actorId: virtual.owner.id,
+          title: "任务",
+        },
+        db,
+      );
+
+      // 真人与虚拟作者同时提供（DB CHECK 会拒，service 先行给出领域错误）。
+      const conflict = await addTeamComment(
+        {
+          teamId: virtual.team.id,
+          taskId: task.id,
+          actorId: virtual.owner.id,
+          authorId: virtual.owner.id,
+          authorVirtualId: virtual.virtualMember.id,
+          content: "冲突",
+        },
+        db,
+      ).catch((error: unknown) => error);
+      expect(conflict).toBeInstanceOf(DomainError);
+      expect((conflict as DomainError).field).toBeUndefined();
+      expect((conflict as DomainError).i18n).toMatchObject({
+        key: "commentVirtualAuthorInvalid",
+      });
+
+      // 两列皆空同样拒绝（创建时必须恰好一者）。
+      await expect(
+        addTeamComment(
+          {
+            teamId: virtual.team.id,
+            taskId: task.id,
+            actorId: virtual.owner.id,
+            authorId: null,
+            content: "无署名",
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        i18n: { key: "commentVirtualAuthorInvalid" },
+      });
+
+      // 真实团队不接受虚拟作者（即便虚拟成员属于另一个虚拟团队）。
+      const real = await setupTeamWithProject(db);
+      const realTask = await createTeamTask(
+        { teamId: real.team.id, projectId: real.project.id, actorId: real.owner.id, title: "真人团队任务" },
+        db,
+      );
+
+      await expect(
+        addTeamComment(
+          {
+            teamId: real.team.id,
+            taskId: realTask.id,
+            actorId: real.owner.id,
+            authorVirtualId: virtual.virtualMember.id,
+            content: "越权署名",
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        i18n: { key: "commentVirtualAuthorInvalid" },
+      });
+      expect(
+        await db.select().from(comments).where(eq(comments.taskId, realTask.id)),
+      ).toHaveLength(0);
     });
   });
 

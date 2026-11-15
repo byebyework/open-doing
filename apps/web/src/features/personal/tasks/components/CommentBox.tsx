@@ -11,11 +11,18 @@ import { formatTaskTimestamp } from "@/lib/date-display";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { COMMENT_MAX_LENGTH } from "@/lib/task-fields";
 
-/** 评论列表项（作者名由服务端组装）。 */
+/**
+ * 评论列表项（作者信息由服务端组装）。
+ *
+ * 作者多态：真人（authorId）或虚拟成员（authorVirtualId）；虚拟成员被移除后
+ * 两列与 authorName 均为 null（占位展示由后续 UI 任务接入）。
+ */
 export interface CommentBoxItem {
   id: string;
-  authorId: string;
-  authorName: string;
+  authorId: string | null;
+  authorVirtualId?: string | null;
+  authorName: string | null;
+  authorAccentColor?: string | null;
   content: string;
   createdAt: string;
 }
@@ -100,8 +107,12 @@ export function CommentBox({
           {comments.map((comment) => (
             <div key={comment.id} className="group flex gap-3">
               <UserAvatar
-                userId={comment.authorId}
-                name={comment.authorName}
+                userId={
+                  comment.authorId ??
+                  comment.authorVirtualId ??
+                  comment.id
+                }
+                name={comment.authorName ?? ""}
                 size={30}
               />
 
@@ -114,7 +125,9 @@ export function CommentBox({
                     {formatCommentTime(comment.createdAt)}
                   </span>
 
-                  {onDelete && comment.authorId === currentUserId ? (
+                  {onDelete &&
+                  comment.authorId !== null &&
+                  comment.authorId === currentUserId ? (
                     <Button
                       variant="ghost"
                       size="sm"

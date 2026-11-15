@@ -296,6 +296,8 @@
     "taskNotFound": "任务不存在或无权访问",
     "subtaskNotFound": "子任务不存在或无权访问",
     "commentNotFound": "评论不存在或无权删除",
+    "commentVirtualAuthorInvalid": "虚拟成员作者无效",
+    "removedVirtualAuthor": "已移除成员",
     "projectNotFound": "项目不存在或无权访问",
     "teamNotFound": "团队不存在或无权访问",
     "assigneeNotMember": "只能指派给团队内成员",
