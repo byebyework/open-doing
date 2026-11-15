@@ -1,5 +1,5 @@
 import { asc, eq, like } from "drizzle-orm";
-import type { Gender, Team, TeamMembership } from "@open-doing/types";
+import type { Gender, Team, TeamKind, TeamMembership } from "@open-doing/types";
 
 import { generateJoinCode } from "@/lib/join-code";
 import type { DomainErrorI18n } from "@/lib/domain-error";
@@ -29,6 +29,8 @@ export type TeamErrorField = "name" | "form";
 /** 创建团队入参。 */
 export interface CreateTeamInput {
   name: string;
+  /** 团队类型，缺省为真实团队；虚拟团队不支持邀请/凭码加入。 */
+  kind?: TeamKind;
 }
 
 /**
@@ -124,6 +126,7 @@ async function nextFreeSlug(base: string, client: DbClient): Promise<string> {
  *
  * slug 由名称推导（纯中文回退 `team`），重名追加计数后缀；
  * 同时生成全局唯一的 8 位入群码；并发竞态由唯一约束重试兜底。
+ * `kind: 'virtual'` 时关闭凭码加入（虚拟团队不支持真人加入）。
  */
 export async function createTeam(
   input: CreateTeamInput,
@@ -131,13 +134,21 @@ export async function createTeam(
   client: DbClient = db,
 ): Promise<Team> {
   const name = validateName(input?.name);
+  const kind: TeamKind = input?.kind ?? "real";
   const base = slugifyName(name);
 
   const attemptInsert = async (tx: DbClient): Promise<Team> => {
     const slug = await nextFreeSlug(base, tx);
     const [teamRow] = await tx
       .insert(teams)
-      .values({ name, slug, ownerId: actorId, joinCode: generateJoinCode() })
+      .values({
+        name,
+        slug,
+        ownerId: actorId,
+        kind,
+        joinCode: generateJoinCode(),
+        ...(kind === "virtual" ? { joinCodeEnabled: false } : {}),
+      })
       .returning();
 
     await tx.insert(teamMemberships).values({
@@ -175,6 +186,30 @@ export async function getTeamBySlug(
 ): Promise<Team | null> {
   const [row] = await client.select().from(teams).where(eq(teams.slug, slug)).limit(1);
   return row ? toTeam(row) : null;
+}
+
+/**
+ * 邀请 / 凭码加入入口的真实团队守卫。
+ *
+ * 虚拟团队不参与真人邀请与凭码加入，统一在 invites / joins 两个 service 的
+ * 创建入口调用；团队不存在时同样抛领域错误（i18n 分别由 action 翻译）。
+ */
+export async function assertTeamIsReal(
+  teamId: string,
+  client: DbClient = db,
+): Promise<Team> {
+  const [row] = await client.select().from(teams).where(eq(teams.id, teamId)).limit(1);
+
+  if (!row) {
+    throw new TeamError("VALIDATION", "团队不存在", "form", { key: "teamNotFound" });
+  }
+  if (row.kind === "virtual") {
+    throw new TeamError("VALIDATION", "虚拟团队不支持邀请或凭码加入", "form", {
+      key: "virtualTeamClosed",
+    });
+  }
+
+  return toTeam(row);
 }
 
 /** 用户所在的全部团队，按创建时间升序（侧栏「我的团队」数据源）。 */

@@ -13,7 +13,7 @@ import {
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { TeamPermissionError, getMembership } from "../permissions";
-import { createTeam } from "../service";
+import { TeamError, createTeam } from "../service";
 import {
   JoinError,
   cancelJoinRequest,
@@ -124,6 +124,35 @@ describe.skipIf(!hasTestDatabase)("凭码加入 service", () => {
       expect(error).toMatchObject({ code: "CODE_INVALID", field: "code" });
       expect((error as Error).message).not.toContain(team.name);
     }
+  });
+
+  it("虚拟团队拒绝凭码加入申请（virtualTeamClosed），真实团队路径不受影响", async () => {
+    const virtualOwner = await createUser(db, "virtual-owner");
+    const applicant = await createUser(db, "virtual-applicant");
+    const virtualTeam = await createTeam(
+      { name: "Agent Squad", kind: "virtual" },
+      virtualOwner.id,
+      db,
+    );
+    const virtualCode = await joinCodeOf(db, virtualTeam.id);
+
+    const error = await createJoinRequest({ code: virtualCode, actorId: applicant.id }, db).catch(
+      (caught: unknown) => caught,
+    );
+
+    expect(error).toBeInstanceOf(TeamError);
+    expect(error).toMatchObject({
+      code: "VALIDATION",
+      field: "form",
+      i18n: { key: "virtualTeamClosed" },
+    });
+
+    // 真实团队路径不变：既有用例已覆盖，这里再冒烟一次。
+    const { outsider, team } = await seedTeam(db);
+    const realCode = await joinCodeOf(db, team.id);
+    await expect(
+      createJoinRequest({ code: realCode, actorId: outsider.id }, db),
+    ).resolves.toMatchObject({ teamId: team.id, userId: outsider.id, status: "pending" });
   });
 
   it("入群码归一化：前后空白 + 转大写后合法", async () => {

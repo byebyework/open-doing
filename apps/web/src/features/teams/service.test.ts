@@ -10,6 +10,7 @@ import { closeTestDb, setupTestDb } from "@/server/db/testing";
 import { TeamPermissionError, getMembership } from "./permissions";
 import {
   TeamError,
+  assertTeamIsReal,
   createTeam,
   getTeamBySlug,
   listMembers,
@@ -85,6 +86,42 @@ describe.skipIf(!hasTestDatabase)("团队 service", () => {
     // Team 领域模型暂不暴露 joinCode，直接查库校验。
     const [row] = await db.select().from(teams).where(eq(teams.id, team.id));
     expect(row!.joinCode).toMatch(/^[23456789ABCDEFGHJKMNPQRSTUVWXYZ]{8}$/);
+  });
+
+  it("kind：缺省创建真实团队且保留凭码加入；显式 virtual 创建虚拟团队并关闭凭码加入", async () => {
+    const owner = await createUser(db, "alice");
+
+    const real = await createTeam({ name: "Growth Squad" }, owner.id, db);
+    expect(real.kind).toBe("real");
+    const [realRow] = await db.select().from(teams).where(eq(teams.id, real.id));
+    expect(realRow!.kind).toBe("real");
+    expect(realRow!.joinCodeEnabled).toBe(true);
+
+    const virtual = await createTeam({ name: "Agent Squad", kind: "virtual" }, owner.id, db);
+    expect(virtual.kind).toBe("virtual");
+    expect(virtual.slug).toBe("agent-squad");
+    const [virtualRow] = await db.select().from(teams).where(eq(teams.id, virtual.id));
+    expect(virtualRow!.kind).toBe("virtual");
+    expect(virtualRow!.joinCodeEnabled).toBe(false);
+  });
+
+  it("assertTeamIsReal：真实团队返回 Team；虚拟团队与不存在的团队抛领域错误", async () => {
+    const owner = await createUser(db, "alice");
+    const real = await createTeam({ name: "Growth Squad" }, owner.id, db);
+    const virtual = await createTeam({ name: "Agent Squad", kind: "virtual" }, owner.id, db);
+
+    await expect(assertTeamIsReal(real.id, db)).resolves.toEqual(real);
+
+    await expect(assertTeamIsReal(virtual.id, db)).rejects.toMatchObject({
+      code: "VALIDATION",
+      field: "form",
+      i18n: { key: "virtualTeamClosed" },
+    });
+    await expect(assertTeamIsReal(crypto.randomUUID(), db)).rejects.toMatchObject({
+      code: "VALIDATION",
+      field: "form",
+      i18n: { key: "teamNotFound" },
+    });
   });
 
   it("名称校验：trim 后需为 2–30 字符", async () => {

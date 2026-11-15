@@ -7,7 +7,7 @@ import { notifications, teamInvites, teamMemberships, teams, users } from "@/ser
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { TeamPermissionError, getMembership } from "../permissions";
-import { createTeam, listTeamsForUser } from "../service";
+import { TeamError, createTeam, listTeamsForUser } from "../service";
 import {
   InviteError,
   createInvite,
@@ -79,6 +79,35 @@ describe.skipIf(!hasTestDatabase)("邀请 service", () => {
     await expect(
       createInvite({ teamId: team.id, actorId: member.id, uid: outsider.uid }, db),
     ).rejects.toBeInstanceOf(TeamPermissionError);
+  });
+
+  it("虚拟团队拒绝发起邀请（virtualTeamClosed），真实团队邀请路径不受影响", async () => {
+    const virtualOwner = await createUser(db, "virtual-owner");
+    const invitee = await createUser(db, "virtual-invitee", "外部人");
+    const virtualTeam = await createTeam({ name: "Agent Squad", kind: "virtual" }, virtualOwner.id, db);
+
+    const error = await createInvite(
+      { teamId: virtualTeam.id, actorId: virtualOwner.id, uid: invitee.uid },
+      db,
+    ).catch((caught: unknown) => caught);
+
+    expect(error).toBeInstanceOf(TeamError);
+    expect(error).toMatchObject({
+      code: "VALIDATION",
+      field: "form",
+      i18n: { key: "virtualTeamClosed" },
+    });
+
+    // 真实团队路径不变：既有用例已覆盖，这里再冒烟一次。
+    const { owner: realOwner, team: realTeam } = await seedTeam(db);
+    const realInvitee = await createUser(db, "real-invitee");
+    await expect(
+      createInvite({ teamId: realTeam.id, actorId: realOwner.id, uid: realInvitee.uid }, db),
+    ).resolves.toMatchObject({
+      teamId: realTeam.id,
+      inviteeId: realInvitee.id,
+      status: "pending",
+    });
   });
 
   it("UID 无效：空 / 非 doing_ 前缀 / 不存在 均抛 uid 字段错误「UID 无效」", async () => {

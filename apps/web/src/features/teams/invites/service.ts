@@ -8,6 +8,7 @@ import { isUniqueViolation } from "@/server/db/errors";
 import { teamInvites, teamMemberships, teams, users } from "@/server/db/schema";
 
 import { assertCan, getMembership } from "../permissions";
+import { assertTeamIsReal } from "../service";
 import { markTeamInviteNotificationsRead } from "@/features/notifications/queries";
 import { createNotification } from "@/features/notifications/service";
 
@@ -75,6 +76,9 @@ export async function createInvite(
   input: CreateInviteInput,
   client: DbClient = db,
 ): Promise<TeamInvite> {
+  // 虚拟团队不支持真人邀请：入口第一步拦截。
+  await assertTeamIsReal(input.teamId, client);
+
   const uid = typeof input?.uid === "string" ? input.uid.trim() : "";
   if (!uid) {
     throw new InviteError("UID_NOT_FOUND", "UID 无效", "uid", { key: "uidInvalid" });

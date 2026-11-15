@@ -11,6 +11,7 @@ import { isUniqueViolation } from "@/server/db/errors";
 import { teamJoinRequests, teamMemberships, teams, users } from "@/server/db/schema";
 
 import { assertCan, getMembership } from "../permissions";
+import { assertTeamIsReal } from "../service";
 
 export type JoinErrorCode =
   | "VALIDATION"
@@ -207,6 +208,8 @@ export async function createJoinRequest(
   if (!teamRow) {
     throw new JoinError("CODE_INVALID", "入群码无效", "code", { key: "joinCodeInvalid" });
   }
+  // 虚拟团队不支持凭码加入：解析出团队后第一时间拦截。
+  await assertTeamIsReal(teamRow.id, client);
   if (!teamRow.joinCodeEnabled) {
     throw new JoinError("JOIN_DISABLED", "该团队已关闭凭码加入", "code", { key: "joinCodeDisabled" });
   }

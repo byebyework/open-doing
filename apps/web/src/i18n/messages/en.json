@@ -393,6 +393,7 @@
     "joinCodeResetFailed": "Failed to reset the join code. Please try again later.",
     "joinCodeSaveFailed": "Failed to save join settings. Please try again later.",
     "teamNotFound": "The team does not exist or is no longer available",
+    "virtualTeamClosed": "Virtual teams do not support invites or join codes",
     "joinCodeGenerateFailed": "Failed to generate a join code. Please try again later.",
     "joinCodeInvalid": "Invalid join code",
     "joinCodeDisabled": "This team has disabled joining by code",
