@@ -34,7 +34,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/features/teams/invites/service.ts", reason: "InviteError zh 兜底" },
   { prefix: "apps/web/src/features/teams/members/service.ts", reason: "Member/Policy/GovernanceError zh 兜底" },
   { prefix: "packages/server-core/src/virtual/service.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
-  { prefix: "apps/web/src/features/mcp/api-tokens.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
+  { prefix: "packages/server-core/src/mcp/api-tokens.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
   { prefix: "packages/server-core/src/lib/task-fields.ts", reason: "DomainError zh 兜底 + 校验标签" },
 
   // ── Server Action / 客户端 console.error 日志前缀 ──
