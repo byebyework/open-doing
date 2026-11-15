@@ -71,6 +71,21 @@ function buildConfigSnippet(endpoint: string, rawToken: string): string {
 }
 
 /**
+ * MCP 服务的公网端点。
+ *
+ * 生产环境由独立服务 `apps/mcp` 提供（nginx 路径路由 `/mcp/`），构建时通过
+ * `NEXT_PUBLIC_MCP_BASE_URL` 注入完整地址（Next.js 在构建期把该变量内联进
+ * 客户端产物）；未配置时回退到 web 同源的 `/mcp/`，供本地 / 反代前环境使用。
+ */
+function resolveMcpEndpoint(): string {
+  const configured = process.env.NEXT_PUBLIC_MCP_BASE_URL?.trim();
+  if (configured) return configured;
+
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return `${origin}/mcp/`;
+}
+
+/**
  * 虚拟团队设置页的 API Token 管理（列表 + 签发 / 重签 / 吊销）。
  *
  * - 列表来自 RSC，`router.refresh()` 后按「sync props → state during render」
@@ -190,8 +205,7 @@ export function ApiTokenManager({
     }
   }
 
-  const origin = typeof window === "undefined" ? "" : window.location.origin;
-  const endpointUrl = `${origin}/api/mcp`;
+  const endpointUrl = resolveMcpEndpoint();
   const configSnippet = issued
     ? buildConfigSnippet(endpointUrl, issued.rawToken)
     : "";

@@ -7,7 +7,8 @@ import { registerMcpTools } from "@open-doing/server-core/mcp/tools";
 /**
  * POST / —— 无状态 MCP（Streamable HTTP）端点。
  *
- * 行为与已下线的 `apps/web/src/app/api/mcp/route.ts` 逐语义一致：
+ * 从 web 嵌入式端点 `apps/web/src/app/api/mcp/route.ts` 移植（web 端点已删除），
+ * 行为逐语义一致：
  *
  * 鉴权只认 `Authorization: Bearer <odm_...>`：
  * - 缺失 / 非 Bearer 方案 / 解析失败（null）一律 401，响应不回显 token；

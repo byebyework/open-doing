@@ -83,6 +83,7 @@ describe("ApiTokenManager", () => {
     container = null;
     root = null;
     vi.useRealTimers();
+    vi.unstubAllEnvs();
     vi.clearAllMocks();
   });
 
@@ -160,7 +161,7 @@ describe("ApiTokenManager", () => {
     const snippet = find('[data-testid="api-token-config"]')?.textContent;
     expect(snippet).toContain("mcpServers");
     expect(snippet).toContain(`Bearer ${RAW_TOKEN}`);
-    expect(snippet).toContain("/api/mcp");
+    expect(snippet).toContain(`${window.location.origin}/mcp/`);
 
     expect(find('[data-testid="copy-api-token"]')).not.toBeNull();
   });
@@ -336,5 +337,49 @@ describe("ApiTokenManager", () => {
 
     expect(toastErrorMock).toHaveBeenCalledWith("虚拟成员不存在");
     expect(find('[data-testid="api-token-raw"]')).toBeNull();
+  });
+
+  it("配置 NEXT_PUBLIC_MCP_BASE_URL 时：端点 URL 与配置片段 url 都使用该完整地址", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MCP_BASE_URL", "https://mcp.example.com/mcp/");
+    issueActionMock.mockResolvedValue({
+      ok: true,
+      data: { token: RAW_TOKEN, tokenPrefix: "odm_AAAA" },
+    });
+    renderManager();
+
+    await click("issue-api-token-vm-2");
+    await flushAsync();
+
+    const endpoint = find('[data-testid="api-token-endpoint"]')?.textContent;
+    expect(endpoint).toBe("https://mcp.example.com/mcp/");
+
+    const snippet = find('[data-testid="api-token-config"]')?.textContent ?? "";
+    const config = JSON.parse(snippet) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    expect(config.mcpServers["open-doing"].url).toBe(
+      "https://mcp.example.com/mcp/",
+    );
+  });
+
+  it("未配置 NEXT_PUBLIC_MCP_BASE_URL 时：回退到当前站点 origin 的 /mcp/ 路径", async () => {
+    vi.stubEnv("NEXT_PUBLIC_MCP_BASE_URL", undefined);
+    issueActionMock.mockResolvedValue({
+      ok: true,
+      data: { token: RAW_TOKEN, tokenPrefix: "odm_AAAA" },
+    });
+    renderManager();
+
+    await click("issue-api-token-vm-2");
+    await flushAsync();
+
+    const fallback = `${window.location.origin}/mcp/`;
+    expect(find('[data-testid="api-token-endpoint"]')?.textContent).toBe(fallback);
+
+    const snippet = find('[data-testid="api-token-config"]')?.textContent ?? "";
+    const config = JSON.parse(snippet) as {
+      mcpServers: Record<string, { url: string }>;
+    };
+    expect(config.mcpServers["open-doing"].url).toBe(fallback);
   });
 });

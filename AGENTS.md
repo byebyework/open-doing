@@ -23,6 +23,7 @@ docker compose up -d --wait   # Start PostgreSQL 16 (dev db open_doing + test db
 pnpm install
 cp .env.example apps/web/.env.local   # Next.js resolves env from apps/web, not the repo root
 pnpm dev                      # web app, http://localhost:3000
+pnpm --filter @open-doing/mcp dev   # standalone MCP service, http://localhost:3101 (POST /)
 pnpm build
 pnpm lint                     # all packages
 pnpm typecheck                # see ordering requirement below
@@ -37,7 +38,7 @@ pnpm --filter @open-doing/web test:e2e -- flows/04-cron-reminder.spec.ts   # a s
 
 Environment variable gotchas:
 
-- **vitest and drizzle-kit do NOT read `apps/web/.env.local`**. Run `set -a; source apps/web/.env.local; set +a` first (or export the vars another way) before running tests/migrations, otherwise database tests silently skip.
+- **vitest, drizzle-kit and `apps/mcp` do NOT read `apps/web/.env.local`**. Run `set -a; source apps/web/.env.local; set +a` first (or export the vars another way) before running tests/migrations/`pnpm --filter @open-doing/mcp dev`, otherwise database tests silently skip and the MCP service starts without a database.
 - The database pointed to by `TEST_DATABASE_URL` is **wiped by tests**; it must be a different database from the dev `DATABASE_URL`.
 - Typecheck ordering: on a clean checkout, run `pnpm build` (or `pnpm --filter @open-doing/web exec next typegen`) before `pnpm typecheck` — Next.js route types are generated at build time.
 - Before running e2e for the first time: `pnpm --filter @open-doing/web exec playwright install chromium`.
@@ -47,8 +48,10 @@ Environment variable gotchas:
 
 ### Monorepo (pnpm workspaces)
 
-- `apps/web` (`@open-doing/web`) — the only app: pages + Server Actions + Route Handlers + DB access.
-- `packages/types` (`@open-doing/types`) — **serializable types and pure functions** shared between frontend and backend (e.g. `getTaskProgress`, `isOverdue`). Rules: no React dependency, no database access, no IO. Drizzle row types stay inside the web package; when crossing the boundary, map them to domain models in the features layer.
+- `apps/web` (`@open-doing/web`) — the web app: pages + Server Actions + Route Handlers + DB access.
+- `apps/mcp` (`@open-doing/mcp`) — the standalone MCP service (Hono + `@modelcontextprotocol/sdk`) serving `POST /`; it is its own process (`MCP_PORT` default 3101) connected to the same PostgreSQL, so restarting web does not affect it (and vice versa).
+- `packages/server-core` (`@open-doing/server-core`) — server-side implementation shared by both apps: Drizzle schema/client, domain services, shared lib modules and the MCP token/tool registry. Deep-path exports (`@open-doing/server-core/<domain>/<file>`), no build step. Permission rules live here exactly once.
+- `packages/types` (`@open-doing/types`) — **serializable types and pure functions** shared between frontend and backend (e.g. `getTaskProgress`, `isOverdue`). Rules: no React dependency, no database access, no IO. Drizzle row types stay inside `packages/server-core`; when crossing the boundary, map them to domain models in the features layer.
 
 ### Feature domain modules (`apps/web/src/features/`)
 
@@ -81,10 +84,11 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 
 - A virtual team is a normal team row with `teams.kind = 'virtual'` and reuses the same space/routes/modules; virtual members live only in `virtual_members` (never `users`), cannot log in, and are never notification recipients.
 - Task assignee and comment author columns are polymorphic (real-user FK xor virtual-member FK); an at-most-one DB CHECK backs this, and services validate exactly-one on creation.
-- MCP is `POST /api/mcp`, authenticated by `Authorization: Bearer odm_…` only: `api_tokens` stores a sha256 hash, the raw token is shown once at issuance, and a cookie/session **never** grants MCP access.
+- MCP is served by the standalone `apps/mcp` service: `POST /` (Streamable HTTP, stateless; `GET /` / `DELETE /` are 405), authenticated by `Authorization: Bearer odm_…` only — `api_tokens` stores a sha256 hash, the raw token is shown once at issuance, and a cookie/session **never** grants MCP access.
+- The public MCP URL is path-routed by nginx at `/mcp/` and configured through `NEXT_PUBLIC_MCP_BASE_URL` (a build-time web env var): the token dialog's endpoint URL and config snippet use it verbatim, falling back to `${window.location.origin}/mcp/` when unset.
 - A token binds an owning human, one virtual member, and one team; the token's team is the **only** scope — no tool accepts a `teamId`, and cross-team ids behave exactly like missing ids (not found / empty).
 - MCP actions authorize through the owning human's team role (the virtual member only signs the activity); agent activity attributes via `actorVirtualId`, sending `task_commented_by_agent` / `task_changed_by_agent` notifications to the task creator.
-- Server Actions strip unknown fields before calling services, so the **service layer is the authorization gate** for MCP and UI paths alike; hiding a UI entry point is never access control.
+- Both apps call the same `@open-doing/server-core` services (Server Actions strip unknown fields first), so the **service layer is the authorization gate** for MCP and UI paths alike; hiding a UI entry point is never access control.
 
 ### UI conventions (shadcn/ui + Tailwind 4)
 
@@ -110,7 +114,7 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 
 ### Database
 
-- Schema: `apps/web/src/server/db/schema.ts` (Drizzle `pg-core`); migrations in `apps/web/drizzle/` (replayable on an empty database). Tables use native `uuid` primary keys with `gen_random_uuid()`; timestamps are `timestamptz` (absolute instants, no custom timestamp type). Slugs locate teams/projects; task details use opaque IDs.
+- Schema: `packages/server-core/src/db/schema.ts` (Drizzle `pg-core`; `apps/web/src/server/db/schema.ts` re-exports it); migrations in `apps/web/drizzle/` (replayable on an empty database) and are generated / applied **from `apps/web` only** (`pnpm db:generate` / `pnpm db:migrate`) — `apps/mcp` never runs migrations. Tables use native `uuid` primary keys with `gen_random_uuid()`; timestamps are `timestamptz` (absolute instants, no custom timestamp type). Slugs locate teams/projects; task details use opaque IDs.
 - Auth tables: `users` doubles as better-auth's user model (`name` carries the display name); `sessions` / `accounts` / `verifications` are better-auth's core tables. There is no `users.password_hash` / `users.nickname` column — credentials live in `accounts.password` and `email` is NOT NULL.
 - First-admin bootstrap: run `UPDATE users SET is_admin = true WHERE uid = 'doing_xxxx';` manually once before the admin workbench is usable — there is no self-service escalation. After that, grant/revoke via the admin UI.
 - Cascading deletes rely on foreign keys `ON DELETE CASCADE` as the safety net; removing a member only deletes the membership and nulls the tasks' `assignee_id` — it does not delete tasks.
