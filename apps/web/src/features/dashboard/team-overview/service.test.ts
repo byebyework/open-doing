@@ -11,6 +11,7 @@ import {
   teamMemberships,
   teams,
   users,
+  virtualMembers,
 } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
@@ -471,6 +472,121 @@ describe.skipIf(!hasTestDatabase)("团队概览聚合查询", () => {
         href: `/space/growth-squad/projects/risk-project/tasks/${idByTitle.get("未指派逾期")}`,
       },
     ]);
+  });
+
+  it("虚拟成员：负载计入虚拟成员，任务不算未指派，风险区名字回退到虚拟成员名", async () => {
+    const owner = await createUser(db, "virtual-owner");
+    const team = { id: crypto.randomUUID(), slug: "virtual-squad" };
+    await db.insert(teams).values({
+      id: team.id,
+      name: "虚拟小队",
+      slug: team.slug,
+      kind: "virtual",
+      ownerId: owner.id,
+      joinCode: generateJoinCode(),
+    });
+    await db.insert(teamMemberships).values({
+      teamId: team.id,
+      userId: owner.id,
+      role: "owner",
+      joinedAt: new Date(BASE_TIME),
+    });
+
+    const virtualMemberId = crypto.randomUUID();
+    await db.insert(virtualMembers).values({
+      id: virtualMemberId,
+      teamId: team.id,
+      name: "虚拟助手",
+      role: "member",
+      accentColor: "#7d2ae8",
+      createdById: owner.id,
+      createdAt: new Date(BASE_TIME + 1000),
+    });
+
+    const project = { id: crypto.randomUUID() };
+    await db.insert(projects).values({
+      id: project.id,
+      teamId: team.id,
+      name: "虚拟项目",
+      slug: "virtual-project",
+    });
+    await db.insert(tasks).values([
+      {
+        spaceType: "team",
+        projectId: project.id,
+        title: "虚拟逾期",
+        status: "todo",
+        dueDate: "2026-10-20",
+        assigneeId: null,
+        assigneeVirtualId: virtualMemberId,
+        createdById: owner.id,
+        createdAt: new Date(BASE_TIME + 2000),
+      },
+      {
+        spaceType: "team",
+        projectId: project.id,
+        title: "虚拟进行中",
+        status: "in_progress",
+        assigneeId: null,
+        assigneeVirtualId: virtualMemberId,
+        createdById: owner.id,
+        createdAt: new Date(BASE_TIME + 3000),
+      },
+      {
+        spaceType: "team",
+        projectId: project.id,
+        title: "真人进行中",
+        status: "in_progress",
+        assigneeId: owner.id,
+        createdById: owner.id,
+        createdAt: new Date(BASE_TIME + 4000),
+      },
+    ]);
+
+    const overview = await getTeamOverview(
+      { teamId: team.id, teamSlug: team.slug, today: TODAY },
+      db,
+    );
+
+    // 真人成员在前，虚拟成员按创建时间追加在后；虚拟成员无登录名，
+    // 展示名通过 `username` 通道回退（displayName = nickname ?? username）。
+    expect(overview.members.map((item) => item.username)).toEqual([
+      "virtual-owner",
+      "虚拟助手",
+    ]);
+
+    const virtualLoad = overview.members.find((item) => item.type === "virtual")!;
+    expect(virtualLoad).toMatchObject({
+      userId: virtualMemberId,
+      virtualMemberId,
+      username: "虚拟助手",
+      nickname: null,
+      email: null,
+      accentColor: "#7d2ae8",
+      inProgress: 1,
+      dueSoon: 0,
+      overdue: 1,
+    });
+    expect(virtualLoad.tasks.map((task) => task.title)).toEqual([
+      "虚拟逾期",
+      "虚拟进行中",
+    ]);
+
+    // 虚拟成员任务不得落进未指派区；真人成员负载不被虚拟任务污染。
+    expect(overview.unassigned.map((task) => task.title)).not.toContain("虚拟逾期");
+    expect(overview.unassigned).toEqual([]);
+    expect(
+      overview.members.find((item) => item.username === "virtual-owner")!.tasks,
+    ).toMatchObject([{ title: "真人进行中" }]);
+
+    // 风险区 / 重要节点的展示名 coalesce 到虚拟成员名。
+    expect(
+      overview.riskTasks.find((task) => task.title === "虚拟逾期")!.assigneeName,
+    ).toBe("虚拟助手");
+    expect(
+      overview.milestoneTasks.find((task) => task.title === "虚拟逾期")!
+        .assigneeName,
+    ).toBe("虚拟助手");
   });
 
   it("重要节点：未完成任务按截止日期升序，逾期 / 今天 / 明天 / 未来三态判定", async () => {

@@ -9,9 +9,16 @@ import {
 import { and, asc, eq, sql } from "drizzle-orm";
 
 import { listMembers } from "@/features/teams/service";
+import { listVirtualMembers } from "@/features/teams/virtual/service";
 import { teamTaskHref } from "@/lib/routes";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, subtasks, tasks, users } from "@/server/db/schema";
+import {
+  projects,
+  subtasks,
+  tasks,
+  users,
+  virtualMembers,
+} from "@/server/db/schema";
 
 /** 单个项目的健康度（供概览页「项目健康度」区使用）。 */
 export interface ProjectHealth {
@@ -59,12 +66,26 @@ const MILESTONE_TASK_LIMIT = 10;
 
 /** 成员负载：计数只统计未完成，任务列表用于行内下钻。 */
 export interface MemberLoad {
+  /** 成员 key：真人取 `users.id`，虚拟成员取 `virtual_members.id`（两者共用一个 key 通道）。 */
   userId: string;
+  /**
+   * 成员类型；真实用户行省略该字段（保持既有输出形状）。
+   * 虚拟成员行取 `virtual`，用于区分没有登录名 / 邮箱的 agent 身份。
+   */
+  type?: "user" | "virtual";
+  /** 虚拟成员 id：真实用户行省略。 */
+  virtualMemberId?: string;
+  /**
+   * 真实用户名为登录名；虚拟成员没有登录名，这里回退填虚拟成员展示名，
+   * 使 `displayName(member)`（nickname ?? username）对所有成员统一生效。
+   */
   username: string;
-  /** 展示名候选：UI 侧用 `displayName(member)` 解析（username 仅用于登录）。 */
+  /** 展示名候选：UI 侧用 `displayName(member)` 解析（昵称优先，未填写回退 username）。 */
   nickname: string | null;
   /** 成员邮箱（规格 §1「成员卡片展示邮箱」）；未填写为 null，不渲染该行。 */
   email: string | null;
+  /** 虚拟成员头像色；真实用户行省略。 */
+  accentColor?: string | null;
   inProgress: number;
   dueSoon: number;
   overdue: number;
@@ -110,6 +131,7 @@ interface TeamTaskSnapshot {
   status: TaskStatus;
   dueDate: string | null;
   assigneeId: string | null;
+  assigneeVirtualId: string | null;
   assigneeName: string | null;
   projectId: string;
   projectName: string;
@@ -147,8 +169,10 @@ async function listTeamTaskSnapshots(
       status: tasks.status,
       dueDate: tasks.dueDate,
       assigneeId: tasks.assigneeId,
+      assigneeVirtualId: tasks.assigneeVirtualId,
       assigneeUsername: users.username,
       assigneeNickname: users.name,
+      assigneeVirtualName: virtualMembers.name,
       projectId: projects.id,
       projectName: projects.name,
       projectSlug: projects.slug,
@@ -158,6 +182,7 @@ async function listTeamTaskSnapshots(
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
+    .leftJoin(virtualMembers, eq(tasks.assigneeVirtualId, virtualMembers.id))
     .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
     .where(and(eq(tasks.spaceType, "team"), eq(projects.teamId, teamId)))
     .orderBy(sql`${tasks.dueDate} asc nulls last`, asc(tasks.createdAt));
@@ -166,8 +191,10 @@ async function listTeamTaskSnapshots(
     ...row,
     dueDate: row.dueDate ?? null,
     assigneeId: row.assigneeId ?? null,
-    // 展示名：昵称优先，未填写（或个人空间任务）回退到用户名。
-    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
+    assigneeVirtualId: row.assigneeVirtualId ?? null,
+    // 展示名：昵称 → 用户名 → 虚拟成员名；未指派（或被移除）为 null。
+    assigneeName:
+      row.assigneeNickname ?? row.assigneeUsername ?? row.assigneeVirtualName ?? null,
   }));
 }
 
@@ -236,15 +263,17 @@ export async function getTeamOverview(
   const { teamId, teamSlug, today } = input;
   const tomorrow = addDays(today, 1);
 
-  const [projectRows, taskRows, memberViews] = await Promise.all([
-    client
-      .select({ id: projects.id, name: projects.name, slug: projects.slug })
-      .from(projects)
-      .where(eq(projects.teamId, teamId))
-      .orderBy(asc(projects.createdAt)),
-    listTeamTaskSnapshots(teamId, client),
-    listMembers(teamId, client),
-  ]);
+  const [projectRows, taskRows, memberViews, virtualMemberViews] =
+    await Promise.all([
+      client
+        .select({ id: projects.id, name: projects.name, slug: projects.slug })
+        .from(projects)
+        .where(eq(projects.teamId, teamId))
+        .orderBy(asc(projects.createdAt)),
+      listTeamTaskSnapshots(teamId, client),
+      listMembers(teamId, client),
+      listVirtualMembers(teamId, client),
+    ]);
 
   // 项目聚合累加器：先铺满全部项目（含空项目），再按任务回填。
   const projectAccumulators = new Map(
@@ -270,6 +299,26 @@ export async function getTeamOverview(
     overdue: 0,
     tasks: [],
   }));
+
+  // 虚拟成员（agent）没有 users 行：按创建时间追加在真人成员之后，
+  // 以 virtual_members.id 作为统一成员 key 参与负载归属。
+  for (const virtualMember of virtualMemberViews) {
+    memberLoads.push({
+      userId: virtualMember.id,
+      type: "virtual",
+      virtualMemberId: virtualMember.id,
+      // 无登录名：username 通道填展示名，displayName(member) 统一取值。
+      username: virtualMember.name,
+      nickname: null,
+      email: null,
+      accentColor: virtualMember.accentColor,
+      inProgress: 0,
+      dueSoon: 0,
+      overdue: 0,
+      tasks: [],
+    });
+  }
+
   const memberLoadById = new Map(memberLoads.map((load) => [load.userId, load]));
 
   const riskTasks: RiskTaskItem[] = [];
@@ -331,8 +380,11 @@ export async function getTeamOverview(
       });
     }
 
-    if (task.assigneeId) {
-      const load = memberLoadById.get(task.assigneeId);
+    // 真人走 assigneeId，虚拟成员走 assigneeVirtualId（两列互斥，DB CHECK 保证）；
+    // 两者都为空才算未指派，虚拟成员任务不得落进未指派区。
+    const assigneeKey = task.assigneeId ?? task.assigneeVirtualId;
+    if (assigneeKey) {
+      const load = memberLoadById.get(assigneeKey);
       if (load) {
         load.tasks.push({
           id: task.id,

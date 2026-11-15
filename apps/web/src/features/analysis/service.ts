@@ -5,7 +5,7 @@ import { getTeamOverview } from "@/features/dashboard/team-overview/service";
 import { teamScope } from "@/features/kanban/service";
 import { daysBetween, getWeekStart } from "@/lib/today";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks, users } from "@/server/db/schema";
+import { projects, tasks, users, virtualMembers } from "@/server/db/schema";
 
 import {
   bucketIndexForDay,
@@ -106,10 +106,18 @@ export interface ProjectHealthRow {
 
 /** 团队成员负载行（从团队概览快照裁剪，丢弃任务列表）。 */
 export interface TeamMemberLoadRow {
+  /** 成员 key：真人 `users.id`，虚拟成员 `virtual_members.id`。 */
   userId: string;
+  /** `virtual` 表示虚拟成员；真实用户行省略该字段（保持既有输出形状）。 */
+  type?: "user" | "virtual";
+  /** 虚拟成员 id：真实用户行省略。 */
+  virtualMemberId?: string;
+  /** 真人登录名；虚拟成员行填虚拟成员展示名，使 `displayName` 统一取值。 */
   username: string;
-  /** 展示名候选：UI 侧用 `displayName(member)` 解析（username 仅用于登录）。 */
+  /** 展示名候选：UI 侧用 `displayName(member)` 解析（昵称优先，未填写回退 username）。 */
   nickname: string | null;
+  /** 虚拟成员头像色；真实用户行省略。 */
+  accentColor?: string | null;
   inProgress: number;
   dueSoon: number;
   overdue: number;
@@ -342,11 +350,13 @@ export async function getTeamSpaceAnalysis(
         projectName: projects.name,
         assigneeUsername: users.username,
         assigneeNickname: users.name,
+        assigneeVirtualName: virtualMembers.name,
         updatedAt: tasks.updatedAt,
       })
       .from(tasks)
       .innerJoin(projects, eq(tasks.projectId, projects.id))
       .leftJoin(users, eq(tasks.assigneeId, users.id))
+      .leftJoin(virtualMembers, eq(tasks.assigneeVirtualId, virtualMembers.id))
       .where(
         and(
           scope,
@@ -369,13 +379,32 @@ export async function getTeamSpaceAnalysis(
     },
     throughput: toThroughput(today, range, throughputRows),
     members: overview.members.map(
-      ({ userId, username, nickname, inProgress, dueSoon, overdue }) => ({
+      ({
+        userId,
+        type,
+        virtualMemberId,
+        username,
+        nickname,
+        accentColor,
+        inProgress,
+        dueSoon,
+        overdue,
+      }) => ({
         userId,
         username,
         nickname,
         inProgress,
         dueSoon,
         overdue,
+        // 虚拟成员额外带上类型与 id / 头像色；真人行维持既有输出形状
+        // （现有逐字段断言因此不受影响）。
+        ...(type === "virtual"
+          ? {
+              type,
+              virtualMemberId,
+              accentColor: accentColor ?? null,
+            }
+          : {}),
       }),
     ),
     unassignedCount: overview.unassigned.length,
@@ -400,8 +429,12 @@ export async function getTeamSpaceAnalysis(
       id: row.id,
       title: row.title,
       projectName: row.projectName,
-      // 展示名：昵称优先，未填写回退到用户名。
-      assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
+      // 展示名：昵称 → 用户名 → 虚拟成员名；未指派（或被移除）为 null。
+      assigneeName:
+        row.assigneeNickname ??
+        row.assigneeUsername ??
+        row.assigneeVirtualName ??
+        null,
       // 按上海日历日计算停留天数：跨 UTC 日边界的更新不会多算一天。
       stalledDays: daysBetween(shanghaiDay(row.updatedAt), today),
     })),

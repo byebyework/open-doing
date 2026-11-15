@@ -11,6 +11,7 @@ import {
   teamMemberships,
   teams,
   users,
+  virtualMembers,
 } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
@@ -84,9 +85,24 @@ async function createPersonalProject(
   return { id };
 }
 
-async function createTeam(db: DbClient, input: { ownerId: string; name: string; slug: string }) {
+async function createTeam(
+  db: DbClient,
+  input: {
+    ownerId: string;
+    name: string;
+    slug: string;
+    kind?: "real" | "virtual";
+  },
+) {
   const id = crypto.randomUUID();
-  await db.insert(teams).values({ id, ...input, joinCode: generateJoinCode() });
+  await db.insert(teams).values({
+    id,
+    ownerId: input.ownerId,
+    name: input.name,
+    slug: input.slug,
+    ...(input.kind ? { kind: input.kind } : {}),
+    joinCode: generateJoinCode(),
+  });
   return { id, slug: input.slug };
 }
 
@@ -130,6 +146,7 @@ async function createTask(
     title: string;
     createdById: string;
     assigneeId?: string | null;
+    assigneeVirtualId?: string | null;
     status?: TaskStatus;
     spaceType?: SpaceType;
     projectId?: string | null;
@@ -149,6 +166,7 @@ async function createTask(
     // 显式 `null` 表示未指派；只有省略字段时才回落到创建人。
     assigneeId:
       input.assigneeId === undefined ? input.createdById : input.assigneeId,
+    assigneeVirtualId: input.assigneeVirtualId ?? null,
     createdById: input.createdById,
     createdAt: input.createdAt,
     updatedAt: input.updatedAt,
@@ -1487,5 +1505,124 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
 
     // 手算：只有「未指派待办」与「未指派进行中」两条。
     expect(data.unassignedCount).toBe(2);
+  });
+
+  it("⑩ 虚拟成员：成员负载归属虚拟成员，僵尸任务展示虚拟名；个人空间不含", async () => {
+    const owner = await createUser(db, "林夏");
+    const team = await createTeam(db, {
+      ownerId: owner.id,
+      name: "虚拟分析小队",
+      slug: "virtual-analysis-squad",
+      kind: "virtual",
+    });
+    await addTeamMember(db, {
+      teamId: team.id,
+      userId: owner.id,
+      role: "owner",
+      joinedAt: shanghai("2026-10-01"),
+    });
+    const project = await createTeamProject(db, {
+      teamId: team.id,
+      name: "虚拟项目",
+      slug: "virtual-project",
+    });
+
+    const virtualMemberId = crypto.randomUUID();
+    await db.insert(virtualMembers).values({
+      id: virtualMemberId,
+      teamId: team.id,
+      name: "虚拟助手",
+      role: "member",
+      accentColor: "#7d2ae8",
+      createdById: owner.id,
+      createdAt: shanghai("2026-10-02"),
+    });
+
+    // 虚拟负责人：进行中僵尸 + 逾期待办 + 本周完成。
+    await createTask(db, {
+      title: "虚拟僵尸",
+      createdById: owner.id,
+      assigneeId: null,
+      assigneeVirtualId: virtualMemberId,
+      spaceType: "team",
+      projectId: project.id,
+      status: "in_progress",
+      createdAt: shanghai("2026-09-01"),
+      updatedAt: shanghai("2026-10-15"),
+    });
+    await createTask(db, {
+      title: "虚拟逾期",
+      createdById: owner.id,
+      assigneeId: null,
+      assigneeVirtualId: virtualMemberId,
+      spaceType: "team",
+      projectId: project.id,
+      status: "todo",
+      dueDate: "2026-10-29",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-20"),
+    });
+    await createTask(db, {
+      title: "虚拟完成",
+      createdById: owner.id,
+      assigneeId: null,
+      assigneeVirtualId: virtualMemberId,
+      spaceType: "team",
+      projectId: project.id,
+      status: "done",
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-27"),
+    });
+
+    const teamData = await getTeamSpaceAnalysis(
+      { teamId: team.id, teamSlug: team.slug, range: 30, today: TODAY },
+      db,
+    );
+
+    // 虚拟成员进入 per-member 序列：计数归属它，而不是「未指派」。
+    const virtualLoad = teamData.members.find(
+      (member) => member.type === "virtual",
+    )!;
+    expect(virtualLoad).toMatchObject({
+      userId: virtualMemberId,
+      virtualMemberId,
+      username: "虚拟助手",
+      nickname: null,
+      accentColor: "#7d2ae8",
+      inProgress: 1,
+      dueSoon: 0,
+      overdue: 1,
+    });
+    expect(teamData.unassignedCount).toBe(0);
+
+    // 僵尸任务的展示名 coalesce 到虚拟成员名。
+    expect(teamData.zombieTasks).toEqual([
+      {
+        id: expect.any(String),
+        title: "虚拟僵尸",
+        projectName: "虚拟项目",
+        assigneeName: "虚拟助手",
+        stalledDays: 15,
+      },
+    ]);
+
+    // 完成统计照常计入虚拟成员完成的任务。
+    expect(teamData.stats.doneThisWeek).toBe(1);
+    expect(
+      teamData.throughput.reduce((sum, point) => sum + point.count, 0),
+    ).toBe(1);
+
+    // 个人空间口径只看 assigneeId：虚拟成员任务不得混入「指派给我的」。
+    const personalData = await getPersonalSpaceAnalysis(owner.id, 30, TODAY, db);
+    expect(personalData.stats).toEqual({
+      inProgress: 0,
+      doneThisMonth: 0,
+      overdue: 0,
+      onTime: { denominator: 0, onTime: 0, ratePercent: null },
+    });
+    expect(
+      personalData.completionTrend.every((point) => point.count === 0),
+    ).toBe(true);
+    expect(personalData.projectComparison).toEqual([]);
   });
 });
