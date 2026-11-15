@@ -24,7 +24,7 @@ export { NAME_MAX_LENGTH, NAME_MIN_LENGTH } from "./constants";
 
 export type TeamErrorCode = "VALIDATION" | "SLUG_FAILED";
 
-export type TeamErrorField = "name" | "form";
+export type TeamErrorField = "name" | "kind" | "form";
 
 /** 创建团队入参。 */
 export interface CreateTeamInput {

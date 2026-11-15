@@ -1,11 +1,13 @@
+import type { TeamKind } from "@open-doing/types";
+
 import { getCurrentUser } from "@/features/auth/session";
 import { listReceivedInvites } from "@/features/teams/invites/service";
 import { listTeamsForUser } from "@/features/teams/service";
 
 /** 侧栏 / 移动 Drawer 共用的导航数据（可序列化，供 client 组件消费）。 */
 export interface SpaceNavData {
-  /** 当前用户所属团队（按创建时间升序）。 */
-  teams: { slug: string; name: string }[];
+  /** 当前用户所属团队（按创建时间升序）；`kind` 供切换器分组。 */
+  teams: { slug: string; name: string; kind: TeamKind }[];
   /** 待处理邀请数（仅统计 status === "pending"）。 */
   pendingInviteCount: number;
   /** 是否已登录；未登录时导航整体不渲染。 */
@@ -33,7 +35,7 @@ export async function getSpaceNavData(): Promise<SpaceNavData> {
   ]);
 
   return {
-    teams: teams.map(({ slug, name }) => ({ slug, name })),
+    teams: teams.map(({ slug, name, kind }) => ({ slug, name, kind })),
     pendingInviteCount: received.filter(
       (view) => view.invite.status === "pending",
     ).length,

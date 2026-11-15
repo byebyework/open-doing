@@ -7,13 +7,14 @@ import { Loader2Icon } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { Alert } from "@/components/ui/shadcn/alert";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/shadcn/radio-group";
 import { applyActionErrors } from "@/lib/action-form";
 import { teamSettingsHref } from "@/lib/routes";
 
@@ -35,18 +36,20 @@ export function CreateTeamForm() {
   // zod schema 在组件内构建:必填文案取自 next-intl。
   const schema = z.object({
     name: z.string().min(1, t("nameRequired")),
+    kind: z.enum(["real", "virtual"], { message: t("kindInvalid") }),
   });
   type CreateTeamValues = z.infer<typeof schema>;
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
     formState: { errors },
     watch,
   } = useForm<CreateTeamValues>({
     resolver: zodResolver(schema),
-    defaultValues: { name: "" },
+    defaultValues: { name: "", kind: "real" },
   });
 
   const nameValue = watch("name");
@@ -56,7 +59,10 @@ export function CreateTeamForm() {
     setFormError(null);
 
     try {
-      const result = await createTeamAction({ name: values.name });
+      const result = await createTeamAction({
+        name: values.name,
+        kind: values.kind,
+      });
 
       if (!result.ok) {
         applyActionErrors(result.errors, {
@@ -104,6 +110,72 @@ export function CreateTeamForm() {
             {errors.name ? (
             <p id="create-team-name-error" className="text-[12.5px] text-[var(--error)]">
               {errors.name.message}
+            </p>
+          ) : null}
+        </div>
+
+        <div className="mb-4 flex flex-col gap-2">
+          <Label id="create-team-kind-label">{t("kindLabel")}</Label>
+          <Controller
+            control={control}
+            name="kind"
+            render={({ field }) => (
+              <RadioGroup
+                name={field.name}
+                value={field.value}
+                onValueChange={field.onChange}
+                onBlur={field.onBlur}
+                ref={field.ref}
+                disabled={submitting}
+                aria-labelledby="create-team-kind-label"
+                aria-invalid={errors.kind ? true : undefined}
+                aria-describedby={
+                  errors.kind ? "create-team-kind-error" : undefined
+                }
+                className="flex flex-col gap-2.5"
+              >
+                <div className="flex items-center gap-2">
+                  <RadioGroupItem
+                    id="create-team-kind-real"
+                    value="real"
+                    data-testid="team-kind-real"
+                    aria-label={t("kindReal")}
+                  />
+                  <Label
+                    htmlFor="create-team-kind-real"
+                    className="text-[13px] font-normal text-[var(--ink-700)]"
+                  >
+                    {t("kindReal")}
+                  </Label>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <RadioGroupItem
+                      id="create-team-kind-virtual"
+                      value="virtual"
+                      data-testid="team-kind-virtual"
+                      aria-label={t("kindVirtual")}
+                    />
+                    <Label
+                      htmlFor="create-team-kind-virtual"
+                      className="text-[13px] font-normal text-[var(--ink-700)]"
+                    >
+                      {t("kindVirtual")}
+                    </Label>
+                  </div>
+                  <p className="pl-6 text-[12px] text-[var(--ink-500)]">
+                    {t("kindVirtualHint")}
+                  </p>
+                </div>
+              </RadioGroup>
+            )}
+          />
+          {errors.kind ? (
+            <p
+              id="create-team-kind-error"
+              className="text-[12.5px] text-[var(--error)]"
+            >
+              {errors.kind.message}
             </p>
           ) : null}
         </div>

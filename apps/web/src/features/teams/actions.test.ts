@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
-import type { Team } from "@open-doing/types";
+import type { Team, TeamKind } from "@open-doing/types";
 
 import { createTeamAction, renameTeamAction } from "./actions";
 import { TeamError, createTeam, renameTeam } from "./service";
@@ -69,6 +69,55 @@ describe("团队 actions", () => {
 
     expect(result).toEqual({ ok: true, data: fakeTeam });
     expect(mockCreateTeam).toHaveBeenCalledWith({ name: "增长突击队" }, fakeTeam.ownerId);
+  });
+
+  it("已登录：kind 透传给 service（创建虚拟团队）", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: fakeTeam.ownerId,
+      uid: "doing_x7k2m9",
+      username: "alice",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      isAdmin: false,
+      isDisabled: false,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    const virtualTeam: Team = { ...fakeTeam, kind: "virtual" };
+    mockCreateTeam.mockResolvedValue(virtualTeam);
+
+    const result = await createTeamAction({ name: "研究助手", kind: "virtual" });
+
+    expect(result).toEqual({ ok: true, data: virtualTeam });
+    expect(mockCreateTeam).toHaveBeenCalledWith(
+      { name: "研究助手", kind: "virtual" },
+      fakeTeam.ownerId,
+    );
+  });
+
+  it("非法 kind：运行时拒绝越界值，落 kind 字段错误且不触达 service", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: fakeTeam.ownerId,
+      uid: "doing_x7k2m9",
+      username: "alice",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      isAdmin: false,
+      isDisabled: false,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+
+    // Server Action 入参可被篡改：绕过 TS 类型传入非法值。
+    const result = await createTeamAction({
+      name: "增长突击队",
+      kind: "agent" as unknown as TeamKind,
+    });
+
+    expect(result).toEqual({ ok: false, errors: { kind: "团队类型无效" } });
+    expect(mockCreateTeam).not.toHaveBeenCalled();
   });
 
   it("名称非法：TeamError 映射为 name 字段错误", async () => {

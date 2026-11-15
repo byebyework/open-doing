@@ -1,5 +1,7 @@
 "use client";
 
+import type { TeamKind } from "@open-doing/types";
+import { BotIcon } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
@@ -23,12 +25,38 @@ import {
 export interface SpaceSwitcherTeam {
   slug: string;
   name: string;
+  kind: TeamKind;
 }
 
 /** SpaceSwitcher 入参。 */
 export interface SpaceSwitcherProps {
   /** 当前用户所属团队，按服务端返回顺序渲染。 */
   teams: SpaceSwitcherTeam[];
+}
+
+/** 团队分组标题使用的 `nav` 命名空间 key（导出供测试断言，避免文案漂移）。 */
+export const SPACE_GROUP_LABELS = {
+  real: "myTeams",
+  virtual: "virtualTeams",
+} as const;
+
+/**
+ * 按团队类型拆分切换器列表，两类各自保持服务端返回顺序。
+ *
+ * 某组为空时调用方不渲染该分组标题，避免出现空分组。
+ * 作为纯函数导出，便于在 node 环境单独测试。
+ */
+export function splitTeamsByKind(
+  teams: readonly SpaceSwitcherTeam[],
+): { real: SpaceSwitcherTeam[]; virtual: SpaceSwitcherTeam[] } {
+  const real: SpaceSwitcherTeam[] = [];
+  const virtual: SpaceSwitcherTeam[] = [];
+
+  for (const team of teams) {
+    (team.kind === "virtual" ? virtual : real).push(team);
+  }
+
+  return { real, virtual };
 }
 
 /**
@@ -73,6 +101,8 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   const [switchPending, startSwitchTransition] = useTransition();
 
   const teamSlugs = teams.map((team) => team.slug);
+  // 虚拟团队复用同一套 slug 选中逻辑，仅展示时按 kind 分两组。
+  const { real: realTeams, virtual: virtualTeams } = splitTeamsByKind(teams);
   const selectedKey = selectedSpaceKey(pathname, teamSlugs);
   // 团队项 key 加 `team:` 前缀，避免与 personal / create-team / join-team 冲突。
   const selectedMenuKey =
@@ -132,11 +162,11 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
         >
           {t("personalSpace")}
         </DropdownMenuItem>
-        {/* 无团队时省略分组标题，避免出现空分组。 */}
-        {teams.length > 0 ? (
+        {/* 空分组省略标题：真实/虚拟团队各自仅在存在成员项时渲染。 */}
+        {realTeams.length > 0 ? (
           <>
-            <DropdownMenuLabel>{t("myTeams")}</DropdownMenuLabel>
-            {teams.map((team) => (
+            <DropdownMenuLabel>{t(SPACE_GROUP_LABELS.real)}</DropdownMenuLabel>
+            {realTeams.map((team) => (
               <DropdownMenuItem
                 key={team.slug}
                 data-selected={
@@ -150,6 +180,34 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
               >
                 <span className="flex items-center gap-2">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-[#9b87f5]" />
+                  {team.name}
+                </span>
+              </DropdownMenuItem>
+            ))}
+          </>
+        ) : null}
+        {virtualTeams.length > 0 ? (
+          <>
+            <DropdownMenuLabel>
+              {t(SPACE_GROUP_LABELS.virtual)}
+            </DropdownMenuLabel>
+            {virtualTeams.map((team) => (
+              <DropdownMenuItem
+                key={team.slug}
+                data-selected={
+                  selectedMenuKey === `team:${team.slug}` ? "" : undefined
+                }
+                onSelect={() =>
+                  startSwitchTransition(() =>
+                    router.push(spaceDashboardHref(team.slug)),
+                  )
+                }
+              >
+                <span className="flex items-center gap-2">
+                  <BotIcon
+                    className="h-3.5 w-3.5 shrink-0 text-[var(--accent-sky)]"
+                    aria-hidden="true"
+                  />
                   {team.name}
                 </span>
               </DropdownMenuItem>

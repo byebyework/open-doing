@@ -42,6 +42,19 @@ async function toFailure(
   return (await standardFailuresForRequest()).custom(`teams.${fallbackKey}`);
 }
 
+/**
+ * 运行时校验团队类型。
+ *
+ * 入参来自客户端，TS 类型不构成安全边界：越界值必须在写库前拒绝。
+ */
+function assertValidKind(kind: unknown): void {
+  if (kind !== undefined && kind !== "real" && kind !== "virtual") {
+    throw new TeamError("VALIDATION", "团队类型无效", "kind", {
+      key: "kindInvalid",
+    });
+  }
+}
+
 /** 创建团队：成功后创建者即为 owner。 */
 export async function createTeamAction(
   input: CreateTeamInput,
@@ -51,6 +64,10 @@ export async function createTeamAction(
     if (!user) {
       return (await standardFailuresForRequest()).notLoggedIn();
     }
+
+    // 以 unknown 读取，确保运行时校验不被 TS 收窄成恒真。
+    const kind: unknown = input?.kind;
+    assertValidKind(kind);
 
     const team = await createTeam(input, user.id);
     return { ok: true, data: team };

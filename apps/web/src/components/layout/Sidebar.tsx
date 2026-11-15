@@ -44,7 +44,9 @@ export async function Sidebar({ nav }: SidebarProps) {
       </Link>
 
       {/* 空间切换器：团队列表由服务端取数，交互在 client 组件内 */}
-      <SpaceSwitcher teams={teams.map(({ slug, name }) => ({ slug, name }))} />
+      <SpaceSwitcher
+        teams={teams.map(({ slug, name, kind }) => ({ slug, name, kind }))}
+      />
 
       {/* 当前空间导航 */}
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
