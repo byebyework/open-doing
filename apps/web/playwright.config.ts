@@ -4,6 +4,8 @@ import {
   E2E_BASE_URL,
   E2E_CRON_SECRET,
   E2E_DATABASE_URL,
+  E2E_MCP_BASE_URL,
+  E2E_MCP_PORT,
   E2E_PORT,
   E2E_AUTH_SECRET,
 } from "./e2e/utils/env";
@@ -12,6 +14,8 @@ import {
  * Playwright e2e 配置（Track X X-1）。
  *
  * - 独立端口 3100，避免与 docker compose 的 web（3000）冲突；
+ * - 双服务：web dev server（3100）+ 独立 MCP 服务（3101）同时启动，
+ *   MCP 服务复用同一个 e2e 库，用 `/healthz` 探活（见 `apps/mcp`）；
  * - webServer 显式注入 e2e 库与测试密钥，不读取 `apps/web/.env.local`；
  * - globalSetup 先校验库名、重放迁移并 TRUNCATE，见 e2e/global-setup.ts；
  * - 串行执行：五条流共用同一个 e2e 库，串行可避免互相干扰（尤其是 cron 扫描）。
@@ -34,17 +38,30 @@ export default defineConfig({
       use: { ...devices["Desktop Chrome"] },
     },
   ],
-  webServer: {
-    command: `pnpm exec next dev --hostname 127.0.0.1 --port ${E2E_PORT}`,
-    url: `${E2E_BASE_URL}/login`,
-    reuseExistingServer: false,
-    timeout: 180_000,
-    env: {
-      DATABASE_URL: E2E_DATABASE_URL,
-      BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
-      BETTER_AUTH_URL: "http://localhost:3100",
-      CRON_SECRET: E2E_CRON_SECRET,
-      NEXT_TELEMETRY_DISABLED: "1",
+  webServer: [
+    {
+      command: `pnpm exec next dev --hostname 127.0.0.1 --port ${E2E_PORT}`,
+      url: `${E2E_BASE_URL}/login`,
+      reuseExistingServer: false,
+      timeout: 180_000,
+      env: {
+        DATABASE_URL: E2E_DATABASE_URL,
+        BETTER_AUTH_SECRET: E2E_AUTH_SECRET,
+        BETTER_AUTH_URL: "http://localhost:3100",
+        CRON_SECRET: E2E_CRON_SECRET,
+        NEXT_TELEMETRY_DISABLED: "1",
+      },
     },
-  },
+    {
+      command: "pnpm --filter @open-doing/mcp exec tsx src/main.ts",
+      // Playwright 1.60 不允许同时指定 port 与 url：这里以 `/healthz` 探活。
+      url: `${E2E_MCP_BASE_URL}/healthz`,
+      reuseExistingServer: false,
+      timeout: 120_000,
+      env: {
+        DATABASE_URL: E2E_DATABASE_URL,
+        MCP_PORT: String(E2E_MCP_PORT),
+      },
+    },
+  ],
 });

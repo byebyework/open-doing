@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 
+import { E2E_MCP_BASE_URL } from "../utils/env";
 import { TEST_IDS } from "../utils/testids";
 import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
 
@@ -11,7 +12,8 @@ import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
  *    建任务并指派给虚拟成员（责任人下拉的「虚拟成员」分组）；
  * 2. 看板卡渲染虚拟成员头像（机器人角标）与名称；
  * 3. 设置页为虚拟成员签发 API Token，从一次性弹窗截取原文并关闭；
- * 4. 用 Playwright request 直接 POST `/api/mcp`：JSON-RPC `initialize`
+ * 4. 用 Playwright request 直接 POST 独立 MCP 服务（`http://127.0.0.1:3101/`）：
+ *    JSON-RPC `initialize`
  *    （serverInfo 断言）→ `tools/call whoami`（团队 / 虚拟成员名）→
  *    `tools/call list_tasks` 取任务 id → `tools/call update_task_status`；
  * 5. 页面刷新后看板卡进入「进行中」列（状态已落库），通知铃出现
@@ -26,13 +28,16 @@ test.describe.configure({ timeout: 120_000 });
 /** MCP Streamable HTTP 客户端的标准 Accept 头：必须同时声明两种类型。 */
 const MCP_ACCEPT = "application/json, text/event-stream";
 
+/** 独立 MCP 服务的根端点（不在 web 的 baseURL 上，必须写绝对地址）。 */
+const MCP_ENDPOINT = `${E2E_MCP_BASE_URL}/`;
+
 /** POST 一个 JSON-RPC 请求到无状态 MCP 端点（Bearer 鉴权）。 */
 async function mcpPost(
   request: import("@playwright/test").APIRequestContext,
   token: string,
   payload: Record<string, unknown>,
 ) {
-  return request.post("/api/mcp", {
+  return request.post(MCP_ENDPOINT, {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: MCP_ACCEPT,

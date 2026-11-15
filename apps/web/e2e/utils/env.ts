@@ -34,6 +34,14 @@ export const E2E_PORT = 3100;
 export const E2E_BASE_URL = `http://127.0.0.1:${E2E_PORT}`;
 
 /**
+ * 独立 MCP 服务端口（Task 8 双服务 e2e：web dev server + MCP 服务并行）。
+ *
+ * 服务入口为 `apps/mcp/src/main.ts`，`GET /healthz` 供 Playwright 探活。
+ */
+export const E2E_MCP_PORT = 3101;
+export const E2E_MCP_BASE_URL = `http://127.0.0.1:${E2E_MCP_PORT}`;
+
+/**
  * 断言连接串指向 `open_doing_e2e`。
  *
  * 在任何迁移 / TRUNCATE 之前调用；不匹配时直接抛错终止整套用例，
