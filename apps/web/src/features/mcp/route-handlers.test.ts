@@ -139,7 +139,7 @@ describe("POST /api/mcp", () => {
     });
   });
 
-  it("有效 token + tools/list（全新 transport、未 initialize）→ 返回读工具，且 schema 无 teamId", async () => {
+  it("有效 token + tools/list（全新 transport、未 initialize）→ 返回读/写工具，且 schema 无 teamId", async () => {
     mockResolveApiToken.mockResolvedValue(ctx);
 
     const response = await post({ authorization: "Bearer odm_valid-token" }, TOOLS_LIST_BODY);
@@ -156,9 +156,11 @@ describe("POST /api/mcp", () => {
     const tools = body.result?.tools ?? [];
 
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      "add_comment",
       "get_task",
       "list_projects",
       "list_tasks",
+      "update_task_status",
       "whoami",
     ]);
     // Scope comes from the token only: no tool may accept a caller-supplied team id.

@@ -1,6 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
-import type { TaskStatus } from "@open-doing/types";
+import type { Comment, Task, TaskStatus } from "@open-doing/types";
 import { and, asc, eq, isNotNull, isNull, lte, or, sql, type SQL } from "drizzle-orm";
 import { z } from "zod";
 
@@ -9,8 +9,13 @@ import {
   getTeamProjectListWithStats,
   listTeamProjects,
 } from "@/features/projects/service";
-import { getTeamTaskDetail } from "@/features/tasks/service";
-import { isUuid } from "@/lib/task-fields";
+import {
+  addTeamComment,
+  getTeamTaskDetail,
+  updateTeamTask,
+} from "@/features/tasks/service";
+import { DomainError } from "@/lib/domain-error";
+import { COMMENT_MAX_LENGTH, isUuid } from "@/lib/task-fields";
 import { todayInShanghai } from "@/lib/today";
 import { db, type DbClient } from "@/server/db/client";
 import {
@@ -23,7 +28,7 @@ import {
 import type { ApiTokenContext } from "./api-tokens";
 
 /**
- * MCP read tools (Task 16).
+ * MCP tools (Task 16 read + Task 17 write).
  *
  * Scope rule: the token's team is the ONLY scope. No tool accepts a teamId
  * (or a caller-supplied actor id); every query filters on `ctx.team.id` and
@@ -252,6 +257,73 @@ export async function getTask(
   );
 }
 
+/** `requireTeamTask` raises this key for unknown / out-of-team / malformed task ids. */
+function isTaskNotFound(error: unknown): boolean {
+  return error instanceof DomainError && error.i18n?.key === "taskNotFound";
+}
+
+/**
+ * Update a team task's status as the token's virtual member.
+ *
+ * Authorization is unchanged: `actorId` stays the human behind the token
+ * (`updateTeamTask` enforces membership / `task:edit`), while
+ * `actorVirtualId` only signs the agent-activity notification sent to the
+ * task creator. Same-status resubmission is a no-op success.
+ *
+ * Returns null for unknown / out-of-team / malformed task ids so callers can
+ * answer a uniform `not_found`.
+ */
+export async function updateTaskStatus(
+  ctx: ApiTokenContext,
+  input: { taskId: string; status: TaskStatus },
+  client: DbClient = db,
+): Promise<Task | null> {
+  try {
+    return await updateTeamTask(
+      {
+        teamId: ctx.team.id,
+        taskId: input.taskId,
+        actorId: ctx.user.id,
+        status: input.status,
+        actorVirtualId: ctx.virtualMember.id,
+      },
+      client,
+    );
+  } catch (error) {
+    if (isTaskNotFound(error)) return null;
+    throw error;
+  }
+}
+
+/**
+ * Comment on a team task as the token's virtual member.
+ *
+ * `authorVirtualId` signs the comment (and the agent-activity notification to
+ * the task creator); permission checks still run against the token's human
+ * `actorId`. Returns null for unknown / out-of-team / malformed task ids.
+ */
+export async function addComment(
+  ctx: ApiTokenContext,
+  input: { taskId: string; content: string },
+  client: DbClient = db,
+): Promise<Comment | null> {
+  try {
+    return await addTeamComment(
+      {
+        teamId: ctx.team.id,
+        taskId: input.taskId,
+        actorId: ctx.user.id,
+        content: input.content,
+        authorVirtualId: ctx.virtualMember.id,
+      },
+      client,
+    );
+  } catch (error) {
+    if (isTaskNotFound(error)) return null;
+    throw error;
+  }
+}
+
 /** Wrap a payload as MCP text content (JSON for machine consumption). */
 function jsonResult(payload: unknown, isError = false): CallToolResult {
   const result: CallToolResult = {
@@ -357,11 +429,68 @@ export function registerReadTools(
 }
 
 /**
+ * Register the write tools for the current token context.
+ *
+ * Same scope contract as the read tools: no caller-supplied team or actor
+ * ids — the token's team and virtual member are implicit. Unknown or
+ * out-of-team task ids answer the same `not_found` as missing ids.
+ */
+export function registerWriteTools(
+  server: McpServer,
+  ctx: ApiTokenContext,
+): void {
+  server.registerTool(
+    "update_task_status",
+    {
+      title: "Update task status",
+      description:
+        'Update the status of a task in the team this token is scoped to. Changing the status notifies the task creator that the agent updated it; resubmitting the current status is a successful no-op. Unknown or out-of-scope task ids return { error: "not_found" }.',
+      inputSchema: {
+        taskId: z.string().min(1).describe("Task id."),
+        status: z.enum(TASK_STATUSES).describe("New task status."),
+      },
+    },
+    async ({ taskId, status }) =>
+      safeToolCall(async () => {
+        const task = await updateTaskStatus(ctx, { taskId, status });
+        return task
+          ? jsonResult(task)
+          : jsonResult({ error: "not_found" }, true);
+      }),
+  );
+
+  server.registerTool(
+    "add_comment",
+    {
+      title: "Add comment",
+      description:
+        "Add a comment to a task in the team this token is scoped to. The comment is signed by the token's virtual member and notifies the task creator that the agent commented. Unknown or out-of-scope task ids return { error: \"not_found\" }.",
+      inputSchema: {
+        taskId: z.string().min(1).describe("Task id."),
+        content: z
+          .string()
+          .trim()
+          .min(1)
+          .max(COMMENT_MAX_LENGTH)
+          .describe("Comment content."),
+      },
+    },
+    async ({ taskId, content }) =>
+      safeToolCall(async () => {
+        const comment = await addComment(ctx, { taskId, content });
+        return comment
+          ? jsonResult(comment)
+          : jsonResult({ error: "not_found" }, true);
+      }),
+  );
+}
+
+/**
  * MCP tool registration entry point used by the route handler.
  *
- * Task 17 appends write tools next to the read tools; keep this signature
- * stable so the stateless route does not change.
+ * Keep this signature stable so the stateless route does not change.
  */
 export function registerMcpTools(server: McpServer, ctx: ApiTokenContext): void {
   registerReadTools(server, ctx);
+  registerWriteTools(server, ctx);
 }

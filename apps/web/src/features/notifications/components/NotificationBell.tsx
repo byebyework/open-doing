@@ -87,6 +87,11 @@ function typeColors(
       return { color: "var(--success-500)", background: "var(--success-bg)" };
     case "task_changed_by_admin":
       return { color: "var(--color-text-faint)", background: "var(--muted)" };
+    // agent 活动：品牌紫系，与真人通知区分。
+    case "task_commented_by_agent":
+      return { color: "var(--primary)", background: "var(--accent-lavender-bg)" };
+    case "task_changed_by_agent":
+      return { color: "var(--primary)", background: "var(--accent-lavender-bg)" };
   }
 }
 
@@ -188,6 +193,19 @@ function NotificationTypeIcon({ type }: { type: NotificationType }) {
         </svg>
       );
     case "task_changed_by_admin":
+      return (
+        <svg {...common}>
+          <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+          <path d="M18.5 2.5a2.1 2.1 0 0 1 3 3L12 15l-4 1 1-4z" />
+        </svg>
+      );
+    case "task_commented_by_agent":
+      return (
+        <svg {...common}>
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+        </svg>
+      );
+    case "task_changed_by_agent":
       return (
         <svg {...common}>
           <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />

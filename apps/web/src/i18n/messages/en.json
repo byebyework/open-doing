@@ -878,7 +878,9 @@
     "dueSoon": "\"{task}\" (assigned to you) is due today/tomorrow",
     "overdue": "\"{task}\" (assigned to you) is <b>overdue</b>",
     "commented": "commented on \"{task}\"",
-    "changedByAdmin": "updated \"{task}\" (assigned to you)"
+    "changedByAdmin": "updated \"{task}\" (assigned to you)",
+    "commentedByAgent": "reported progress on \"{task}\"",
+    "changedByAgent": "updated the status of \"{task}\""
   },
   "notFound": {
     "title": "404",

@@ -36,7 +36,9 @@ export type NotificationType =
   | "task_due_soon"
   | "task_overdue"
   | "task_commented"
-  | "task_changed_by_admin";
+  | "task_changed_by_admin"
+  | "task_commented_by_agent"
+  | "task_changed_by_agent";
 
 /** 用户：用户名 + 密码登录；昵称 / 性别 / 邮箱 / 电话为可选资料，uid 仅用于邀请 */
 export interface User {

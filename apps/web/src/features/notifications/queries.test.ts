@@ -4,7 +4,14 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { notifications, projects, tasks, teams, users } from "@/server/db/schema";
+import {
+  notifications,
+  projects,
+  tasks,
+  teams,
+  users,
+  virtualMembers,
+} from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import {
@@ -172,6 +179,37 @@ describe.skipIf(!hasTestDatabase)("通知查询与已读 service", () => {
       href: "/invites",
     });
     expect(new Date(item!.createdAt).toISOString()).toBe(item!.createdAt);
+  });
+
+  it("listNotifications：虚拟成员 actor 的展示名按 actorVirtualId 解析", async () => {
+    const { owner, member, team, teamTask } = await seed(db);
+    const virtualMember = { id: crypto.randomUUID() };
+    await db.insert(virtualMembers).values({
+      id: virtualMember.id,
+      teamId: team.id,
+      name: "爬虫助手",
+      role: "member",
+      createdById: owner.id,
+    });
+
+    await createNotification(
+      {
+        userId: member.id,
+        type: "task_commented_by_agent",
+        teamId: team.id,
+        taskId: teamTask.id,
+        actorVirtualId: virtualMember.id,
+      },
+      db,
+    );
+
+    const [item] = await listNotifications({ userId: member.id }, db);
+
+    expect(item).toMatchObject({
+      type: "task_commented_by_agent",
+      actorName: "爬虫助手",
+      taskTitle: "上线落地页",
+    });
   });
 
   it("listNotifications：团队任务 href 含团队/项目 slug 与任务 id，个人任务为个人任务详情页", async () => {

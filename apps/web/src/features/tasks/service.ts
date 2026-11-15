@@ -465,6 +465,11 @@ export interface UpdateTeamTaskInput {
   assigneeId?: string;
   /** 虚拟成员责任人：非空时改派到该成员并清空真人责任人；`null` 清空虚拟指派。 */
   assigneeVirtualId?: string | null;
+  /**
+   * 代笔虚拟成员（MCP agent 链路）：仅用于通知署名，不改变任何权限路径
+   * （权限主体仍是 `actorId` 真人）。提供时人类通知路径换为 agent 活动通知。
+   */
+  actorVirtualId?: string;
 }
 
 /**
@@ -472,7 +477,9 @@ export interface UpdateTeamTaskInput {
  *
  * 内容字段要求 `task:edit`，改派要求 `task:assign`（见 `./permissions`）。
  * 通知：改派 → 新责任人 `task_assigned`；owner/admin 改动他人任务 →
- * 原责任人 `task_changed_by_admin`。
+ * 原责任人 `task_changed_by_admin`。提供 `actorVirtualId`（MCP agent 链路）
+ * 时人类通知路径跳过，改为向任务创建者发一次 `task_changed_by_agent`
+ * （虚拟成员署名）；权限判定仍只看 `actorId`。
  */
 export async function updateTeamTask(
   input: UpdateTeamTaskInput,
@@ -482,6 +489,12 @@ export async function updateTeamTask(
   const existing = await requireTeamTask(teamId, taskId, actorId, client);
   const currentAssigneeId = existing.task.assigneeId;
   const currentAssigneeVirtualId = existing.task.assigneeVirtualId;
+  const isAgentWrite = input.actorVirtualId !== undefined;
+
+  // agent 署名必须是本团队的虚拟成员；否则按「虚拟作者无效」统一拒绝。
+  if (input.actorVirtualId !== undefined) {
+    await requireCommentVirtualAuthor(teamId, input.actorVirtualId, client);
+  }
 
   const changes: Partial<
     Pick<
@@ -654,6 +667,7 @@ export async function updateTeamTask(
 
     // 虚拟成员无法接收通知；仅真人新责任人且不是操作者本人时发。
     if (
+      !isAgentWrite &&
       assigneeChange?.assigneeId != null &&
       assigneeChange.assigneeId !== actorId
     ) {
@@ -669,6 +683,7 @@ export async function updateTeamTask(
 
     const isAdminEdit = existing.role === "owner" || existing.role === "admin";
     if (
+      !isAgentWrite &&
       hasValueChange &&
       isAdminEdit &&
       currentAssigneeId !== null &&
@@ -681,6 +696,22 @@ export async function updateTeamTask(
         projectId: existing.projectId,
         taskId,
         actorId,
+      });
+    }
+
+    // agent 活动签名通知任务创建者（收件人恒为真人 createdById）。
+    if (
+      isAgentWrite &&
+      hasValueChange &&
+      input.actorVirtualId !== undefined
+    ) {
+      await notifySafely(tx, {
+        userId: existing.task.createdById,
+        type: "task_changed_by_agent",
+        teamId,
+        projectId: existing.projectId,
+        taskId,
+        actorVirtualId: input.actorVirtualId,
       });
     }
 
@@ -823,7 +854,8 @@ export async function toggleTeamSubtask(
  * 作者恰好多态（创建时恰好一者非空）：
  * - 缺省以 `actorId` 为真人作者（现有 UI 行为不变）；
  * - 提供 `authorVirtualId` 时落库 `authorId: null`，仅虚拟团队可使用，
- *   且虚拟成员必须属于该团队（MCP agent 链路）；该链路不通知真人责任人。
+ *   且虚拟成员必须属于该团队（MCP agent 链路）；该链路不通知真人责任人，
+ *   改为向任务创建者发 `task_commented_by_agent`（虚拟成员署名）。
  * - `authorId` 为内部显式作者覆盖位，仅允许等于 `actorId`（防止伪造署名），
  *   与 `authorVirtualId` 互斥；两列皆空同样拒绝。
  */
@@ -891,7 +923,7 @@ export async function addTeamComment(
       throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
     }
 
-    // 虚拟作者（agent 链路）不触发真人责任人通知；真人评论维持原逻辑。
+    // 真人评论维持原逻辑（通知当前责任人，评论自己不发）。
     if (
       virtualAuthorId === null &&
       assigneeId !== null &&
@@ -904,6 +936,18 @@ export async function addTeamComment(
         projectId: existing.projectId,
         taskId,
         actorId,
+      });
+    }
+
+    // agent 评论不通知真人责任人，改为以虚拟成员署名通知任务创建者。
+    if (virtualAuthorId !== null) {
+      await notifySafely(tx, {
+        userId: existing.task.createdById,
+        type: "task_commented_by_agent",
+        teamId,
+        projectId: existing.projectId,
+        taskId,
+        actorVirtualId: virtualAuthorId,
       });
     }
 

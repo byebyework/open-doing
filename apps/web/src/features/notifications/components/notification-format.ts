@@ -92,6 +92,10 @@ export function formatNotificationBody(
       return withActor(item.actorName, t("commented", { task: taskTitle }));
     case "task_changed_by_admin":
       return withActor(item.actorName, t("changedByAdmin", { task: taskTitle }));
+    case "task_commented_by_agent":
+      return withActor(item.actorName, t("commentedByAgent", { task: taskTitle }));
+    case "task_changed_by_agent":
+      return withActor(item.actorName, t("changedByAgent", { task: taskTitle }));
     default:
       // 运行时兜底：服务端新增未知类型时不渲染空白以外的错误文案。
       return { parts: [] };

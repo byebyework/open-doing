@@ -11,6 +11,8 @@ export interface CreateNotificationInput {
   projectId?: string | null;
   taskId?: string | null;
   actorId?: string | null;
+  /** 虚拟成员 actor（agent 活动署名）；与 actorId 互斥。 */
+  actorVirtualId?: string | null;
 }
 
 /**
@@ -34,5 +36,6 @@ export async function createNotification(
     projectId: input.projectId ?? null,
     taskId: input.taskId ?? null,
     actorId: input.actorId ?? null,
+    actorVirtualId: input.actorVirtualId ?? null,
   });
 }

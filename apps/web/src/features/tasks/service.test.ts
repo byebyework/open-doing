@@ -1149,6 +1149,152 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
     });
   });
 
+  describe("agent 活动通知", () => {
+    it("agent 评论通知任务创建者 task_commented_by_agent，虚拟成员署名且只一条", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "agent 汇报",
+          assigneeId: owner.id,
+        },
+        db,
+      );
+
+      await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "进度 50%",
+        },
+        db,
+      );
+      await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "进度 90%",
+        },
+        db,
+      );
+
+      const rows = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.taskId, task.id),
+            eq(notifications.type, "task_commented_by_agent"),
+          ),
+        );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: owner.id,
+        actorId: null,
+        actorVirtualId: virtualMember.id,
+      });
+      // 真人评论通知（task_commented）仍不因 agent 评论触发。
+      expect(await countNotifications(db, task.id, "task_commented")).toBe(0);
+    });
+
+    it("agent 改状态通知创建者 task_changed_by_agent；同状态重提交不发新通知", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+
+      await updateTeamTask(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          status: "done",
+          actorVirtualId: virtualMember.id,
+        },
+        db,
+      );
+
+      const rows = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.taskId, task.id),
+            eq(notifications.type, "task_changed_by_agent"),
+          ),
+        );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: owner.id,
+        actorId: null,
+        actorVirtualId: virtualMember.id,
+      });
+
+      const [before] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, task.id));
+      await updateTeamTask(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          status: "done",
+          actorVirtualId: virtualMember.id,
+        },
+        db,
+      );
+      const [after] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, task.id));
+      expect(after!.updatedAt.getTime()).toBe(before!.updatedAt.getTime());
+      expect(
+        await countNotifications(db, task.id, "task_changed_by_agent"),
+      ).toBe(1);
+    });
+
+    it("actorVirtualId 必须是本任务团队的虚拟成员", async () => {
+      const { owner, team, project } = await setupTeamWithProject(db);
+      const other = await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+
+      await expect(
+        updateTeamTask(
+          {
+            teamId: team.id,
+            taskId: task.id,
+            actorId: owner.id,
+            status: "done",
+            actorVirtualId: other.virtualMember.id,
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        i18n: { key: "commentVirtualAuthorInvalid" },
+      });
+
+      const [row] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, task.id));
+      expect(row!.status).toBe("todo");
+    });
+  });
+
   describe("子任务", () => {
     it("member 不能在他人任务上加子任务", async () => {
       const { owner, team, project } = await setupTeamWithProject(db);

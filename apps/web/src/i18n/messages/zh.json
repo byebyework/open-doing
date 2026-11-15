@@ -878,7 +878,9 @@
     "dueSoon": "你负责的「{task}」今日/明日到期",
     "overdue": "你负责的「{task}」<b>已逾期</b>",
     "commented": "评论了「{task}」",
-    "changedByAdmin": "更新了你负责的「{task}」"
+    "changedByAdmin": "更新了你负责的「{task}」",
+    "commentedByAgent": "汇报了任务「{task}」的进度",
+    "changedByAgent": "更新了任务「{task}」的状态"
   },
   "notFound": {
     "title": "404",

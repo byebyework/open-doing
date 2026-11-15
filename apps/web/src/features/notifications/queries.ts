@@ -8,7 +8,14 @@ import {
   teamTaskHref,
 } from "@/lib/routes";
 import { db, type DbClient } from "@/server/db/client";
-import { notifications, projects, tasks, teams, users } from "@/server/db/schema";
+import {
+  notifications,
+  projects,
+  tasks,
+  teams,
+  users,
+  virtualMembers,
+} from "@/server/db/schema";
 
 /** 通知中心列表项（读模型，可直接序列化给客户端组件）。 */
 export interface NotificationListItem {
@@ -110,8 +117,9 @@ export async function listNotifications(
 
   const taskIds = uniqueIds(rows.map((row) => row.taskId));
   const actorIds = uniqueIds(rows.map((row) => row.actorId));
+  const actorVirtualIds = uniqueIds(rows.map((row) => row.actorVirtualId));
 
-  const [taskRows, actorRows] = await Promise.all([
+  const [taskRows, actorRows, virtualActorRows] = await Promise.all([
     taskIds.length > 0
       ? client
           .select({
@@ -132,6 +140,12 @@ export async function listNotifications(
           })
           .from(users)
           .where(inArray(users.id, actorIds))
+      : Promise.resolve([]),
+    actorVirtualIds.length > 0
+      ? client
+          .select({ id: virtualMembers.id, name: virtualMembers.name })
+          .from(virtualMembers)
+          .where(inArray(virtualMembers.id, actorVirtualIds))
       : Promise.resolve([]),
   ]);
 
@@ -165,6 +179,7 @@ export async function listNotifications(
       : [];
   const teamById = new Map(teamRows.map((row) => [row.id, row]));
   const actorById = new Map(actorRows.map((row) => [row.id, row]));
+  const virtualActorById = new Map(virtualActorRows.map((row) => [row.id, row]));
 
   return rows.map((row) => {
     const task = row.taskId ? taskById.get(row.taskId) : undefined;
@@ -173,14 +188,19 @@ export async function listNotifications(
     const teamId = row.teamId ?? project?.teamId ?? null;
     const team = teamId ? teamById.get(teamId) : undefined;
     const actor = row.actorId ? actorById.get(row.actorId) : undefined;
+    const virtualActor = row.actorVirtualId
+      ? virtualActorById.get(row.actorVirtualId)
+      : undefined;
 
     return {
       id: row.id,
       type: row.type,
       read: row.read,
       createdAt: row.createdAt.toISOString(),
-      // 展示名：昵称优先，未填写回退到用户名（cron 通知没有触发者）。
-      actorName: actor ? (actor.nickname ?? actor.username) : null,
+      // 展示名：真人昵称优先、回退用户名；agent 活动取虚拟成员名（cron 无触发者）。
+      actorName: actor
+        ? (actor.nickname ?? actor.username)
+        : (virtualActor?.name ?? null),
       teamName: team?.name ?? null,
       taskTitle: task?.title ?? null,
       href: buildNotificationHref({

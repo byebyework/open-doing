@@ -125,6 +125,34 @@ describe("formatNotificationBody（zh，与迁移前逐字一致）", () => {
     });
   });
 
+  it("task_commented_by_agent：虚拟成员名粗体 + agent 汇报进度", () => {
+    expect(
+      formatNotificationBody(
+        makeItem({ type: "task_commented_by_agent", actorName: "爬虫助手" }),
+        tZh,
+      ),
+    ).toEqual({
+      parts: [
+        { text: "爬虫助手", bold: true },
+        { text: " 汇报了任务「上线落地页」的进度", bold: false },
+      ],
+    });
+  });
+
+  it("task_changed_by_agent：虚拟成员名粗体 + agent 更新任务", () => {
+    expect(
+      formatNotificationBody(
+        makeItem({ type: "task_changed_by_agent", actorName: "爬虫助手" }),
+        tZh,
+      ),
+    ).toEqual({
+      parts: [
+        { text: "爬虫助手", bold: true },
+        { text: " 更新了任务「上线落地页」的状态", bold: false },
+      ],
+    });
+  });
+
   it("team_join_requested：触发者粗体 + 申请加入团队", () => {
     expect(
       formatNotificationBody(
@@ -385,6 +413,32 @@ describe("formatNotificationBody（en）", () => {
       parts: [
         { text: "周牧", bold: true },
         { text: ' declined your request to join "增长突击队"', bold: false },
+      ],
+    });
+  });
+
+  it("task_commented_by_agent / task_changed_by_agent：虚拟成员名粗体在前", () => {
+    expect(
+      formatNotificationBody(
+        makeItem({ type: "task_commented_by_agent", actorName: "Crawler Agent" }),
+        tEn,
+      ),
+    ).toEqual({
+      parts: [
+        { text: "Crawler Agent", bold: true },
+        { text: ' reported progress on "上线落地页"', bold: false },
+      ],
+    });
+
+    expect(
+      formatNotificationBody(
+        makeItem({ type: "task_changed_by_agent", actorName: "Crawler Agent" }),
+        tEn,
+      ),
+    ).toEqual({
+      parts: [
+        { text: "Crawler Agent", bold: true },
+        { text: ' updated the status of "上线落地页"', bold: false },
       ],
     });
   });

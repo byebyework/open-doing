@@ -1,3 +1,4 @@
+import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { VirtualMember } from "@open-doing/types";
@@ -8,11 +9,18 @@ import { createVirtualMember } from "@/features/teams/virtual/service";
 import { todayInShanghai } from "@/lib/today";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { tasks, users } from "@/server/db/schema";
+import { comments, notifications, tasks, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import type { ApiTokenContext } from "./api-tokens";
-import { getTask, listProjects, listTasks, whoami } from "./tools";
+import {
+  addComment,
+  getTask,
+  listProjects,
+  listTasks,
+  updateTaskStatus,
+  whoami,
+} from "./tools";
 
 /**
  * Read tools must be scoped strictly by the token's team.
@@ -98,6 +106,14 @@ async function insertTask(
     createdById: input.createdById,
   });
   return id;
+}
+
+/** All notification rows attached to a task (any recipient / type). */
+async function notificationRowsForTask(db: DbClient, taskId: string) {
+  return db
+    .select()
+    .from(notifications)
+    .where(eq(notifications.taskId, taskId));
 }
 
 /** Virtual team + two projects + a virtual member (owner is the human behind the token). */
@@ -201,7 +217,7 @@ async function setupForeignTeam(db: DbClient): Promise<ForeignTeamFixture> {
   return { owner, team, project, virtualMember, taskId };
 }
 
-describe.skipIf(!hasTestDatabase)("MCP read tools", () => {
+describe.skipIf(!hasTestDatabase)("MCP tools", () => {
   let db: DbClient;
 
   beforeEach(async () => {
@@ -412,6 +428,150 @@ describe.skipIf(!hasTestDatabase)("MCP read tools", () => {
       expect(await getTask(ctx, foreign.taskId, db)).toBeNull();
       expect(await getTask(ctx, crypto.randomUUID(), db)).toBeNull();
       expect(await getTask(ctx, "not-a-uuid", db)).toBeNull();
+    });
+  });
+
+  describe("update_task_status", () => {
+    it("persists the new status and advances updatedAt", async () => {
+      const { ctx, taskIds } = await setupScopedTeam(db);
+      // Pin a sentinel so the assertion does not depend on DB-vs-JS clock skew.
+      const sentinel = new Date("2020-01-01T00:00:00.000Z");
+      await db
+        .update(tasks)
+        .set({ updatedAt: sentinel })
+        .where(eq(tasks.id, taskIds.real));
+
+      const result = await updateTaskStatus(
+        ctx,
+        { taskId: taskIds.real, status: "done" },
+        db,
+      );
+
+      expect(result).toMatchObject({ id: taskIds.real, status: "done" });
+      const [after] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, taskIds.real));
+      expect(after!.status).toBe("done");
+      expect(after!.updatedAt.getTime()).toBeGreaterThan(sentinel.getTime());
+    });
+
+    it("notifies the task creator once with the agent as virtual actor", async () => {
+      const { ctx, taskIds } = await setupScopedTeam(db);
+
+      await updateTaskStatus(ctx, { taskId: taskIds.real, status: "done" }, db);
+
+      const rows = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.taskId, taskIds.real),
+            eq(notifications.type, "task_changed_by_agent"),
+          ),
+        );
+      expect(rows).toHaveLength(1);
+      expect(rows[0]).toMatchObject({
+        userId: ctx.user.id,
+        actorId: null,
+        actorVirtualId: ctx.virtualMember.id,
+      });
+    });
+
+    it("same-status resubmit is a successful no-op with no new notification", async () => {
+      const { ctx, taskIds } = await setupScopedTeam(db);
+
+      const first = await updateTaskStatus(
+        ctx,
+        { taskId: taskIds.real, status: "done" },
+        db,
+      );
+      const second = await updateTaskStatus(
+        ctx,
+        { taskId: taskIds.real, status: "done" },
+        db,
+      );
+
+      expect(second).toEqual(first);
+      expect(await notificationRowsForTask(db, taskIds.real)).toHaveLength(1);
+    });
+
+    it("a task from another team is not_found and leaves no writes behind", async () => {
+      const { ctx } = await setupScopedTeam(db);
+      const foreign = await setupForeignTeam(db);
+
+      expect(
+        await updateTaskStatus(ctx, { taskId: foreign.taskId, status: "done" }, db),
+      ).toBeNull();
+      expect(
+        await updateTaskStatus(ctx, { taskId: "not-a-uuid", status: "done" }, db),
+      ).toBeNull();
+
+      const [row] = await db
+        .select()
+        .from(tasks)
+        .where(eq(tasks.id, foreign.taskId));
+      expect(row!.status).toBe("todo");
+      expect(await notificationRowsForTask(db, foreign.taskId)).toHaveLength(0);
+    });
+  });
+
+  describe("add_comment", () => {
+    it("persists every agent comment but only one creator notification", async () => {
+      const { ctx, taskIds } = await setupScopedTeam(db);
+
+      const first = await addComment(ctx, { taskId: taskIds.self, content: " 进度 30% " }, db);
+      const second = await addComment(ctx, { taskId: taskIds.self, content: "进度 80%" }, db);
+
+      expect(first).toMatchObject({
+        taskId: taskIds.self,
+        authorId: null,
+        authorVirtualId: ctx.virtualMember.id,
+        content: "进度 30%",
+      });
+      expect(second).toMatchObject({
+        taskId: taskIds.self,
+        authorId: null,
+        authorVirtualId: ctx.virtualMember.id,
+        content: "进度 80%",
+      });
+
+      const commentRows = await db
+        .select()
+        .from(comments)
+        .where(eq(comments.taskId, taskIds.self));
+      expect(commentRows).toHaveLength(2);
+
+      const notificationRows = await db
+        .select()
+        .from(notifications)
+        .where(
+          and(
+            eq(notifications.taskId, taskIds.self),
+            eq(notifications.type, "task_commented_by_agent"),
+          ),
+        );
+      expect(notificationRows).toHaveLength(1);
+      expect(notificationRows[0]).toMatchObject({
+        userId: ctx.user.id,
+        actorId: null,
+        actorVirtualId: ctx.virtualMember.id,
+      });
+    });
+
+    it("a task from another team is not_found and stores no comment", async () => {
+      const { ctx } = await setupScopedTeam(db);
+      const foreign = await setupForeignTeam(db);
+
+      expect(await addComment(ctx, { taskId: foreign.taskId, content: "越权" }, db)).toBeNull();
+      expect(await addComment(ctx, { taskId: "not-a-uuid", content: "越权" }, db)).toBeNull();
+
+      const rows = await db
+        .select()
+        .from(comments)
+        .where(eq(comments.taskId, foreign.taskId));
+      expect(rows).toHaveLength(0);
+      expect(await notificationRowsForTask(db, foreign.taskId)).toHaveLength(0);
     });
   });
 });
