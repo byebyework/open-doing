@@ -1,14 +1,14 @@
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { describe, expect, it } from "vitest";
 
 /**
  * 防硬编码中文守卫（i18n 计划 Task 21）。
  *
- * 遍历 `apps/web/src` 与 `apps/web/e2e` 的 .ts/.tsx（排除 *.test.* 与
- * i18n/messages/**），剥掉注释后仍含 CJK 即失败并列出 file:line。
- * 文案必须走 next-intl 消息包；白名单内是**非 UI 文案**或**刻意中文**的存量，
- * 按类别给出理由（brief 要求逐个给出）。
+ * 遍历 `apps/web/src`、`apps/web/e2e` 与 `packages/server-core/src` 的
+ * .ts/.tsx（排除 *.test.* 与 i18n/messages/**），剥掉注释后仍含 CJK 即失败
+ * 并列出 file:line。文案必须走 next-intl 消息包；白名单内是**非 UI 文案**或
+ * **刻意中文**的存量，按类别给出理由（brief 要求逐个给出）。
  */
 
 /** src 白名单：文件前缀 → 理由（非 UI 文案或刻意中文）。 */
@@ -24,18 +24,18 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/features/users/service.ts", reason: "UserError zh 兜底（构造参数均携带 users.profile i18n key）" },
   { prefix: "apps/web/src/features/personal/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
   { prefix: "apps/web/src/features/personal/projects/service.ts", reason: "DomainError zh 兜底" },
-  { prefix: "apps/web/src/features/projects/service.ts", reason: "DomainError zh 兜底" },
-  { prefix: "apps/web/src/features/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
-  { prefix: "apps/web/src/features/tasks/permissions.ts", reason: "TaskPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
-  { prefix: "apps/web/src/features/teams/service.ts", reason: "TeamError zh 兜底" },
+  { prefix: "packages/server-core/src/projects/service.ts", reason: "DomainError zh 兜底" },
+  { prefix: "packages/server-core/src/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
+  { prefix: "packages/server-core/src/tasks/permissions.ts", reason: "TaskPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
+  { prefix: "packages/server-core/src/teams/service.ts", reason: "TeamError zh 兜底" },
   { prefix: "apps/web/src/features/admin/service.ts", reason: "AdminError zh 兜底（构造参数均携带 admin i18n key）" },
-  { prefix: "apps/web/src/features/teams/permissions.ts", reason: "TeamPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
+  { prefix: "packages/server-core/src/teams/permissions.ts", reason: "TeamPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
   { prefix: "apps/web/src/features/teams/joins/service.ts", reason: "JoinError zh 兜底" },
   { prefix: "apps/web/src/features/teams/invites/service.ts", reason: "InviteError zh 兜底" },
   { prefix: "apps/web/src/features/teams/members/service.ts", reason: "Member/Policy/GovernanceError zh 兜底" },
-  { prefix: "apps/web/src/features/teams/virtual/service.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
+  { prefix: "packages/server-core/src/virtual/service.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
   { prefix: "apps/web/src/features/mcp/api-tokens.ts", reason: "VirtualMemberError zh 兜底（构造参数均携带 teams i18n key）" },
-  { prefix: "apps/web/src/lib/task-fields.ts", reason: "DomainError zh 兜底 + 校验标签" },
+  { prefix: "packages/server-core/src/lib/task-fields.ts", reason: "DomainError zh 兜底 + 校验标签" },
 
   // ── Server Action / 客户端 console.error 日志前缀 ──
   // 面向开发者的服务端日志，无 UI。
@@ -64,9 +64,9 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
 
   // ── 启动期 / 环境错误（开发者面向，进程级 throw，无 UI） ──
   { prefix: "apps/web/src/features/auth/server.ts", reason: "BETTER_AUTH_SECRET 缺失的启动期 throw" },
-  { prefix: "apps/web/src/server/db/client.ts", reason: "DATABASE_URL 缺失启动期 throw" },
-  { prefix: "apps/web/src/server/db/testing.ts", reason: "TEST_DATABASE_URL 缺失启动期 throw" },
-  { prefix: "apps/web/src/lib/slug.ts", reason: "slug 冲突超限的进程级 throw" },
+  { prefix: "packages/server-core/src/db/client.ts", reason: "DATABASE_URL 缺失启动期 throw" },
+  { prefix: "packages/server-core/src/db/testing.ts", reason: "TEST_DATABASE_URL 缺失启动期 throw" },
+  { prefix: "packages/server-core/src/lib/slug.ts", reason: "slug 冲突超限的进程级 throw" },
 
   // ── 刻意中文数据 ──
   // 种子示例数据是内容本身；zh 日历短星期是 dayjs locale 数据；
@@ -103,9 +103,12 @@ const E2E_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
 
 const CJK = /[一-鿿]/;
 
+const REPO_ROOT = join(import.meta.dirname, "../../../..");
+
 const SCAN_ROOTS = [
   join(import.meta.dirname, ".."),
   join(import.meta.dirname, "../../e2e"),
+  join(REPO_ROOT, "packages/server-core/src"),
 ];
 
 function isWhitelisted(file: string): boolean {
@@ -150,14 +153,14 @@ function cjkLines(content: string): number[] {
 }
 
 describe("cjk guard", () => {
-  it("src 与 e2e 的源码剥注释后不含白名单外的硬编码中文", () => {
+  it("src、e2e 与 server-core 的源码剥注释后不含白名单外的硬编码中文", () => {
     const offenders: string[] = [];
     for (const root of SCAN_ROOTS) {
       for (const file of walk(root)) {
-        const relative = file.slice(file.indexOf("apps/web/"));
-        if (isWhitelisted(relative)) continue;
+        const relativePath = relative(REPO_ROOT, file);
+        if (isWhitelisted(relativePath)) continue;
         const lines = cjkLines(readFileSync(file, "utf8"));
-        for (const line of lines) offenders.push(`${relative}:${line}`);
+        for (const line of lines) offenders.push(`${relativePath}:${line}`);
       }
     }
     expect(

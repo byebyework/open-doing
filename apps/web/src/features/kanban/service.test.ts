@@ -44,7 +44,7 @@ const testDbRef = vi.hoisted(() => ({
   current: null as DbClient | null,
 }));
 
-vi.mock("@/server/db/client", () => ({
+vi.mock("@open-doing/server-core/db/client", () => ({
   db: new Proxy(
     {},
     {

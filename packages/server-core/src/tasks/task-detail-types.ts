@@ -1,0 +1,142 @@
+import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
+
+/**
+ * 任务详情里的评论：额外带上作者展示信息（真人与虚拟成员多态）。
+ *
+ * 虚拟成员被移除后 `authorId` / `authorVirtualId` 均为 null、`authorName`
+ * 也为 null，由 UI 侧按「已移除成员」占位展示。
+ */
+export interface TaskDetailComment {
+  id: string;
+  taskId: string;
+  /** 真人作者；虚拟成员评论时为 null。 */
+  authorId: string | null;
+  /** 虚拟成员作者；被移除后为 null。 */
+  authorVirtualId: string | null;
+  /** 展示名（昵称 → 用户名 → 虚拟成员名）；无署名时为 null。 */
+  authorName: string | null;
+  /** 虚拟成员头像色；真人作者或已移除时为 null。 */
+  authorAccentColor: string | null;
+  content: string;
+  createdAt: string;
+}
+
+/**
+ * 任务详情聚合模型（P-4 定稿，J-5 原样复用）。
+ *
+ * 字段与 V1_TASKS P-4 冻结契约逐字一致；`creatorName` 是控制器批准的
+ * 可选扩展：原型详情页的「创建人」行需要展示用户名，个人任务恒为本人，
+ * 团队任务由调用方按需填充（缺省时该行不渲染）。
+ */
+export interface TaskDetailModel {
+  id: string;
+  projectId: string | null;
+  spaceType: "personal" | "team";
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  /** 优先级三档（与领域 Task 同源，恒有值） */
+  priority: TaskPriority;
+  assigneeId: string | null;
+  assigneeName: string | null;
+  /** 虚拟成员责任人；与 `assigneeId` 互斥，未指派给虚拟成员时为 null。 */
+  assigneeVirtualId: string | null;
+  /** 虚拟成员责任人的展示名；仅虚拟指派时非空。 */
+  assigneeVirtualName: string | null;
+  /** 虚拟成员责任人的头像色；仅虚拟指派时非空。 */
+  assigneeAccentColor: string | null;
+  /**
+   * 责任人邮箱（可选扩展）：团队详情由调用方填充，用于「负责人信息处」展示；
+   * 仅真人责任人时取值，未填写或已移除成员时为 null / undefined，不渲染该行。
+   */
+  assigneeEmail?: string | null;
+  dueDate?: string;
+  /** 开始日期（按天，`YYYY-MM-DD`）；可选扩展，缺省不渲染该行。 */
+  startDate?: string;
+  createdAt: string;
+  updatedAt: string;
+  projectName: string | null;
+  progress: number;
+  subtasks: Subtask[];
+  comments: TaskDetailComment[];
+  /** 创建人用户名；可选扩展，缺省时不渲染「创建人」行。 */
+  creatorName?: string;
+}
+
+/** 任务详情页的权限位（团队态由 J-5 按角色计算；个人态恒为可编辑 / 可删除）。 */
+export interface TaskDetailPermissions {
+  canEdit: boolean;
+  canDelete: boolean;
+  canAssign: boolean;
+}
+
+/**
+ * 任务详情交互回调（J-5 消费）。
+ *
+ * `addSubtask` / `removeSubtask` 是 P 轨道对 V1_TASKS 契约的可选扩展：
+ * 可选成员不破坏 J-5 的消费，补齐「子任务增删有 UI 入口」的功能要求；
+ * INT-1 时与 J 轨道确认。
+ */
+export interface TaskDetailViewActions {
+  toggleSubtask: (subtaskId: string, completed: boolean) => Promise<void>;
+  updateStatus: (status: TaskStatus) => Promise<void>;
+  updateTask: (input: {
+    title?: string;
+    description?: string;
+    priority?: TaskPriority;
+    dueDate?: string | null;
+    startDate?: string | null;
+  }) => Promise<void>;
+  deleteTask: () => Promise<void>;
+  addComment: (content: string) => Promise<void>;
+  deleteComment: (commentId: string) => Promise<void>;
+  addSubtask?: (title: string) => Promise<void>;
+  removeSubtask?: (subtaskId: string) => Promise<void>;
+}
+
+/** TaskDetailView 入参。 */
+export interface TaskDetailViewProps {
+  task: TaskDetailModel;
+  /** personal 时隐藏责任人选择器与管理员类控件。 */
+  space: "personal" | "team";
+  permissions: TaskDetailPermissions;
+  onAction: TaskDetailViewActions;
+  /**
+   * 「← 返回项目」链接地址：页面按任务归属传入（所属项目页，无项目任务传个人空间首页）。
+   *
+   * 冻结契约本身未包含该字段，但控制器裁决要求页面传入返回地址；
+   * 作为**可选**成员追加，不影响 J-5 原样消费（缺省回退到个人空间首页）。
+   */
+  backHref?: string;
+  /**
+   * 返回链接文案：默认「← 返回项目」；个人任务不属于项目时传
+   * 「← 返回我的任务」，避免指向个人空间首页却仍写「项目」造成误导。
+   */
+  backLabel?: string;
+  /**
+   * 当前登录用户 ID：用于判断评论是否显示「删除」入口。
+   *
+   * 冻结契约本身未包含当前用户；作为**可选**成员追加，不影响 J-5 原样
+   * 消费。缺省时回退为任务责任人（个人任务恒为本人）；团队态应由 J-5
+   * 显式传入，避免非责任人看不到自己评论的删除入口。
+   */
+  currentUserId?: string;
+  /**
+   * 可指派成员选项（J-5 加法扩展）：仅在团队态、`permissions.canAssign`
+   * 为 true 且同时提供 `onAssign` 时渲染责任人选择器；个人页不传，
+   * 行为零变化。
+   */
+  assigneeOptions?: { id: string; name: string; email?: string | null }[];
+  /**
+   * 改派回调（J-5 加法扩展）。失败时应抛出，组件据此回滚选中值；
+   * 提示文案由调用方负责。
+   */
+  onAssign?: (assigneeId: string) => Promise<void>;
+  /**
+   * 虚拟团队 owner/admin：可代管删除虚拟作者 / 无署名评论。
+   *
+   * 仅团队详情页在虚拟团队且当前用户为 owner/admin 时传 true；个人页与
+   * 真实团队缺省 false，行为零变化。
+   */
+  canModerateVirtualComments?: boolean;
+}
