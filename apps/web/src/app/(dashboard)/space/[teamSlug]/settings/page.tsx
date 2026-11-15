@@ -24,6 +24,8 @@ import { listPendingSentInvites } from "@/features/teams/invites/service";
 import { JoinCodeSettings } from "@/features/teams/joins/components/JoinCodeSettings";
 import { JoinRequestList } from "@/features/teams/joins/components/JoinRequestList";
 import { getTeamJoinSettings, listTeamJoinRequests } from "@/features/teams/joins/service";
+import { VirtualMemberManager } from "@/features/teams/virtual/components/VirtualMemberManager";
+import { listVirtualMembers } from "@/features/teams/virtual/service";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
@@ -55,19 +57,26 @@ export default async function TeamSettingsPage(
   const canTransfer = can(membership.role, "team:transfer");
   const canDissolve = can(membership.role, "team:dissolve");
 
+  // 虚拟团队不参与真人邀请 / 凭码加入 / 转让：这些区块整体隐藏。
+  const isVirtual = team.kind === "virtual";
+
   const members = await listMembers(team.id);
-  const pendingSent = canManage ? await listPendingSentInvites(team.id) : [];
+  const virtualMembers = isVirtual && canManage ? await listVirtualMembers(team.id) : [];
+  const pendingSent = canManage && !isVirtual ? await listPendingSentInvites(team.id) : [];
   // 凭码加入设置与审批队列仅 owner/admin 可见（member 视角不渲染入口）。
-  const joinSettings = canManage ? await getTeamJoinSettings(team.id) : null;
-  const joinRequests = canManage ? await listTeamJoinRequests(team.id) : [];
-  // 受让人下拉排除当前 owner（转让给自己由 service 拒绝）。
-  const transferCandidates = members
-    .filter(({ membership: memberMembership }) => memberMembership.role !== "owner")
-    .map(({ user: memberUser }) => ({
-      userId: memberUser.id,
-      name: displayName(memberUser),
-      uid: memberUser.uid,
-    }));
+  const joinSettings = canManage && !isVirtual ? await getTeamJoinSettings(team.id) : null;
+  const joinRequests = canManage && !isVirtual ? await listTeamJoinRequests(team.id) : [];
+  // 受让人下拉排除当前 owner（转让给自己由 service 拒绝）；虚拟团队不转让。
+  const transferCandidates =
+    canTransfer && !isVirtual
+      ? members
+          .filter(({ membership: memberMembership }) => memberMembership.role !== "owner")
+          .map(({ user: memberUser }) => ({
+            userId: memberUser.id,
+            name: displayName(memberUser),
+            uid: memberUser.uid,
+          }))
+      : [];
 
   return (
     <div className="mx-auto w-full max-w-[820px] py-8 min-[861px]:py-10">
@@ -91,7 +100,7 @@ export default async function TeamSettingsPage(
         </section>
       ) : null}
 
-      {canManage ? (
+      {canManage && !isVirtual ? (
         <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <div className="mb-4 flex items-center gap-2">
             <h2 className="text-[15px] font-bold text-[var(--ink-900)]">{t("inviteMembersTitle")}</h2>
@@ -153,13 +162,19 @@ export default async function TeamSettingsPage(
         </section>
       ) : null}
 
-      {canManage ? (
+      {canManage && !isVirtual ? (
         <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <h2 className="mb-4 text-[15px] font-bold text-[var(--ink-900)]">
             {t("joinRequestsHeading", { count: joinRequests.length })}
           </h2>
 
           <JoinRequestList teamId={team.id} requests={joinRequests} />
+        </section>
+      ) : null}
+
+      {isVirtual && canManage ? (
+        <section className={`mb-5 ${CARD_SHELL} p-5`}>
+          <VirtualMemberManager teamSlug={team.slug} members={virtualMembers} />
         </section>
       ) : null}
 
@@ -194,7 +209,7 @@ export default async function TeamSettingsPage(
           </div>
         ) : null}
 
-        {canTransfer ? (
+        {canTransfer && !isVirtual ? (
           <div className={canLeave ? "flex items-center gap-4 border-t border-[var(--border-default)] py-3" : "flex items-center gap-4 py-3"}>
             <div className="min-w-0 flex-1">
               <div className="flex items-center gap-2 text-[14px] font-semibold text-[var(--ink-900)]">

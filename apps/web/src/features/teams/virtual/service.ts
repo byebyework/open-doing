@@ -16,15 +16,18 @@ import type { TeamErrorCode, TeamErrorField } from "../service";
  * `field` 供 Server Action 映射为表单字段错误；`i18n` 为可选翻译通道，
  * `message` 保持 zh 兜底，携带 i18n 时由 action 按请求语言翻译。
  */
+/** 虚拟成员错误可落的字段：角色校验额外引入 `role`。 */
+export type VirtualMemberErrorField = TeamErrorField | "role";
+
 export class VirtualMemberError extends Error {
   readonly code: TeamErrorCode;
-  readonly field: TeamErrorField;
+  readonly field: VirtualMemberErrorField;
   readonly i18n?: DomainErrorI18n;
 
   constructor(
     code: TeamErrorCode,
     message: string,
-    field: TeamErrorField = "form",
+    field: VirtualMemberErrorField = "form",
     i18n?: DomainErrorI18n,
   ) {
     super(message);
@@ -79,7 +82,7 @@ function validateName(name: unknown): string {
 
   if (!trimmed) {
     throw new VirtualMemberError("VALIDATION", "请输入虚拟成员名称", "name", {
-      key: "nameRequired",
+      key: "virtualMemberNameRequired",
     });
   }
   if (trimmed.length < NAME_MIN_LENGTH || trimmed.length > NAME_MAX_LENGTH) {
@@ -88,13 +91,34 @@ function validateName(name: unknown): string {
       `虚拟成员名称需为 ${NAME_MIN_LENGTH}–${NAME_MAX_LENGTH} 个字符`,
       "name",
       {
-        key: "nameLength",
+        key: "virtualMemberNameLength",
         params: { min: NAME_MIN_LENGTH, max: NAME_MAX_LENGTH },
       },
     );
   }
 
   return trimmed;
+}
+
+/**
+ * 角色运行时校验：Server Action 入参在运行时可能被伪造，
+ * 只接受 admin / member（owner 属于真人团队成员关系，不得写入虚拟成员）。
+ */
+function validateRole(role: unknown): "admin" | "member" | undefined {
+  if (role === undefined) return undefined;
+  if (role !== "admin" && role !== "member") {
+    throw new VirtualMemberError("VALIDATION", "虚拟成员角色无效", "role", {
+      key: "virtualMemberRoleInvalid",
+    });
+  }
+  return role;
+}
+
+/** 说明归一化：仅空白视为未填写（存 null），其余 trim 后落库。 */
+function normalizeDescription(description: unknown): string | null {
+  if (typeof description !== "string") return null;
+  const trimmed = description.trim();
+  return trimmed ? trimmed : null;
 }
 
 /** 三个写操作共用的鉴权：owner/admin 才有虚拟成员管理权（同移除成员）。 */
@@ -167,8 +191,8 @@ export async function createVirtualMember(
       .values({
         teamId: input.teamId,
         name,
-        role: input.role ?? "member",
-        description: input.description ?? null,
+        role: validateRole(input.role) ?? "member",
+        description: normalizeDescription(input.description),
         accentColor: input.accentColor ?? null,
         createdById: input.actorId,
       })
@@ -197,8 +221,11 @@ export async function updateVirtualMember(
 
   const changes: Partial<typeof virtualMembers.$inferInsert> = {};
   if (input.name !== undefined) changes.name = validateName(input.name);
-  if (input.role !== undefined) changes.role = input.role;
-  if (input.description !== undefined) changes.description = input.description;
+  const role = validateRole(input.role);
+  if (role !== undefined) changes.role = role;
+  if (input.description !== undefined) {
+    changes.description = normalizeDescription(input.description);
+  }
   if (input.accentColor !== undefined) changes.accentColor = input.accentColor;
 
   // 没有可写字段时仅校验成员存在性，避免空 SET。

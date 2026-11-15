@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
+import { TeamError } from "@/features/teams/service";
 
 import {
   JoinError,
@@ -44,6 +45,21 @@ async function toFailure(
       };
     }
     // field 为 "code" 时落表单入群码字段，为 "form" 时落在表单顶部。
+    return { ok: false, errors: { [error.field]: error.message } };
+  }
+  if (error instanceof TeamError) {
+    // `assertTeamIsReal` 的真实团队守卫（虚拟团队 / 团队不存在）同样带
+    // i18n 通道，按 key 翻译并落对应字段，避免落到通用兜底。
+    if (error.i18n) {
+      const failures = await standardFailuresForRequest();
+      return {
+        ok: false,
+        errors: {
+          [error.field]: failures.custom(`teams.${error.i18n.key}`, error.i18n.params)
+            .errors.form!,
+        },
+      };
+    }
     return { ok: false, errors: { [error.field]: error.message } };
   }
   if (error instanceof TeamPermissionError) {

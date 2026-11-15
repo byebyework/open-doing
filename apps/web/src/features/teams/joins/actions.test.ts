@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
+import { TeamError } from "@/features/teams/service";
 import type { TeamJoinRequest } from "@open-doing/types";
 import { revalidatePath } from "next/cache";
 
@@ -130,6 +131,21 @@ describe("凭码加入 actions", () => {
       const result = await createJoinRequestAction({ code: "BADCODE1" });
 
       expect(result).toEqual({ ok: false, errors: { code: "入群码无效" } });
+      expect(mockRevalidatePath).not.toHaveBeenCalled();
+    });
+
+    it("虚拟团队守卫的 TeamError 按 i18n key 映射为 form 错误", async () => {
+      mockGetCurrentUser.mockResolvedValue(currentUser);
+      mockCreateJoinRequest.mockRejectedValue(
+        new TeamError("VALIDATION", "虚拟团队不支持邀请或凭码加入", "form", {
+          key: "virtualTeamClosed",
+        }),
+      );
+
+      const result = await createJoinRequestAction({ code: "K7M29XQ4" });
+
+      // 真实团队守卫抛 TeamError：不得落到 console.error + 通用兜底。
+      expect(result).toEqual({ ok: false, errors: { form: "虚拟团队不支持邀请或凭码加入" } });
       expect(mockRevalidatePath).not.toHaveBeenCalled();
     });
   });

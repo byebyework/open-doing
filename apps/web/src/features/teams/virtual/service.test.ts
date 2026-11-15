@@ -214,12 +214,16 @@ describe.skipIf(!hasTestDatabase)("虚拟成员 service", () => {
     });
   });
 
-  it("名称校验：空白 / 短于下限 / 超长分别落 name 字段错误", async () => {
+  it("名称校验：空白 / 短于下限 / 超长分别落 name 字段错误（虚拟成员专用文案 key）", async () => {
     const { owner, virtual } = await seedTeams(db);
 
     await expect(
       createVirtualMember({ teamId: virtual.id, actorId: owner.id, name: "   " }, db),
-    ).rejects.toMatchObject({ code: "VALIDATION", field: "name", i18n: { key: "nameRequired" } });
+    ).rejects.toMatchObject({
+      code: "VALIDATION",
+      field: "name",
+      i18n: { key: "virtualMemberNameRequired" },
+    });
 
     await expect(
       createVirtualMember({ teamId: virtual.id, actorId: owner.id, name: " A " }, db),
@@ -227,7 +231,7 @@ describe.skipIf(!hasTestDatabase)("虚拟成员 service", () => {
       code: "VALIDATION",
       field: "name",
       i18n: {
-        key: "nameLength",
+        key: "virtualMemberNameLength",
         params: { min: NAME_MIN_LENGTH, max: NAME_MAX_LENGTH },
       },
     });
@@ -239,10 +243,76 @@ describe.skipIf(!hasTestDatabase)("虚拟成员 service", () => {
       code: "VALIDATION",
       field: "name",
       i18n: {
-        key: "nameLength",
+        key: "virtualMemberNameLength",
         params: { min: NAME_MIN_LENGTH, max: NAME_MAX_LENGTH },
       },
     });
+  });
+
+  it("角色运行时校验：create / update 只接受 admin|member，owner 等取值一律拒绝且不落库", async () => {
+    const { owner, virtual } = await seedTeams(db);
+    const created = await createVirtualMember(
+      { teamId: virtual.id, actorId: owner.id, name: "写作助手" },
+      db,
+    );
+
+    // 绕过 TS 类型（Server Action 入参在运行时可能被伪造）。
+    await expect(
+      createVirtualMember(
+        { teamId: virtual.id, actorId: owner.id, name: "写作助手二号", role: "owner" as never },
+        db,
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION",
+      field: "role",
+      i18n: { key: "virtualMemberRoleInvalid" },
+    });
+    await expect(
+      updateVirtualMember(
+        { teamId: virtual.id, virtualMemberId: created.id, actorId: owner.id, role: "owner" as never },
+        db,
+      ),
+    ).rejects.toMatchObject({
+      code: "VALIDATION",
+      field: "role",
+      i18n: { key: "virtualMemberRoleInvalid" },
+    });
+
+    // 非法 create / update 都不得写入：成员数量与角色保持原状。
+    expect(await listVirtualMembers(virtual.id, db)).toHaveLength(1);
+    const [row] = await db
+      .select()
+      .from(virtualMembers)
+      .where(eq(virtualMembers.id, created.id));
+    expect(row!.role).toBe("member");
+  });
+
+  it("说明归一化：空白输入存 null，正常输入 trim 后落库", async () => {
+    const { owner, virtual } = await seedTeams(db);
+
+    const blank = await createVirtualMember(
+      { teamId: virtual.id, actorId: owner.id, name: "写作助手", description: "   " },
+      db,
+    );
+    expect(blank.description).toBeUndefined();
+
+    const trimmed = await createVirtualMember(
+      { teamId: virtual.id, actorId: owner.id, name: "绘图助手", description: "  负责配图  " },
+      db,
+    );
+    expect(trimmed.description).toBe("负责配图");
+
+    // 更新为空说明时同样回到 null（领域对象呈现为 undefined）。
+    const cleared = await updateVirtualMember(
+      { teamId: virtual.id, virtualMemberId: trimmed.id, actorId: owner.id, description: " \n " },
+      db,
+    );
+    expect(cleared.description).toBeUndefined();
+    const [row] = await db
+      .select()
+      .from(virtualMembers)
+      .where(eq(virtualMembers.id, trimmed.id));
+    expect(row!.description).toBeNull();
   });
 
   it("更新：只改提供的字段，其余保持原值", async () => {

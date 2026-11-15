@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
+import { TeamError } from "@/features/teams/service";
 import type { TeamInvite } from "@open-doing/types";
 
 import { createInviteAction, rescindInviteAction, respondToInviteAction } from "./actions";
@@ -67,6 +68,31 @@ describe("邀请 actions", () => {
     const result = await createInviteAction({ teamId: "t", actorId: "", uid: "doing_9ar45e" });
 
     expect(result).toEqual({ ok: false, errors: { form: "没有权限执行该操作" } });
+  });
+
+  it("createInviteAction：虚拟团队守卫的 TeamError 按 i18n key 映射为 form 错误", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: "owner-id",
+      uid: "doing_x7k2m9",
+      username: "owner",
+      nickname: null,
+      gender: null,
+      email: null,
+      phone: null,
+      isAdmin: false,
+      isDisabled: false,
+      createdAt: "2026-10-01T00:00:00.000Z",
+    });
+    mockCreateInvite.mockRejectedValue(
+      new TeamError("VALIDATION", "虚拟团队不支持邀请或凭码加入", "form", {
+        key: "virtualTeamClosed",
+      }),
+    );
+
+    const result = await createInviteAction({ teamId: "t", actorId: "", uid: "doing_9ar45e" });
+
+    // 真实团队守卫抛 TeamError：不得落到 console.error + 通用兜底。
+    expect(result).toEqual({ ok: false, errors: { form: "虚拟团队不支持邀请或凭码加入" } });
   });
 
   it("createInviteAction：UID 无效映射为 uid 字段错误", async () => {
