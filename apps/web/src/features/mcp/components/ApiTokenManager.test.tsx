@@ -63,6 +63,9 @@ describe("ApiTokenManager", () => {
   let clipboardWriteText: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
+    // 部署模板可能导出 NEXT_PUBLIC_MCP_BASE_URL；未显式设置时清空 ambient 值，
+    // 保证回退到 `${origin}/mcp/` 的断言不受运行环境影响（个别用例再覆盖）。
+    vi.stubEnv("NEXT_PUBLIC_MCP_BASE_URL", undefined);
     vi.useFakeTimers();
     container = document.createElement("div");
     document.body.appendChild(container);
