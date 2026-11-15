@@ -54,6 +54,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
     "apps/web/src/features/teams/joins/actions.ts",
     "apps/web/src/features/teams/members/actions.ts",
     "apps/web/src/features/teams/virtual/actions.ts",
+    "apps/web/src/features/mcp/actions.ts",
     "apps/web/src/features/users/actions.ts",
   ].map((prefix) => ({ prefix, reason: "console.error 服务端日志前缀" })),
 

@@ -11,7 +11,12 @@ import { closeTestDb, setupTestDb } from "@/server/db/testing";
 import { TeamPermissionError } from "../teams/permissions";
 import { createTeam } from "../teams/service";
 import { VirtualMemberError, createVirtualMember } from "../teams/virtual/service";
-import { issueApiToken, resolveApiToken, revokeApiToken } from "./api-tokens";
+import {
+  issueApiToken,
+  listApiTokens,
+  resolveApiToken,
+  revokeApiToken,
+} from "./api-tokens";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -203,6 +208,50 @@ describe.skipIf(!hasTestDatabase)("api tokens service", () => {
     await expect(
       revokeApiToken({ virtualMemberId: realAgent!.id, actorId: owner.id }, db),
     ).rejects.toMatchObject({ i18n: { key: "virtualTeamOnly" } });
+  });
+
+  it("列表：按团队只返回本团队前缀与 lastUsedAt（未使用为 null）", async () => {
+    const { owner, virtual, agent } = await seedVirtualTeam(db);
+    const issued = await issueApiToken({ virtualMemberId: agent.id, actorId: owner.id }, db);
+
+    expect(await listApiTokens(virtual.id, db)).toEqual([
+      {
+        virtualMemberId: agent.id,
+        tokenPrefix: issued.tokenPrefix,
+        lastUsedAt: null,
+      },
+    ]);
+
+    await resolveApiToken(issued.token, db);
+
+    const [row] = await listApiTokens(virtual.id, db);
+    expect(row!.virtualMemberId).toBe(agent.id);
+    expect(row!.lastUsedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/);
+  });
+
+  it("列表：不泄露其他虚拟团队的 Token", async () => {
+    const { owner, virtual, agent } = await seedVirtualTeam(db);
+    await issueApiToken({ virtualMemberId: agent.id, actorId: owner.id }, db);
+
+    const other = await createTeam({ name: "Other Squad", kind: "virtual" }, owner.id, db);
+    const [otherAgent] = await db
+      .insert(virtualMembers)
+      .values({ teamId: other.id, name: "其他助手", createdById: owner.id })
+      .returning();
+    await db.insert(apiTokens).values({
+      userId: owner.id,
+      virtualMemberId: otherAgent!.id,
+      tokenHash: HASH("odm_other_team_token"),
+      tokenPrefix: "odm_OTHR",
+    });
+
+    const rows = await listApiTokens(virtual.id, db);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]!.virtualMemberId).toBe(agent.id);
+
+    expect(await listApiTokens(other.id, db)).toEqual([
+      { virtualMemberId: otherAgent!.id, tokenPrefix: "odm_OTHR", lastUsedAt: null },
+    ]);
   });
 
   it("解析：null / 无 odm_ 前缀 / 随机串 / 前缀正确但查无 → null", async () => {

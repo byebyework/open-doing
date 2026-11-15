@@ -26,6 +26,8 @@ import { JoinRequestList } from "@/features/teams/joins/components/JoinRequestLi
 import { getTeamJoinSettings, listTeamJoinRequests } from "@/features/teams/joins/service";
 import { VirtualMemberManager } from "@/features/teams/virtual/components/VirtualMemberManager";
 import { listVirtualMembers } from "@/features/teams/virtual/service";
+import { ApiTokenManager } from "@/features/mcp/components/ApiTokenManager";
+import { listApiTokens } from "@/features/mcp/api-tokens";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
@@ -62,6 +64,8 @@ export default async function TeamSettingsPage(
 
   const members = await listMembers(team.id);
   const virtualMembers = isVirtual && canManage ? await listVirtualMembers(team.id) : [];
+  // Token 列表只读展示（前缀 + 最近使用），原文永不回传 RSC。
+  const apiTokens = isVirtual && canManage ? await listApiTokens(team.id) : [];
   const pendingSent = canManage && !isVirtual ? await listPendingSentInvites(team.id) : [];
   // 凭码加入设置与审批队列仅 owner/admin 可见（member 视角不渲染入口）。
   const joinSettings = canManage && !isVirtual ? await getTeamJoinSettings(team.id) : null;
@@ -175,6 +179,12 @@ export default async function TeamSettingsPage(
       {isVirtual && canManage ? (
         <section className={`mb-5 ${CARD_SHELL} p-5`}>
           <VirtualMemberManager teamSlug={team.slug} members={virtualMembers} />
+        </section>
+      ) : null}
+
+      {isVirtual && canManage ? (
+        <section className={`mb-5 ${CARD_SHELL} p-5`}>
+          <ApiTokenManager teamSlug={team.slug} members={virtualMembers} tokens={apiTokens} />
         </section>
       ) : null}
 

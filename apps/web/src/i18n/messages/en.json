@@ -1127,5 +1127,35 @@
     "uptimeMoments": "under a minute",
     "buildFootnote": "Build metadata is injected at image build time; dev mode shows \"Unknown (dev mode)\".",
     "uptimeFootnote": "Uptime is the accumulated time since the current process started."
+  },
+  "mcp": {
+    "tokens": {
+      "title": "API tokens",
+      "subtitle": "Issue API tokens for virtual members so external MCP clients can call team tools as that member.",
+      "empty": "No virtual members available for tokens",
+      "emptyHint": "Add a virtual member above, then issue an API token for it.",
+      "issue": "Issue",
+      "reissue": "Reissue",
+      "revoke": "Revoke",
+      "statusIssued": "Issued",
+      "notIssued": "Not issued",
+      "lastUsed": "Last used {time}",
+      "neverUsed": "Never used",
+      "issued": "API token issued",
+      "revoked": "API token revoked",
+      "issueFailed": "Failed to issue the API token. Please try again later.",
+      "revokeFailed": "Failed to revoke the API token. Please try again later.",
+      "revokeConfirmTitle": "Revoke API token",
+      "revokeConfirmDescription": "Revoking takes effect immediately: MCP clients using this token lose access. Revoke {name}'s token?",
+      "oneTimeTitle": "API token issued",
+      "oneTimeWarning": "Copy and store it now. The raw token is shown only once and cannot be viewed again after this dialog closes.",
+      "tokenLabel": "Token",
+      "copy": "Copy",
+      "copied": "Copied",
+      "endpointLabel": "MCP endpoint",
+      "configLabel": "Client configuration (mcpServers)",
+      "configHint": "Paste the following snippet into your MCP client configuration file:",
+      "done": "Done"
+    }
   }
 }

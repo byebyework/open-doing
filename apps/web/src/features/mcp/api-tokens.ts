@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 import type { Team, VirtualMember } from "@open-doing/types";
 
 import { db, type DbClient } from "@/server/db/client";
@@ -40,6 +40,14 @@ export interface IssueApiTokenInput {
 export interface RevokeApiTokenInput {
   virtualMemberId: string;
   actorId: string;
+}
+
+/** 管理界面展示用的 Token 摘要（原文绝不进入该结构）。 */
+export interface ApiTokenSummary {
+  virtualMemberId: string;
+  tokenPrefix: string;
+  /** 最近使用时刻（ISO 字符串）；从未使用为 null。 */
+  lastUsedAt: string | null;
 }
 
 /** Token 解析结果：签发者 + 被代理的虚拟成员 + 所属团队。 */
@@ -150,6 +158,34 @@ export async function revokeApiToken(
   await assertCanManageVirtualMember(input.virtualMemberId, input.actorId, client);
 
   await client.delete(apiTokens).where(eq(apiTokens.virtualMemberId, input.virtualMemberId));
+}
+
+/**
+ * 团队内 Token 只读列表（管理界面用）。
+ *
+ * 仅返回展示前缀与最近使用时间，绝不查询 / 返回 hash 或原文；按虚拟成员
+ * 创建顺序排序。调用方（设置页）已通过团队 membership 校验后才可达。
+ */
+export async function listApiTokens(
+  teamId: string,
+  client: DbClient = db,
+): Promise<ApiTokenSummary[]> {
+  const rows = await client
+    .select({
+      virtualMemberId: apiTokens.virtualMemberId,
+      tokenPrefix: apiTokens.tokenPrefix,
+      lastUsedAt: apiTokens.lastUsedAt,
+    })
+    .from(apiTokens)
+    .innerJoin(virtualMembers, eq(apiTokens.virtualMemberId, virtualMembers.id))
+    .where(eq(virtualMembers.teamId, teamId))
+    .orderBy(asc(virtualMembers.createdAt));
+
+  return rows.map((row) => ({
+    virtualMemberId: row.virtualMemberId,
+    tokenPrefix: row.tokenPrefix,
+    lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
+  }));
 }
 
 /**
