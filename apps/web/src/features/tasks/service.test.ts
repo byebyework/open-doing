@@ -1055,6 +1055,98 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
         await db.select().from(comments).where(eq(comments.taskId, realTask.id)),
       ).toHaveLength(0);
     });
+
+    it("⑦ 署名不可伪造：显式 authorId 指向他人（≠ actorId）被拒绝", async () => {
+      const { owner, team, project } = await setupVirtualTeamWithProject(db);
+      const third = await createUser(db, uniqueName("third"));
+      await addMember(db, team.id, third.id, "member");
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+
+      const error = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorId: third.id,
+          content: "冒充署名",
+        },
+        db,
+      ).catch((caught: unknown) => caught);
+
+      expect(error).toBeInstanceOf(DomainError);
+      expect((error as DomainError).i18n).toMatchObject({
+        key: "commentVirtualAuthorInvalid",
+      });
+      expect(
+        await db.select().from(comments).where(eq(comments.taskId, task.id)),
+      ).toHaveLength(0);
+    });
+
+    it("⑧ admin（非 owner）可删除虚拟作者评论", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const admin = await createUser(db, uniqueName("admin"));
+      await addMember(db, team.id, admin.id, "admin");
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+      const comment = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "agent 评论",
+        },
+        db,
+      );
+
+      await deleteTeamComment(
+        { teamId: team.id, taskId: task.id, actorId: admin.id, commentId: comment.id },
+        db,
+      );
+
+      expect(
+        await db.select().from(comments).where(eq(comments.id, comment.id)),
+      ).toHaveLength(0);
+    });
+
+    it("⑨ 虚拟成员移除后的无署名评论：owner 可在虚拟团队代删", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, title: "任务" },
+        db,
+      );
+      const comment = await addTeamComment(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          authorVirtualId: virtualMember.id,
+          content: "历史 agent 评论",
+        },
+        db,
+      );
+
+      await removeVirtualMember(
+        { teamId: team.id, virtualMemberId: virtualMember.id, actorId: owner.id },
+        db,
+      );
+
+      // 两列皆空（无署名）后仍可被虚拟团队 owner 代管删除。
+      await deleteTeamComment(
+        { teamId: team.id, taskId: task.id, actorId: owner.id, commentId: comment.id },
+        db,
+      );
+      expect(
+        await db.select().from(comments).where(eq(comments.id, comment.id)),
+      ).toHaveLength(0);
+    });
   });
 
   describe("子任务", () => {

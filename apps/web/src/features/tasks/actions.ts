@@ -179,8 +179,17 @@ export async function addTeamCommentAction(input: {
   const user = await getCurrentUser();
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
+  // 只转发白名单字段：`authorVirtualId` 是 MCP-only 的 service 入参，
+  // 不能经 Server Action 由客户端附加（否则可伪造 agent 署名）。
+  const { teamId, taskId, content } = input;
+
   try {
-    const comment = await addTeamComment({ ...input, actorId: user.id });
+    const comment = await addTeamComment({
+      teamId,
+      taskId,
+      content,
+      actorId: user.id,
+    });
     return { ok: true, data: comment };
   } catch (error) {
     return toFailure(error);

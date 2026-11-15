@@ -915,8 +915,9 @@ export async function addTeamComment(
  * 删除评论。
  *
  * - 真人作者评论：仅作者本人可删（owner/admin 也不能代删，维持现状）；
- * - 虚拟作者评论：仅虚拟团队成员 kind='virtual' 且当前角色为 owner/admin
- *   可代管删除（agent 无法自行登录）；其余一律按「评论不存在」处理。
+ * - 虚拟作者评论，以及虚拟成员被移除后作者两列皆空的无署名评论：仅虚拟团队
+ *   （kind='virtual'）的 owner/admin 可代管删除（agent 无法自行登录）；
+ * - 其余一律按「评论不存在」处理。
  */
 export async function deleteTeamComment(
   input: {
@@ -949,8 +950,10 @@ export async function deleteTeamComment(
 
   let canDelete = comment.authorId !== null && comment.authorId === actorId;
 
-  // 虚拟作者无法自行删除：虚拟团队的 owner/admin 可代管。
-  if (!canDelete && comment.authorVirtualId !== null) {
+  // author_id 为 null 覆盖两种无真人作者的情形：虚拟成员作者（author_virtual_id
+  // 非空）与虚拟成员被移除后的无署名评论（两列皆空，DB CHECK 保证只可能来自
+  // 级联置空）。二者都由虚拟团队的 owner/admin 代管删除。
+  if (!canDelete && comment.authorId === null) {
     const isManager = existing.role === "owner" || existing.role === "admin";
     if (isManager && (await findTeamKind(teamId, client)) === "virtual") {
       canDelete = true;

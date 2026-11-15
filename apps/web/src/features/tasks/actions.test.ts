@@ -196,6 +196,35 @@ describe("团队任务 actions", () => {
     ).resolves.toEqual({ ok: false, errors: { form: "操作失败，请稍后重试" } });
   });
 
+  it("评论 action：丢弃入参中的未知字段，虚拟作者不能经 Server Action 伪造", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+    mockAddComment.mockResolvedValue(fakeComment);
+
+    // 客户端可附任意多余键（authorVirtualId 是 MCP-only 的 service 入参）。
+    const forgedInput = {
+      teamId: TEAM_ID,
+      taskId: TASK_ID,
+      content: "评论",
+      authorVirtualId: "00000000-0000-0000-0000-000000000008",
+    };
+
+    await expect(addTeamCommentAction(forgedInput)).resolves.toEqual({
+      ok: true,
+      data: fakeComment,
+    });
+
+    // 只转发白名单字段 + actorId；未知键不得触达 service。
+    expect(mockAddComment).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      taskId: TASK_ID,
+      content: "评论",
+      actorId: MEMBER_ID,
+    });
+    expect(mockAddComment.mock.calls[0]![0]).not.toHaveProperty(
+      "authorVirtualId",
+    );
+  });
+
   it("成功：透传数据，并以当前用户作为 actorId 调用 service", async () => {
     mockGetCurrentUser.mockResolvedValue(sessionUser);
     mockCreate.mockResolvedValue(fakeTask);
