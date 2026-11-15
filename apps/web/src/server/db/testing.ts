@@ -18,6 +18,8 @@ const TRUNCATE_TABLES = [
   "comments",
   "subtasks",
   "tasks",
+  "api_tokens",
+  "virtual_members",
   "team_invites",
   "team_join_requests",
   "team_memberships",

@@ -107,7 +107,8 @@ function toComment(row: CommentRow): Comment {
   return {
     id: row.id,
     taskId: row.taskId,
-    authorId: row.authorId,
+    // 过渡期断言：Phase 1 评论恒为真人作者；虚拟作者列放宽后由后续任务接续。
+    authorId: row.authorId as string,
     content: row.content,
     createdAt: row.createdAt.toISOString(),
   };
@@ -483,7 +484,8 @@ export async function getPersonalTaskDetail(
       ({ comment, authorUsername, authorNickname }) => ({
         id: comment.id,
         taskId: comment.taskId,
-        authorId: comment.authorId,
+        // 过渡期断言：Phase 1 评论恒为真人作者（虚拟作者由后续任务接入）。
+        authorId: comment.authorId as string,
         authorName: authorNickname ?? authorUsername,
         content: comment.content,
         createdAt: comment.createdAt.toISOString(),

@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { getTableConfig } from "drizzle-orm/pg-core";
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { generateJoinCode } from "@/lib/join-code";
@@ -6,6 +6,7 @@ import { generateUid } from "@/lib/uid";
 import type { DbClient } from "./client";
 import {
   accounts,
+  apiTokens,
   comments,
   notifications,
   projects,
@@ -18,6 +19,7 @@ import {
   teams,
   users,
   verifications,
+  virtualMembers,
 } from "./schema";
 import { closeTestDb, setupTestDb } from "./testing";
 
@@ -63,7 +65,7 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
     return { id, uid };
   }
 
-  async function createTeam(ownerId: string) {
+  async function createTeam(ownerId: string, kind: "real" | "virtual" = "real") {
     teamSeq += 1;
     const id = crypto.randomUUID();
     const joinCode = generateJoinCode();
@@ -73,13 +75,32 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
       slug: `test-team-${teamSeq}`,
       ownerId,
       joinCode,
+      kind,
     });
     return { id, joinCode };
+  }
+
+  async function createVirtualMember(input: {
+    teamId: string;
+    createdById: string;
+    name: string;
+    role?: "admin" | "member";
+  }) {
+    const id = crypto.randomUUID();
+    await db.insert(virtualMembers).values({
+      id,
+      teamId: input.teamId,
+      name: input.name,
+      role: input.role ?? "member",
+      createdById: input.createdById,
+    });
+    return { id };
   }
 
   async function createTask(input: {
     createdById: string;
     assigneeId?: string | null;
+    assigneeVirtualId?: string | null;
     projectId?: string | null;
     spaceType?: "personal" | "team";
   }) {
@@ -91,6 +112,7 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
       title: "测试任务",
       status: "todo",
       assigneeId: input.assigneeId ?? null,
+      assigneeVirtualId: input.assigneeVirtualId ?? null,
       createdById: input.createdById,
     });
     return { id };
@@ -402,6 +424,224 @@ describe.skipIf(!hasTestDatabase)("数据库 schema", () => {
       }),
     ).rejects.toThrow();
   });
+
+  it("⑮ teams.kind 默认 real、可写 virtual，其他值被 CHECK 拒绝", async () => {
+    userSeq += 1;
+    const owner = await createUser(`team_kind_owner_${userSeq}`);
+    const realTeam = await createTeam(owner.id);
+    const virtualTeam = await createTeam(owner.id, "virtual");
+
+    const [realRow] = await db
+      .select({ kind: teams.kind })
+      .from(teams)
+      .where(eq(teams.id, realTeam.id));
+    expect(realRow!.kind).toBe("real");
+
+    const [virtualRow] = await db
+      .select({ kind: teams.kind })
+      .from(teams)
+      .where(eq(teams.id, virtualTeam.id));
+    expect(virtualRow!.kind).toBe("virtual");
+
+    await expect(
+      db.execute(sql`UPDATE teams SET kind = 'unknown' WHERE id = ${virtualTeam.id}`),
+    ).rejects.toThrow();
+  });
+
+  it("⑯ virtual_members 同团队重名拒绝、不同团队可同名，删团队级联清空", async () => {
+    userSeq += 1;
+    const owner = await createUser(`virtual_member_owner_${userSeq}`);
+    const teamA = await createTeam(owner.id, "virtual");
+    const teamB = await createTeam(owner.id, "virtual");
+
+    const agentA = await createVirtualMember({
+      teamId: teamA.id,
+      createdById: owner.id,
+      name: "coder",
+    });
+    const [row] = await db.select().from(virtualMembers).where(eq(virtualMembers.id, agentA.id));
+    expect(row!.role).toBe("member");
+    expect(row!.description).toBeNull();
+    expect(row!.accentColor).toBeNull();
+
+    await expect(
+      db.insert(virtualMembers).values({
+        teamId: teamA.id,
+        name: "coder",
+        createdById: owner.id,
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      createVirtualMember({
+        teamId: teamB.id,
+        createdById: owner.id,
+        name: "coder",
+        role: "admin",
+      }),
+    ).resolves.toBeDefined();
+
+    await db.delete(teams).where(eq(teams.id, teamA.id));
+    expect(await db.select().from(virtualMembers)).toHaveLength(1);
+  });
+
+  it("⑰ tasks 指派互斥：真人 + 虚拟同时非空被拒绝，删虚拟成员后置空", async () => {
+    userSeq += 1;
+    const owner = await createUser(`virtual_task_owner_${userSeq}`);
+    const team = await createTeam(owner.id, "virtual");
+    const member = await createVirtualMember({
+      teamId: team.id,
+      createdById: owner.id,
+      name: "runner",
+    });
+
+    await expect(
+      db.insert(tasks).values({
+        spaceType: "team",
+        title: "双指派任务",
+        assigneeId: owner.id,
+        assigneeVirtualId: member.id,
+        createdById: owner.id,
+      }),
+    ).rejects.toThrow();
+
+    const task = await createTask({
+      createdById: owner.id,
+      assigneeVirtualId: member.id,
+      spaceType: "team",
+    });
+    const [assigned] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    expect(assigned!.assigneeVirtualId).toBe(member.id);
+    expect(assigned!.assigneeId).toBeNull();
+
+    await db.delete(virtualMembers).where(eq(virtualMembers.id, member.id));
+    const [afterDelete] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    expect(afterDelete!.assigneeVirtualId).toBeNull();
+  });
+
+  it("⑱ comments 作者列不可同时非空，纯虚拟作者评论在删虚拟成员后退化为无署名", async () => {
+    userSeq += 1;
+    const owner = await createUser(`comment_owner_${userSeq}`);
+    const team = await createTeam(owner.id, "virtual");
+    const member = await createVirtualMember({
+      teamId: team.id,
+      createdById: owner.id,
+      name: "reviewer",
+    });
+    const task = await createTask({ createdById: owner.id, spaceType: "team" });
+
+    await expect(
+      db.insert(comments).values({
+        taskId: task.id,
+        authorId: owner.id,
+        authorVirtualId: member.id,
+        content: "双作者评论",
+      }),
+    ).rejects.toThrow();
+
+    // 双空行是被移除虚拟作者的合法历史状态（无署名展示），允许写入。
+    await expect(
+      db
+        .insert(comments)
+        .values({ taskId: task.id, content: "无署名历史评论" }),
+    ).resolves.toBeDefined();
+
+    const commentId = crypto.randomUUID();
+    await db.insert(comments).values({
+      id: commentId,
+      taskId: task.id,
+      authorId: null,
+      authorVirtualId: member.id,
+      content: "虚拟作者评论",
+    });
+    await db.delete(virtualMembers).where(eq(virtualMembers.id, member.id));
+
+    const [row] = await db.select().from(comments).where(eq(comments.id, commentId));
+    expect(row!.authorId).toBeNull();
+    expect(row!.authorVirtualId).toBeNull();
+  });
+
+  it("⑲ notifications actor 互斥：真人 + 虚拟同时非空被拒绝", async () => {
+    userSeq += 1;
+    const owner = await createUser(`notification_actor_owner_${userSeq}`);
+    const team = await createTeam(owner.id, "virtual");
+    const member = await createVirtualMember({
+      teamId: team.id,
+      createdById: owner.id,
+      name: "notifier",
+    });
+
+    await expect(
+      db.insert(notifications).values({
+        userId: owner.id,
+        type: "task_assigned",
+        actorId: owner.id,
+        actorVirtualId: member.id,
+      }),
+    ).rejects.toThrow();
+
+    await expect(
+      db.insert(notifications).values({
+        userId: owner.id,
+        type: "task_assigned",
+        taskId: null,
+        actorVirtualId: member.id,
+      }),
+    ).resolves.toBeDefined();
+  });
+
+  it("⑳ api_tokens 每虚拟成员一条、token_hash 唯一，删团队级联清空", async () => {
+    userSeq += 1;
+    const owner = await createUser(`api_token_owner_${userSeq}`);
+    const team = await createTeam(owner.id, "virtual");
+    const member = await createVirtualMember({
+      teamId: team.id,
+      createdById: owner.id,
+      name: "mcp-agent",
+    });
+    const otherMember = await createVirtualMember({
+      teamId: team.id,
+      createdById: owner.id,
+      name: "other-agent",
+    });
+
+    await db.insert(apiTokens).values({
+      userId: owner.id,
+      virtualMemberId: member.id,
+      tokenHash: "hash-one",
+      tokenPrefix: "odm_abcd",
+    });
+
+    const [row] = await db
+      .select()
+      .from(apiTokens)
+      .where(eq(apiTokens.virtualMemberId, member.id));
+    expect(row!.lastUsedAt).toBeNull();
+
+    // 同一虚拟成员第二条 token（重签须先删旧行）。
+    await expect(
+      db.insert(apiTokens).values({
+        userId: owner.id,
+        virtualMemberId: member.id,
+        tokenHash: "hash-two",
+        tokenPrefix: "odm_efgh",
+      }),
+    ).rejects.toThrow();
+
+    // token_hash 全局唯一。
+    await expect(
+      db.insert(apiTokens).values({
+        userId: owner.id,
+        virtualMemberId: otherMember.id,
+        tokenHash: "hash-one",
+        tokenPrefix: "odm_ijkl",
+      }),
+    ).rejects.toThrow();
+
+    await db.delete(teams).where(eq(teams.id, team.id));
+    expect(await db.select().from(apiTokens)).toHaveLength(0);
+    expect(await db.select().from(virtualMembers)).toHaveLength(0);
+  });
 });
 
 describe("better-auth 表结构（schema 元数据）", () => {
@@ -509,5 +749,20 @@ describe("better-auth 表结构（schema 元数据）", () => {
     expect(indexNames(sessions)).toContain("sessions_user_id_idx");
     expect(indexNames(accounts)).toContain("accounts_user_id_idx");
     expect(indexNames(verifications)).toContain("verifications_identifier_idx");
+  });
+});
+
+describe("虚拟团队 schema 元数据", () => {
+  it("㉑ virtual_members / tasks / api_tokens 的索引与唯一约束命名符合契约", () => {
+    const indexNames = (table: Parameters<typeof getTableConfig>[0]) =>
+      getTableConfig(table).indexes.map((item) => item.config.name);
+    const uniqueNames = (table: Parameters<typeof getTableConfig>[0]) =>
+      getTableConfig(table).uniqueConstraints.map((item) => item.name);
+
+    expect(indexNames(virtualMembers)).toContain("virtual_members_team_id_idx");
+    expect(indexNames(tasks)).toContain("tasks_assignee_virtual_id_idx");
+    expect(indexNames(tasks)).toContain("tasks_assignee_id_idx");
+    expect(uniqueNames(virtualMembers)).toContain("virtual_members_team_id_name_unique");
+    expect(uniqueNames(apiTokens)).toContain("api_tokens_virtual_member_id_unique");
   });
 });

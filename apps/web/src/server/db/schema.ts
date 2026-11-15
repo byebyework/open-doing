@@ -26,6 +26,18 @@
  *    大小写敏感，天然保持精确匹配语义；内容列同样使用 `text`。
  *    时间戳使用 `timestamptz`（存绝对时刻，不依赖会话时区），默认 `now()`；
  *    日期列使用 `date`（按天粒度，字符串模式）。
+ * 10. 虚拟团队是 `teams.kind` 取 `'real' | 'virtual'` 的普通团队行（约束落为
+ *     CHECK），虚拟成员不进 `users`，独立存于 `virtual_members`。
+ *     `tasks` / `comments` / `notifications` 的虚拟外键与真人外键
+ *     **互斥共存**：指派/作者/actor 要么是真人、要么是虚拟成员，由 CHECK 保证
+ *     三处都只禁止「同时非空」，允许双空。`comments` 不能沿用 projects 的
+ *     「恰好一者非空」XOR：虚拟成员评论时 `author_id` 已为 NULL，删除虚拟
+ *     成员触发 `author_virtual_id` 的 `ON DELETE SET NULL`，该 UPDATE 会产生
+ *     双空行；XOR 会使删除虚拟成员的 UPDATE 直接违反 CHECK（PostgreSQL 的
+ *     CHECK 不可延迟），而规格要求评论保留、退化为「无署名」。真人评论仍恒有
+ *     `author_id`，双空行只可能来自被移除的虚拟作者，由服务层按「已移除成员」
+ *     展示。`api_tokens` 把 token 绑定到 `(真人, 虚拟成员, 团队)`，每个虚拟
+ *     成员至多一条（重签须先删旧行）。
  */
 import { isNotNull, sql } from "drizzle-orm";
 import {
@@ -173,7 +185,7 @@ export const registrationCodes = pgTable(
   (t) => [uniqueIndex("registration_codes_code_unique").on(t.code)],
 );
 
-/** 团队：slug 全局唯一；join_code 由应用层生成（见文件头决策 7）。 */
+/** 团队：slug 全局唯一；join_code 由应用层生成（见文件头决策 7）；kind 区分真实/虚拟团队（决策 10）。 */
 export const teams = pgTable(
   "teams",
   {
@@ -182,6 +194,8 @@ export const teams = pgTable(
     slug: text("slug").notNull().unique(),
     joinCode: text("join_code").notNull(),
     joinCodeEnabled: boolean("join_code_enabled").notNull().default(true),
+    // 虚拟团队复用同一套空间/路由/模块栈，仅以 kind 标记（存量团队默认 real）。
+    kind: text("kind").$type<"real" | "virtual">().notNull().default("real"),
     ownerId: uuidRef("owner_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -190,6 +204,7 @@ export const teams = pgTable(
   (t) => [
     // 独立唯一索引（非列级 .unique()），与迁移中的表级索引名一致。
     uniqueIndex("teams_join_code_unique").on(t.joinCode),
+    check("teams_kind_check", sql`${t.kind} IN ('real', 'virtual')`),
   ],
 );
 
@@ -273,6 +288,37 @@ export const teamJoinRequests = pgTable(
   ],
 );
 
+/**
+ * 虚拟成员（agent）：不属于 `users` 的团队级身份（决策 10）。
+ *
+ * - 同一团队内名称唯一，跨团队可同名；
+ * - `role` 仅影响团队内权限（admin 可管理成员/任务），无登录能力；
+ * - 创建人删除时整个成员行随之级联删除。
+ */
+export const virtualMembers = pgTable(
+  "virtual_members",
+  {
+    id: uuidPk(),
+    teamId: uuidRef("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    role: text("role").$type<"admin" | "member">().notNull().default("member"),
+    description: text("description"),
+    // 头像色（无对应 token，允许字面量色值，见 UI 调色板）。
+    accentColor: text("accent_color"),
+    createdById: uuidRef("created_by_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    unique("virtual_members_team_id_name_unique").on(t.teamId, t.name),
+    // 查询索引：按团队列出虚拟成员。
+    index("virtual_members_team_id_idx").on(t.teamId),
+  ],
+);
+
 /** 项目：团队项目与个人项目二选一（team_id / owner_id 互斥 CHECK）。 */
 export const projects = pgTable(
   "projects",
@@ -302,7 +348,7 @@ export const projects = pgTable(
   ],
 );
 
-/** 任务：project_id 可空（零散个人任务）；assignee_id 可空（成员退出后未指派）。 */
+/** 任务：project_id 可空（零散个人任务）；assignee_id / assignee_virtual_id 互斥可空（成员退出后未指派）。 */
 export const tasks = pgTable(
   "tasks",
   {
@@ -316,6 +362,10 @@ export const tasks = pgTable(
     priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
     // 成员被移除/退出时置空，不删除任务。
     assigneeId: uuidRef("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    // 虚拟成员被移除时同样置空；与 assignee_id 不可同时非空（决策 10）。
+    assigneeVirtualId: uuidRef("assignee_virtual_id").references(() => virtualMembers.id, {
+      onDelete: "set null",
+    }),
     dueDate: date("due_date", { mode: "string" }),
     // 开始日期（按天，与 due_date 同粒度）；可空，晚于 due_date 在服务层校验拦截。
     startDate: date("start_date", { mode: "string" }),
@@ -327,8 +377,13 @@ export const tasks = pgTable(
   },
   (t) => [
     index("tasks_assignee_id_idx").on(t.assigneeId),
+    index("tasks_assignee_virtual_id_idx").on(t.assigneeVirtualId),
     index("tasks_status_due_date_idx").on(t.status, t.dueDate),
     index("tasks_space_type_idx").on(t.spaceType),
+    check(
+      "tasks_assignee_exclusive_check",
+      sql`NOT (${t.assigneeId} IS NOT NULL AND ${t.assigneeVirtualId} IS NOT NULL)`,
+    ),
   ],
 );
 
@@ -344,20 +399,39 @@ export const subtasks = pgTable("subtasks", {
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
 
-/** 任务评论：个人任务下即自我备注。 */
-export const comments = pgTable("comments", {
-  id: uuidPk(),
-  taskId: uuidRef("task_id")
-    .notNull()
-    .references(() => tasks.id, { onDelete: "cascade" }),
-  authorId: uuidRef("author_id")
-    .notNull()
-    .references(() => users.id, { onDelete: "cascade" }),
-  content: text("content").notNull(),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+/**
+ * 任务评论：个人任务下即自我备注；作者为真人或虚拟成员，不可同时非空（决策 10）。
+ *
+ * 双空行仅来自虚拟成员被删除后的历史评论（`author_virtual_id` 被 SET NULL
+ * 置空），此时按「已移除成员 / 无署名」展示。
+ */
+export const comments = pgTable(
+  "comments",
+  {
+    id: uuidPk(),
+    taskId: uuidRef("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    // 放宽为可空：虚拟成员评论时 author_id 为 NULL；删用户仍级联删除评论。
+    authorId: uuidRef("author_id").references(() => users.id, { onDelete: "cascade" }),
+    // 虚拟成员被移除时置空，评论退化为无署名（不删除评论）。
+    authorVirtualId: uuidRef("author_virtual_id").references(() => virtualMembers.id, {
+      onDelete: "set null",
+    }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    // 只禁止同时非空（不用 XOR，理由见文件头决策 10）：删除虚拟成员时
+    // SET NULL 会把纯虚拟作者的评论变成双空行，XOR 会阻塞该 UPDATE。
+    check(
+      "comments_author_exclusive_check",
+      sql`NOT (${t.authorId} IS NOT NULL AND ${t.authorVirtualId} IS NOT NULL)`,
+    ),
+  ],
+);
 
-/** 系统内通知：task_id 非空时同一 (user, task, type) 幂等。 */
+/** 系统内通知：task_id 非空时同一 (user, task, type) 幂等；actor 为真人或虚拟成员，不可同时非空（决策 10）。 */
 export const notifications = pgTable(
   "notifications",
   {
@@ -371,6 +445,10 @@ export const notifications = pgTable(
     projectId: uuidRef("project_id").references(() => projects.id, { onDelete: "cascade" }),
     taskId: uuidRef("task_id").references(() => tasks.id, { onDelete: "cascade" }),
     actorId: uuidRef("actor_id").references(() => users.id, { onDelete: "cascade" }),
+    // 虚拟成员成为通知 actor 时记录；被移除后置空（与 actor_id 不可同时非空）。
+    actorVirtualId: uuidRef("actor_virtual_id").references(() => virtualMembers.id, {
+      onDelete: "set null",
+    }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -381,5 +459,37 @@ export const notifications = pgTable(
       .where(isNotNull(t.taskId)),
     // 通知中心未读角标查询。
     index("notifications_user_id_read_idx").on(t.userId, t.read),
+    check(
+      "notifications_actor_exclusive_check",
+      sql`NOT (${t.actorId} IS NOT NULL AND ${t.actorVirtualId} IS NOT NULL)`,
+    ),
   ],
+);
+
+/**
+ * API token（MCP 凭证，Phase 2）：把 token 绑定到 (真人, 虚拟成员, 团队)。
+ *
+ * - 每个虚拟成员至多一条（`api_tokens_virtual_member_id_unique`），
+ *   重签 = 删旧行 + 插新行；
+ * - 只存 `sha256(rawToken)`，原文仅签发时返回一次；
+ * - 删虚拟成员/团队/用户时级联清空。
+ */
+export const apiTokens = pgTable(
+  "api_tokens",
+  {
+    id: uuidPk(),
+    // 签发/归属的真人（被 token 冒用的虚拟成员所在团队的 owner/admin）。
+    userId: uuidRef("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    virtualMemberId: uuidRef("virtual_member_id")
+      .notNull()
+      .references(() => virtualMembers.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    // `odm_` 前缀的短标识，供管理界面展示，不含密钥。
+    tokenPrefix: text("token_prefix").notNull(),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [unique("api_tokens_virtual_member_id_unique").on(t.virtualMemberId)],
 );
