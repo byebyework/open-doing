@@ -65,6 +65,7 @@ const TEAM_ID = "00000000-0000-0000-0000-000000000002";
 const PROJECT_ID = "00000000-0000-0000-0000-000000000003";
 const TASK_ID = "00000000-0000-0000-0000-000000000004";
 const MEMBER_ID = "00000000-0000-0000-0000-000000000005";
+const VIRTUAL_ID = "00000000-0000-0000-0000-000000000008";
 
 const fakeTask: Task = {
   id: TASK_ID,
@@ -223,6 +224,119 @@ describe("团队任务 actions", () => {
     expect(mockAddComment.mock.calls[0]![0]).not.toHaveProperty(
       "authorVirtualId",
     );
+  });
+
+  it("创建：透传 assigneeVirtualId，并剥离客户端附加的未知字段", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+    mockCreate.mockResolvedValue(fakeTask);
+
+    const forgedInput = {
+      teamId: TEAM_ID,
+      projectId: PROJECT_ID,
+      title: "写周报",
+      assigneeVirtualId: VIRTUAL_ID,
+      // service-only / 伪造字段：不得触达 service。
+      assigneeVirtualName: "写作助手",
+      actorId: "00000000-0000-0000-0000-000000000009",
+    };
+
+    await expect(createTeamTaskAction(forgedInput)).resolves.toEqual({
+      ok: true,
+      data: fakeTask,
+    });
+
+    const payload = mockCreate.mock.calls[0]![0];
+    expect(payload).toMatchObject({
+      teamId: TEAM_ID,
+      projectId: PROJECT_ID,
+      title: "写周报",
+      assigneeVirtualId: VIRTUAL_ID,
+      actorId: MEMBER_ID,
+    });
+    expect(payload).not.toHaveProperty("assigneeVirtualName");
+    expect(payload).not.toHaveProperty("assigneeId");
+  });
+
+  it("更新：透传 assigneeVirtualId，并剥离客户端附加的未知字段", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+    mockUpdate.mockResolvedValue(fakeTask);
+
+    const forgedInput = {
+      teamId: TEAM_ID,
+      assigneeVirtualId: VIRTUAL_ID,
+      assigneeVirtualName: "写作助手",
+      actorId: "00000000-0000-0000-0000-000000000009",
+    };
+
+    await expect(updateTeamTaskAction(TASK_ID, forgedInput)).resolves.toEqual({
+      ok: true,
+      data: fakeTask,
+    });
+
+    const payload = mockUpdate.mock.calls[0]![0];
+    expect(payload).toMatchObject({
+      taskId: TASK_ID,
+      teamId: TEAM_ID,
+      assigneeVirtualId: VIRTUAL_ID,
+      actorId: MEMBER_ID,
+    });
+    expect(payload).not.toHaveProperty("assigneeVirtualName");
+    expect(payload).not.toHaveProperty("assigneeId");
+  });
+
+  it("真人指派未提供虚拟字段时，service 入参不携带 assigneeVirtualId", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+    mockCreate.mockResolvedValue(fakeTask);
+
+    await createTeamTaskAction({
+      teamId: TEAM_ID,
+      projectId: PROJECT_ID,
+      title: "写周报",
+      assigneeId: MEMBER_ID,
+    });
+
+    expect(mockCreate.mock.calls[0]![0]).not.toHaveProperty(
+      "assigneeVirtualId",
+    );
+  });
+
+  it("assigneeVirtualId 非 UUID：action 先行拒绝，不触达 service", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+
+    await expect(
+      createTeamTaskAction({
+        teamId: TEAM_ID,
+        projectId: PROJECT_ID,
+        title: "写周报",
+        assigneeVirtualId: "not-a-uuid",
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      errors: { assigneeId: "只能指派给该团队的虚拟成员" },
+    });
+
+    expect(mockCreate).not.toHaveBeenCalled();
+  });
+
+  it("真实团队指派虚拟成员：service 拒绝通过 assigneeId 字段透出", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+    mockCreate.mockRejectedValue(
+      new DomainError("只能指派给该团队的虚拟成员", "assigneeId", {
+        key: "assigneeNotVirtualMember",
+      }),
+    );
+
+    await expect(
+      createTeamTaskAction({
+        teamId: TEAM_ID,
+        projectId: PROJECT_ID,
+        title: "写周报",
+        assigneeVirtualId: VIRTUAL_ID,
+      }),
+    ).resolves.toEqual({
+      ok: false,
+      errors: { assigneeId: "只能指派给该团队的虚拟成员" },
+    });
   });
 
   it("成功：透传数据，并以当前用户作为 actorId 调用 service", async () => {

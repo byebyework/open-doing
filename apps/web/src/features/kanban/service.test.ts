@@ -13,6 +13,7 @@ import {
   teamMemberships,
   teams,
   users,
+  virtualMembers,
 } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
@@ -809,6 +810,69 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
       assigneeId: null,
       assigneeName: null,
     });
+  });
+
+  it("assigneeRef：虚拟成员映射为 virtual；真人 / 未指派分别为 user / null", async () => {
+    const { teamA, alice, bob, idByTitle } = await seedTeamBoard(db);
+
+    const virtualMemberId = crypto.randomUUID();
+    await db.insert(virtualMembers).values({
+      id: virtualMemberId,
+      teamId: teamA.id,
+      name: "写作助手",
+      accentColor: "#a66b00",
+      createdById: alice.id,
+    });
+    await db
+      .update(tasks)
+      .set({ assigneeId: null, assigneeVirtualId: virtualMemberId })
+      .where(eq(tasks.id, idByTitle.get("逾期较早")!));
+
+    const board = await getTeamSpaceBoard(teamA.id, TODAY, db);
+    const byTitle = new Map(board.todo.map((card) => [card.title, card]));
+
+    expect(byTitle.get("逾期较早")).toMatchObject({
+      assigneeId: null,
+      assigneeName: "写作助手",
+      assigneeRef: {
+        type: "virtual",
+        virtualMemberId,
+        name: "写作助手",
+        accentColor: "#a66b00",
+      },
+    });
+    expect(byTitle.get("逾期较晚")?.assigneeRef).toEqual({
+      type: "user",
+      userId: bob.id,
+      name: "nick-bob",
+      image: null,
+    });
+    expect(byTitle.get("未指派任务")?.assigneeRef).toBeNull();
+  });
+
+  it("unassignedOnly：虚拟成员指派的任务不算未指派", async () => {
+    const { teamA, alice, idByTitle } = await seedTeamBoard(db);
+
+    const virtualMemberId = crypto.randomUUID();
+    await db.insert(virtualMembers).values({
+      id: virtualMemberId,
+      teamId: teamA.id,
+      name: "写作助手",
+      accentColor: "#a66b00",
+      createdById: alice.id,
+    });
+    await db
+      .update(tasks)
+      .set({ assigneeId: null, assigneeVirtualId: virtualMemberId })
+      .where(eq(tasks.id, idByTitle.get("逾期较早")!));
+
+    const board = await getTeamSpaceBoard(teamA.id, TODAY, db, {
+      unassignedOnly: true,
+    });
+
+    expect(board.todo.map((card) => card.title)).toContain("未指派任务");
+    expect(board.todo.map((card) => card.title)).not.toContain("逾期较早");
+    expect(board.inProgress).toHaveLength(0);
   });
 
   it("成员被移除（assignee_id 置空）的任务正常显示为未指派，不丢卡", async () => {

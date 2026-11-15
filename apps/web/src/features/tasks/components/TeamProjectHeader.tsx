@@ -25,6 +25,8 @@ export interface TeamProjectHeaderProps {
   projects: { id: string; name: string }[];
   /** 团队成员（新建任务责任人下拉）。 */
   members: { id: string; name: string }[];
+  /** 虚拟团队成员（仅虚拟团队传入；新建任务责任人下拉追加分组）。 */
+  virtualMembers?: { id: string; name: string; accentColor: string | null }[];
   /** 当前用户（新建任务默认责任人）。 */
   actorId: string;
   /** owner / admin 才渲染项目编辑与删除入口。 */
@@ -44,6 +46,7 @@ export function TeamProjectHeader({
   view,
   projects,
   members,
+  virtualMembers,
   actorId,
   canManage,
   redirectTo,
@@ -79,6 +82,7 @@ export function TeamProjectHeader({
         projects={projects}
         defaultProjectId={project.id}
         members={members}
+        virtualMembers={virtualMembers}
         defaultAssigneeId={actorId}
         onSuccess={() => {
           setNewTaskOpen(false);

@@ -64,6 +64,8 @@ export interface SpaceCalendarCreateTask {
   teamId?: string;
   /** 团队空间专用：可指派成员。 */
   members?: { id: string; name: string }[];
+  /** 团队空间专用：虚拟成员（仅虚拟团队传入）。 */
+  virtualMembers?: { id: string; name: string; accentColor: string | null }[];
   /** 团队空间专用：默认责任人（通常为当前用户）。 */
   defaultAssigneeId?: string | null;
 }
@@ -957,6 +959,7 @@ export function SpaceCalendar({
             teamId={createTask.teamId ?? ""}
             projects={createTask.projects}
             members={createTask.members ?? []}
+            virtualMembers={createTask.virtualMembers}
             defaultAssigneeId={createTask.defaultAssigneeId ?? null}
             defaultDueDate={createDate}
             onSuccess={() => {

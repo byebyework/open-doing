@@ -1,4 +1,5 @@
 import type {
+  AssigneeRef,
   SpaceType as SharedSpaceType,
   TaskPriority,
   TaskStatus,
@@ -20,7 +21,13 @@ import {
 } from "drizzle-orm";
 
 import { db, type DbClient } from "@/server/db/client";
-import { projects, subtasks, tasks, users } from "@/server/db/schema";
+import {
+  projects,
+  subtasks,
+  tasks,
+  users,
+  virtualMembers,
+} from "@/server/db/schema";
 
 /** 空间类型（沿用共享领域类型，本模块对外导出以便看板组件消费）。 */
 export type SpaceType = SharedSpaceType;
@@ -76,6 +83,8 @@ export interface SpaceBoard {
 export interface TeamKanbanCardItem extends KanbanCardItem {
   assigneeId: string | null;
   assigneeName: string | null;
+  /** 责任人身份引用：真人或虚拟成员；未指派 / 被移除时为 null。 */
+  assigneeRef: AssigneeRef | null;
 }
 
 /** 团队空间看板：todo / in_progress 全量，done 收敛到近 7 天。 */
@@ -103,11 +112,15 @@ interface KanbanCardRow {
   updatedAt: Date;
 }
 
-/** 团队 done 卡对外字段（SQL 行）：卡片公共字段 + 指派人。 */
+/** 团队 done 卡对外字段（SQL 行）：卡片公共字段 + 指派人（真人 / 虚拟成员）。 */
 interface TeamKanbanCardRow extends KanbanCardRow {
   assigneeId: string | null;
   assigneeUsername: string | null;
   assigneeNickname: string | null;
+  assigneeImage: string | null;
+  assigneeVirtualId: string | null;
+  assigneeVirtualName: string | null;
+  assigneeVirtualAccentColor: string | null;
 }
 
 /**
@@ -363,7 +376,9 @@ export function teamScope(
     conditions.push(eq(tasks.projectId, filter.projectId));
   }
   if (filter?.unassignedOnly) {
+    // 虚拟成员任务占用 assignee_virtual_id 而非 assignee_id，两列都为空才算未指派。
     conditions.push(isNull(tasks.assigneeId));
+    conditions.push(isNull(tasks.assigneeVirtualId));
   }
 
   return andDefined(...conditions);
@@ -549,12 +564,17 @@ async function selectTeamCards(
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
       assigneeNickname: users.name,
+      assigneeImage: users.image,
+      assigneeVirtualId: tasks.assigneeVirtualId,
+      assigneeVirtualName: virtualMembers.name,
+      assigneeVirtualAccentColor: virtualMembers.accentColor,
     })
     // inner join 而非 left join：团队范围条件含 `projects.team_id`，团队任务
     // 必有项目（创建路径保证），join 类型只表达这一意图，与计数查询一致。
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
+    .leftJoin(virtualMembers, eq(tasks.assigneeVirtualId, virtualMembers.id))
     .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
     .where(condition)
     .orderBy(...orderBy());
@@ -580,11 +600,35 @@ function toCard(row: KanbanCardRow): KanbanCardItem {
 
 /** SQL 行 → 团队看板卡片；在个人卡片基础上补充指派人（未指派为 null）。 */
 function toTeamCard(row: TeamKanbanCardRow): TeamKanbanCardItem {
+  // 身份引用与任务列表 / 日历同口径：虚拟成员优先（两列互斥），
+  // 被移除的真人 / 虚拟成员都回落为 null。
+  const assigneeRef: AssigneeRef | null =
+    row.assigneeVirtualId !== null && row.assigneeVirtualName !== null
+      ? {
+          type: "virtual",
+          virtualMemberId: row.assigneeVirtualId,
+          name: row.assigneeVirtualName,
+          accentColor: row.assigneeVirtualAccentColor,
+        }
+      : row.assigneeId !== null && row.assigneeUsername !== null
+        ? {
+            type: "user",
+            userId: row.assigneeId,
+            name: row.assigneeNickname ?? row.assigneeUsername,
+            image: row.assigneeImage,
+          }
+        : null;
+
   return {
     ...toCard(row),
     assigneeId: row.assigneeId ?? null,
-    // 展示名：昵称优先，未填写（或个人任务 join 不到用户）回退到用户名。
-    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
+    // 展示名：昵称优先，未填写回退到用户名 / 虚拟成员名。
+    assigneeName:
+      row.assigneeNickname ??
+      row.assigneeUsername ??
+      row.assigneeVirtualName ??
+      null,
+    assigneeRef,
   };
 }
 

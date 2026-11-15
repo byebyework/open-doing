@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskStatus } from "@open-doing/types";
+import type { AssigneeRef, TaskStatus } from "@open-doing/types";
 import {
   DndContext,
   KeyboardSensor,
@@ -21,8 +21,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { formatTaskDate } from "@/lib/date-display";
+import { AssigneeAvatar } from "@/components/ui/AssigneeAvatar";
 import { PriorityDot } from "@/components/ui/PriorityChip";
-import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
 import { canEditTask } from "@/features/tasks/permissions";
@@ -86,6 +86,7 @@ const STATUS_KEYS: Record<TaskStatus, "colTodo" | "colInProgress" | "colDone"> =
 type BoardCard = KanbanCardItem & {
   assigneeId?: string | null;
   assigneeName?: string | null;
+  assigneeRef?: AssigneeRef | null;
 };
 
 /** 组件内部看板状态：done 拆成近 7 天与「更早」展开部分。 */
@@ -386,15 +387,12 @@ function SpaceKanbanCard({
         >
           <PriorityDot priority={card.priority} />
           {variant === "team" ? (
-            card.assigneeName ? (
+            card.assigneeRef ? (
               <span className="flex min-w-0 items-center gap-1.5 text-[12.5px] text-[var(--ink-500)]">
-                {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
-                <UserAvatar
-                  userId={card.assigneeId ?? ""}
-                  name={card.assigneeName}
-                  size={22}
-                />
-                <span className="truncate">{card.assigneeName}</span>
+                {/* 真人与虚拟成员共用身份引用：真人走 userId 哈希头像，
+                    虚拟成员走 accentColor + 机器人角标。 */}
+                <AssigneeAvatar assigneeRef={card.assigneeRef} size={22} />
+                <span className="truncate">{card.assigneeRef.name}</span>
               </span>
             ) : (
               <span className="inline-flex flex-none items-center rounded-full bg-[#e8eaed] px-2 text-[11.5px] font-medium leading-5 text-[var(--ink-500)]">

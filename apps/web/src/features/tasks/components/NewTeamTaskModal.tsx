@@ -24,7 +24,9 @@ import { Label } from "@/components/ui/shadcn/label";
 import {
   Select,
   SelectContent,
+  SelectGroup,
   SelectItem,
+  SelectLabel,
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/shadcn/select";
@@ -38,6 +40,14 @@ import {
 
 import { createTeamTaskAction } from "../actions";
 
+/**
+ * 虚拟成员选项值前缀：与真人成员的 UUID 值区分。
+ *
+ * Radix Select 的 item value 只能由字符串承载，故提交前把前缀解析回
+ * `assigneeVirtualId`；真人值不加前缀，保持既有提交载荷不变。
+ */
+const VIRTUAL_ASSIGNEE_PREFIX = "virtual:";
+
 /** 新建团队任务弹窗入参。 */
 export interface NewTeamTaskModalProps {
   /** 是否显示。 */
@@ -49,6 +59,12 @@ export interface NewTeamTaskModalProps {
   defaultProjectId?: string | null;
   /** 可指派的团队成员。 */
   members: { id: string; name: string }[];
+  /**
+   * 可指派的虚拟成员（仅虚拟团队传入；真实团队不传）。
+   *
+   * 非空时责任人下拉追加带分组标签的虚拟成员项，值为 `virtual:<uuid>`。
+   */
+  virtualMembers?: { id: string; name: string; accentColor: string | null }[];
   /** 默认责任人（通常为当前用户）。 */
   defaultAssigneeId?: string | null;
   /** 预填的截止日期（`YYYY-MM-DD`；日历格子「+」入口按所点日期预填）。 */
@@ -73,6 +89,7 @@ export function NewTeamTaskModal({
   projects,
   defaultProjectId,
   members,
+  virtualMembers = [],
   defaultAssigneeId,
   defaultDueDate,
   onSuccess,
@@ -166,6 +183,20 @@ export function NewTeamTaskModal({
     setFormError(null);
 
     try {
+      // `virtual:<uuid>` → assigneeVirtualId；真人 id → assigneeId。
+      // 两者互斥：虚拟分支不带 assigneeId（真人分支不带 assigneeVirtualId），
+      // 与 service 的「不能同时指派」校验保持一致。
+      const assigneeValue = values.assigneeId;
+      const isVirtualAssignee =
+        assigneeValue.startsWith(VIRTUAL_ASSIGNEE_PREFIX);
+      const assigneeFields = isVirtualAssignee
+        ? {
+            assigneeVirtualId: assigneeValue.slice(
+              VIRTUAL_ASSIGNEE_PREFIX.length,
+            ),
+          }
+        : { assigneeId: assigneeValue || null };
+
       const result = await createTeamTaskAction({
         teamId,
         projectId: values.projectId,
@@ -174,7 +205,7 @@ export function NewTeamTaskModal({
         priority: values.priority as TaskPriority,
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
-        assigneeId: values.assigneeId || null,
+        ...assigneeFields,
       });
 
       if (!result.ok) {
@@ -280,13 +311,37 @@ export function NewTeamTaskModal({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {members.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.id === defaultAssigneeId
-                      ? t("memberSelf", { name: member.name })
-                      : member.name}
-                  </SelectItem>
-                ))}
+                {/* 真实团队保持原有平铺列表；虚拟团队在后面追加虚拟成员分组。 */}
+                {virtualMembers.length > 0 ? (
+                  <>
+                    {members.map((member) => (
+                      <SelectItem key={member.id} value={member.id}>
+                        {member.id === defaultAssigneeId
+                          ? t("memberSelf", { name: member.name })
+                          : member.name}
+                      </SelectItem>
+                    ))}
+                    <SelectGroup>
+                      <SelectLabel>{t("assigneeVirtualGroup")}</SelectLabel>
+                      {virtualMembers.map((member) => (
+                        <SelectItem
+                          key={member.id}
+                          value={`${VIRTUAL_ASSIGNEE_PREFIX}${member.id}`}
+                        >
+                          {member.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </>
+                ) : (
+                  members.map((member) => (
+                    <SelectItem key={member.id} value={member.id}>
+                      {member.id === defaultAssigneeId
+                        ? t("memberSelf", { name: member.name })
+                        : member.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
             <p className="text-[12.5px] text-[var(--ink-400)]">{t("assigneeHelp")}</p>

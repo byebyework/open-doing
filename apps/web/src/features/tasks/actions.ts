@@ -7,11 +7,13 @@ import type {
   TaskPriority,
   TaskStatus,
 } from "@open-doing/types";
+import { z } from "zod";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
 import { DomainError } from "@/lib/domain-error";
+import { isUuid } from "@/lib/task-fields";
 
 import { TaskPermissionError } from "./permissions";
 import {
@@ -27,6 +29,34 @@ import {
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
 type Failure = Extract<ActionResult<never>, { ok: false }>;
+
+/**
+ * 虚拟成员责任人入参：可空 UUID（客户端可能附任意值，action 先行校验）。
+ *
+ * 复用 `isUuid` 而非 `z.uuid()`：与 service 层的 UUID 判定保持同一口径
+ * （8-4-4-4-12 十六进制，不限制 RFC 版本；种子 / 测试常用占位 UUID）。
+ */
+const assigneeVirtualIdSchema = z
+  .string()
+  .refine(isUuid)
+  .nullable()
+  .optional();
+
+/**
+ * 解析并校验 `assigneeVirtualId`。
+ *
+ * 非法值走与 service 相同的字段错误（`assigneeId` + `assigneeNotVirtualMember`），
+ * 不触达 service，避免客户端把畸形值带进查询层。
+ */
+function parseAssigneeVirtualId(value: unknown): string | null | undefined {
+  const parsed = assigneeVirtualIdSchema.safeParse(value);
+  if (!parsed.success) {
+    throw new DomainError("只能指派给该团队的虚拟成员", "assigneeId", {
+      key: "assigneeNotVirtualMember",
+    });
+  }
+  return parsed.data;
+}
 
 /**
  * 领域错误 -> 字段错误；权限错误 -> 表单级 403 文案；
@@ -65,12 +95,38 @@ export async function createTeamTaskAction(input: {
   dueDate?: string | null;
   startDate?: string | null;
   assigneeId?: string | null;
+  /** 虚拟成员责任人；与 `assigneeId` 互斥（service 层裁决）。 */
+  assigneeVirtualId?: string | null;
 }): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
-    const task = await createTeamTask({ ...input, actorId: user.id });
+    // 只转发白名单字段：客户端可附任意多余键，不能直接 spread 进入 service。
+    const {
+      teamId,
+      projectId,
+      title,
+      description,
+      priority,
+      dueDate,
+      startDate,
+      assigneeId,
+    } = input;
+    const assigneeVirtualId = parseAssigneeVirtualId(input.assigneeVirtualId);
+
+    const task = await createTeamTask({
+      teamId,
+      projectId,
+      title,
+      actorId: user.id,
+      ...(description !== undefined ? { description } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+      ...(dueDate !== undefined ? { dueDate } : {}),
+      ...(startDate !== undefined ? { startDate } : {}),
+      ...(assigneeId !== undefined ? { assigneeId } : {}),
+      ...(assigneeVirtualId !== undefined ? { assigneeVirtualId } : {}),
+    });
     return { ok: true, data: task };
   } catch (error) {
     return toFailure(error);
@@ -89,13 +145,40 @@ export async function updateTeamTaskAction(
     startDate?: string | null;
     status?: TaskStatus;
     assigneeId?: string;
+    /** 虚拟成员责任人；与 `assigneeId` 互斥（service 层裁决）。 */
+    assigneeVirtualId?: string | null;
   },
 ): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
-    const task = await updateTeamTask({ taskId, ...input, actorId: user.id });
+    // 只转发白名单字段：客户端可附任意多余键，不能直接 spread 进入 service。
+    const {
+      teamId,
+      title,
+      description,
+      priority,
+      dueDate,
+      startDate,
+      status,
+      assigneeId,
+    } = input;
+    const assigneeVirtualId = parseAssigneeVirtualId(input.assigneeVirtualId);
+
+    const task = await updateTeamTask({
+      taskId,
+      teamId,
+      actorId: user.id,
+      ...(title !== undefined ? { title } : {}),
+      ...(description !== undefined ? { description } : {}),
+      ...(priority !== undefined ? { priority } : {}),
+      ...(dueDate !== undefined ? { dueDate } : {}),
+      ...(startDate !== undefined ? { startDate } : {}),
+      ...(status !== undefined ? { status } : {}),
+      ...(assigneeId !== undefined ? { assigneeId } : {}),
+      ...(assigneeVirtualId !== undefined ? { assigneeVirtualId } : {}),
+    });
     return { ok: true, data: task };
   } catch (error) {
     return toFailure(error);

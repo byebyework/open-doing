@@ -68,7 +68,15 @@ export default async function TeamProjectPage({
     id: member.id,
     name: displayName(member),
   }));
-  const virtualMembers = virtualMemberList.map(({ id, name }) => ({ id, name }));
+  // 虚拟成员仅虚拟团队返回；真实团队为 undefined（新建弹窗不出现虚拟分组）。
+  const virtualMembers =
+    team.kind === "virtual"
+      ? virtualMemberList.map(({ id, name, accentColor }) => ({
+          id,
+          name,
+          accentColor,
+        }))
+      : undefined;
   const participantCount = new Set(
     tasks.map((task) => task.assigneeId).filter((id): id is string => id !== null),
   ).size;
@@ -108,6 +116,7 @@ export default async function TeamProjectPage({
             view={view}
             projects={projectOptions}
             members={members}
+            virtualMembers={virtualMembers}
             actorId={user.id}
             canManage={can(membership.role, "team:manage_projects")}
             redirectTo={teamSettingsHref(team.slug)}

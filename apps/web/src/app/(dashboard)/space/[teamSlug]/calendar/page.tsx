@@ -10,6 +10,7 @@ import { getTeamSpaceCalendar } from "@/features/calendar/service";
 import { listTeamProjects } from "@/features/projects/service";
 import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
+import { listVirtualMembers } from "@/features/teams/virtual/service";
 import { moduleHref, teamTaskHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
@@ -66,6 +67,8 @@ export default async function TeamCalendarPage(
   const projects = await listTeamProjects(team.id);
   // 格子「+」新建任务入口：项目选项 + 可指派成员（默认当前用户）。
   const memberList = await listMembers(team.id);
+  const virtualMemberList =
+    team.kind === "virtual" ? await listVirtualMembers(team.id) : [];
   const projectSlugById = new Map(
     projects.map((project) => [project.id, project.slug]),
   );
@@ -98,6 +101,13 @@ export default async function TeamCalendarPage(
               id: member.id,
               name: displayName(member),
             })),
+            ...(team.kind === "virtual"
+              ? {
+                  virtualMembers: virtualMemberList.map(
+                    ({ id, name, accentColor }) => ({ id, name, accentColor }),
+                  ),
+                }
+              : {}),
             defaultAssigneeId: user.id,
           }}
         />

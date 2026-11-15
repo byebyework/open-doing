@@ -52,8 +52,8 @@ export interface TeamKanbanProps {
   teamSlug: string;
   tasks: TeamTaskRow[];
   members: { id: string; name: string }[];
-  /** 虚拟团队成员（虚拟团队时用于责任人筛选选项）。 */
-  virtualMembers?: { id: string; name: string }[];
+  /** 虚拟团队成员（虚拟团队时用于责任人筛选选项与新建任务指派）。 */
+  virtualMembers?: { id: string; name: string; accentColor: string | null }[];
   today: string;
   projectId: string;
   projects: { id: string; name: string }[];
@@ -527,6 +527,7 @@ export function TeamKanban({
         projects={projects}
         defaultProjectId={projectId}
         members={members}
+        virtualMembers={virtualMembers}
         defaultAssigneeId={actorId}
         onSuccess={() => {
           setNewTaskOpen(false);

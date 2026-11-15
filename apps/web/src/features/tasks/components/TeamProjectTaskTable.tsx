@@ -106,8 +106,8 @@ export interface TeamProjectTaskTableProps {
   tasks: TeamTaskRow[];
   /** 团队成员（责任人筛选与新建任务弹窗使用）。 */
   members: { id: string; name: string }[];
-  /** 虚拟团队成员（虚拟团队时用于责任人筛选选项）。 */
-  virtualMembers?: { id: string; name: string }[];
+  /** 虚拟团队成员（虚拟团队时用于责任人筛选选项与新建任务指派）。 */
+  virtualMembers?: { id: string; name: string; accentColor: string | null }[];
   /** 今天（Asia/Shanghai，`YYYY-MM-DD`）。 */
   today: string;
   /** 当前项目 ID（新建任务默认选中）。 */
@@ -489,6 +489,7 @@ export function TeamProjectTaskTable({
         projects={projects}
         defaultProjectId={projectId}
         members={members}
+        virtualMembers={virtualMembers}
         defaultAssigneeId={actorId}
         onSuccess={() => {
           setNewTaskOpen(false);

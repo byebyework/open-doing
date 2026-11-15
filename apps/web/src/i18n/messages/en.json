@@ -244,6 +244,7 @@
     "commentsCount": "Comments · {count}",
     "change": "Change",
     "assigneeLabel": "Assignee",
+    "assigneeVirtualGroup": "Virtual members",
     "unassigned": "Unassigned",
     "virtualMemberBadgeAria": "Virtual member",
     "leftMember": "Former member",

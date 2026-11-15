@@ -244,6 +244,7 @@
     "commentsCount": "评论 · {count}",
     "change": "更改",
     "assigneeLabel": "责任人",
+    "assigneeVirtualGroup": "虚拟成员",
     "unassigned": "未指派",
     "virtualMemberBadgeAria": "虚拟成员",
     "leftMember": "已离开成员",
