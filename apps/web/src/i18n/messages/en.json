@@ -1055,6 +1055,7 @@
     "detailFieldStatus": "Status",
     "detailMetaTitle": "User details · {name}",
     "detailTeamsEmpty": "This user has not joined any team yet",
+    "virtualTeamBadge": "Virtual team",
     "detailTeamJoined": "Joined {date}",
     "detailSessionsEmpty": "No sessions on record",
     "detailActionsTitle": "Actions",

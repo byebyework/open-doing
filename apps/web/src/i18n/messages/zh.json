@@ -1055,6 +1055,7 @@
     "detailFieldStatus": "状态",
     "detailMetaTitle": "用户详情 · {name}",
     "detailTeamsEmpty": "该用户暂未加入任何团队",
+    "virtualTeamBadge": "虚拟团队",
     "detailTeamJoined": "{date} 加入",
     "detailSessionsEmpty": "暂无会话记录",
     "detailActionsTitle": "管理操作",

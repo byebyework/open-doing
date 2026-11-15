@@ -72,7 +72,13 @@ async function insertUser(
 /** 直插团队并由指定用户成为 owner（同时写入 owner 成员关系）。 */
 async function insertTeam(
   client: DbClient,
-  input: { name: string; ownerId: string; createdAt?: Date; joinedAt?: Date },
+  input: {
+    name: string;
+    ownerId: string;
+    createdAt?: Date;
+    joinedAt?: Date;
+    kind?: "real" | "virtual";
+  },
 ): Promise<string> {
   const id = crypto.randomUUID();
   await client.insert(teams).values({
@@ -81,6 +87,7 @@ async function insertTeam(
     slug: `team-${id}`,
     joinCode: id.replaceAll("-", "").slice(0, 8).toUpperCase(),
     ownerId: input.ownerId,
+    kind: input.kind ?? "real",
     createdAt: input.createdAt ?? new Date(),
   });
   await client.insert(teamMemberships).values({
@@ -426,6 +433,7 @@ describe.skipIf(!hasTestDatabase)("admin service", () => {
           name: "Alpha Squad",
           role: "owner",
           joinedAt: "2026-11-03T00:00:00.000Z",
+          kind: "real",
         },
       ]);
       expect(detail!.sessions.map((session) => session.id)).toEqual([
@@ -463,6 +471,35 @@ describe.skipIf(!hasTestDatabase)("admin service", () => {
 
       const second = codes.find((code) => code.code === "CODEBBBB")!;
       expect(second.usedBy).toEqual([]);
+    });
+
+    it("surfaces team kind (real/virtual) in user detail teams", async () => {
+      const alice = await insertUser(db, {
+        username: "alice",
+        uid: "doing_alpha01",
+        createdAt: new Date("2026-11-01T00:00:00Z"),
+      });
+
+      // 虚拟团队先加入（joinedAt 更早），验证 kind 逐行透出且不打乱排序。
+      await insertTeam(db, {
+        name: "Virtual Squad",
+        ownerId: alice,
+        kind: "virtual",
+        createdAt: new Date("2026-11-02T00:00:00Z"),
+        joinedAt: new Date("2026-11-02T00:00:00Z"),
+      });
+      await insertTeam(db, {
+        name: "Alpha Squad",
+        ownerId: alice,
+        createdAt: new Date("2026-11-03T00:00:00Z"),
+        joinedAt: new Date("2026-11-03T00:00:00Z"),
+      });
+
+      const detail = await getAdminUserDetail(alice, db);
+      expect(detail!.teams.map((team) => [team.name, team.kind])).toEqual([
+        ["Virtual Squad", "virtual"],
+        ["Alpha Squad", "real"],
+      ]);
     });
   });
 });

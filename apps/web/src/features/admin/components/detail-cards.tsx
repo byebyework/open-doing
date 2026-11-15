@@ -138,6 +138,14 @@ export async function TeamsCard({ teams }: { teams: DetailTeam[] }) {
                   })}
                 </div>
               </div>
+              {team.kind === "virtual" ? (
+                <Badge
+                  variant="neutral"
+                  className={`${BADGE_CLASS} ${BADGE_MEMBER}`}
+                >
+                  {t("virtualTeamBadge")}
+                </Badge>
+              ) : null}
               <Badge
                 variant={team.role === "member" ? "neutral" : "info"}
                 className={BADGE_CLASS}

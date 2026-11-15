@@ -73,6 +73,8 @@ export interface AdminUserDetail {
     name: string;
     role: "owner" | "admin" | "member";
     joinedAt: string;
+    /** 团队类型：real 真实团队 / virtual 虚拟团队（管理台据此打「虚拟」徽标）。 */
+    kind: "real" | "virtual";
   }[];
   sessions: {
     id: string;
@@ -337,6 +339,7 @@ export async function getAdminUserDetail(
         name: teams.name,
         role: teamMemberships.role,
         joinedAt: teamMemberships.joinedAt,
+        kind: teams.kind,
       })
       .from(teamMemberships)
       .innerJoin(teams, eq(teams.id, teamMemberships.teamId))
