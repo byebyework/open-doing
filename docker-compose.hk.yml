@@ -11,6 +11,14 @@ name: open-doing-hk
 #   DATABASE_URL             Supabase session pooler 连接串（带 ?sslmode=require，必填）
 #   BETTER_AUTH_SECRET / CRON_SECRET / BETTER_AUTH_URL   必填
 #   CERT_DIR                 宿主机证书目录（Cloudflare Origin CA 证书，必填）
+#   MCP_MEM_LIMIT            mcp 容器内存上限（占位默认 256m，上线前用 free -h 实测后定值）
+#
+# mcp service 用 `build: target: runtime-mcp` 在服务器上从源码构建（仅装生产依赖并
+# 直跑 tsx，不触发 Next 构建），因此 /opt/open-doing 需要具备构建上下文：
+#   Dockerfile / .dockerignore / .npmrc / package.json / pnpm-lock.yaml /
+#   pnpm-workspace.yaml / apps/web/package.json / apps/mcp / packages/server-core /
+#   packages/types
+# 具体同步命令见 docs/deploy-hk-server.md 附录 A.1。
 
 services:
   web:
@@ -26,6 +34,19 @@ services:
       # 443 是 https 默认端口，URL 不需要带端口号
       BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env (https://<domain>)}
 
+  mcp:
+    # 与 web 同一 Dockerfile 的另一个最终 stage（runtime-mcp）：源码直跑 tsx，无 Next 构建。
+    # 不发布端口：只有 compose 内的 nginx 经服务名 mcp:3101 访问，公网入口是 /mcp/ 路径。
+    build:
+      context: .
+      target: runtime-mcp
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: ${DATABASE_URL:?set DATABASE_URL in .env}
+      MCP_PORT: "3101"
+    # 占位值：上线前在服务器 free -h 实测空闲内存后定值（见 docs/deploy-hk-server.md 附录）。
+    mem_limit: ${MCP_MEM_LIMIT:-256m}
+
   nginx:
     image: ghcr.io/byebyework/open-doing-nginx:1.27-alpine
     restart: unless-stopped
@@ -36,3 +57,4 @@ services:
       - ${CERT_DIR:?set CERT_DIR in .env (Cloudflare Origin CA 证书目录)}:/etc/nginx/certs:ro
     depends_on:
       - web
+      - mcp

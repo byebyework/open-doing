@@ -9,7 +9,9 @@
                                 ▼
                             香港服务器
                               ├─ nginx 容器（TLS 终结 + 反代，监听 443，CF Origin CA 证书）
-                              └─ web 容器（Next.js，只绑 127.0.0.1:3000）
+                              ├─ web 容器（Next.js，只绑 127.0.0.1:3000）
+                              └─ mcp 容器（apps/mcp，compose 内 3101，无公网端口；
+                                           nginx 经 /mcp/ 路径反代）
                                    │ TLS（session pooler）
                                    ▼
                               Supabase（亚洲区）
@@ -218,7 +220,7 @@ select '<表名>' as tbl, count(*) from public.<表名>;
 ```bash
 cd /opt/open-doing
 docker compose -f docker-compose.hk.yml up -d
-docker compose -f docker-compose.hk.yml ps   # 判定：web、nginx 均为 running
+docker compose -f docker-compose.hk.yml ps   # 判定：web、mcp、nginx 均为 running
 ```
 
 ### 5.2 逐项验证
@@ -256,8 +258,91 @@ TZ=Asia/Shanghai
 # 2. 服务器：
 cd /opt/open-doing
 docker compose -f docker-compose.hk.yml pull web
+# mcp 从源码构建（源码按附录 A.1 同步到 /opt/open-doing）
+docker compose -f docker-compose.hk.yml build mcp
 docker compose -f docker-compose.hk.yml up -d
 ```
 
 - `latest` 永远指向最近一次成功构建；git sha tag 用于回滚：把 `.env` 不用改（镜像名写死 latest），回滚时临时把 compose 里的 tag 换成上一个正常工作的 sha 再 `pull web && up -d`，修好后再换回。
 - 数据库迁移随容器启动自动执行（幂等）；跨版本升级前照例跑一遍第 4 节的基线对比。
+
+## 附录 A：独立 MCP 服务（apps/mcp）
+
+MCP 服务已从 web 应用拆出为独立进程 `apps/mcp`（Hono，无状态 `POST /`），与 web 共用同一 PostgreSQL / Supabase 库，但**不共用进程生命周期**。本文正文的部署步骤之外，MCP 相关的补充如下。
+
+### A.1 构建上下文（服务器上从源码构建）
+
+`docker-compose.hk.yml` 的 `mcp` service 使用同一 `Dockerfile` 的 `runtime-mcp` 最终 stage（`FROM prod-deps` + COPY 源码，CMD 直跑 `tsx src/main.ts`）。它不触发 Next 构建，但需要构建上下文；服务器部署目录需包含（除 compose / nginx / certs / `.env` 外）：
+
+- `Dockerfile`、`.dockerignore`、`.npmrc`
+- 根清单：`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`
+- 四个 workspace 的 `package.json`（`apps/web`、`apps/mcp`、`packages/types`、`packages/server-core`）
+- 源码：`apps/mcp/`、`packages/server-core/`、`packages/types/`
+
+从本机同步（不含删除，避免碰到 `.env` / 证书）：
+
+```bash
+ssh <user>@<HK公网IP> 'mkdir -p /opt/open-doing/apps/web'
+rsync -az Dockerfile .dockerignore .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml \
+  <user>@<HK公网IP>:/opt/open-doing/
+rsync -az apps/web/package.json <user>@<HK公网IP>:/opt/open-doing/apps/web/
+rsync -azr apps/mcp packages/server-core packages/types <user>@<HK公网IP>:/opt/open-doing/
+```
+
+> `apps/web` 只需要 `package.json`：`runtime-mcp` 的构建链是 `base → prod-deps → runtime-mcp`，不进入 web 的 `deps` / `build` stage，不需要 web 源码或 `public`。
+
+### A.2 nginx 路径路由
+
+公网 MCP 地址是 `https://<域名>/mcp/`（Cloudflare Proxied，与站点同源），由 nginx 按路径反代到 compose 网络内的 `mcp:3101`。`docker/nginx/hk.conf` 已加入：
+
+```nginx
+location /mcp/ {
+    proxy_pass http://mcp:3101/;   # 结尾 "/" 必需：剥掉 /mcp/ 前缀
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Proto https;
+    proxy_set_header X-Forwarded-Port 443;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+```
+
+**trailing slash 语义**：`proxy_pass` 带结尾 `/` 时，nginx 把请求里匹配到的 `/mcp/` 前缀替换为空再转发。因此 `POST /mcp/` → 上游 `POST /`（MCP 根端点），`GET /mcp/healthz` → 上游 `GET /healthz`。若漏掉结尾 `/`，上游会收到 `/mcp/` 而 404。mcp 不发布宿主机端口，也不经过 `location /`。
+
+改完配置后平滑重载：`docker compose -f docker-compose.hk.yml exec nginx nginx -s reload`。
+
+### A.3 `NEXT_PUBLIC_MCP_BASE_URL`（构建期注入）
+
+web 的 API Token 签发弹层里展示的 MCP 地址来自 `NEXT_PUBLIC_MCP_BASE_URL`。Next.js 在 **`next build` 时**把 `NEXT_PUBLIC_*` 内联进客户端产物，因此它是**构建期**参数（Dockerfile 的 `build` stage 已声明 `ARG NEXT_PUBLIC_MCP_BASE_URL` + `ENV`），运行时改 `.env` 不生效。
+
+- 生产值：`NEXT_PUBLIC_MCP_BASE_URL=https://<域名>/mcp/`（完整地址、带结尾斜杠，例如 `https://byebyework.cn/mcp/`）。
+- GHCR 构建：在 GitHub 仓库 **Settings → Secrets and variables → Actions → Variables** 添加同名变量，workflow 会作为 build-arg 传入；未配置时为空。
+- 未配置时客户端回退到 `${window.location.origin}/mcp/`——本方案是 CF Proxied 同源部署，回退值恰好等于 `https://<域名>/mcp/`，所以功能上仍然正确；显式配置用于固定地址（例如将来 MCP 改到独立子域 / 端口）。
+- mcp 容器本身不需要该变量；改值后需重新构建并发布 **web** 镜像，再 `up -d web`。
+
+### A.4 `mem_limit`：上线前用 `free -h` 实测定值
+
+`docker-compose.hk.yml` 与 `docker-compose.prod.yml` 中 mcp 的 `mem_limit` 目前是 **256m 占位**，上线前必须实测：
+
+1. 先启动 web + nginx（mcp 除外），在服务器上执行 `free -h`，记录 `available`（Supabase 在远端，本机没有 postgres 常驻，2C2G 机器余量通常够一个 Node 进程）。
+2. 应用 MCP 上线后观察真实占用：`docker stats --no-stream $(docker compose -f docker-compose.hk.yml ps -q mcp)`。
+3. 按「稳定 RSS + 约 50% 余量」在 `.env` 设 `MCP_MEM_LIMIT=<值>`（compose 默认回退 256m），然后 `docker compose -f docker-compose.hk.yml up -d mcp` 生效。
+4. 若 `free -h` 的 `available` 在 web 常驻后已经很小，**先扩容再上第二个进程**，不要靠压 `mem_limit` 冒 OOM 风险。
+
+限制生效验证：`docker inspect -f '{{.HostConfig.Memory}}' $(docker compose -f docker-compose.hk.yml ps -q mcp)` 输出非 0（单位字节）。
+
+### A.5 无迁移窗口与升级次序
+
+- **无迁移窗口**：旧的 web 嵌入式 `/api/mcp` 从未进入生产（分支未合入），生产没有任何 MCP 消费者或已签发 token；不存在双端并行、token 迁移或 redirect 兼容层。上线动作 = 构建并启动 mcp → 验证反代连通；嵌入式端点的删除已包含在本分支，随同一次发布生效。
+- **迁移所有权**：数据库迁移只在 **web** 容器 entrypoint 执行；`runtime-mcp` 没有 entrypoint、也没有 `next` 与 drizzle-kit，`apps/mcp` 永不执行迁移。
+- **升级次序**：mcp 可独立重启（`docker compose -f docker-compose.hk.yml restart mcp`），不需要重启 web。涉及 schema 变更的版本：先发布 web（entrypoint 完成迁移）→ 再同步源码并重建/重启 mcp；不要把 schema 迁移挪到 mcp。
+- 回滚：web 仍用 `latest` / git sha 镜像 tag；mcp 回滚 = 切回上一份源码后 `build mcp && up -d mcp`。
+
+### A.6 mcp 上线验证
+
+| # | 检查 | 命令 | 判定 |
+|---|------|------|------|
+| 1 | mcp 容器运行 | `docker compose -f docker-compose.hk.yml ps mcp` | `running`，无端口发布 |
+| 2 | 容器内健康检查 | `docker compose -f docker-compose.hk.yml exec mcp node -e "fetch('http://127.0.0.1:3101/healthz').then(r=>r.text()).then(console.log)"` | `{"ok":true}` |
+| 3 | nginx 前缀剥离 | `curl -sk https://127.0.0.1/mcp/healthz -H 'Host: <域名>'` | `{"ok":true}`；`GET /mcp/` 应 405 + `Allow: POST`（健康检查不能被 web 的 404 页截走） |
+| 4 | 端到端工具调用 | 按 web「虚拟团队 → 设置 → API Token」签发的片段配置客户端，跑一次 `list_tasks` | MCP 返回该团队任务；UI 中 token「最近使用」更新 |
+| 5 | web 展示地址 | 打开签发弹层查看端点 URL | 等于 `https://<域名>/mcp/`（或对应回退值） |

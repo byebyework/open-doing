@@ -34,9 +34,12 @@ jobs:
           tags: |
             ${{ env.WEB_IMAGE }}:latest
             ${{ env.WEB_IMAGE }}:${{ github.sha }}
+          # 可选构建期变量：仓库 Actions 变量 NEXT_PUBLIC_MCP_BASE_URL=https://<域名>/mcp/
+          # 未配置时为空，客户端回退到 ${window.location.origin}/mcp/（同源部署下等价）
           build-args: |
             GIT_COMMIT_SHA=${{ github.sha }}
             BUILD_TIME=${{ env.BUILD_TIME }}
+            NEXT_PUBLIC_MCP_BASE_URL=${{ vars.NEXT_PUBLIC_MCP_BASE_URL }}
           # 原 workflow 为兼容 ACR 个人版关掉了 provenance；GHCR 支持 attestation，
           # 这里沿用关闭以保持一致，需要供应链证明时删除本行即可。
           provenance: false

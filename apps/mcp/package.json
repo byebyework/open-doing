@@ -13,11 +13,11 @@
     "@modelcontextprotocol/sdk": "^1.32.2",
     "@open-doing/server-core": "workspace:*",
     "@open-doing/types": "workspace:*",
-    "hono": "^4.13.18"
+    "hono": "^4.13.18",
+    "tsx": "^4.23.15"
   },
   "devDependencies": {
     "@types/node": "^20",
-    "tsx": "^4.23.15",
     "typescript": "^5"
   }
 }

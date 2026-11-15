@@ -9,8 +9,13 @@ name: open-doing-prod
 #   BETTER_AUTH_SECRET   会话签名密钥（必填；openssl rand -base64 32）
 #   CRON_SECRET          cron 路由鉴权密钥（必填）
 #   APP_PORT             对外端口（默认 3000）
+#   MCP_PORT             独立 MCP 服务对外端口（默认 3101）
+#   MCP_MEM_LIMIT        mcp 容器内存上限（占位默认 256m，上线前 free -h 实测后定值）
 #
 # web 容器启动时会先执行数据库迁移（幂等），详见 Dockerfile 与 docker/entrypoint.sh。
+# mcp 为同一镜像的 runtime-mcp stage，独立进程、不执行迁移，与 web 共用同一 DATABASE_URL。
+# NEXT_PUBLIC_MCP_BASE_URL 是 web 的构建期参数：本编排未显式注入时，客户端回退到
+# `${window.location.origin}/mcp/`；同源部署（公网 /mcp/）下即正确地址。
 
 services:
   postgres:
@@ -38,6 +43,22 @@ services:
       BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env (openssl rand -base64 32)}
       CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in .env}
       # BETTER_AUTH_URL: https://your-domain.example   # 可选；未设置时由请求推断
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  mcp:
+    build:
+      context: .
+      target: runtime-mcp
+    restart: unless-stopped
+    ports:
+      - "${MCP_PORT:-3101}:3101"
+    environment:
+      DATABASE_URL: postgres://open-doing:${POSTGRES_PASSWORD:-open-doing}@postgres:5432/open_doing
+      MCP_PORT: "3101"
+    # 占位值：上线前在服务器 free -h 实测空闲内存后定值（见 docs/deploy-hk-server.md 附录）。
+    mem_limit: ${MCP_MEM_LIMIT:-256m}
     depends_on:
       postgres:
         condition: service_healthy
