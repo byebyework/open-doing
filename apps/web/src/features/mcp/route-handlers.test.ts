@@ -53,6 +53,14 @@ const INITIALIZE_BODY = JSON.stringify({
   },
 });
 
+/** Stateless clients call tools/list on a fresh transport, without a prior initialize. */
+const TOOLS_LIST_BODY = JSON.stringify({
+  jsonrpc: "2.0",
+  id: 2,
+  method: "tools/list",
+  params: {},
+});
+
 function post(headers: Record<string, string>, body: string = INITIALIZE_BODY) {
   return POST(
     new Request("http://localhost/api/mcp", {
@@ -125,8 +133,38 @@ describe("POST /api/mcp", () => {
     const body = (await response.json()) as {
       result?: { serverInfo?: { name?: string; version?: string } };
     };
-    expect(body.result?.serverInfo?.name).toBeTruthy();
-    expect(body.result?.serverInfo?.version).toBeTruthy();
+    expect(body.result?.serverInfo).toEqual({
+      name: "open-doing-mcp",
+      version: "0.1.0",
+    });
+  });
+
+  it("有效 token + tools/list（全新 transport、未 initialize）→ 返回读工具，且 schema 无 teamId", async () => {
+    mockResolveApiToken.mockResolvedValue(ctx);
+
+    const response = await post({ authorization: "Bearer odm_valid-token" }, TOOLS_LIST_BODY);
+
+    expect(response.status).toBe(200);
+    const body = (await response.json()) as {
+      result?: {
+        tools?: {
+          name: string;
+          inputSchema?: { properties?: Record<string, unknown> };
+        }[];
+      };
+    };
+    const tools = body.result?.tools ?? [];
+
+    expect(tools.map((tool) => tool.name).sort()).toEqual([
+      "get_task",
+      "list_projects",
+      "list_tasks",
+      "whoami",
+    ]);
+    // Scope comes from the token only: no tool may accept a caller-supplied team id.
+    for (const tool of tools) {
+      expect(tool.inputSchema?.properties ?? {}).not.toHaveProperty("teamId");
+    }
   });
 });
 
