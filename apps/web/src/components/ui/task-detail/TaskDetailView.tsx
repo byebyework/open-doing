@@ -559,9 +559,44 @@ export function TaskDetailView({
           }
         : null;
 
-  // 虚拟责任人不走真人改派选择器（UI 只提供真人成员选项）；显示为只读信息，
-  // 改派入口留给「建任务表单 / MCP」链路。
+  // 虚拟责任人：只读展示虚拟成员（名称 + 头像），并在下方保留真人改派
+  // 选择器；选中真人后由 update 路径写入 assigneeId，service 会同时清空
+  // assigneeVirtualId，从而完成虚拟 → 真人的接管。
   const isVirtualAssignee = assigneeRef?.type === "virtual";
+  const canReassign =
+    space === "team" &&
+    permissions.canAssign &&
+    assigneeOptions !== undefined &&
+    onAssign !== undefined;
+
+  const assigneeSelect = (
+    <Select
+      value={assigneeId ?? undefined}
+      onValueChange={(value) => {
+        void handleAssign(value);
+      }}
+      disabled={assigneePending}
+    >
+      <SelectTrigger
+        className="h-8 w-[170px]"
+        aria-label={t("assigneeLabel")}
+        data-testid="task-assignee-select"
+      >
+        <SelectValue placeholder={t("unassigned")} />
+      </SelectTrigger>
+      <SelectContent>
+        {assigneeChoices.map((option) => (
+          <SelectItem
+            key={option.id}
+            value={option.id}
+            disabled={option.id === assigneeId}
+          >
+            {option.name}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
@@ -717,38 +752,21 @@ export function TaskDetailView({
             </MetaRow>
 
             <MetaRow label={t("assigneeLabel")}>
-              {space === "team" &&
-              !isVirtualAssignee &&
-              permissions.canAssign &&
-              assigneeOptions &&
-              onAssign ? (
+              {isVirtualAssignee ? (
+                <div className="flex min-w-0 flex-col gap-1">
+                  <div className="flex min-w-0 items-center gap-2">
+                    <AssigneeAvatar assigneeRef={assigneeRef} size={24} />
+                    <div className="min-w-0 break-words">{assigneeRef.name}</div>
+                  </div>
+                  {canReassign ? (
+                    <div className="flex min-w-0 flex-col gap-0.5">
+                      {assigneeSelect}
+                    </div>
+                  ) : null}
+                </div>
+              ) : canReassign ? (
                 <div className="flex min-w-0 flex-col gap-0.5">
-                  <Select
-                    value={assigneeId ?? undefined}
-                    onValueChange={(value) => {
-                      void handleAssign(value);
-                    }}
-                    disabled={assigneePending}
-                  >
-                    <SelectTrigger
-                      className="h-8 w-[170px]"
-                      aria-label={t("assigneeLabel")}
-                      data-testid="task-assignee-select"
-                    >
-                      <SelectValue placeholder={t("unassigned")} />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {assigneeChoices.map((option) => (
-                        <SelectItem
-                          key={option.id}
-                          value={option.id}
-                          disabled={option.id === assigneeId}
-                        >
-                          {option.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {assigneeSelect}
                   {assigneeEmail ? (
                     <span className="break-all text-[12px] font-normal text-[var(--ink-400)]">
                       {assigneeEmail}

@@ -77,6 +77,15 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 - Data queries carry visibility filters: team data requires membership; personal-space data (personal tasks / personal projects) is visible only to the owner.
 - Comment permission and content-edit permission are separate; members may comment and view details, but cannot edit others' tasks.
 
+### Virtual teams and MCP surface
+
+- A virtual team is a normal team row with `teams.kind = 'virtual'` and reuses the same space/routes/modules; virtual members live only in `virtual_members` (never `users`), cannot log in, and are never notification recipients.
+- Task assignee and comment author columns are polymorphic (real-user FK xor virtual-member FK); an at-most-one DB CHECK backs this, and services validate exactly-one on creation.
+- MCP is `POST /api/mcp`, authenticated by `Authorization: Bearer odm_…` only: `api_tokens` stores a sha256 hash, the raw token is shown once at issuance, and a cookie/session **never** grants MCP access.
+- A token binds an owning human, one virtual member, and one team; the token's team is the **only** scope — no tool accepts a `teamId`, and cross-team ids behave exactly like missing ids (not found / empty).
+- MCP actions authorize through the owning human's team role (the virtual member only signs the activity); agent activity attributes via `actorVirtualId`, sending `task_commented_by_agent` / `task_changed_by_agent` notifications to the task creator.
+- Server Actions strip unknown fields before calling services, so the **service layer is the authorization gate** for MCP and UI paths alike; hiding a UI entry point is never access control.
+
 ### UI conventions (shadcn/ui + Tailwind 4)
 
 - Components come from the **vendored shadcn/ui set** in `apps/web/src/components/ui/shadcn/` (Radix primitives + cva + Tailwind; each file's header comment documents its adaptations) — do not build your own, and **do not reintroduce antd** (a guard test in `components/ui/AtomsShadcn.test.tsx` fails on any `from "antd"` import and on hardcoded sr-only copy). Project-level composites (ConfirmModal, StatCard, EmptyState, …) live in `src/components/ui/`; Tailwind is only for layout/spacing/fine-tuning.

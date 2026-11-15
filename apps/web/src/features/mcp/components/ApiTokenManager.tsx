@@ -290,7 +290,9 @@ export function ApiTokenManager({
                       size="sm"
                       aria-label={`${t("revoke")} ${member.name}`}
                       data-testid={`revoke-api-token-${member.id}`}
-                      disabled={revokeLoading}
+                      // 一次性弹窗打开时禁用吊销：避免两层 Radix overlay 叠加，
+                      // 也避免吊销正在展示原文的那个 Token。
+                      disabled={revokeLoading || issued !== null}
                       onClick={() => setRevokingMember(member)}
                     >
                       <Trash2Icon aria-hidden="true" />

@@ -42,7 +42,11 @@ const readOnly: TaskDetailPermissions = {
 function render(
   permissions: TaskDetailPermissions,
   overrides: Partial<TaskDetailModel> = {},
-  extra: { canModerateVirtualComments?: boolean } = {},
+  extra: {
+    canModerateVirtualComments?: boolean;
+    assigneeOptions?: { id: string; name: string; email?: string | null }[];
+    onAssign?: (assigneeId: string) => Promise<void>;
+  } = {},
 ): string {
   return renderToStaticMarkup(
     <NextIntlClientProvider
@@ -66,6 +70,8 @@ function render(
         }}
         currentUserId="44444444-4444-4444-4444-444444444444"
         canModerateVirtualComments={extra.canModerateVirtualComments}
+        assigneeOptions={extra.assigneeOptions}
+        onAssign={extra.onAssign}
       />
     </NextIntlClientProvider>,
   );
@@ -126,15 +132,32 @@ describe("TaskDetailView 虚拟成员责任人", () => {
     assigneeEmail: "owner@example.com",
   };
 
-  it("虚拟责任人显示名称 + 机器人角标，不渲染真人改派选择器", () => {
+  const realMemberOption = {
+    id: "77777777-7777-7777-7777-777777777777",
+    name: "member_smoke",
+    email: null,
+  };
+
+  it("虚拟责任人显示只读行（名称 + 机器人角标），并保留下方真人改派选择器", () => {
     const html = render(
       { canEdit: true, canDelete: true, canAssign: true },
       virtualAssignee,
+      {
+        assigneeOptions: [realMemberOption],
+        onAssign: async () => {},
+      },
     );
 
     expect(html).toContain("写作助手");
     expect(html).toContain('data-testid="assignee-avatar-bot-badge"');
     expect(html).toContain('aria-label="虚拟成员"');
+    expect(html).toContain('data-testid="task-assignee-select"');
+  });
+
+  it("无改派权限 / 未提供成员选项时虚拟责任人保持只读，不渲染选择器", () => {
+    const html = render(readOnly, virtualAssignee);
+
+    expect(html).toContain("写作助手");
     expect(html).not.toContain('data-testid="task-assignee-select"');
   });
 

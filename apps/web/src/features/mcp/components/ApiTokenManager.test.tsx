@@ -208,6 +208,32 @@ describe("ApiTokenManager", () => {
     expect(find('[data-slot="dialog-content"]')).toBeNull();
   });
 
+  it("一次性 Dialog 打开时吊销按钮禁用，关闭后恢复可点", async () => {
+    issueActionMock.mockResolvedValue({
+      ok: true,
+      data: { token: RAW_TOKEN, tokenPrefix: "odm_AAAA" },
+    });
+    renderManager();
+
+    await click("issue-api-token-vm-2");
+    await flushAsync();
+
+    const revoke = find<HTMLButtonElement>('[data-testid="revoke-api-token-vm-1"]');
+    expect(revoke?.disabled).toBe(true);
+
+    // 不允许在原文弹窗上叠加 ConfirmModal；关闭后立即恢复。
+    await click("api-token-dialog-close");
+    await flushAsync();
+
+    expect(
+      find<HTMLButtonElement>('[data-testid="revoke-api-token-vm-1"]')?.disabled,
+    ).toBe(false);
+
+    act(() => {
+      vi.advanceTimersByTime(OD_MS.modalOut + 50);
+    });
+  });
+
   it("重新签发：已有 Token 的成员按钮为重新签发，签发后 props 刷新展示新前缀", async () => {
     issueActionMock.mockResolvedValue({
       ok: true,

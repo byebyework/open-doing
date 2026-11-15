@@ -343,7 +343,9 @@ async function safeToolCall(
 ): Promise<CallToolResult> {
   try {
     return await run();
-  } catch {
+  } catch (error) {
+    // Keep the client-facing error opaque, but leave a server-side trace.
+    console.error("[mcp] tool failed", error);
     return jsonResult({ error: "internal_error" }, true);
   }
 }
