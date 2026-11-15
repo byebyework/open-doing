@@ -19,7 +19,9 @@
       }
     ],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@open-doing/server-core": ["../../packages/server-core/src/index.ts"],
+      "@open-doing/server-core/*": ["../../packages/server-core/src/*"]
     }
   },
   "include": [

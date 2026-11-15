@@ -9,7 +9,15 @@ export default defineConfig({
     projects: [
       { test: { name: "types", include: ["packages/types/src/**/*.test.ts"], environment: "node" } },
       {
-        resolve: { alias: { "@": path.resolve(import.meta.dirname, "apps/web/src") } },
+        resolve: {
+          alias: {
+            "@": path.resolve(import.meta.dirname, "apps/web/src"),
+            "@open-doing/server-core": path.resolve(
+              import.meta.dirname,
+              "packages/server-core/src",
+            ),
+          },
+        },
         test: { name: "web", include: ["apps/web/src/**/*.test.{ts,tsx}"], environment: "node" },
       },
     ],

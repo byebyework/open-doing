@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@open-doing/types"],
+  transpilePackages: ["@open-doing/types", "@open-doing/server-core"],
   // Docker 镜像构建（Dockerfile 设 NEXT_SKIP_TYPECHECK=1）跳过 TS 检查：
   // Docker Desktop 虚拟机内存有限，tsc 阶段易被 OOM kill（exit 137）。
   // 类型安全仍由本地/CI 的 `pnpm typecheck` 保证（AGENTS.md 要求 PR 前执行）。

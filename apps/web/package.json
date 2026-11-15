@@ -21,6 +21,7 @@
     "@dnd-kit/utilities": "^3.2.2",
     "@hookform/resolvers": "^7.0.1",
     "@modelcontextprotocol/sdk": "^1.32.2",
+    "@open-doing/server-core": "workspace:*",
     "@open-doing/types": "workspace:*",
     "@radix-ui/react-alert-dialog": "^1.2.1",
     "@radix-ui/react-checkbox": "^1.4.1",
