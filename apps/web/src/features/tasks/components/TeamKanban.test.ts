@@ -31,6 +31,12 @@ function makeTask(overrides: Partial<TeamTaskRow> = {}): TeamTaskRow {
     updatedAt: "2026-10-01T00:00:00.000Z",
     subtasks: [],
     assigneeName: "member_smoke",
+    assigneeRef: {
+      type: "user",
+      userId: ASSIGNEE_ID,
+      name: "member_smoke",
+      image: null,
+    },
     ...overrides,
   };
 }

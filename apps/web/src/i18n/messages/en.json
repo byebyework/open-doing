@@ -299,6 +299,8 @@
     "projectNotFound": "The project does not exist or you do not have access",
     "teamNotFound": "The team does not exist or you do not have access",
     "assigneeNotMember": "Can only be assigned to team members",
+    "assigneeNotVirtualMember": "Can only be assigned to a virtual member of this team",
+    "assigneeConflict": "Cannot assign to a team member and a virtual member at the same time",
     "taskCreateFailed": "Failed to create the task. Please try again later.",
     "subtaskCreateFailed": "Failed to create the subtask. Please try again later.",
     "commentCreateFailed": "Failed to create the comment. Please try again later.",

@@ -28,9 +28,15 @@ export interface TaskDetailModel {
   priority: TaskPriority;
   assigneeId: string | null;
   assigneeName: string | null;
+  /** 虚拟成员责任人；与 `assigneeId` 互斥，未指派给虚拟成员时为 null。 */
+  assigneeVirtualId: string | null;
+  /** 虚拟成员责任人的展示名；仅虚拟指派时非空。 */
+  assigneeVirtualName: string | null;
+  /** 虚拟成员责任人的头像色；仅虚拟指派时非空。 */
+  assigneeAccentColor: string | null;
   /**
    * 责任人邮箱（可选扩展）：团队详情由调用方填充，用于「负责人信息处」展示；
-   * 未填写或已移除成员时为 null / undefined，不渲染该行。
+   * 仅真人责任人时取值，未填写或已移除成员时为 null / undefined，不渲染该行。
    */
   assigneeEmail?: string | null;
   dueDate?: string;

@@ -299,6 +299,8 @@
     "projectNotFound": "项目不存在或无权访问",
     "teamNotFound": "团队不存在或无权访问",
     "assigneeNotMember": "只能指派给团队内成员",
+    "assigneeNotVirtualMember": "只能指派给该团队的虚拟成员",
+    "assigneeConflict": "不能同时指派给真人与虚拟成员",
     "taskCreateFailed": "任务创建失败，请稍后重试",
     "subtaskCreateFailed": "子任务创建失败，请稍后重试",
     "commentCreateFailed": "评论创建失败，请稍后重试",

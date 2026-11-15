@@ -1,4 +1,5 @@
 import type {
+  AssigneeRef,
   Comment,
   Subtask,
   Task,
@@ -34,7 +35,9 @@ import {
   projects,
   subtasks,
   tasks,
+  teams,
   users,
+  virtualMembers,
 } from "@/server/db/schema";
 
 import {
@@ -57,10 +60,12 @@ type TaskRow = typeof tasks.$inferSelect;
 type SubtaskRow = typeof subtasks.$inferSelect;
 type CommentRow = typeof comments.$inferSelect;
 
-/** 列表行：任务 + 子任务 + 责任人用户名（责任人已退出时为 null）。 */
+/** 列表行：任务 + 子任务 + 责任人展示名与身份引用（责任人已退出时为 null）。 */
 export interface TeamTaskRow extends Task {
   subtasks: Subtask[];
   assigneeName: string | null;
+  /** 责任人身份引用：真人用户或虚拟成员；未指派时为 null。 */
+  assigneeRef: AssigneeRef | null;
 }
 
 /** 数据库行 -> 可跨边界传递的领域 Task。 */
@@ -80,6 +85,54 @@ function toTask(row: TaskRow): Task {
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
+}
+
+/** 责任人 join 字段（真人列 + 虚拟成员列，互斥可空）。 */
+interface AssigneeJoinFields {
+  username: string | null;
+  nickname: string | null;
+  image: string | null;
+  virtualName: string | null;
+  virtualAccentColor: string | null;
+}
+
+/**
+ * 由任务行 + 责任人 join 字段组装展示名与身份引用。
+ *
+ * 展示名 coalesce 顺序：昵称 → 用户名 → 虚拟成员名；未指派（或被移除）为 null。
+ */
+function buildAssignee(
+  task: TaskRow,
+  fields: AssigneeJoinFields,
+): { assigneeName: string | null; assigneeRef: AssigneeRef | null } {
+  const assigneeName =
+    fields.nickname ?? fields.username ?? fields.virtualName ?? null;
+
+  if (task.assigneeVirtualId !== null && fields.virtualName !== null) {
+    return {
+      assigneeName,
+      assigneeRef: {
+        type: "virtual",
+        virtualMemberId: task.assigneeVirtualId,
+        name: fields.virtualName,
+        accentColor: fields.virtualAccentColor,
+      },
+    };
+  }
+
+  if (task.assigneeId !== null && fields.username !== null) {
+    return {
+      assigneeName,
+      assigneeRef: {
+        type: "user",
+        userId: task.assigneeId,
+        name: fields.nickname ?? fields.username,
+        image: fields.image,
+      },
+    };
+  }
+
+  return { assigneeName, assigneeRef: null };
 }
 
 /** 数据库行 -> 可序列化 Subtask。 */
@@ -187,6 +240,45 @@ async function requireAssignableMember(
 }
 
 /**
+ * 指派目标必须是该团队的虚拟成员，且该团队本身是虚拟团队。
+ *
+ * 真实团队、非法 UUID、不存在的虚拟成员、跨团队虚拟成员统一按
+ * 「非该团队虚拟成员」拒绝，不泄露团队 / 成员存在性。
+ */
+async function requireAssignableVirtualMember(
+  teamId: string,
+  virtualMemberId: string,
+  client: DbClient,
+): Promise<void> {
+  const notVirtualMember = () =>
+    new DomainError("只能指派给该团队的虚拟成员", "assigneeId", {
+      key: "assigneeNotVirtualMember",
+    });
+
+  if (!isUuid(virtualMemberId)) throw notVirtualMember();
+
+  // 团队类型校验独立于成员关系：真实团队不允许任何虚拟指派。
+  const [team] = await client
+    .select({ kind: teams.kind })
+    .from(teams)
+    .where(eq(teams.id, teamId))
+    .limit(1);
+  if (!team || team.kind !== "virtual") throw notVirtualMember();
+
+  const [row] = await client
+    .select({ id: virtualMembers.id })
+    .from(virtualMembers)
+    .where(
+      and(
+        eq(virtualMembers.id, virtualMemberId),
+        eq(virtualMembers.teamId, teamId),
+      ),
+    )
+    .limit(1);
+  if (!row) throw notVirtualMember();
+}
+
+/**
  * 发通知并吞掉唯一索引撞车（23505）。
  *
  * 通知表 `(user_id, task_id, type)` 部分唯一索引保证同一任务同类通知只留
@@ -243,6 +335,8 @@ export async function createTeamTask(
     dueDate?: string | null;
     startDate?: string | null;
     assigneeId?: string | null;
+    /** 虚拟成员责任人；与 `assigneeId` 互斥（仅虚拟团队可用）。 */
+    assigneeVirtualId?: string | null;
   },
   client: DbClient = db,
 ): Promise<Task> {
@@ -253,12 +347,27 @@ export async function createTeamTask(
   const dueDate = validateTaskDueDate(input?.dueDate);
   const startDate = validateTaskStartDate(input?.startDate);
   assertStartNotAfterTaskDue(startDate, dueDate);
-  const assigneeId = input.assigneeId ?? actorId;
+
+  const virtualAssigneeId = input.assigneeVirtualId ?? null;
+  if (virtualAssigneeId !== null && input.assigneeId != null) {
+    throw new DomainError(
+      "不能同时指派给真人与虚拟成员",
+      "assigneeId",
+      { key: "assigneeConflict" },
+    );
+  }
+  // 真人指派：缺省为本人；指派虚拟成员时真人列恒为 null（DB CHECK 兜底）。
+  const realAssigneeId = input.assigneeId ?? actorId;
+  const assigneeId = virtualAssigneeId !== null ? null : realAssigneeId;
 
   return client.transaction(async (tx) => {
     await requireMember(teamId, actorId, tx);
     await requireTeamProject(teamId, projectId, tx);
-    await requireAssignableMember(teamId, assigneeId, tx);
+    if (virtualAssigneeId !== null) {
+      await requireAssignableVirtualMember(teamId, virtualAssigneeId, tx);
+    } else {
+      await requireAssignableMember(teamId, realAssigneeId, tx);
+    }
 
     const [row] = await tx
       .insert(tasks)
@@ -270,6 +379,7 @@ export async function createTeamTask(
         status: "todo",
         priority,
         assigneeId,
+        assigneeVirtualId: virtualAssigneeId,
         dueDate,
         startDate,
         createdById: actorId,
@@ -280,7 +390,8 @@ export async function createTeamTask(
       throw new DomainError("任务创建失败，请稍后重试", undefined, { key: "taskCreateFailed" });
     }
 
-    if (assigneeId !== actorId) {
+    // 虚拟成员无法接收通知；仅真人责任人且不是操作者本人时发。
+    if (assigneeId !== null && assigneeId !== actorId) {
       await notifySafely(tx, {
         userId: assigneeId,
         type: "task_assigned",
@@ -309,6 +420,8 @@ export interface UpdateTeamTaskInput {
   startDate?: string | null;
   status?: TaskStatus;
   assigneeId?: string;
+  /** 虚拟成员责任人：非空时改派到该成员并清空真人责任人；`null` 清空虚拟指派。 */
+  assigneeVirtualId?: string | null;
 }
 
 /**
@@ -325,6 +438,7 @@ export async function updateTeamTask(
   const { teamId, taskId, actorId } = input;
   const existing = await requireTeamTask(teamId, taskId, actorId, client);
   const currentAssigneeId = existing.task.assigneeId;
+  const currentAssigneeVirtualId = existing.task.assigneeVirtualId;
 
   const changes: Partial<
     Pick<
@@ -336,6 +450,7 @@ export async function updateTeamTask(
       | "startDate"
       | "status"
       | "assigneeId"
+      | "assigneeVirtualId"
       | "updatedAt"
     >
   > = {};
@@ -407,24 +522,80 @@ export async function updateTeamTask(
     });
   }
 
-  let nextAssigneeId: string | undefined;
-  if (input.assigneeId !== undefined && input.assigneeId !== currentAssigneeId) {
-    assertCanAssignTask({
-      role: existing.role,
-      actorId,
-      assigneeId: currentAssigneeId,
-    });
-    await requireAssignableMember(teamId, input.assigneeId, client);
-    nextAssigneeId = input.assigneeId;
+  // 真人 / 虚拟成员同时显式指派视为冲突（DB CHECK 兜底，service 先行拦截）。
+  if (
+    input.assigneeId !== undefined &&
+    input.assigneeVirtualId !== undefined &&
+    input.assigneeVirtualId !== null
+  ) {
+    throw new DomainError(
+      "不能同时指派给真人与虚拟成员",
+      "assigneeId",
+      { key: "assigneeConflict" },
+    );
   }
 
-  if (Object.keys(changes).length === 0 && nextAssigneeId === undefined) {
+  // 改派目标：互斥写入，换指派类型时清空另一列。
+  let assigneeChange:
+    | { assigneeId: string | null; assigneeVirtualId: string | null }
+    | undefined;
+
+  if (input.assigneeId !== undefined) {
+    if (
+      input.assigneeId !== currentAssigneeId ||
+      currentAssigneeVirtualId !== null
+    ) {
+      assertCanAssignTask({
+        role: existing.role,
+        actorId,
+        assigneeId: currentAssigneeId,
+      });
+      await requireAssignableMember(teamId, input.assigneeId, client);
+      assigneeChange = {
+        assigneeId: input.assigneeId,
+        assigneeVirtualId: null,
+      };
+    }
+  } else if (input.assigneeVirtualId !== undefined) {
+    if (input.assigneeVirtualId !== null) {
+      if (
+        input.assigneeVirtualId !== currentAssigneeVirtualId ||
+        currentAssigneeId !== null
+      ) {
+        assertCanAssignTask({
+          role: existing.role,
+          actorId,
+          assigneeId: currentAssigneeId,
+        });
+        await requireAssignableVirtualMember(
+          teamId,
+          input.assigneeVirtualId,
+          client,
+        );
+        assigneeChange = {
+          assigneeId: null,
+          assigneeVirtualId: input.assigneeVirtualId,
+        };
+      }
+    } else if (currentAssigneeVirtualId !== null) {
+      // 显式清空虚拟指派：真人责任人保持不变（无真人时即回到未指派）。
+      assertCanAssignTask({
+        role: existing.role,
+        actorId,
+        assigneeId: currentAssigneeId,
+      });
+      assigneeChange = { assigneeId: null, assigneeVirtualId: null };
+    }
+  }
+
+  if (Object.keys(changes).length === 0 && assigneeChange === undefined) {
     return toTask(existing.task);
   }
 
   changes.updatedAt = new Date();
-  if (nextAssigneeId !== undefined) {
-    changes.assigneeId = nextAssigneeId;
+  if (assigneeChange !== undefined) {
+    changes.assigneeId = assigneeChange.assigneeId;
+    changes.assigneeVirtualId = assigneeChange.assigneeVirtualId;
   }
 
   return client.transaction(async (tx) => {
@@ -438,9 +609,13 @@ export async function updateTeamTask(
       throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
     }
 
-    if (nextAssigneeId !== undefined && nextAssigneeId !== actorId) {
+    // 虚拟成员无法接收通知；仅真人新责任人且不是操作者本人时发。
+    if (
+      assigneeChange?.assigneeId != null &&
+      assigneeChange.assigneeId !== actorId
+    ) {
       await notifySafely(tx, {
-        userId: nextAssigneeId,
+        userId: assigneeChange.assigneeId,
         type: "task_assigned",
         teamId,
         projectId: existing.projectId,
@@ -699,9 +874,13 @@ export async function listTeamProjectTasks(
       task: tasks,
       assigneeUsername: users.username,
       assigneeNickname: users.name,
+      assigneeImage: users.image,
+      assigneeVirtualName: virtualMembers.name,
+      assigneeVirtualAccentColor: virtualMembers.accentColor,
     })
     .from(tasks)
     .leftJoin(users, eq(tasks.assigneeId, users.id))
+    .leftJoin(virtualMembers, eq(tasks.assigneeVirtualId, virtualMembers.id))
     .where(and(eq(tasks.projectId, projectId), eq(tasks.spaceType, "team")))
     .orderBy(asc(tasks.createdAt));
 
@@ -722,12 +901,32 @@ export async function listTeamProjectTasks(
     subtasksByTaskId.set(row.taskId, list);
   }
 
-  return rows.map(({ task, assigneeUsername, assigneeNickname }) => ({
-    ...toTask(task),
-    // 展示名：昵称优先，未填写（或被移除成员）回退到用户名。
-    assigneeName: assigneeNickname ?? assigneeUsername ?? null,
-    subtasks: subtasksByTaskId.get(task.id) ?? [],
-  }));
+  return rows.map(
+    ({
+      task,
+      assigneeUsername,
+      assigneeNickname,
+      assigneeImage,
+      assigneeVirtualName,
+      assigneeVirtualAccentColor,
+    }) => {
+      // 展示名：昵称 → 用户名 → 虚拟成员名；未指派（或被移除）为 null。
+      const assignee = buildAssignee(task, {
+        username: assigneeUsername,
+        nickname: assigneeNickname,
+        image: assigneeImage,
+        virtualName: assigneeVirtualName,
+        virtualAccentColor: assigneeVirtualAccentColor,
+      });
+
+      return {
+        ...toTask(task),
+        assigneeName: assignee.assigneeName,
+        assigneeRef: assignee.assigneeRef,
+        subtasks: subtasksByTaskId.get(task.id) ?? [],
+      };
+    },
+  );
 }
 
 /**
@@ -752,13 +951,17 @@ export async function getTeamTaskDetail(
       projectName: projects.name,
       assigneeUsername: users.username,
       assigneeNickname: users.name,
+      assigneeImage: users.image,
       assigneeEmail: users.email,
+      assigneeVirtualName: virtualMembers.name,
+      assigneeVirtualAccentColor: virtualMembers.accentColor,
       creatorUsername: creators.username,
       creatorNickname: creators.name,
     })
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
+    .leftJoin(virtualMembers, eq(tasks.assigneeVirtualId, virtualMembers.id))
     .leftJoin(creators, eq(tasks.createdById, creators.id))
     .where(
       and(
@@ -790,6 +993,13 @@ export async function getTeamTaskDetail(
 
   const mappedSubtasks = subtaskRows.map(toSubtask);
   const task = row.task;
+  const assignee = buildAssignee(task, {
+    username: row.assigneeUsername,
+    nickname: row.assigneeNickname,
+    image: row.assigneeImage,
+    virtualName: row.assigneeVirtualName,
+    virtualAccentColor: row.assigneeVirtualAccentColor,
+  });
 
   return {
     id: task.id,
@@ -800,10 +1010,13 @@ export async function getTeamTaskDetail(
     status: task.status,
     priority: task.priority,
     assigneeId: task.assigneeId,
-    // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。
-    assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
-    // 负责人信息处展示邮箱（选填资料，未填为 null 时不渲染）。
-    assigneeEmail: row.assigneeEmail ?? null,
+    // 展示名：昵称 → 用户名 → 虚拟成员名；未指派（或被移除）为 null。
+    assigneeName: assignee.assigneeName,
+    assigneeVirtualId: task.assigneeVirtualId,
+    assigneeVirtualName: row.assigneeVirtualName ?? null,
+    assigneeAccentColor: row.assigneeVirtualAccentColor ?? null,
+    // 负责人信息处展示邮箱：仅真人责任人（选填资料，未填为 null 时不渲染）。
+    assigneeEmail: task.assigneeId !== null ? (row.assigneeEmail ?? null) : null,
     dueDate: task.dueDate ?? undefined,
     startDate: task.startDate ?? undefined,
     createdAt: task.createdAt.toISOString(),

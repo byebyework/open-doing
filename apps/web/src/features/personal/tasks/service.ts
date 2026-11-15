@@ -472,6 +472,10 @@ export async function getPersonalTaskDetail(
     assigneeId: task.assigneeId,
     // 展示名：昵称优先，未填写回退到用户名。
     assigneeName: row.assigneeNickname ?? row.assigneeUsername ?? null,
+    // 个人任务责任人恒为本人，虚拟责任人字段不适用。
+    assigneeVirtualId: task.assigneeVirtualId,
+    assigneeVirtualName: null,
+    assigneeAccentColor: null,
     dueDate: task.dueDate ?? undefined,
     startDate: task.startDate ?? undefined,
     createdAt: task.createdAt.toISOString(),

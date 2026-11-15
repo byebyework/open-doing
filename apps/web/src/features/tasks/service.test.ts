@@ -1,10 +1,11 @@
 import { and, eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import type { NotificationType } from "@open-doing/types";
+import type { NotificationType, VirtualMember } from "@open-doing/types";
 
 import { createTeamProject } from "@/features/projects/service";
 import { createTeam } from "@/features/teams/service";
+import { createVirtualMember } from "@/features/teams/virtual/service";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
@@ -81,6 +82,36 @@ async function setupTeamWithProject(db: DbClient): Promise<TeamFixture> {
     db,
   );
   return { owner, team, project };
+}
+
+interface VirtualTeamFixture extends TeamFixture {
+  virtualMember: VirtualMember;
+}
+
+/** 虚拟团队 + 团队项目 + 一名虚拟成员（owner 由 createTeam 自动写入成员关系）。 */
+async function setupVirtualTeamWithProject(
+  db: DbClient,
+): Promise<VirtualTeamFixture> {
+  const owner = await createUser(db, uniqueName("owner"));
+  const team = await createTeam(
+    { name: uniqueName("VirtualTeam"), kind: "virtual" },
+    owner.id,
+    db,
+  );
+  const project = await createTeamProject(
+    { teamId: team.id, actorId: owner.id, name: uniqueName("Project") },
+    db,
+  );
+  const virtualMember = await createVirtualMember(
+    {
+      teamId: team.id,
+      actorId: owner.id,
+      name: uniqueName("agent"),
+      accentColor: "#7d2ae8",
+    },
+    db,
+  );
+  return { owner, team, project, virtualMember };
 }
 
 /** 直插成员关系（owner 由 createTeam 自动建立，其他角色用本函数）。 */
@@ -464,6 +495,208 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
           db,
         ),
       ).rejects.toMatchObject({ field: "assigneeId" });
+    });
+  });
+
+  describe("指派虚拟成员", () => {
+    it("虚拟团队创建任务指派虚拟成员：assigneeVirtualId 落库、assigneeId 为 null、不发通知", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "agent 任务",
+          assigneeVirtualId: virtualMember.id,
+        },
+        db,
+      );
+
+      expect(task).toMatchObject({
+        assigneeId: null,
+        assigneeVirtualId: virtualMember.id,
+      });
+
+      const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+      expect(row!.assigneeId).toBeNull();
+      expect(row!.assigneeVirtualId).toBe(virtualMember.id);
+      expect(await countNotifications(db, task.id, "task_assigned")).toBe(0);
+    });
+
+    it("真实团队任务指派虚拟成员：按字段 assigneeId 拒绝（assigneeNotVirtualMember）", async () => {
+      const { owner, team, project } = await setupTeamWithProject(db);
+      const virtual = await setupVirtualTeamWithProject(db);
+
+      await expect(
+        createTeamTask(
+          {
+            teamId: team.id,
+            projectId: project.id,
+            actorId: owner.id,
+            title: "真实团队任务",
+            assigneeVirtualId: virtual.virtualMember.id,
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        field: "assigneeId",
+        i18n: { key: "assigneeNotVirtualMember" },
+      });
+    });
+
+    it("真人与虚拟成员同时指派：按字段 assigneeId 拒绝（assigneeConflict）", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+
+      await expect(
+        createTeamTask(
+          {
+            teamId: team.id,
+            projectId: project.id,
+            actorId: owner.id,
+            title: "双指派",
+            assigneeId: owner.id,
+            assigneeVirtualId: virtualMember.id,
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        field: "assigneeId",
+        i18n: { key: "assigneeConflict" },
+      });
+    });
+
+    it("指派别的团队的虚拟成员：拒绝（assigneeNotVirtualMember）", async () => {
+      const first = await setupVirtualTeamWithProject(db);
+      const second = await setupVirtualTeamWithProject(db);
+
+      await expect(
+        createTeamTask(
+          {
+            teamId: second.team.id,
+            projectId: second.project.id,
+            actorId: second.owner.id,
+            title: "跨团队虚拟指派",
+            assigneeVirtualId: first.virtualMember.id,
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        field: "assigneeId",
+        i18n: { key: "assigneeNotVirtualMember" },
+      });
+    });
+
+    it("updateTeamTask 从真人改派到虚拟成员：互斥成立且不发通知", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "改派给 agent",
+          assigneeId: owner.id,
+        },
+        db,
+      );
+
+      const updated = await updateTeamTask(
+        {
+          teamId: team.id,
+          taskId: task.id,
+          actorId: owner.id,
+          assigneeVirtualId: virtualMember.id,
+        },
+        db,
+      );
+
+      expect(updated).toMatchObject({
+        assigneeId: null,
+        assigneeVirtualId: virtualMember.id,
+      });
+
+      const [row] = await db.select().from(tasks).where(eq(tasks.id, task.id));
+      expect(row!.assigneeId).toBeNull();
+      expect(row!.assigneeVirtualId).toBe(virtualMember.id);
+      expect(await countNotifications(db, task.id, "task_assigned")).toBe(0);
+    });
+
+    it("列表与详情：assigneeName 回退到虚拟成员名，详情填充虚拟责任人字段", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "虚拟责任人",
+          assigneeVirtualId: virtualMember.id,
+        },
+        db,
+      );
+
+      const rows = await listTeamProjectTasks(
+        { teamId: team.id, projectId: project.id, actorId: owner.id },
+        db,
+      );
+      expect(rows[0]!.assigneeName).toBe(virtualMember.name);
+      expect(rows[0]!.assigneeRef).toMatchObject({
+        type: "virtual",
+        virtualMemberId: virtualMember.id,
+        name: virtualMember.name,
+        accentColor: "#7d2ae8",
+      });
+
+      const detail = await getTeamTaskDetail(
+        { teamId: team.id, taskId: task.id, actorId: owner.id },
+        db,
+      );
+      expect(detail).toMatchObject({
+        assigneeId: null,
+        assigneeName: virtualMember.name,
+        assigneeVirtualId: virtualMember.id,
+        assigneeVirtualName: virtualMember.name,
+        assigneeAccentColor: "#7d2ae8",
+        assigneeEmail: null,
+      });
+    });
+
+    it("真人与虚拟成员同时作为 updateTeamTask 入参：拒绝（assigneeConflict）", async () => {
+      const { owner, team, project, virtualMember } =
+        await setupVirtualTeamWithProject(db);
+      const task = await createTeamTask(
+        {
+          teamId: team.id,
+          projectId: project.id,
+          actorId: owner.id,
+          title: "任务",
+          assigneeId: owner.id,
+        },
+        db,
+      );
+
+      await expect(
+        updateTeamTask(
+          {
+            teamId: team.id,
+            taskId: task.id,
+            actorId: owner.id,
+            assigneeId: owner.id,
+            assigneeVirtualId: virtualMember.id,
+          },
+          db,
+        ),
+      ).rejects.toMatchObject({
+        name: "DomainError",
+        field: "assigneeId",
+        i18n: { key: "assigneeConflict" },
+      });
     });
   });
 
