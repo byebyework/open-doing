@@ -97,6 +97,7 @@ const E2E_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/e2e/flows/12-en-locale-smoke.spec.ts", reason: "中文 describe/test 标题 + 「简体中文」语言名母语选项" },
   { prefix: "apps/web/e2e/flows/13-projects-module.spec.ts", reason: "项目模块列表/空态/邀请 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/14-task-priority.spec.ts", reason: "优先级档位（高/低）与操作列权限 zh 文案断言" },
+  { prefix: "apps/web/e2e/flows/15-virtual-team-mcp.spec.ts", reason: "虚拟成员签发/责任人分组与 agent 通知 zh 文案断言" },
   { prefix: "apps/web/e2e/responsive.spec.ts", reason: "响应式路由 zh 就绪断言" },
 ];
 

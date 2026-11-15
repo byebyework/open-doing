@@ -49,6 +49,8 @@ export const TEST_IDS = {
     rowEdit: "row-edit",
     /** 操作列删除按钮（无删除权时不渲染）。 */
     rowDelete: "row-delete",
+    /** 虚拟成员头像右下角的机器人角标（AssigneeAvatar 内）。 */
+    assigneeBotBadge: "assignee-avatar-bot-badge",
     cardStatusButton: (status: "todo" | "in_progress" | "done") =>
       `task-status-button-${status}`,
   },
@@ -85,6 +87,8 @@ export const TEST_IDS = {
   teams: {
     createTeamHeading: "create-team-heading",
     teamNameInput: "team-name-input",
+    teamKindReal: "team-kind-real",
+    teamKindVirtual: "team-kind-virtual",
     createTeamButton: "create-team-button",
     inviteUidInput: "invite-uid-input",
     inviteSendButton: "invite-send-button",
@@ -99,6 +103,17 @@ export const TEST_IDS = {
     joinCodeSwitch: "join-code-switch",
     joinCodeInput: "join-code-input",
     joinSubmitButton: "join-submit-button",
+  },
+  virtualMembers: {
+    addButton: "add-virtual-member",
+    nameInput: "virtual-member-name-input",
+    submitButton: "virtual-member-submit",
+    /** 虚拟成员列表行 `virtual-member-{uuid}`（id 由服务端生成，用正则定位）。 */
+    rowPattern: /^virtual-member-[0-9a-f-]{36}$/,
+  },
+  mcp: {
+    rawToken: "api-token-raw",
+    tokenDialogClose: "api-token-dialog-close",
   },
   teamDanger: {
     dissolveTeamButton: "dissolve-team-button",
