@@ -224,6 +224,7 @@
     "kanban": "看板",
     "calendar": "日历",
     "analysis": "分析",
+    "days": "重要日子",
     "openNavAria": "打开导航",
     "collapseSidebar": "收起侧栏",
     "expandSidebar": "展开侧栏",
@@ -345,7 +346,48 @@
     "titleTooLong": "名称不能超过 {max} 个字符",
     "invalidDate": "日期格式不正确",
     "invalidLunarDay": "农历月日不在有效范围",
-    "notFound": "该日子不存在或已被删除"
+    "notFound": "该日子不存在或已被删除",
+    "widget": {
+      "title": "我的日子",
+      "viewAll": "查看全部",
+      "emptyTitle": "还没有记录的日子",
+      "emptyBody": "记录生日、纪念日、入职、退休……随时看到走了多远、还剩多久。",
+      "emptyAction": "去记录第一天"
+    },
+    "page": {
+      "title": "重要日子",
+      "subtitle": "正在走的日子和正在靠近的日子，都在这里。",
+      "create": "新建"
+    },
+    "card": {
+      "countdown": "还有 {count} 天",
+      "elapsed": "已 {count} 天",
+      "isToday": "就是今天",
+      "everyYear": "每年",
+      "lunarBadge": "农历",
+      "pinnedAria": "置顶 {title}",
+      "unpinnedAria": "取消置顶 {title}",
+      "editAria": "编辑 {title}",
+      "deleteAria": "删除 {title}"
+    },
+    "form": {
+      "createTitle": "记录一个日子",
+      "editTitle": "编辑日子",
+      "titleLabel": "名称",
+      "titlePlaceholder": "入职、退休、爸爸生日……",
+      "typeSolar": "公历",
+      "typeLunar": "农历",
+      "dateLabel": "日期",
+      "lunarMonthLabel": "农历月",
+      "lunarDayLabel": "农历日",
+      "repeatLabel": "每年重复",
+      "repeatLockedHint": "农历日子每年自动滚动",
+      "pinnedLabel": "置顶显示",
+      "submit": "保存"
+    },
+    "deleteConfirmTitle": "删除「{title}」？",
+    "deleteConfirmBody": "删除后无法恢复。",
+    "deleteConfirmAction": "删除"
   },
   "teams": {
     "team": "团队",
@@ -1058,6 +1100,7 @@
     "kanbanTitle": "看板 · Open Doing",
     "calendarTitle": "日历 · Open Doing",
     "analysisTitle": "分析 · Open Doing",
+    "daysTitle": "重要日子 · Open Doing",
     "teamModuleTitle": "{team} {module} · Open Doing"
   },
   "about": {
