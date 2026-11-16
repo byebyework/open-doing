@@ -121,6 +121,26 @@ function CalendarIcon() {
   );
 }
 
+/** Days 图标（日历 + 星标，重要日子语义）。 */
+function DaysIcon() {
+  return (
+    <svg
+      className={ICON_CLASS}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="3" y="4" width="18" height="17" rx="2" />
+      <path d="M16 2v4M8 2v4M3 10h18" />
+      <path d="M12 11.8l.76 2.15 2.28.06-1.8 1.39.64 2.19-1.88-1.29-1.88 1.29.64-2.19-1.8-1.39 2.28-.06z" />
+    </svg>
+  );
+}
+
 /** Analysis 图标（原型饼图）。 */
 function AnalysisIcon() {
   return (
@@ -225,6 +245,7 @@ interface SpaceNavModule {
     | "projects"
     | "kanban"
     | "calendar"
+    | "days"
     | "analysis"
     | "teamManagement";
   Icon: ComponentType;
@@ -248,18 +269,31 @@ function ProjectsIcon() {
   );
 }
 
-/** 个人空间五模块：个人设置已上移为系统级 `/settings`，不再出现在空间导航。 */
+/**
+ * 个人空间六模块：「重要日子」为个人空间专属（不进团队导航），
+ * 排在 Calendar 与 Analysis 之间（时间语义相邻）；
+ * 个人设置已上移为系统级 `/settings`，不再出现在空间导航。
+ */
 const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
   { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
   { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
+  { module: "days", labelKey: "days", Icon: DaysIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
 ];
 
-/** 团队空间五模块：末项「团队管理」沿用团队 settings 路由（路径不变）。 */
+/**
+ * 团队空间六模块：显式枚举而非展开 `PERSONAL_MODULES`——
+ * `days` 为个人空间专属，展开写法会让它泄漏进团队侧栏；
+ * 末项「团队管理」沿用团队 settings 路由（路径不变）。
+ */
 const TEAM_MODULES: SpaceNavModule[] = [
-  ...PERSONAL_MODULES,
+  { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
+  { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
+  { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
+  { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
+  { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
   { module: "settings", labelKey: "teamManagement", Icon: SettingsIcon },
 ];
 
@@ -304,9 +338,10 @@ export function resolveSpaceLabel(
  * 统一空间导航菜单（v1.1 M2 新 IA）。
  *
  * 结构对照原型 `space-dashboard-*.html` 侧栏：
- * - 当前空间名作为分组标题；个人空间 5 项（Dashboard / 项目 / Kanban /
- *   Calendar / Analysis，v1.2 新增「项目」），团队空间额外第 6 项「团队
- *   管理」（团队的 settings 路由）；
+ * - 当前空间名作为分组标题；个人空间 6 项（Dashboard / 项目 / Kanban /
+ *   Calendar / 重要日子 / Analysis，v1.2 新增「项目」，「重要日子」为
+ *   个人空间专属），团队空间不含「重要日子」，额外第 6 项「团队管理」
+ *   （团队的 settings 路由）；
  * - 「账号」分组待处理邀请入口，pending 数 > 0 时显示红色角标；
  * - 未登录（`data.loggedIn === false`）整体不渲染。
  */
@@ -331,7 +366,7 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
   const spaceRef = isSpacePathname(pathname)
     ? pathnameSpace
     : (urlSpace ?? "personal");
-  // 个人空间 4 项、团队空间 5 项；未知 slug 按团队渲染（团队管理路由仍可 404）。
+  // 个人空间 6 项、团队空间 6 项；未知 slug 按团队渲染（团队管理路由仍可 404）。
   const modules = spaceRef === "personal" ? PERSONAL_MODULES : TEAM_MODULES;
   const spaceLabel = resolveSpaceLabel(spaceRef, data.teams) ?? t("personalSpace");
   const systemLinkSpace = encodeURIComponent(spaceRef);
