@@ -46,7 +46,8 @@ services:
       MCP_PORT: "3101"
     # 占位值：上线前在服务器 free -h 实测空闲内存后定值（见 docs/deploy-hk-server.md 附录）。
     mem_limit: ${MCP_MEM_LIMIT:-256m}
-    # 镜像内只有 node（无 curl/wget），用 fetch 探 /healthz；nginx 等它健康再启动。
+    # 镜像内只有 node（无 curl/wget），用 fetch 探 /healthz；探针供运维使用，
+    # 不再作为 nginx 的启动门控（见下方 depends_on）。
     healthcheck:
       test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3101/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
       interval: 10s
@@ -65,5 +66,7 @@ services:
     depends_on:
       web:
         condition: service_started
+      # 不按健康状态门控：mcp 只承载 /mcp/ 路径，冷启动探针失败时
+      # /mcp/ 短暂 502 可接受，不能因此拖垮整个 443 入口。
       mcp:
-        condition: service_healthy
+        condition: service_started

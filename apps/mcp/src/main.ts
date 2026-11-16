@@ -15,8 +15,25 @@ import { DELETE, GET, POST } from "./route";
  * 因此 SDK 的 `WebStandardStreamableHTTPServerTransport` 无需适配层。
  */
 
+/** 每请求一行访问日志；只打方法、路径、状态与耗时，不打 header/body/查询串（避免泄露 token）。 */
+function logAccess(method: string, path: string, status: number, startedAt: number): void {
+  const durationMs = Math.round(performance.now() - startedAt);
+  console.log(`[mcp] ${method} ${path} ${status} ${durationMs}ms`);
+}
+
 export function createApp(): Hono {
   const app = new Hono();
+
+  app.use(async (c, next) => {
+    const startedAt = performance.now();
+    try {
+      await next();
+      logAccess(c.req.method, c.req.path, c.res.status, startedAt);
+    } catch (error) {
+      logAccess(c.req.method, c.req.path, 500, startedAt);
+      throw error;
+    }
+  });
 
   app.post("/", (c) => POST(c.req.raw));
   app.get("/", () => GET());

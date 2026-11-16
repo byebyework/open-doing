@@ -5,8 +5,9 @@ import { describe, expect, it } from "vitest";
 /**
  * 防硬编码中文守卫（i18n 计划 Task 21）。
  *
- * 遍历 `apps/web/src`、`apps/web/e2e` 与 `packages/server-core/src` 的
- * .ts/.tsx（排除 *.test.* 与 i18n/messages/**），剥掉注释后仍含 CJK 即失败
+ * 遍历 `apps/web/src`、`apps/web/e2e`、`packages/server-core/src` 与
+ * `apps/mcp/src` 的 .ts/.tsx（排除 *.test.* 与 i18n/messages/**），
+ * 剥掉注释后仍含 CJK 即失败
  * 并列出 file:line。文案必须走 next-intl 消息包；白名单内是**非 UI 文案**或
  * **刻意中文**的存量，按类别给出理由（brief 要求逐个给出）。
  */
@@ -109,6 +110,7 @@ const SCAN_ROOTS = [
   join(import.meta.dirname, ".."),
   join(import.meta.dirname, "../../e2e"),
   join(REPO_ROOT, "packages/server-core/src"),
+  join(REPO_ROOT, "apps/mcp/src"),
 ];
 
 function isWhitelisted(file: string): boolean {
@@ -153,7 +155,7 @@ function cjkLines(content: string): number[] {
 }
 
 describe("cjk guard", () => {
-  it("src、e2e 与 server-core 的源码剥注释后不含白名单外的硬编码中文", () => {
+  it("src、e2e、server-core 与 mcp 的源码剥注释后不含白名单外的硬编码中文", () => {
     const offenders: string[] = [];
     for (const root of SCAN_ROOTS) {
       for (const file of walk(root)) {
