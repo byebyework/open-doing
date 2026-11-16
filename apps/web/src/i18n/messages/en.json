@@ -1074,5 +1074,126 @@
     "uptimeMoments": "under a minute",
     "buildFootnote": "Build metadata is injected at image build time; dev mode shows \"Unknown (dev mode)\".",
     "uptimeFootnote": "Uptime is the accumulated time since the current process started."
+  },
+  "legal": {
+    "privacy": {
+      "metaTitle": "Privacy Policy",
+      "title": "Privacy Policy",
+      "versionLabel": "Version",
+      "effectiveLabel": "Effective date",
+      "effectiveDate": "2026-11-16",
+      "intro": "Open Doing (\"the Service\") is a personal and team task management tool operated by the Open Doing team. We take your personal information seriously. This policy explains what data we collect, how we use and protect it, and the rights you have. By registering for or using the Service, you acknowledge that you have read and accepted this policy.",
+      "sections": [
+        {
+          "heading": "Data we collect and why",
+          "paragraphs": [
+            "Account information: on registration we collect your username, password (stored as a one-way bcrypt hash — we never see the plaintext), email address and registration code, to create your account, verify sign-ins and manage beta-quota consumption.",
+            "Optional profile: nickname, gender and phone number, used for in-product display and, where necessary, contact. All optional and provided by you.",
+            "Service content: the tasks, projects, subtasks, comments and notifications you create, which are required to provide the core features.",
+            "Technical information: to maintain your session, the session system records sign-in IP address and browser User-Agent, used only for session security and troubleshooting."
+          ]
+        },
+        {
+          "heading": "How data is used",
+          "paragraphs": [
+            "Collected data is used solely to operate the Service: authentication, personal task and team project management, collaboration and notifications (including due-date reminders), and in-product progress reporting and analysis.",
+            "We do not use your data for advertising, and we do not build user profiles unrelated to the Service."
+          ]
+        },
+        {
+          "heading": "Storage and retention",
+          "paragraphs": [
+            "All data is stored in a self-hosted PostgreSQL database (a single instance) controlled by the operator, accessible only for running the Service.",
+            "Data is retained until your account is deleted. When the account is deleted, associated data such as tasks, projects and comments is removed through cascading deletes, together with the stored password credentials."
+          ]
+        },
+        {
+          "heading": "Data sharing",
+          "paragraphs": [
+            "We do not sell your data and we do not provide it to any third party, except where the law compels us (for example, disclosure ordered by a judicial authority through statutory procedure).",
+            "The Service currently integrates no third-party analytics, advertising or external messaging services."
+          ]
+        },
+        {
+          "heading": "Your rights",
+          "paragraphs": [
+            "You can view and edit your profile (nickname, gender, phone number, language preference) and the tasks and projects you created at any time inside the product.",
+            "To delete your account and all personal data, contact the operator via the address below; we will process the request after verifying your identity."
+          ]
+        },
+        {
+          "heading": "Cookie policy",
+          "paragraphs": [
+            "The Service uses only two kinds of cookies: the signed session cookie set by better-auth (required to stay signed in) and the od_locale preference cookie (remembers your interface language).",
+            "We use no third-party analytics, tracking or advertising cookies."
+          ]
+        },
+        {
+          "heading": "Contact",
+          "paragraphs": [
+            "Operator: Open Doing team (placeholder, to be replaced with the actual operating entity).",
+            "Contact email: support@open-doing.example (placeholder, to be replaced). For questions, corrections or deletion requests regarding this policy or your personal data, please reach us by email."
+          ]
+        }
+      ]
+    },
+    "terms": {
+      "metaTitle": "Terms of Service",
+      "title": "Terms of Service",
+      "versionLabel": "Version",
+      "effectiveLabel": "Effective date",
+      "effectiveDate": "2026-11-16",
+      "intro": "Welcome to Open Doing. These terms are the agreement between you and the Open Doing team regarding your use of the Service. By registering for or using the Service, you acknowledge that you have read and accepted these terms in full.",
+      "sections": [
+        {
+          "heading": "Description of the Service",
+          "paragraphs": [
+            "The Service provides personal task management, team project collaboration, kanban boards, calendar and progress analysis features.",
+            "The Service is currently in invitation-only beta: registration requires a valid registration code, and the scope and features may change as the product evolves."
+          ]
+        },
+        {
+          "heading": "Your responsibilities",
+          "paragraphs": [
+            "You agree not to publish or store content prohibited by applicable laws; not to attack, scan, crawl, reverse-engineer or otherwise disrupt or abuse the Service or its infrastructure; and not to interfere with other users' normal use.",
+            "If you breach these commitments, we may take measures commensurate with the severity, including warnings, feature restrictions and account suspension."
+          ]
+        },
+        {
+          "heading": "Content responsibility",
+          "paragraphs": [
+            "You are solely responsible for all content you publish or create (tasks, project descriptions, comments, etc.) and warrant that you hold the necessary rights and do not infringe the rights of others.",
+            "We do not continuously review user content, but we may handle violating content in accordance with the law and these terms."
+          ]
+        },
+        {
+          "heading": "Intellectual property",
+          "paragraphs": [
+            "The Service's software, interface design and brand marks belong to the operator and may not be copied or used elsewhere without permission.",
+            "Content you create in the Service (tasks, projects, comments, etc.) belongs to you."
+          ]
+        },
+        {
+          "heading": "Changes, suspension and termination",
+          "paragraphs": [
+            "We may modify, upgrade, suspend or discontinue the Service. For major changes we will announce them in advance where possible.",
+            "During the beta, the Service may be interrupted or adjusted at any time; please do not rely on the Service as your only means of data storage."
+          ]
+        },
+        {
+          "heading": "Disclaimer",
+          "paragraphs": [
+            "The Service is provided \"as is\". To the maximum extent permitted by law, we do not warrant that the Service will be uninterrupted, error-free or absolutely secure, and we are not liable for losses caused by force majeure, system maintenance or third parties."
+          ]
+        },
+        {
+          "heading": "Dispute resolution",
+          "paragraphs": [
+            "Disputes arising from these terms shall first be resolved through friendly negotiation; failing that, they shall be submitted to a people's court with jurisdiction where the operator is located.",
+            "These terms are governed by the laws of the People's Republic of China."
+          ]
+        }
+      ]
+    }
   }
 }
