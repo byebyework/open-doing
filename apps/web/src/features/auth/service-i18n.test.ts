@@ -36,6 +36,8 @@ describe("validateRegistration username charset", () => {
     username: "alice",
     password: "password123",
     email: "alice@test.com",
+    // 条款同意（2026-11-16）必勾：这些用例只针对各自字段规则。
+    agreeTos: true,
   };
 
   it("拒绝包含中文的帐号（i18n key: usernameInvalid）", () => {
@@ -71,6 +73,8 @@ describe("validateRegistration 密码字节上限与邮箱长度", () => {
     username: "alice",
     password: "password123",
     email: "alice@test.com",
+    // 条款同意（2026-11-16）必勾：这些用例只针对各自字段规则。
+    agreeTos: true,
   };
 
   it("注册密码 73 个 ASCII 字符（73 字节）→ auth.passwordTooLong", () => {

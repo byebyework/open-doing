@@ -85,6 +85,8 @@ export interface AuthInput {
   email: string;
   /** 手机号：trim；空字符串归一化为 null。 */
   phone?: string;
+  /** 注册同意：《隐私政策》《用户协议》已勾选；必须严格为 true。 */
+  agreeTos?: boolean;
 }
 
 function normalizeUsername(value: unknown): string {
@@ -219,6 +221,13 @@ export function validateRegistration(input: AuthInput): {
   if (phoneValue && !PHONE_PATTERN.test(phoneValue)) {
     throw new AuthError("VALIDATION", "手机号格式不正确", "phone", {
       key: "phoneInvalid",
+    });
+  }
+
+  // 条款同意（2026-11-16）：严格 === true，伪造的 "true"/1 等真值一律拒绝。
+  if (input?.agreeTos !== true) {
+    throw new AuthError("VALIDATION", "请先阅读并同意《隐私政策》和《用户协议》", "form", {
+      key: "agreeRequired",
     });
   }
 

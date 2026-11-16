@@ -121,6 +121,7 @@
     "registrationCodeLabel": "注册码",
     "registrationCodePlaceholder": "请输入内测邀请的注册码",
     "registrationCodeRequired": "请输入注册码",
+    "agreeRequired": "请先阅读并同意《隐私政策》和《用户协议》",
     "registrationCodeInvalid": "注册码无效",
     "registrationCodeExhausted": "注册码已达使用上限",
     "passwordMismatch": "两次输入的密码不一致",

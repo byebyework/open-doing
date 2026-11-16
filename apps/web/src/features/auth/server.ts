@@ -75,6 +75,10 @@ export const auth = betterAuth({
       uid: { type: "string", required: false, input: false },
       // 注册时消费的注册码 id，由 user.create.before 钩子写入，客户端不可传。
       registrationCodeId: { type: "string", required: false, input: false },
+      // 注册同意留痕（2026-11-16）：勾选时间与条款版本，版本取服务端常量
+      // AGREEMENT_VERSION（不信任前端），由 user.create.before 钩子写入。
+      agreedTosAt: { type: "date", required: false, input: false },
+      agreedTosVersion: { type: "string", required: false, input: false },
       // 管理员工作台标记：进入会话用户（getCurrentUser / requireAdmin 读取），
       // 由管理台服务端写入，客户端不可传。
       isAdmin: { type: "boolean", required: false, input: false, defaultValue: false },

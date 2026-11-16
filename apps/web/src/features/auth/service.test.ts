@@ -22,7 +22,7 @@ import {
   generateRegistrationCodes,
   REGISTRATION_CODE_MAX_USES,
 } from "./registration-codes";
-import { generateNickname, type AuthInput } from "./service";
+import { generateNickname, validateRegistration, type AuthInput } from "./service";
 
 /**
  * 包装真实 generateUid，默认走真实随机；UID 碰撞用例用
@@ -78,6 +78,7 @@ describe.skipIf(!hasTestDatabase)("认证注册链路（better-auth）", () => {
   ): Promise<User> {
     const result = await registerAction({
       registrationCode: code,
+      agreeTos: true,
       ...input,
     } as AuthInput);
     expect(result.ok).toBe(true);
@@ -91,6 +92,7 @@ describe.skipIf(!hasTestDatabase)("认证注册链路（better-auth）", () => {
     const result = await registerAction({
       registrationCode: code,
       email: "fallback@test.com",
+      agreeTos: true,
       ...input,
     } as AuthInput);
     expect(result.ok).toBe(false);
@@ -221,6 +223,7 @@ describe.skipIf(!hasTestDatabase)("认证注册链路（better-auth）", () => {
       password: "password123",
       email: "alice2@test.com",
       registrationCode: "ZZZZZZZZ",
+      agreeTos: true,
     });
     expect(result.ok).toBe(false);
     expect(!result.ok && result.errors.registrationCode).toBe("注册码无效");
@@ -314,5 +317,45 @@ describe.skipIf(!hasTestDatabase)("认证注册链路（better-auth）", () => {
 
     expect(first).toBe(second);
     expect(first).toMatch(/^user_[0-9a-f]{5}$/);
+  });
+
+  it("2026-11-16 起：未同意条款 → 注册被拒，返回 form 字段错误", async () => {
+    const errors = await registerFail({
+      username: "alice",
+      password: "password123",
+      agreeTos: false,
+    });
+
+    expect(errors.form).toBe("请先阅读并同意《隐私政策》和《用户协议》");
+  });
+
+  it("agreeTos 为伪造真值（字符串 \"true\"）同样被拒", () => {
+    expect(() =>
+      validateRegistration({
+        username: "alice",
+        password: "password123",
+        email: "alice@test.com",
+        agreeTos: "true" as unknown as boolean,
+      }),
+    ).toThrow(
+      expect.objectContaining({
+        name: "AuthError",
+        field: "form",
+        i18n: { key: "agreeRequired" },
+      }),
+    );
+  });
+
+  it("注册成功：agreed_tos_at 落当前时间、agreed_tos_version 落 2026-11-v1", async () => {
+    const user = await registerOk({
+      username: "alice",
+      password: "password123",
+      email: "alice@test.com",
+      agreeTos: true,
+    });
+
+    const [row] = await db.select().from(users).where(eq(users.id, user.id));
+    expect(row!.agreedTosAt).toBeInstanceOf(Date);
+    expect(row!.agreedTosVersion).toBe("2026-11-v1");
   });
 });

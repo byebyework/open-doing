@@ -11,6 +11,7 @@ import {
   normalizeRegistrationCode,
 } from "./registration-codes";
 import { generateNickname } from "./service";
+import { AGREEMENT_VERSION } from "./constants";
 
 /**
  * 注册链路的错误令牌：抛出 `APIError({ message, code })` 后由 action
@@ -140,6 +141,9 @@ export const authDatabaseHooks: NonNullable<BetterAuthOptions["databaseHooks"]> 
             ...user,
             uid,
             registrationCodeId: consumed.registrationCodeId,
+            // 注册同意留痕：时间与版本都由服务端决定，客户端不可传。
+            agreedTosAt: new Date(),
+            agreedTosVersion: AGREEMENT_VERSION,
             name: name || generateNickname(uid),
             displayUsername,
           },
