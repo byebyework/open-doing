@@ -3,8 +3,16 @@ import type zh from "./messages/zh.json";
 /** zh.json 的结构类型(en.json 由 messages-parity 测试保证同构)。 */
 export type AppMessages = typeof zh;
 
-/** 任意深度的字符串消息树(接受 zh.json,也接受测试夹具等子集)。 */
-export type MessageTree = { [key: string]: string | MessageTree };
+/**
+ * 消息树的节点：字符串叶子，或对象/数组容器。
+ *
+ * 数组用于 legal 文档的分节结构（只经 next-intl `raw()` 整体读取，
+ * 不参与 createTranslator 的点号取词）。
+ */
+type MessageNode = string | MessageTree | MessageNode[];
+
+/** 任意深度的消息树(接受 zh.json,也接受测试夹具等子集)。 */
+export type MessageTree = { [key: string]: MessageNode };
 
 /** 轻量取词函数:点号路径 + {name} 插值。 */
 export type TranslateFn = (
