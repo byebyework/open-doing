@@ -94,6 +94,10 @@ export const users = pgTable("users", {
     () => registrationCodes.id,
     { onDelete: "set null" },
   ),
+  // 注册同意留痕（2026-11-16）：勾选《隐私政策》《用户协议》的时间与条款版本，
+  // 由 better-auth user.create.before 钩子写入；存量用户为 NULL。
+  agreedTosAt: timestamp("agreed_tos_at", { withTimezone: true }),
+  agreedTosVersion: text("agreed_tos_version"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });

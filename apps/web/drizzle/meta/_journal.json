@@ -22,6 +22,13 @@
       "when": 1794629355083,
       "tag": "0002_goofy_sentry",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794827003024,
+      "tag": "0003_cuddly_millenium_guard",
+      "breakpoints": true
     }
   ]
 }
