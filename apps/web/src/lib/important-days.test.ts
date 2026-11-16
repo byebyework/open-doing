@@ -15,8 +15,13 @@ describe("resolveOccurrence", () => {
     expect(resolveOccurrence({ date: "2027-03-01", isLunar: false, lunarMonth: null, lunarDay: null, repeat: "none" }, "2026-11-16"))
       .toEqual({ direction: "upcoming", date: "2027-03-01", days: 105 });
   });
-  it("today boundary: days is 0", () => {
-    expect(resolveOccurrence({ date: "2026-11-16", isLunar: false, lunarMonth: null, lunarDay: null, repeat: "none" }, "2026-11-16").days).toBe(0);
+  it("today boundary: days is 0 and direction upcoming", () => {
+    expect(resolveOccurrence({ date: "2026-11-16", isLunar: false, lunarMonth: null, lunarDay: null, repeat: "none" }, "2026-11-16"))
+      .toEqual({ direction: "upcoming", date: "2026-11-16", days: 0 });
+  });
+  it("yearly occurrence exactly today: days is 0 and direction upcoming", () => {
+    expect(resolveOccurrence({ date: "2000-03-01", isLunar: false, lunarMonth: null, lunarDay: null, repeat: "yearly" }, "2026-03-01"))
+      .toEqual({ direction: "upcoming", date: "2026-03-01", days: 0 });
   });
   it("yearly solar rolls to next year when this year's passed", () => {
     expect(resolveOccurrence({ date: "1990-10-01", isLunar: false, lunarMonth: null, lunarDay: null, repeat: "yearly" }, "2026-11-16").date)
@@ -27,14 +32,17 @@ describe("resolveOccurrence", () => {
       .toBe("2026-02-28");
   });
   it("yearly lunar anchors to the lunar year today belongs to, not the Gregorian year", () => {
-    // today=2026-01-10 属农历 2025；候选 = 农历 2025 的 (12,20)=2025-12-20(已过)与
-    // 农历 2026 的 (12,20)=2026-12-20，取 ≥ today 最近者 → 后者。
+    // 本例只验证「候选选取」机制：stub 把农历年直接当作公历年拼字符串，
+    // 无法区分「今天所属农历年」与「公历年号」——该不变式由下方真库用例负责。
+    // today=2026-01-10；候选 = stub 农历 2025 的 (12,20)=2025-12-20(已过)与
+    // stub 农历 2026 的 (12,20)=2026-12-20，取 ≥ today 最近者 → 后者。
     expect(resolveOccurrence({ date: null, isLunar: true, lunarMonth: 12, lunarDay: 20, repeat: "yearly" }, "2026-01-10", stub))
       .toEqual({ direction: "upcoming", date: "2026-12-20", days: 344 });
   });
-  it("yearly lunar integrates with the real converter across the Dec-Feb boundary", () => {
-    // 真库用例：农历十二月生日在公历 1 月观察，不得算偏一年。
-    const r = resolveOccurrence({ date: null, isLunar: true, lunarMonth: 1, lunarDay: 1, repeat: "yearly" }, "2026-01-10");
-    expect(r.date).toBe("2026-02-17"); // 下一农历年（丙午）正月初一 = 2026-02-17
+  it("yearly lunar anchors to the lunar year today belongs to (real converter, Dec-Feb boundary)", () => {
+    // 真库用例，锁定农历年锚定不变式：today=2026-01-10 属农历 2025，腊月二十 = 2026-02-07。
+    // 若错误地用公历年号 2026 生成候选，会得到农历 2026 腊月二十 = 2027-01-27，本用例必须失败。
+    expect(resolveOccurrence({ date: null, isLunar: true, lunarMonth: 12, lunarDay: 20, repeat: "yearly" }, "2026-01-10"))
+      .toEqual({ direction: "upcoming", date: "2026-02-07", days: 28 });
   });
 });
