@@ -13,6 +13,7 @@ import { z } from "zod";
 import { HintBadge } from "@/components/ui/HintBadge";
 import { Alert } from "@/components/ui/shadcn/alert";
 import { Button } from "@/components/ui/shadcn/button";
+import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/shadcn/radio-group";
@@ -66,6 +67,8 @@ export interface RegisterPayloadValues {
   registrationCode: string;
   /** 邮箱：表单必填；空值原样提交，由服务端报「请输入邮箱」。 */
   email: string;
+  /** 条款同意：勾选时输出 agreeTos: true；未勾选省略该键，由服务端拒绝。 */
+  agreeTos: boolean;
   nickname?: string;
   gender?: string;
   phone?: string;
@@ -85,6 +88,8 @@ export function buildRegisterPayload(values: RegisterPayloadValues): AuthInput {
     registrationCode: values.registrationCode.trim(),
     email: values.email.trim(),
   };
+
+  if (values.agreeTos) payload.agreeTos = true;
 
   const nickname = values.nickname?.trim();
   if (nickname) payload.nickname = nickname;
@@ -141,6 +146,8 @@ export function createRegisterSchema(t: TranslateFn) {
           t("phoneInvalid"),
         )
         .optional(),
+      // 条款同意：未勾选（false/undefined）均报 agreeRequired，与服务端一致。
+      agreeTos: z.boolean().refine((value) => value === true, t("agreeRequired")),
     })
     .refine((values) => values.password === values.confirmPassword, {
       path: ["confirmPassword"],
@@ -186,6 +193,7 @@ export function RegisterForm() {
       gender: undefined,
       email: "",
       phone: "",
+      agreeTos: false,
     },
   });
 
@@ -458,6 +466,43 @@ export function RegisterForm() {
             </p>
           ) : null}
         </div>
+
+        {/* 条款同意（2026-11-16）：单勾选覆盖两份文档，链接新窗口打开 legal 页。 */}
+        <Controller
+          control={control}
+          name="agreeTos"
+          render={({ field }) => (
+            <div className="mb-5 flex items-start gap-2.5">
+              <Checkbox
+                id="register-agree-tos"
+                checked={field.value ?? false}
+                onCheckedChange={(checked) => field.onChange(checked === true)}
+                disabled={submitting}
+                data-testid="auth-agree-checkbox"
+                aria-invalid={errors.agreeTos ? true : undefined}
+                aria-describedby={errors.agreeTos ? "register-agree-tos-error" : undefined}
+              />
+              <Label
+                htmlFor="register-agree-tos"
+                className="text-[13px] font-normal leading-5 text-[var(--ink-700)]"
+              >
+                {t("agreeLabel")}{" "}
+                <Link href="/legal/privacy" target="_blank" className="text-[var(--purple-600)]">
+                  {t("privacyPolicyLink")}
+                </Link>{" "}
+                {t("agreeJoin")}{" "}
+                <Link href="/legal/terms" target="_blank" className="text-[var(--purple-600)]">
+                  {t("termsLink")}
+                </Link>
+              </Label>
+            </div>
+          )}
+        />
+        {errors.agreeTos ? (
+          <p id="register-agree-tos-error" className="mb-4 text-[12.5px] text-[var(--error)]">
+            {errors.agreeTos.message}
+          </p>
+        ) : null}
 
         {/* UID 信息块收敛为 ⓘ 徽章：GA 摘要 + 弹层保留原有文案与示例格式。 */}
         <div className="mb-5 flex justify-end">

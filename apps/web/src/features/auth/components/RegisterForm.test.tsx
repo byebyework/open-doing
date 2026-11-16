@@ -24,6 +24,7 @@ const validRegisterValues = {
   nickname: "",
   email: "alice@example.com",
   phone: "",
+  agreeTos: true,
 };
 
 function renderRegisterForm(): string {
@@ -46,12 +47,14 @@ describe("buildRegisterPayload", () => {
         password: "secret123",
         registrationCode: "  ABC123XY  ",
         email: "  alice@example.com  ",
+        agreeTos: true,
       }),
     ).toStrictEqual({
       username: "alice",
       password: "secret123",
       registrationCode: "ABC123XY",
       email: "alice@example.com",
+      agreeTos: true,
     });
   });
 
@@ -65,6 +68,7 @@ describe("buildRegisterPayload", () => {
         gender: "female",
         email: "  alice@example.com  ",
         phone: "  +8613800138000  ",
+        agreeTos: true,
       }),
     ).toStrictEqual({
       username: "alice",
@@ -74,6 +78,7 @@ describe("buildRegisterPayload", () => {
       gender: "female",
       email: "alice@example.com",
       phone: "+8613800138000",
+      agreeTos: true,
     });
   });
 
@@ -84,6 +89,7 @@ describe("buildRegisterPayload", () => {
         password: "secret123",
         registrationCode: "   ",
         email: "alice@example.com",
+        agreeTos: false,
       }),
     ).toStrictEqual({
       username: "alice",
@@ -91,6 +97,18 @@ describe("buildRegisterPayload", () => {
       registrationCode: "",
       email: "alice@example.com",
     });
+  });
+
+  it("omits agreeTos from the payload when unchecked so the server enforces consent", () => {
+    const payload = buildRegisterPayload({
+      username: "alice",
+      password: "secret123",
+      registrationCode: "ABC123XY",
+      email: "alice@example.com",
+      agreeTos: false,
+    });
+
+    expect("agreeTos" in payload).toBe(false);
   });
 });
 
@@ -129,6 +147,21 @@ describe("createRegisterSchema email requirement", () => {
     expect(result.success).toBe(true);
   });
 
+  it("rejects an unchecked consent with agreeRequired", () => {
+    const result = createRegisterSchema(tAuthZh).safeParse({
+      ...validRegisterValues,
+      agreeTos: false,
+    });
+
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.error.issues[0]).toMatchObject({
+        path: ["agreeTos"],
+        message: zh.auth.agreeRequired,
+      });
+    }
+  });
+
   it("rejects a malformed email with the format message", () => {
     const result = createRegisterSchema(tAuthZh).safeParse({
       ...validRegisterValues,
@@ -163,6 +196,17 @@ describe("RegisterForm optional profile fields", () => {
     expect(markup).toContain('name="nickname"');
     expect(markup).toContain('name="email"');
     expect(markup).toContain('name="phone"');
+  });
+
+  it("renders the consent checkbox with links to the privacy policy and terms", () => {
+    const markup = renderRegisterForm();
+
+    expect(markup).toContain('data-testid="auth-agree-checkbox"');
+    expect(markup).toContain('href="/legal/privacy"');
+    expect(markup).toContain('href="/legal/terms"');
+    expect(markup).toContain(zh.auth.agreeLabel);
+    expect(markup).toContain(zh.auth.privacyPolicyLink);
+    expect(markup).toContain(zh.auth.termsLink);
   });
 
   it("maps an email server field error onto the email input name", () => {
