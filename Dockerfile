@@ -2,8 +2,10 @@
 #
 # open-doing 生产镜像（多阶段构建）。
 #
-# 构建上下文为仓库根目录（monorepo 根），例如：
-#   docker build -t open-doing:latest .
+# 构建上下文为仓库根目录（monorepo 根）。镜像有两个最终 stage，构建时必须显式
+# 指定 target（缺省会构建文件末尾的 runtime-mcp）：
+#   docker build --target runtime     -t open-doing:latest .
+#   docker build --target runtime-mcp -t open-doing-mcp:latest .
 #
 # 运行时需要的环境变量（不要打进镜像）：
 #   DATABASE_URL         生产库连接串（必填，启动前由 entrypoint 执行迁移）
@@ -59,12 +61,10 @@ ENV GIT_COMMIT_SHA=${GIT_COMMIT_SHA} \
 COPY --from=deps /repo/package.json /repo/pnpm-lock.yaml /repo/pnpm-workspace.yaml ./
 COPY --from=deps /repo/node_modules node_modules
 COPY --from=deps /repo/apps/web/node_modules apps/web/node_modules
-COPY --from=deps /repo/apps/mcp/node_modules apps/mcp/node_modules
 COPY --from=deps /repo/packages/types/node_modules packages/types/node_modules
 COPY --from=deps /repo/packages/server-core/node_modules packages/server-core/node_modules
 COPY packages/types packages/types
 COPY packages/server-core packages/server-core
-COPY apps/mcp apps/mcp
 COPY apps/web apps/web
 # 构建期不注入真实密钥：页面按会话取数均为动态渲染，构建不发生数据库连接、
 # 不签发任何会话。但收集页面数据时会 import db client 与 better-auth 初始化

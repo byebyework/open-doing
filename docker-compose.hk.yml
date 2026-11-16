@@ -46,6 +46,13 @@ services:
       MCP_PORT: "3101"
     # 占位值：上线前在服务器 free -h 实测空闲内存后定值（见 docs/deploy-hk-server.md 附录）。
     mem_limit: ${MCP_MEM_LIMIT:-256m}
+    # 镜像内只有 node（无 curl/wget），用 fetch 探 /healthz；nginx 等它健康再启动。
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3101/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
 
   nginx:
     image: ghcr.io/byebyework/open-doing-nginx:1.27-alpine
@@ -56,5 +63,7 @@ services:
       - ./docker/nginx/hk.conf:/etc/nginx/conf.d/default.conf:ro
       - ${CERT_DIR:?set CERT_DIR in .env (Cloudflare Origin CA 证书目录)}:/etc/nginx/certs:ro
     depends_on:
-      - web
-      - mcp
+      web:
+        condition: service_started
+      mcp:
+        condition: service_healthy

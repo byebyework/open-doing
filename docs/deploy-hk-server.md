@@ -219,8 +219,10 @@ select '<表名>' as tbl, count(*) from public.<表名>;
 
 ```bash
 cd /opt/open-doing
+# 首次启动前必须先按附录 A.1 把 mcp 的构建上下文（Dockerfile / 清单 / 源码）同步到
+# /opt/open-doing，否则 `up -d` 构建 mcp 时会因缺少上下文失败。
 docker compose -f docker-compose.hk.yml up -d
-docker compose -f docker-compose.hk.yml ps   # 判定：web、mcp、nginx 均为 running
+docker compose -f docker-compose.hk.yml ps   # 判定：web、mcp、nginx 均为 running（mcp healthy）
 ```
 
 ### 5.2 逐项验证
@@ -286,7 +288,8 @@ ssh <user>@<HK公网IP> 'mkdir -p /opt/open-doing/apps/web'
 rsync -az Dockerfile .dockerignore .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml \
   <user>@<HK公网IP>:/opt/open-doing/
 rsync -az apps/web/package.json <user>@<HK公网IP>:/opt/open-doing/apps/web/
-rsync -azr apps/mcp packages/server-core packages/types <user>@<HK公网IP>:/opt/open-doing/
+rsync -azr --exclude node_modules --exclude .next \
+  apps/mcp packages/server-core packages/types <user>@<HK公网IP>:/opt/open-doing/
 ```
 
 > `apps/web` 只需要 `package.json`：`runtime-mcp` 的构建链是 `base → prod-deps → runtime-mcp`，不进入 web 的 `deps` / `build` stage，不需要 web 源码或 `public`。
@@ -306,7 +309,7 @@ location /mcp/ {
 }
 ```
 
-**trailing slash 语义**：`proxy_pass` 带结尾 `/` 时，nginx 把请求里匹配到的 `/mcp/` 前缀替换为空再转发。因此 `POST /mcp/` → 上游 `POST /`（MCP 根端点），`GET /mcp/healthz` → 上游 `GET /healthz`。若漏掉结尾 `/`，上游会收到 `/mcp/` 而 404。mcp 不发布宿主机端口，也不经过 `location /`。
+**trailing slash 语义**：`proxy_pass` 带结尾 `/` 时，nginx 把请求里匹配到的 `/mcp/` 前缀替换为空再转发。因此 `POST /mcp/` → 上游 `POST /`（MCP 根端点），`GET /mcp/healthz` → 上游 `GET /healthz`。若漏掉结尾 `/`，上游会收到 `/mcp/` 而 404。mcp 不发布宿主机端口，也不经过 `location /`。裸 `/mcp`（无结尾斜杠）由 `location = /mcp` 308 到 `/mcp/`，不会落到 web 的 404。
 
 改完配置后平滑重载：`docker compose -f docker-compose.hk.yml exec nginx nginx -s reload`。
 
@@ -323,7 +326,7 @@ web 的 API Token 签发弹层里展示的 MCP 地址来自 `NEXT_PUBLIC_MCP_BAS
 
 `docker-compose.hk.yml` 与 `docker-compose.prod.yml` 中 mcp 的 `mem_limit` 目前是 **256m 占位**，上线前必须实测：
 
-1. 先启动 web + nginx（mcp 除外），在服务器上执行 `free -h`，记录 `available`（Supabase 在远端，本机没有 postgres 常驻，2C2G 机器余量通常够一个 Node 进程）。
+1. 先只启动 web（`docker compose -f docker-compose.hk.yml up -d web`）——nginx 的 `depends_on` 包含 mcp，不能单独起 nginx——在服务器上执行 `free -h`，记录 `available`（Supabase 在远端，本机没有 postgres 常驻，2C2G 机器余量通常够一个 Node 进程）。
 2. 应用 MCP 上线后观察真实占用：`docker stats --no-stream $(docker compose -f docker-compose.hk.yml ps -q mcp)`。
 3. 按「稳定 RSS + 约 50% 余量」在 `.env` 设 `MCP_MEM_LIMIT=<值>`（compose 默认回退 256m），然后 `docker compose -f docker-compose.hk.yml up -d mcp` 生效。
 4. 若 `free -h` 的 `available` 在 web 常驻后已经很小，**先扩容再上第二个进程**，不要靠压 `mem_limit` 冒 OOM 风险。
@@ -341,7 +344,7 @@ web 的 API Token 签发弹层里展示的 MCP 地址来自 `NEXT_PUBLIC_MCP_BAS
 
 | # | 检查 | 命令 | 判定 |
 |---|------|------|------|
-| 1 | mcp 容器运行 | `docker compose -f docker-compose.hk.yml ps mcp` | `running`，无端口发布 |
+| 1 | mcp 容器运行 | `docker compose -f docker-compose.hk.yml ps mcp` | `running (healthy)`（healthcheck 探 `/healthz`），无端口发布 |
 | 2 | 容器内健康检查 | `docker compose -f docker-compose.hk.yml exec mcp node -e "fetch('http://127.0.0.1:3101/healthz').then(r=>r.text()).then(console.log)"` | `{"ok":true}` |
 | 3 | nginx 前缀剥离 | `curl -sk https://127.0.0.1/mcp/healthz -H 'Host: <域名>'` | `{"ok":true}`；`GET /mcp/` 应 405 + `Allow: POST`（健康检查不能被 web 的 404 页截走） |
 | 4 | 端到端工具调用 | 按 web「虚拟团队 → 设置 → API Token」签发的片段配置客户端，跑一次 `list_tasks` | MCP 返回该团队任务；UI 中 token「最近使用」更新 |

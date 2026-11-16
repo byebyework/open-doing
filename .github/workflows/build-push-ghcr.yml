@@ -30,6 +30,9 @@ jobs:
       - uses: docker/build-push-action@v6
         with:
           context: .
+          # 必须显式选 web 最终 stage：Dockerfile 的最后一个 stage 是 runtime-mcp，
+          # 不加 target 会把 MCP 镜像打成 web tag。
+          target: runtime
           push: true
           tags: |
             ${{ env.WEB_IMAGE }}:latest

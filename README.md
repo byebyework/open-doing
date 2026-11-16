@@ -151,8 +151,11 @@ pnpm dev
 
 仓库根目录的 `Dockerfile` 构建生产镜像（多阶段：全量依赖 → Turbopack 构建 → 仅运行时依赖的最终层，不含 devDependencies 与源码外的构建工具），构建上下文为仓库根。镜像构建设 `NEXT_SKIP_TYPECHECK=1` 跳过 TypeScript 检查（Docker 虚拟机内存有限，`tsc` 阶段易被 OOM kill）；类型安全由本地/CI 的 `pnpm typecheck` 保证：
 
+镜像有两个最终 stage：`runtime`（web，含 entrypoint 迁移）与 `runtime-mcp`（独立 MCP 服务），构建时必须显式选 target（Docker 默认会构建文件末尾的 `runtime-mcp`）：
+
 ```bash
-docker build -t open-doing:latest .
+docker build --target runtime -t open-doing:latest .
+docker build --target runtime-mcp -t open-doing-mcp:latest .
 ```
 
 **数据库迁移在容器启动时自动执行**：entrypoint（`docker/entrypoint.sh`）在 `next start` 之前运行 `apps/web/scripts/migrate.mjs`（只依赖运行时依赖 `drizzle-orm` + `postgres`，重放 `apps/web/drizzle` 的 journal，与 drizzle-kit 迁移语义一致、幂等，可安全地随每次部署重复执行）。数据库暂时不可达时会自动重试（`MIGRATE_MAX_RETRIES`，默认 30 次 × 2s）；迁移 SQL 本身的错误会立即失败退出。
@@ -160,7 +163,7 @@ docker build -t open-doing:latest .
 - 多副本 / 由外部工具（如 init container 或独立迁移 Job）统一迁移时，设 `SKIP_DB_MIGRATION=1` 跳过容器内迁移。
 - 运行时必须提供的环境变量：`DATABASE_URL`（生产库）、`BETTER_AUTH_SECRET`（生产必填）、`CRON_SECRET`；可选 `PORT`（默认 3000）、`BETTER_AUTH_URL`。
 
-单机部署可直接用根目录的 `docker-compose.prod.yml`（web + PostgreSQL 16；密钥从仓库根 `.env` 读取，见 `.env.example` 末尾的「Docker 生产部署」一节）：
+单机部署可直接用根目录的 `docker-compose.prod.yml`（web + 独立 mcp 服务 + PostgreSQL 16；密钥从仓库根 `.env` 读取，见 `.env.example` 末尾的「Docker 生产部署」一节）：
 
 ```bash
 cat > .env <<EOF

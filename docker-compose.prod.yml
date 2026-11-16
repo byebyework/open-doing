@@ -34,7 +34,10 @@ services:
       retries: 10
 
   web:
-    build: .
+    # 必须显式 target：Dockerfile 最后一个 stage 是 runtime-mcp（mcp 服务）。
+    build:
+      context: .
+      target: runtime
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:3000"
