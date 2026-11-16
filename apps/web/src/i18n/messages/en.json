@@ -340,6 +340,13 @@
     "deleteTaskAria": "Delete task: {title}",
     "dueSoonFull": "Due {date}"
   },
+  "days": {
+    "titleRequired": "Title is required",
+    "titleTooLong": "Title must be {max} characters or fewer",
+    "invalidDate": "Invalid date",
+    "invalidLunarDay": "Lunar month or day out of range",
+    "notFound": "This day does not exist or was deleted"
+  },
   "teams": {
     "team": "Team",
     "createFailed": "Failed to create team. Please try again later.",

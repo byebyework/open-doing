@@ -340,6 +340,13 @@
     "deleteTaskAria": "删除任务：{title}",
     "dueSoonFull": "{date} 到期"
   },
+  "days": {
+    "titleRequired": "请填写名称",
+    "titleTooLong": "名称不能超过 {max} 个字符",
+    "invalidDate": "日期格式不正确",
+    "invalidLunarDay": "农历月日不在有效范围",
+    "notFound": "该日子不存在或已被删除"
+  },
   "teams": {
     "team": "团队",
     "createFailed": "创建团队失败，请稍后重试",
