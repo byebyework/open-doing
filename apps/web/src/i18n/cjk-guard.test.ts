@@ -24,6 +24,7 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/features/users/service.ts", reason: "UserError zh 兜底（构造参数均携带 users.profile i18n key）" },
   { prefix: "apps/web/src/features/personal/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
   { prefix: "apps/web/src/features/personal/projects/service.ts", reason: "DomainError zh 兜底" },
+  { prefix: "apps/web/src/features/days/service.ts", reason: "DomainError zh 兜底（构造参数均携带 days i18n key）" },
   { prefix: "apps/web/src/features/projects/service.ts", reason: "DomainError zh 兜底" },
   { prefix: "apps/web/src/features/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
   { prefix: "apps/web/src/features/tasks/permissions.ts", reason: "TaskPermissionError zh 兜底（action 层按 errors.forbidden 渲染）" },
