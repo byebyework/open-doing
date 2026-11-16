@@ -192,6 +192,24 @@ describe.skipIf(!hasTestDatabase)("重要日子 service", () => {
     expect(row).toMatchObject({ id: ownerDayId, ownerId: owner.id, title: "主人的日子", pinned: false });
   });
 
+  it("ignores smuggled ownership keys：入参夹带的 userId / ownerId 不改变归属", async () => {
+    const owner = await createUser(db, "owner");
+    const other = await createUser(db, "other");
+
+    // 模拟客户端在 input 里夹带归属字段；归一化只取已知字段，
+    // 且 action 层把 userId 放在 spread 之后，归属始终由认证用户决定。
+    const smuggled = {
+      ...dayInput({ title: "夹带归属", date: "2026-12-01" }),
+      userId: other.id,
+      ownerId: other.id,
+    };
+
+    await createImportantDay({ ...smuggled, userId: owner.id }, db);
+
+    const [row] = await db.select().from(importantDays);
+    expect(row).toMatchObject({ ownerId: owner.id, title: "夹带归属" });
+  });
+
   it("update / delete / toggle 对本人行生效", async () => {
     const owner = await createUser(db, "owner");
     const id = await createImportantDay(

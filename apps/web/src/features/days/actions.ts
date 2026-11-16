@@ -71,7 +71,7 @@ export async function createDayAction(
   const user = await requireUser();
 
   try {
-    const id = await createImportantDay({ userId: user.id, ...input });
+    const id = await createImportantDay({ ...input, userId: user.id });
     return { ok: true, data: await readView(user.id, id) };
   } catch (error) {
     return toFailure(error);
@@ -86,7 +86,7 @@ export async function updateDayAction(
   const user = await requireUser();
 
   try {
-    await updateImportantDay({ userId: user.id, id, ...input });
+    await updateImportantDay({ ...input, userId: user.id, id });
     return { ok: true, data: await readView(user.id, id) };
   } catch (error) {
     return toFailure(error);
