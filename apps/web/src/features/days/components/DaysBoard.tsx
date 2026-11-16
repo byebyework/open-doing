@@ -41,6 +41,11 @@ function firstError(errors: Record<string, string>, fallback: string): string {
  * 删除复用 `ConfirmModal`（确认不自动关闭）：成功分支才关闭并刷新，
  * 失败保持弹窗；`!deleteTarget || deleting` 是 loading / exit-hold 期间的
  * 幂等闸门。
+ *
+ * 弹窗开关用独立布尔量（`editOpen` / `deleteOpen`），目标对象在 exit-hold
+ * 窗口内保持不变：Radix 内容在 `open` 翻 false 后仍挂载 OD_MS.modalOut，
+ * 若在成功分支清空目标，退场中的弹窗会闪成空标题 / 新建标题。目标只在
+ * 下次打开时覆盖（同 TaskRowActions 的稳定 deleteOpen 模式）。
  */
 export function DaysBoard({ initialDays }: DaysBoardProps) {
   const t = useTranslations("days");
@@ -51,7 +56,9 @@ export function DaysBoard({ initialDays }: DaysBoardProps) {
   const [synced, setSynced] = useState(initialDays);
   const [days, setDays] = useState(initialDays);
   const [createOpen, setCreateOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<ImportantDayView | null>(null);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ImportantDayView | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [pinningId, setPinningId] = useState<string | null>(null);
@@ -94,7 +101,8 @@ export function DaysBoard({ initialDays }: DaysBoardProps) {
         return;
       }
 
-      setDeleteTarget(null);
+      // 只关 open；deleteTarget 保持到退场窗口结束，标题不闪空。
+      setDeleteOpen(false);
       router.refresh();
     } catch {
       toast.error(tCommon("networkError"));
@@ -103,9 +111,14 @@ export function DaysBoard({ initialDays }: DaysBoardProps) {
     }
   }
 
-  function handleSaved(): void {
+  function handleCreateSaved(): void {
     setCreateOpen(false);
-    setEditTarget(null);
+    router.refresh();
+  }
+
+  function handleEditSaved(): void {
+    // 只关 open；editTarget 保持到退场窗口结束，标题 / initial 不变。
+    setEditOpen(false);
     router.refresh();
   }
 
@@ -142,8 +155,14 @@ export function DaysBoard({ initialDays }: DaysBoardProps) {
             <DayCard
               key={day.id}
               day={day}
-              onEdit={() => setEditTarget(day)}
-              onDelete={() => setDeleteTarget(day)}
+              onEdit={() => {
+                setEditTarget(day);
+                setEditOpen(true);
+              }}
+              onDelete={() => {
+                setDeleteTarget(day);
+                setDeleteOpen(true);
+              }}
               onTogglePinned={() => {
                 void togglePinned(day);
               }}
@@ -155,20 +174,20 @@ export function DaysBoard({ initialDays }: DaysBoardProps) {
       <DayFormModal
         open={createOpen}
         onOpenChange={setCreateOpen}
-        onSaved={handleSaved}
+        onSaved={handleCreateSaved}
       />
 
       <DayFormModal
-        open={editTarget !== null}
+        open={editOpen}
         onOpenChange={(next) => {
-          if (!next) setEditTarget(null);
+          if (!next) setEditOpen(false);
         }}
         initial={editTarget ?? undefined}
-        onSaved={handleSaved}
+        onSaved={handleEditSaved}
       />
 
       <ConfirmModal
-        open={deleteTarget !== null}
+        open={deleteOpen}
         title={t("deleteConfirmTitle", { title: deleteTarget?.title ?? "" })}
         content={t("deleteConfirmBody")}
         confirmText={t("deleteConfirmAction")}
@@ -178,7 +197,7 @@ export function DaysBoard({ initialDays }: DaysBoardProps) {
         onConfirm={() => {
           void confirmDelete();
         }}
-        onCancel={() => setDeleteTarget(null)}
+        onCancel={() => setDeleteOpen(false)}
       />
     </div>
   );

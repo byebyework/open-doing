@@ -290,6 +290,46 @@ describe("DaysBoard", () => {
     ).toBe("true");
   });
 
+  it("编辑保存：成功后关闭并刷新，退场保持窗口内标题与表单值不翻转", async () => {
+    const target = dayView({
+      title: "结婚纪念日",
+      anchorDate: "2020-05-20",
+      occurrenceDate: "2027-05-20",
+      repeat: "yearly",
+      days: 186,
+    });
+    updateMock.mockResolvedValue({
+      ok: true,
+      data: { ...target, title: "纪念日改名" },
+    });
+    renderBoard([target]);
+
+    click(find('[data-testid="day-edit-结婚纪念日"]'));
+    const title = find<HTMLInputElement>('[data-testid="day-form-title"]');
+    if (!title) throw new Error("title input missing");
+    setInputValue(title, "纪念日改名");
+
+    await submitForm();
+
+    expect(updateMock).toHaveBeenCalledWith(
+      "结婚纪念日",
+      expect.objectContaining({ title: "纪念日改名" }),
+    );
+    expect(updateMock).toHaveBeenCalledTimes(1);
+    expect(refreshMock).toHaveBeenCalledTimes(1);
+
+    // 退场窗口内 initial 仍为旧目标：标题保持「编辑日子」、输入值不被重置。
+    expect(find('[data-slot="dialog-title"]')?.textContent).toBe("编辑日子");
+    expect(find<HTMLInputElement>('[data-testid="day-form-title"]')?.value).toBe(
+      "纪念日改名",
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(OD_MS.modalOut + 50);
+    });
+    expect(find('[data-slot="dialog-content"]')).toBeNull();
+  });
+
   it("字段错误回填到对应 input 的 aria 描述", async () => {
     createMock.mockResolvedValue({
       ok: false,
@@ -343,6 +383,11 @@ describe("DaysBoard", () => {
     });
 
     expect(refreshMock).toHaveBeenCalledTimes(1);
+
+    // 退场保持窗口内标题保持稳定（目标对象不在关闭时清空），不闪成空标题。
+    expect(find('[data-slot="alert-dialog-title"]')?.textContent).toContain(
+      "搬家",
+    );
 
     // 成功分支关闭弹窗；退场保持窗口结束后内容卸载。
     act(() => {

@@ -6,6 +6,7 @@ import {
   uniqueLabel,
   uniqueUsername,
 } from "../utils/flows";
+import { TEST_IDS } from "../utils/testids";
 
 /**
  * 关键流 16：个人空间「重要日子」（v1.2 新模块）。
@@ -32,7 +33,7 @@ const DAYS_NAV_LABEL = "重要日子";
 
 /** 模块页卡片墙的全部卡片（`data-testid` 由组件侧硬编码为 `day-card-<id>`）。 */
 function dayCards(page: Page) {
-  return page.locator('article[data-testid^="day-card-"]');
+  return page.locator(`article[data-testid^="${TEST_IDS.days.cardPrefix}"]`);
 }
 
 /** 按卡片标题定位单张卡片（标题为唯一随机标签，不会互相命中）。 */
@@ -60,15 +61,15 @@ async function createSolarDay(
   page: Page,
   input: { title: string; date: string },
 ): Promise<void> {
-  await page.getByTestId("days-create-button").click();
+  await page.getByTestId(TEST_IDS.days.createButton).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
   await expect(dialog.getByText("记录一个日子")).toBeVisible();
 
-  await dialog.getByTestId("day-form-title").fill(input.title);
-  await dialog.getByTestId("day-form-date").fill(input.date);
-  await dialog.getByTestId("day-form-submit").click();
+  await dialog.getByTestId(TEST_IDS.days.formTitle).fill(input.title);
+  await dialog.getByTestId(TEST_IDS.days.formDate).fill(input.date);
+  await dialog.getByTestId(TEST_IDS.days.formSubmit).click();
 
   await expect(dialog).toBeHidden();
   await expect(cardByTitle(page, input.title)).toBeVisible();
@@ -79,31 +80,31 @@ async function createLunarDay(
   page: Page,
   input: { title: string; month: number; day: number },
 ): Promise<void> {
-  await page.getByTestId("days-create-button").click();
+  await page.getByTestId(TEST_IDS.days.createButton).click();
 
   const dialog = page.getByRole("dialog");
   await expect(dialog).toBeVisible();
 
-  await dialog.getByTestId("day-form-title").fill(input.title);
-  await dialog.getByTestId("day-form-type-lunar").click();
+  await dialog.getByTestId(TEST_IDS.days.formTitle).fill(input.title);
+  await dialog.getByTestId(TEST_IDS.days.formTypeLunar).click();
 
   // 农历月 / 日是两个 shadcn Select；选项渲染在 portal 中，按 role=option 选。
-  await dialog.getByTestId("day-form-month").click();
+  await dialog.getByTestId(TEST_IDS.days.formMonth).click();
   await page
     .getByRole("option", { name: String(input.month), exact: true })
     .click();
-  await dialog.getByTestId("day-form-day").click();
+  await dialog.getByTestId(TEST_IDS.days.formDay).click();
   await page
     .getByRole("option", { name: String(input.day), exact: true })
     .click();
 
   // 农历日子每年自动滚动：重复复选框锁定勾选，不可取消。
-  const repeat = dialog.getByTestId("day-form-repeat");
+  const repeat = dialog.getByTestId(TEST_IDS.days.formRepeat);
   await expect(repeat).toBeChecked();
   await expect(repeat).toBeDisabled();
   await expect(dialog.getByText("农历日子每年自动滚动")).toBeVisible();
 
-  await dialog.getByTestId("day-form-submit").click();
+  await dialog.getByTestId(TEST_IDS.days.formSubmit).click();
 
   await expect(dialog).toBeHidden();
   await expect(cardByTitle(page, input.title)).toBeVisible();
@@ -201,11 +202,11 @@ test.describe("flow 16: 个人空间重要日子", () => {
     const editDialog = page.getByRole("dialog");
     await expect(editDialog).toBeVisible();
     await expect(editDialog.getByText("编辑日子")).toBeVisible();
-    await expect(editDialog.getByTestId("day-form-title")).toHaveValue(
+    await expect(editDialog.getByTestId(TEST_IDS.days.formTitle)).toHaveValue(
       editedTitle,
     );
-    await editDialog.getByTestId("day-form-title").fill(renamedTitle);
-    await editDialog.getByTestId("day-form-submit").click();
+    await editDialog.getByTestId(TEST_IDS.days.formTitle).fill(renamedTitle);
+    await editDialog.getByTestId(TEST_IDS.days.formSubmit).click();
 
     await expect(editDialog).toBeHidden();
     await expect(cardByTitle(page, renamedTitle)).toBeVisible();
@@ -219,7 +220,7 @@ test.describe("flow 16: 个人空间重要日子", () => {
     const confirmDialog = page.getByRole("dialog");
     await expect(confirmDialog).toBeVisible();
     await expect(confirmDialog).toContainText(`删除「${renamedTitle}」？`);
-    await page.getByTestId("day-delete-confirm").click();
+    await page.getByTestId(TEST_IDS.days.deleteConfirm).click();
 
     await expect(confirmDialog).toBeHidden();
     await expect(cardByTitle(page, renamedTitle)).toHaveCount(0);
@@ -230,7 +231,7 @@ test.describe("flow 16: 个人空间重要日子", () => {
       .getByRole("button", { name: `删除 ${remainingTitle}`, exact: true })
       .click();
     await expect(page.getByRole("dialog")).toBeVisible();
-    await page.getByTestId("day-delete-confirm").click();
+    await page.getByTestId(TEST_IDS.days.deleteConfirm).click();
 
     await expect(page.getByRole("dialog")).toBeHidden();
     await expect(dayCards(page)).toHaveCount(0);

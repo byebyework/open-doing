@@ -71,6 +71,19 @@ export const TEST_IDS = {
     gridScroll: "calendar-grid-scroll",
     scrollShadow: "calendar-scroll-shadow",
   },
+  days: {
+    createButton: "days-create-button",
+    formTitle: "day-form-title",
+    formDate: "day-form-date",
+    formTypeLunar: "day-form-type-lunar",
+    formMonth: "day-form-month",
+    formDay: "day-form-day",
+    formRepeat: "day-form-repeat",
+    formSubmit: "day-form-submit",
+    deleteConfirm: "day-delete-confirm",
+    /** 卡片 testid 前缀（组件侧硬编码 `day-card-<id>`）。 */
+    cardPrefix: "day-card-",
+  },
   analysis: {
     range: (value: 7 | 30 | 90) => `analysis-range-${value}`,
   },
