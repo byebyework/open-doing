@@ -1,5 +1,6 @@
 import { getTranslations } from "next-intl/server";
 
+import { axisLabelStep, type AxisDensity } from "../axis";
 import type { TrendBucket } from "../buckets";
 
 /**
@@ -40,6 +41,8 @@ export interface TrendChartProps {
   emptyLabel?: string;
   /** 「今天」所在桶下标；悬停文案给该桶加「今天 」前缀（未来截止为首桶）。 */
   todayIndex?: number;
+  /** x 轴标签密度：wide = 全宽卡（每 5 桶）、narrow = 半宽卡（每 10 桶防溢出）；缺省 wide。 */
+  axisDensity?: AxisDensity;
 }
 
 /**
@@ -50,7 +53,8 @@ export interface TrendChartProps {
  * - 网格线为 hairline `var(--border-default)`，0 值基线用加强边 `#c7cdd3`；
  * - 0 值桶不画柱（列仍占位，保证 x 轴对齐）；
  * - 每系列峰值（并列取最后一根）与末桶直接标数；
- * - x 轴每 5 桶标一个标签，并始终标出末桶。
+ * - x 轴标签密度按 `axisDensity` 调整（wide 每 5 桶 / narrow 每 10 桶，
+ *   半宽卡片防相邻标签重叠与溢出），并始终标出末桶。
  */
 export async function TrendChart({
   buckets,
@@ -60,6 +64,7 @@ export async function TrendChart({
   formatValue,
   emptyLabel,
   todayIndex,
+  axisDensity = "wide",
 }: TrendChartProps) {
   // 悬停说明的文案在组件内取词；emptyLabel 仍可由调用方覆盖（如「无」）。
   const t = await getTranslations("analysis");
@@ -176,8 +181,8 @@ export async function TrendChart({
         </div>
       </div>
 
-      {/* x 轴：左侧 32px 与 y 轴列（26px + 6px gap）对齐 */}
-      <div className="mt-1.5 flex gap-[3px]">
+      {/* x 轴：左侧 32px 与 y 轴列（26px + 6px gap）对齐；overflow-hidden 兜底防标签冲出卡片 */}
+      <div className="mt-1.5 flex gap-[3px] overflow-hidden">
         <span className="w-8 flex-none" aria-hidden="true" />
         {buckets.map((bucket, index) => (
           <span
@@ -188,7 +193,9 @@ export async function TrendChart({
               fontVariantNumeric: "tabular-nums",
             }}
           >
-            {index % 5 === 0 || index === lastIndex ? bucket.label : ""}
+            {index % axisLabelStep(axisDensity) === 0 || index === lastIndex
+              ? bucket.label
+              : ""}
           </span>
         ))}
       </div>

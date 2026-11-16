@@ -272,6 +272,7 @@ async function PersonalBody({
             buckets={buckets}
             series={[{ tone: "primary", values: completionValues }]}
             todayIndex={todayIndex}
+            axisDensity="wide"
           />
         </div>
       </section>
@@ -315,6 +316,7 @@ async function PersonalBody({
                 { tone: "primary", values: completedValues },
               ]}
               todayIndex={todayIndex}
+              axisDensity="narrow"
             />
           </div>
         </section>
@@ -341,6 +343,7 @@ async function PersonalBody({
               formatValue={(value) => t("valueDue", { value })}
               emptyLabel={t("none")}
               todayIndex={0}
+              axisDensity="narrow"
             />
           </div>
         </section>
@@ -485,6 +488,7 @@ async function TeamBody({
             buckets={buckets}
             series={[{ tone: "primary", values: throughputValues }]}
             todayIndex={todayIndex}
+            axisDensity="wide"
           />
         </div>
       </section>
