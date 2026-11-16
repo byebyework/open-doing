@@ -43,6 +43,7 @@ export async function registerUser(
   await page.getByTestId(TEST_IDS.auth.passwordInput).fill(password);
   await page.getByTestId(TEST_IDS.auth.passwordConfirmInput).fill(password);
   await page.getByTestId(TEST_IDS.auth.registrationCodeInput).fill(E2E_REGISTRATION_CODE);
+  await page.getByTestId(TEST_IDS.auth.agreeCheckbox).click();
   await page.getByTestId(TEST_IDS.auth.submitButton).click();
 
   await expect(page).toHaveURL(/\/space\/personal\/dashboard$/, {

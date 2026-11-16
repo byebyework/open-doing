@@ -499,7 +499,11 @@ export function RegisterForm() {
           )}
         />
         {errors.agreeTos ? (
-          <p id="register-agree-tos-error" className="mb-4 text-[12.5px] text-[var(--error)]">
+          <p
+            id="register-agree-tos-error"
+            data-testid="auth-agree-tos-error"
+            className="mb-4 text-[12.5px] text-[var(--error)]"
+          >
             {errors.agreeTos.message}
           </p>
         ) : null}

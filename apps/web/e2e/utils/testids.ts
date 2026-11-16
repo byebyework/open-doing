@@ -14,6 +14,7 @@ export const TEST_IDS = {
     passwordConfirmInput: "auth-password-confirm-input",
     registrationCodeInput: "auth-registration-code-input",
     submitButton: "auth-submit-button",
+    agreeCheckbox: "auth-agree-checkbox",
   },
   projects: {
     newPersonalProjectButton: "new-personal-project-button",
