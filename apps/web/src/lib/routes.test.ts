@@ -8,7 +8,7 @@ import {
   personalTaskHref,
   resolveAmbientSpaceRef,
   spaceDashboardHref,
-  spaceRefFromPathname,
+  isSpacePathname,
   teamProjectHref,
   teamProjectNewHref,
   teamSettingsHref,
@@ -93,21 +93,6 @@ describe("joinTeamHref", () => {
   });
 });
 
-describe("spaceRefFromPathname", () => {
-  it("解析 /space/{ref}/* 的第二段", () => {
-    expect(spaceRefFromPathname("/space/growthx/dashboard")).toBe("growthx");
-    expect(spaceRefFromPathname("/space/personal/kanban")).toBe("personal");
-  });
-  it("/space 根路径与个人空间缺省回退", () => {
-    expect(spaceRefFromPathname("/space")).toBe("personal");
-    expect(spaceRefFromPathname("/space/")).toBe("personal");
-  });
-  it("非空间路由回退 personal", () => {
-    expect(spaceRefFromPathname("/about")).toBe("personal");
-    expect(spaceRefFromPathname("/invites")).toBe("personal");
-  });
-});
-
 describe("resolveAmbientSpaceRef", () => {
   const slugs = ["growthx", "lab"];
   it("personal 与所属团队 slug 原样通过", () => {
@@ -119,5 +104,17 @@ describe("resolveAmbientSpaceRef", () => {
     expect(resolveAmbientSpaceRef(null, slugs)).toBeNull();
     expect(resolveAmbientSpaceRef(undefined, slugs)).toBeNull();
     expect(resolveAmbientSpaceRef("", slugs)).toBeNull();
+  });
+});
+
+describe("isSpacePathname", () => {
+  it("空间路由为 true", () => {
+    expect(isSpacePathname("/space/personal/dashboard")).toBe(true);
+    expect(isSpacePathname("/space/growthx")).toBe(true);
+  });
+  it("非空间路由为 false", () => {
+    expect(isSpacePathname("/about")).toBe(false);
+    expect(isSpacePathname("/invites")).toBe(false);
+    expect(isSpacePathname("/")).toBe(false);
   });
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useTransition } from "react";
 
@@ -15,7 +15,9 @@ import {
 
 import {
   createTeamHref,
+  isSpacePathname,
   joinTeamHref,
+  resolveAmbientSpaceRef,
   spaceDashboardHref,
 } from "@/lib/routes";
 
@@ -29,8 +31,6 @@ export interface SpaceSwitcherTeam {
 export interface SpaceSwitcherProps {
   /** 当前用户所属团队，按服务端返回顺序渲染。 */
   teams: SpaceSwitcherTeam[];
-  /** ambient 空间（od_space cookie 校验结果）：非空间路由保持的侧栏上下文。 */
-  ambientSpaceRef?: string | null;
 }
 
 /**
@@ -38,8 +38,8 @@ export interface SpaceSwitcherProps {
  *
  * `/space/personal` 及其子路径命中个人空间（`"personal"`）；
  * `/space/{slug}` 及其子路径命中对应团队（slug ∈ teamSlugs 时）；
- * 其余路由（如 `/invites`、`/teams/new`）命中 ambient 空间（`od_space`
- * cookie 经服务端校验后传入，保持侧栏空间上下文）；无 ambient 时不选中。
+ * 其余路由（如 `/invites`、`/teams/new`）命中链接携带的 `?space=` 参数
+ *（经白名单校验），保持侧栏空间上下文；无参数时不选中。
  * 作为纯函数导出，便于在 node 环境单独测试。
  */
 export function selectedSpaceKey(
@@ -68,8 +68,9 @@ export function selectedSpaceKey(
  * 当前选中项由 `usePathname` 推导，点击菜单项用 `router.push` 跳转。
  * 组件边界仍按 F-5 契约保留在 Sidebar 内，布局导入关系不变。
  */
-export function SpaceSwitcher({ teams, ambientSpaceRef }: SpaceSwitcherProps) {
+export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const router = useRouter();
   const t = useTranslations("nav");
   // 空间切换是 RSC 重取数（目标路由无 loading.js），用 transition 标记
@@ -77,7 +78,14 @@ export function SpaceSwitcher({ teams, ambientSpaceRef }: SpaceSwitcherProps) {
   const [switchPending, startSwitchTransition] = useTransition();
 
   const teamSlugs = teams.map((team) => team.slug);
-  const selectedKey = selectedSpaceKey(pathname, teamSlugs, ambientSpaceRef);
+  // 系统页上下文来自链接携带的 ?space= 参数（白名单校验）；空间路由以 pathname 为准。
+  const urlSpace = isSpacePathname(pathname)
+    ? null
+    : resolveAmbientSpaceRef(
+        searchParams.get("space"),
+        teamSlugs,
+      );
+  const selectedKey = selectedSpaceKey(pathname, teamSlugs, urlSpace);
   // 团队项 key 加 `team:` 前缀，避免与 personal / create-team / join-team 冲突。
   const selectedMenuKey =
     selectedKey === null

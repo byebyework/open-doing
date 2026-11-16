@@ -31,21 +31,6 @@ vi.mock("next/headers", () => ({
     if (requestState.cookieHeader) value.set("cookie", requestState.cookieHeader);
     return value;
   }),
-  // cookies()：按 requestState.cookieHeader 解析出 name → value 的只读 store，
-  // getSpaceNavData 读 od_space（ambient 空间）走这里。
-  cookies: vi.fn(async () => {
-    const store = new Map<string, string>();
-    if (requestState.cookieHeader) {
-      for (const pair of requestState.cookieHeader.split("; ")) {
-        const eq = pair.indexOf("=");
-        if (eq > 0) store.set(pair.slice(0, eq), pair.slice(eq + 1));
-      }
-    }
-    return {
-      get: (name: string) =>
-        store.has(name) ? { name, value: store.get(name)! } : undefined,
-    };
-  }),
 }));
 
 const PASSWORD = "password123";
@@ -113,8 +98,6 @@ describe.skipIf(!hasTestDatabase)("getSpaceNavData", () => {
     const data = await getSpaceNavData();
     expect(data.loggedIn).toBe(true);
     expect(data.isAdmin).toBe(false);
-    // 无 od_space cookie：ambient 空间为 null（侧栏回退个人空间现状）。
-    expect(data.ambientSpaceRef).toBeNull();
   });
 
   it("returns isAdmin:true for an admin user", async () => {

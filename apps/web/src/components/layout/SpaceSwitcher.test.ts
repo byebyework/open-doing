@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 
-import { resolveSpaceLocation } from "./SpaceNavMenu";
 import { selectedSpaceKey } from "./SpaceSwitcher";
 
 describe("selectedSpaceKey", () => {
@@ -43,7 +42,7 @@ describe("selectedSpaceKey", () => {
   });
 });
 
-describe("selectedSpaceKey ambient 分支", () => {
+describe("selectedSpaceKey urlSpace 分支", () => {
   const slugs = ["growthx", "lab"];
   it("非空间路由 + ambient 团队 slug → 返回该 slug", () => {
     expect(selectedSpaceKey("/about", slugs, "growthx")).toBe("growthx");
@@ -59,23 +58,3 @@ describe("selectedSpaceKey ambient 分支", () => {
   });
 });
 
-describe("resolveSpaceLocation ambient 分支", () => {
-  it("非空间路由带 ambient → spaceRef 为 ambient、module 为 null", () => {
-    expect(resolveSpaceLocation("/about", "growthx")).toEqual({
-      spaceRef: "growthx",
-      module: null,
-    });
-  });
-  it("非空间路由无 ambient → 回退 personal（现状）", () => {
-    expect(resolveSpaceLocation("/about")).toEqual({
-      spaceRef: "personal",
-      module: null,
-    });
-  });
-  it("空间路由不受 ambient 影响", () => {
-    expect(resolveSpaceLocation("/space/growthx/kanban", "personal")).toEqual({
-      spaceRef: "growthx",
-      module: "kanban",
-    });
-  });
-});

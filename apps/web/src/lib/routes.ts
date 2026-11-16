@@ -65,20 +65,9 @@ export function joinTeamHref(): string {
 }
 
 /**
- * 从路径解析空间 ref（`personal` 或团队 slug）：首段为 `space` 时取第二段，
- * 缺省与一切非空间路由回退 `personal`。proxy（od_space cookie 写入）与
- * 侧栏 ambient 空间解析共用此口径。
- */
-export function spaceRefFromPathname(pathname: string): string {
-  const segments = pathname.split("/").filter(Boolean);
-  if (segments[0] !== "space") return "personal";
-  return segments[1] ?? "personal";
-}
-
-/**
- * 校验 ambient 空间 cookie 值（`od_space`）：只接受 `personal` 或当前用户
- * 所属团队 slug，其余（伪造 / 已解散团队）一律拒绝为 null——不信任任意
- * cookie 值，防止侧栏渲染未知团队。
+ * 校验系统页上下文空间（侧栏链接携带的 `?space=` 参数）：只接受 `personal`
+ * 或当前用户所属团队 slug，其余（伪造 / 已解散团队）一律拒绝为 null——
+ * 不信任任意 URL 输入，防止侧栏渲染未知团队。
  */
 export function resolveAmbientSpaceRef(
   raw: string | null | undefined,
@@ -87,4 +76,9 @@ export function resolveAmbientSpaceRef(
   if (!raw) return null;
   if (raw === "personal") return "personal";
   return teamSlugs.includes(raw) ? raw : null;
+}
+
+/** 是否空间路由（`/space/*`）：client 侧 od_space cookie 只在空间路由上刷新。 */
+export function isSpacePathname(pathname: string): boolean {
+  return pathname.split("/").filter(Boolean)[0] === "space";
 }

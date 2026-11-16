@@ -138,15 +138,34 @@ test.describe("flow 11: 空间切换", () => {
     await registerUser(page, username);
     const teamSlug = await createTeam(page, teamName);
 
-    // 从团队空间进入系统级页面（od_space cookie 保持 ambient 上下文）：
+    // 从团队空间点击侧栏系统入口（链接携带 ?space={slug}）：
     // 切换器仍显示团队名，侧栏模块链接仍指向团队空间。
-    for (const path of ["/about", "/invites"]) {
-      await page.goto(path);
-      await expect(switcherTrigger(page)).toHaveText(teamName);
-      await expect(
-        page.locator(`aside a[href="/space/${teamSlug}/dashboard"]`),
-      ).toBeVisible();
-    }
+    await page
+      .locator("aside")
+      .getByRole("link", { name: "关于系统" })
+      .click();
+    await expect(page).toHaveURL(
+      new RegExp(`/about\\?space=${teamSlug}$`),
+      { timeout: 30_000 },
+    );
+    await expect(switcherTrigger(page)).toHaveText(teamName);
+    await expect(
+      page.locator(`aside a[href="/space/${teamSlug}/dashboard"]`),
+    ).toBeVisible();
+
+    await page
+      .locator("aside")
+      .getByRole("link", { name: "待处理邀请" })
+      .click();
+    await expect(page).toHaveURL(
+      new RegExp(`/invites\\?space=${teamSlug}$`),
+      { timeout: 30_000 },
+    );
+    await expect(switcherTrigger(page)).toHaveText(teamName);
+
+    // 直达不带参数的系统页：回退个人空间现状（不高亮任何团队）。
+    await page.goto("/about");
+    await expect(switcherTrigger(page)).toHaveText(/个人空间/);
   });
 });
 

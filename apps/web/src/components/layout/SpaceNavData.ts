@@ -1,9 +1,6 @@
-import { cookies } from "next/headers";
-
 import { getCurrentUser } from "@/features/auth/session";
 import { listReceivedInvites } from "@/features/teams/invites/service";
 import { listTeamsForUser } from "@/features/teams/service";
-import { resolveAmbientSpaceRef } from "@/lib/routes";
 
 /** 侧栏 / 移动 Drawer 共用的导航数据（可序列化，供 client 组件消费）。 */
 export interface SpaceNavData {
@@ -15,12 +12,6 @@ export interface SpaceNavData {
   loggedIn: boolean;
   /** 系统管理员标记；账号分组里据此渲染「管理控制台」入口。 */
   isAdmin: boolean;
-  /**
-   * ambient 空间：非空间路由（`/about`、`/invites` 等系统页）侧栏保持的
-   * 空间上下文，取自 `od_space` cookie 并经白名单校验（personal 或本人
-   * 团队 slug）；无 cookie 或校验不过为 null（侧栏回退个人空间现状）。
-   */
-  ambientSpaceRef: string | null;
 }
 
 /**
@@ -33,26 +24,13 @@ export interface SpaceNavData {
 export async function getSpaceNavData(): Promise<SpaceNavData> {
   const user = await getCurrentUser();
   if (!user) {
-    return {
-      teams: [],
-      pendingInviteCount: 0,
-      loggedIn: false,
-      isAdmin: false,
-      ambientSpaceRef: null,
-    };
+    return { teams: [], pendingInviteCount: 0, loggedIn: false, isAdmin: false };
   }
 
   const [teams, received] = await Promise.all([
     listTeamsForUser(user.id),
     listReceivedInvites(user.id),
   ]);
-
-  const cookieStore = await cookies();
-  // ambient 空间：od_space cookie 经白名单校验（personal 或本人团队 slug）。
-  const ambientSpaceRef = resolveAmbientSpaceRef(
-    cookieStore.get("od_space")?.value,
-    teams.map((team) => team.slug),
-  );
 
   return {
     teams: teams.map(({ slug, name }) => ({ slug, name })),
@@ -61,6 +39,5 @@ export async function getSpaceNavData(): Promise<SpaceNavData> {
     ).length,
     loggedIn: true,
     isAdmin: user.isAdmin,
-    ambientSpaceRef,
   };
 }

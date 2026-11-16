@@ -1,11 +1,10 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import type { ReactNode } from "react";
 
 import { BrandMark } from "@/components/ui/BrandMark";
 import { getCurrentUser } from "@/features/auth/session";
 import { listTeamsForUser } from "@/features/teams/service";
-import { resolveAmbientSpaceRef, spaceDashboardHref } from "@/lib/routes";
+import { spaceDashboardHref } from "@/lib/routes";
 
 import { SidebarShell } from "./SidebarShell";
 import { SpaceSwitcher } from "./SpaceSwitcher";
@@ -30,12 +29,6 @@ export interface SidebarProps {
 export async function Sidebar({ nav }: SidebarProps) {
   const user = await getCurrentUser();
   const teams = user ? await listTeamsForUser(user.id) : [];
-  // ambient 空间：与本组件已取的团队做白名单校验（与 SpaceNavData 同口径）。
-  const cookieStore = await cookies();
-  const ambientSpaceRef = resolveAmbientSpaceRef(
-    cookieStore.get("od_space")?.value,
-    teams.map((team) => team.slug),
-  );
 
   return (
     <SidebarShell>
@@ -51,10 +44,7 @@ export async function Sidebar({ nav }: SidebarProps) {
       </Link>
 
       {/* 空间切换器：团队列表由服务端取数，交互在 client 组件内 */}
-      <SpaceSwitcher
-        teams={teams.map(({ slug, name }) => ({ slug, name }))}
-        ambientSpaceRef={ambientSpaceRef}
-      />
+      <SpaceSwitcher teams={teams.map(({ slug, name }) => ({ slug, name }))} />
 
       {/* 当前空间导航 */}
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto">
