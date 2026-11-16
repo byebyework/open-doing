@@ -208,7 +208,7 @@ function ChipUnassignedTag() {
   const tTasks = useTranslations("tasks");
 
   return (
-    <span className="ml-[4px] shrink-0 whitespace-nowrap rounded-full border border-current px-1 text-[9.5px] leading-[1.5]">
+    <span className="ml-[3px] shrink-0 self-center whitespace-nowrap rounded-full border border-current px-1 text-[9.5px] leading-[1.5]">
       {tTasks("unassigned")}
     </span>
   );
@@ -298,11 +298,15 @@ function CalendarChip({
 
       {variant === "team" ? (
         item.assigneeName ? (
-          <AssigneeBadge
-            seed={item.assigneeId ?? item.assigneeName}
-            name={item.assigneeName}
-            size={14}
-          />
+          // 拉伸容器内垂直居中：外层 items-stretch 供色条满高，头像固定
+          // 14px 若直接放进去会被顶到 chip 上沿（与文字基线错位）。
+          <span className="flex shrink-0 items-center pl-[3px]">
+            <AssigneeBadge
+              seed={item.assigneeId ?? item.assigneeName}
+              name={item.assigneeName}
+              size={14}
+            />
+          </span>
         ) : (
           <ChipUnassignedTag />
         )
