@@ -29,6 +29,13 @@
       "when": 1794827003024,
       "tag": "0003_cuddly_millenium_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794839746117,
+      "tag": "0004_foamy_firedrake",
+      "breakpoints": true
     }
   ]
 }
