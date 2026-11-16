@@ -29,6 +29,8 @@ export interface SpaceSwitcherTeam {
 export interface SpaceSwitcherProps {
   /** 当前用户所属团队，按服务端返回顺序渲染。 */
   teams: SpaceSwitcherTeam[];
+  /** ambient 空间（od_space cookie 校验结果）：非空间路由保持的侧栏上下文。 */
+  ambientSpaceRef?: string | null;
 }
 
 /**
@@ -36,12 +38,14 @@ export interface SpaceSwitcherProps {
  *
  * `/space/personal` 及其子路径命中个人空间（`"personal"`）；
  * `/space/{slug}` 及其子路径命中对应团队（slug ∈ teamSlugs 时）；
- * 其余路由（如 `/invites`、`/teams/new`）不选中任何空间。
+ * 其余路由（如 `/invites`、`/teams/new`）命中 ambient 空间（`od_space`
+ * cookie 经服务端校验后传入，保持侧栏空间上下文）；无 ambient 时不选中。
  * 作为纯函数导出，便于在 node 环境单独测试。
  */
 export function selectedSpaceKey(
   pathname: string,
   teamSlugs: string[],
+  ambientSpaceRef?: string | null,
 ): string | null {
   // 与团队一致用 `/` 边界判断，覆盖 /space/personal/tasks/[taskId] 等子路由。
   if (pathname === "/space/personal" || pathname.startsWith("/space/personal/"))
@@ -53,7 +57,7 @@ export function selectedSpaceKey(
     if (pathname === base || pathname.startsWith(`${base}/`)) return slug;
   }
 
-  return null;
+  return ambientSpaceRef ?? null;
 }
 
 /**
@@ -64,7 +68,7 @@ export function selectedSpaceKey(
  * 当前选中项由 `usePathname` 推导，点击菜单项用 `router.push` 跳转。
  * 组件边界仍按 F-5 契约保留在 Sidebar 内，布局导入关系不变。
  */
-export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
+export function SpaceSwitcher({ teams, ambientSpaceRef }: SpaceSwitcherProps) {
   const pathname = usePathname();
   const router = useRouter();
   const t = useTranslations("nav");
@@ -73,7 +77,7 @@ export function SpaceSwitcher({ teams }: SpaceSwitcherProps) {
   const [switchPending, startSwitchTransition] = useTransition();
 
   const teamSlugs = teams.map((team) => team.slug);
-  const selectedKey = selectedSpaceKey(pathname, teamSlugs);
+  const selectedKey = selectedSpaceKey(pathname, teamSlugs, ambientSpaceRef);
   // 团队项 key 加 `team:` 前缀，避免与 personal / create-team / join-team 冲突。
   const selectedMenuKey =
     selectedKey === null

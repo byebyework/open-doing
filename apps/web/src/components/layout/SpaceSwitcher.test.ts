@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import { resolveSpaceLocation } from "./SpaceNavMenu";
 import { selectedSpaceKey } from "./SpaceSwitcher";
 
 describe("selectedSpaceKey", () => {
@@ -39,5 +40,42 @@ describe("selectedSpaceKey", () => {
 
   it("凭码加入页不选中任何空间", () => {
     expect(selectedSpaceKey("/teams/join", ["growth"])).toBeNull();
+  });
+});
+
+describe("selectedSpaceKey ambient 分支", () => {
+  const slugs = ["growthx", "lab"];
+  it("非空间路由 + ambient 团队 slug → 返回该 slug", () => {
+    expect(selectedSpaceKey("/about", slugs, "growthx")).toBe("growthx");
+  });
+  it("非空间路由 + ambient personal → 返回 personal", () => {
+    expect(selectedSpaceKey("/invites", slugs, "personal")).toBe("personal");
+  });
+  it("非空间路由无 ambient → null（现状）", () => {
+    expect(selectedSpaceKey("/about", slugs)).toBeNull();
+  });
+  it("空间路由忽略 ambient（pathname 为准）", () => {
+    expect(selectedSpaceKey("/space/lab/dashboard", slugs, "growthx")).toBe("lab");
+  });
+});
+
+describe("resolveSpaceLocation ambient 分支", () => {
+  it("非空间路由带 ambient → spaceRef 为 ambient、module 为 null", () => {
+    expect(resolveSpaceLocation("/about", "growthx")).toEqual({
+      spaceRef: "growthx",
+      module: null,
+    });
+  });
+  it("非空间路由无 ambient → 回退 personal（现状）", () => {
+    expect(resolveSpaceLocation("/about")).toEqual({
+      spaceRef: "personal",
+      module: null,
+    });
+  });
+  it("空间路由不受 ambient 影响", () => {
+    expect(resolveSpaceLocation("/space/growthx/kanban", "personal")).toEqual({
+      spaceRef: "growthx",
+      module: "kanban",
+    });
   });
 });

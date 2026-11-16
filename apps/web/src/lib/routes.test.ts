@@ -6,7 +6,9 @@ import {
   moduleHref,
   personalProjectHref,
   personalTaskHref,
+  resolveAmbientSpaceRef,
   spaceDashboardHref,
+  spaceRefFromPathname,
   teamProjectHref,
   teamProjectNewHref,
   teamSettingsHref,
@@ -88,5 +90,34 @@ describe("createTeamHref", () => {
 describe("joinTeamHref", () => {
   it("返回 /teams/join", () => {
     expect(joinTeamHref()).toBe("/teams/join");
+  });
+});
+
+describe("spaceRefFromPathname", () => {
+  it("解析 /space/{ref}/* 的第二段", () => {
+    expect(spaceRefFromPathname("/space/growthx/dashboard")).toBe("growthx");
+    expect(spaceRefFromPathname("/space/personal/kanban")).toBe("personal");
+  });
+  it("/space 根路径与个人空间缺省回退", () => {
+    expect(spaceRefFromPathname("/space")).toBe("personal");
+    expect(spaceRefFromPathname("/space/")).toBe("personal");
+  });
+  it("非空间路由回退 personal", () => {
+    expect(spaceRefFromPathname("/about")).toBe("personal");
+    expect(spaceRefFromPathname("/invites")).toBe("personal");
+  });
+});
+
+describe("resolveAmbientSpaceRef", () => {
+  const slugs = ["growthx", "lab"];
+  it("personal 与所属团队 slug 原样通过", () => {
+    expect(resolveAmbientSpaceRef("personal", slugs)).toBe("personal");
+    expect(resolveAmbientSpaceRef("growthx", slugs)).toBe("growthx");
+  });
+  it("伪造 / 未知的 slug 一律拒绝为 null（安全：不渲染未知团队）", () => {
+    expect(resolveAmbientSpaceRef("evil", slugs)).toBeNull();
+    expect(resolveAmbientSpaceRef(null, slugs)).toBeNull();
+    expect(resolveAmbientSpaceRef(undefined, slugs)).toBeNull();
+    expect(resolveAmbientSpaceRef("", slugs)).toBeNull();
   });
 });

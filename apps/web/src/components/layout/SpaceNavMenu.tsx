@@ -267,15 +267,20 @@ export interface SpaceNavMenuProps {
  * 当前空间解析结果。
  *
  * `/space/{spaceRef}/{module}` 取第二段为空间、第三段为模块；
- * 非空间路由（如 `/invites`、`/teams/new`）回退到个人空间且不高亮模块。
+ * 非空间路由（如 `/invites`、`/teams/new`）命中 ambient 空间
+ * （`ambientSpaceRef`，来自 od_space cookie 的服务端校验结果，保持
+ * 侧栏空间上下文），无 ambient 时回退个人空间；两者均不高亮模块。
  */
-export function resolveSpaceLocation(pathname: string): {
+export function resolveSpaceLocation(
+  pathname: string,
+  ambientSpaceRef?: string | null,
+): {
   spaceRef: string;
   module: string | null;
 } {
   const segments = pathname.split("/").filter(Boolean);
   if (segments[0] !== "space" || !segments[1]) {
-    return { spaceRef: "personal", module: null };
+    return { spaceRef: ambientSpaceRef ?? "personal", module: null };
   }
   return { spaceRef: segments[1], module: segments[2] ?? null };
 }
@@ -309,7 +314,10 @@ export function SpaceNavMenu({ data }: SpaceNavMenuProps) {
 
   if (!data.loggedIn) return null;
 
-  const { spaceRef, module: activeModule } = resolveSpaceLocation(pathname);
+  const { spaceRef, module: activeModule } = resolveSpaceLocation(
+    pathname,
+    data.ambientSpaceRef,
+  );
   // 个人空间 4 项、团队空间 5 项；未知 slug 按团队渲染（团队管理路由仍可 404）。
   const modules = spaceRef === "personal" ? PERSONAL_MODULES : TEAM_MODULES;
   const spaceLabel = resolveSpaceLabel(spaceRef, data.teams) ?? t("personalSpace");

@@ -63,3 +63,28 @@ export function createTeamHref(): string {
 export function joinTeamHref(): string {
   return "/teams/join";
 }
+
+/**
+ * 从路径解析空间 ref（`personal` 或团队 slug）：首段为 `space` 时取第二段，
+ * 缺省与一切非空间路由回退 `personal`。proxy（od_space cookie 写入）与
+ * 侧栏 ambient 空间解析共用此口径。
+ */
+export function spaceRefFromPathname(pathname: string): string {
+  const segments = pathname.split("/").filter(Boolean);
+  if (segments[0] !== "space") return "personal";
+  return segments[1] ?? "personal";
+}
+
+/**
+ * 校验 ambient 空间 cookie 值（`od_space`）：只接受 `personal` 或当前用户
+ * 所属团队 slug，其余（伪造 / 已解散团队）一律拒绝为 null——不信任任意
+ * cookie 值，防止侧栏渲染未知团队。
+ */
+export function resolveAmbientSpaceRef(
+  raw: string | null | undefined,
+  teamSlugs: readonly string[],
+): string | null {
+  if (!raw) return null;
+  if (raw === "personal") return "personal";
+  return teamSlugs.includes(raw) ? raw : null;
+}

@@ -128,6 +128,26 @@ test.describe("flow 11: 空间切换", () => {
     // 团队本身仍存在：切换器里能看到名为 Personal 的团队项。
     await openSwitcherAndGetItem(page, "Personal");
   });
+
+  test("系统页保持空间上下文：/about 与 /invites 不丢团队", async ({
+    page,
+  }) => {
+    const username = uniqueUsername("e2e_ctx");
+    const teamName = uniqueLabel("E2E context team");
+
+    await registerUser(page, username);
+    const teamSlug = await createTeam(page, teamName);
+
+    // 从团队空间进入系统级页面（od_space cookie 保持 ambient 上下文）：
+    // 切换器仍显示团队名，侧栏模块链接仍指向团队空间。
+    for (const path of ["/about", "/invites"]) {
+      await page.goto(path);
+      await expect(switcherTrigger(page)).toHaveText(teamName);
+      await expect(
+        page.locator(`aside a[href="/space/${teamSlug}/dashboard"]`),
+      ).toBeVisible();
+    }
+  });
 });
 
 test.describe("flow 11: 移动端 Drawer 导航", () => {

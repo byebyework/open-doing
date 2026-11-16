@@ -92,7 +92,10 @@ export function MobileNav({ data }: MobileNavProps) {
           </SheetTitle>
         </SheetHeader>
         <div className="flex flex-col p-3">
-          <SpaceSwitcher teams={data.teams} />
+          <SpaceSwitcher
+            teams={data.teams}
+            ambientSpaceRef={data.ambientSpaceRef}
+          />
           <nav className="flex flex-col gap-1">
             <SpaceNavMenu data={data} />
           </nav>
