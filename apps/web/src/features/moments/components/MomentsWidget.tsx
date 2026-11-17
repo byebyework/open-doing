@@ -32,7 +32,7 @@ const NUMBER_TONE_CLASS: Record<MomentView["mode"], string> = {
  * 取数由页面并行完成：`moments` 已是按置顶 / 方向排好序的前 N 项，组件不重算
  * 日期，只做文案分支与色调渲染；每列 pill 都是指向模块页的 `Link`（无详情页）。
  * `today` 是 RSC 契约的展示上下文（天数相对哪一天的口径），当前不参与渲染——
- * 与 v1 DaysWidget 一致：日期计算全部收敛在 service / 纯函数里，组件不做时间算术。
+ * 日期计算全部收敛在 service / 纯函数里，组件不做时间算术。
  */
 export async function MomentsWidget({
   moments,

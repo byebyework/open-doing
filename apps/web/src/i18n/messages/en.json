@@ -224,7 +224,6 @@
     "kanban": "Kanban",
     "calendar": "Calendar",
     "analysis": "Analysis",
-    "days": "Important Days",
     "moments": "Moments",
     "openNavAria": "Open navigation",
     "collapseSidebar": "Collapse sidebar",
@@ -341,54 +340,6 @@
     "editTaskAria": "Edit task: {title}",
     "deleteTaskAria": "Delete task: {title}",
     "dueSoonFull": "Due {date}"
-  },
-  "days": {
-    "titleRequired": "Title is required",
-    "titleTooLong": "Title must be {max} characters or fewer",
-    "invalidDate": "Invalid date",
-    "invalidLunarDay": "Lunar month or day out of range",
-    "notFound": "This day does not exist or was deleted",
-    "widget": {
-      "title": "My Days",
-      "viewAll": "View all",
-      "emptyTitle": "No days tracked yet",
-      "emptyBody": "Track birthdays, anniversaries, work milestones — see how far you have come and how long is left.",
-      "emptyAction": "Add your first day"
-    },
-    "page": {
-      "title": "Important Days",
-      "subtitle": "The days that count, in one place.",
-      "create": "New"
-    },
-    "card": {
-      "countdown": "in {count, plural, one {1 day} other {# days}}",
-      "elapsed": "{count, plural, one {1 day} other {# days}} ago",
-      "isToday": "Today",
-      "everyYear": "Yearly",
-      "lunarBadge": "Lunar",
-      "pinnedAria": "Pin {title}",
-      "unpinnedAria": "Unpin {title}",
-      "editAria": "Edit {title}",
-      "deleteAria": "Delete {title}"
-    },
-    "form": {
-      "createTitle": "Track a day",
-      "editTitle": "Edit day",
-      "titleLabel": "Name",
-      "titlePlaceholder": "First day at work, retirement, Dad's birthday…",
-      "typeSolar": "Solar",
-      "typeLunar": "Lunar",
-      "dateLabel": "Date",
-      "lunarMonthLabel": "Lunar month",
-      "lunarDayLabel": "Lunar day",
-      "repeatLabel": "Repeats yearly",
-      "repeatLockedHint": "Lunar days roll over every year",
-      "pinnedLabel": "Pin to top",
-      "submit": "Save"
-    },
-    "deleteConfirmTitle": "Delete \"{title}\"?",
-    "deleteConfirmBody": "This cannot be undone.",
-    "deleteConfirmAction": "Delete"
   },
   "moments": {
     "titleRequired": "Title is required",
@@ -1175,7 +1126,6 @@
     "kanbanTitle": "Kanban · Open Doing",
     "calendarTitle": "Calendar · Open Doing",
     "analysisTitle": "Analysis · Open Doing",
-    "daysTitle": "Important Days · Open Doing",
     "momentsTitle": "Moments · Open Doing",
     "teamModuleTitle": "{team} {module} · Open Doing"
   },

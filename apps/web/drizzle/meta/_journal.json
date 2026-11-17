@@ -43,6 +43,13 @@
       "when": 1794924985541,
       "tag": "0005_left_firelord",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794928809622,
+      "tag": "0006_large_invisible_woman",
+      "breakpoints": true
     }
   ]
 }

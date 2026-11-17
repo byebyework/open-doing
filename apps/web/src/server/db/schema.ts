@@ -389,33 +389,6 @@ export const notifications = pgTable(
   ],
 );
 
-/** 重要日子:公历或农历(月日),自动推导正计时/倒计时/周年;个人数据,owner-only。 */
-export const importantDays = pgTable(
-  "important_days",
-  {
-    id: uuidPk(),
-    ownerId: uuidRef("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
-    title: text("title").notNull(),
-    // 公历锚点日;仅非农历条目非空(date 按天粒度,字符串模式)。
-    date: date("date", { mode: "string" }),
-    isLunar: boolean("is_lunar").notNull().default(false),
-    lunarMonth: integer("lunar_month"), // 1-12(spec 决策 4:闰月按平月过,无闰月选项)
-    lunarDay: integer("lunar_day"), // 1-30
-    repeat: text("repeat").$type<"none" | "yearly">().notNull(),
-    pinned: boolean("pinned").notNull().default(false),
-    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-  },
-  (t) => [
-    index("important_days_owner_id_idx").on(t.ownerId),
-    check(
-      "important_days_shape",
-      sql`(is_lunar = true AND date IS NULL AND lunar_month BETWEEN 1 AND 12 AND lunar_day BETWEEN 1 AND 30 AND repeat = 'yearly')
-       OR (is_lunar = false AND date IS NOT NULL AND lunar_month IS NULL AND lunar_day IS NULL)`,
-    ),
-  ],
-);
-
 /** 时刻:三种计时模式(正计时/倒计时/周期)的个人日子;个人数据,owner-only。 */
 export const moments = pgTable(
   "moments",

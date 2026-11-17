@@ -24,8 +24,6 @@ const SRC_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/src/features/users/service.ts", reason: "UserError zh 兜底（构造参数均携带 users.profile i18n key）" },
   { prefix: "apps/web/src/features/personal/tasks/service.ts", reason: "DomainError zh 兜底 + 校验标签" },
   { prefix: "apps/web/src/features/personal/projects/service.ts", reason: "DomainError zh 兜底" },
-  { prefix: "apps/web/src/features/days/service.ts", reason: "DomainError zh 兜底（构造参数均携带 days i18n key）" },
-  { prefix: "apps/web/src/features/days/actions.ts", reason: "DomainError zh 兜底（无 i18n 通道分支回退 message）+ console.error 服务端日志前缀" },
   { prefix: "apps/web/src/features/moments/service.ts", reason: "DomainError zh 兜底（构造参数均携带 moments i18n key）" },
   { prefix: "apps/web/src/features/moments/actions.ts", reason: "console.error 服务端日志前缀（无 i18n 通道分支回退 service 层 zh 兜底 message）" },
   { prefix: "apps/web/src/features/projects/service.ts", reason: "DomainError zh 兜底" },
@@ -98,7 +96,6 @@ const E2E_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/e2e/flows/13-projects-module.spec.ts", reason: "项目模块列表/空态/邀请 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/14-task-priority.spec.ts", reason: "优先级档位（高/低）与操作列权限 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/15-registration-consent.spec.ts", reason: "中文 describe/test 标题（断言文案取自消息包，不硬编码）" },
-  { prefix: "apps/web/e2e/flows/16-important-days.spec.ts", reason: "重要日子模块空态/弹窗/徽标/删除确认 zh 文案断言" },
   { prefix: "apps/web/e2e/responsive.spec.ts", reason: "响应式路由 zh 就绪断言" },
 ];
 

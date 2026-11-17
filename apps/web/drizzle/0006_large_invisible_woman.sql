@@ -1,0 +1,1 @@
+DROP TABLE "important_days" CASCADE;
