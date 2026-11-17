@@ -52,3 +52,5 @@ next-env.d.ts
 # 设计原型与实施计划：本地维护，不入库
 docs/prototypes/
 docs/superpowers/
+
+.hallmark/
