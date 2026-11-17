@@ -432,7 +432,7 @@
       "checkConstraints": {
         "moments_shape": {
           "name": "moments_shape",
-          "value": "((mode IN ('count_up','countdown') AND cycle IS NULL AND weekday IS NULL AND day_of_month IS NULL)\n        OR (mode = 'periodic' AND cycle IS NOT NULL\n            AND ((cycle = 'daily' AND weekday IS NULL AND day_of_month IS NULL)\n              OR (cycle = 'weekly' AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)\n              OR (cycle = 'monthly' AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)\n              OR (cycle = 'yearly' AND weekday IS NULL AND day_of_month IS NULL))))"
+          "value": "((mode IN ('count_up','countdown') AND cycle IS NULL AND weekday IS NULL AND day_of_month IS NULL)\n        OR (mode = 'periodic' AND cycle IS NOT NULL\n            AND ((cycle = 'daily' AND weekday IS NULL AND day_of_month IS NULL)\n              OR (cycle = 'weekly' AND weekday IS NOT NULL AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)\n              OR (cycle = 'monthly' AND day_of_month IS NOT NULL AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)\n              OR (cycle = 'yearly' AND weekday IS NULL AND day_of_month IS NULL))))"
         }
       },
       "isRLSEnabled": false
