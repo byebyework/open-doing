@@ -49,6 +49,7 @@ import type {
   TaskStatus,
   TeamJoinStatus,
 } from "@open-doing/types";
+import type { MomentCycle, MomentMode } from "@/lib/moment-occurrence";
 
 /** UUID 主键：原生 `uuid` + 数据库端 `gen_random_uuid()`。 */
 const uuidPk = () => uuid("id").primaryKey().defaultRandom();
@@ -422,10 +423,10 @@ export const moments = pgTable(
     id: uuidPk(),
     ownerId: uuidRef("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
     title: text("title").notNull(),
-    mode: text("mode").$type<"count_up" | "countdown" | "periodic">().notNull(),
+    mode: text("mode").$type<MomentMode>().notNull(),
     // 锚点日:count_up=起始日;countdown=目标日;yearly 周期的月日来源。恒非空。
     anchorDate: date("anchor_date", { mode: "string" }).notNull(),
-    cycle: text("cycle").$type<"daily" | "weekly" | "monthly" | "yearly">(),
+    cycle: text("cycle").$type<MomentCycle>(),
     weekday: integer("weekday"), // weekly: 0-6(0=周日,对齐 WEEKDAY_KEYS)
     dayOfMonth: integer("day_of_month"), // monthly: 1-31
     pinned: boolean("pinned").notNull().default(false),
@@ -439,8 +440,8 @@ export const moments = pgTable(
       sql`((mode IN ('count_up','countdown') AND cycle IS NULL AND weekday IS NULL AND day_of_month IS NULL)
         OR (mode = 'periodic' AND cycle IS NOT NULL
             AND ((cycle = 'daily' AND weekday IS NULL AND day_of_month IS NULL)
-              OR (cycle = 'weekly' AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)
-              OR (cycle = 'monthly' AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)
+              OR (cycle = 'weekly' AND weekday IS NOT NULL AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)
+              OR (cycle = 'monthly' AND day_of_month IS NOT NULL AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)
               OR (cycle = 'yearly' AND weekday IS NULL AND day_of_month IS NULL))))`,
     ),
   ],

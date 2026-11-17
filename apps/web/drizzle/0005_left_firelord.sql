@@ -13,8 +13,8 @@ CREATE TABLE "moments" (
 	CONSTRAINT "moments_shape" CHECK (((mode IN ('count_up','countdown') AND cycle IS NULL AND weekday IS NULL AND day_of_month IS NULL)
         OR (mode = 'periodic' AND cycle IS NOT NULL
             AND ((cycle = 'daily' AND weekday IS NULL AND day_of_month IS NULL)
-              OR (cycle = 'weekly' AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)
-              OR (cycle = 'monthly' AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)
+              OR (cycle = 'weekly' AND weekday IS NOT NULL AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)
+              OR (cycle = 'monthly' AND day_of_month IS NOT NULL AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)
               OR (cycle = 'yearly' AND weekday IS NULL AND day_of_month IS NULL)))))
 );
 --> statement-breakpoint
