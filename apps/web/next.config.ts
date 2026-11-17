@@ -3,6 +3,12 @@ import createNextIntlPlugin from "next-intl/plugin";
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@open-doing/types"],
+  // Security upgrade (16.4.2 → 16.4.6): marks this config as agent-managed so
+  // future agent-driven security patch upgrades know this app was already
+  // opted in by an automated upgrade.
+  experimental: {
+    agentUpgrade: "security",
+  },
   // Docker 镜像构建（Dockerfile 设 NEXT_SKIP_TYPECHECK=1）跳过 TS 检查：
   // Docker Desktop 虚拟机内存有限，tsc 阶段易被 OOM kill（exit 137）。
   // 类型安全仍由本地/CI 的 `pnpm typecheck` 保证（AGENTS.md 要求 PR 前执行）。
