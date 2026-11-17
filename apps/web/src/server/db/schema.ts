@@ -414,3 +414,34 @@ export const importantDays = pgTable(
     ),
   ],
 );
+
+/** 时刻:三种计时模式(正计时/倒计时/周期)的个人日子;个人数据,owner-only。 */
+export const moments = pgTable(
+  "moments",
+  {
+    id: uuidPk(),
+    ownerId: uuidRef("owner_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    mode: text("mode").$type<"count_up" | "countdown" | "periodic">().notNull(),
+    // 锚点日:count_up=起始日;countdown=目标日;yearly 周期的月日来源。恒非空。
+    anchorDate: date("anchor_date", { mode: "string" }).notNull(),
+    cycle: text("cycle").$type<"daily" | "weekly" | "monthly" | "yearly">(),
+    weekday: integer("weekday"), // weekly: 0-6(0=周日,对齐 WEEKDAY_KEYS)
+    dayOfMonth: integer("day_of_month"), // monthly: 1-31
+    pinned: boolean("pinned").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    index("moments_owner_id_idx").on(t.ownerId),
+    check(
+      "moments_shape",
+      sql`((mode IN ('count_up','countdown') AND cycle IS NULL AND weekday IS NULL AND day_of_month IS NULL)
+        OR (mode = 'periodic' AND cycle IS NOT NULL
+            AND ((cycle = 'daily' AND weekday IS NULL AND day_of_month IS NULL)
+              OR (cycle = 'weekly' AND weekday BETWEEN 0 AND 6 AND day_of_month IS NULL)
+              OR (cycle = 'monthly' AND day_of_month BETWEEN 1 AND 31 AND weekday IS NULL)
+              OR (cycle = 'yearly' AND weekday IS NULL AND day_of_month IS NULL))))`,
+    ),
+  ],
+);

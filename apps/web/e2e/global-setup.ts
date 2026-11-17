@@ -24,6 +24,7 @@ const TRUNCATE_TABLES = [
   "projects",
   "registration_codes",
   "teams",
+  "moments",
   "important_days",
   "users",
 ] as const;
