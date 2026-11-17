@@ -44,17 +44,7 @@ export async function MomentsWidget({
   const tDate = await getTranslations("date");
   const locale = await getLocale();
   const numberFormat = new Intl.NumberFormat(locale);
-  const dateFormat = new Intl.DateTimeFormat(locale, {
-    month: "long",
-    day: "numeric",
-    // 锚点日是日历日（非时间戳），固定按 UTC 解析/显示，避免本地时区回退一天。
-    timeZone: "UTC",
-  });
   const href = moduleHref("personal", "moments");
-
-  /** 公历 `YYYY-MM-DD` → `12月1日` / `December 1`。 */
-  const formatDate = (date: string) =>
-    dateFormat.format(new Date(`${date}T00:00:00Z`));
 
   /** 周期 pill 的副行：每日 / 每周{weekday} / 每月 {day} 日 / 每年。 */
   const periodicDesc = (moment: MomentView): string => {
@@ -73,13 +63,13 @@ export async function MomentsWidget({
     }
   };
 
-  /** 副行：周期看循环规则，正计时看起点，倒计时看目标日。 */
+  /** 副行：周期看循环规则，正计时看起点，倒计时看目标日（锚点日按原型展示完整 ISO）。 */
   const descFor = (moment: MomentView): string => {
     if (moment.mode === "periodic") return periodicDesc(moment);
     if (moment.mode === "count_up") {
-      return t("card.subSince", { date: formatDate(moment.anchorDate) });
+      return t("card.subSince", { date: moment.anchorDate });
     }
-    return t("card.subTarget", { date: formatDate(moment.anchorDate) });
+    return t("card.subTarget", { date: moment.anchorDate });
   };
 
   return (

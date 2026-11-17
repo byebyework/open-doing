@@ -40,7 +40,9 @@ const BADGE_TONE_CLASS: Record<MomentView["mode"], string> = {
  *
  * 头部：名称 + 置顶徽标 + 模式徽标；大数字行按方向取前缀（今天 / 还有 / 已经），
  * 数字色按模式（`tabular-nums`）；副行按模式展示锚点日或下一次发生日。
- * 日期统一用 `Intl.DateTimeFormat` 的「月长名 + 日」格式（UTC 解析，避免时区回退）。
+ * 正计时 / 倒计时的锚点日按原型展示完整 ISO `YYYY-MM-DD`（保留年份）；
+ * 周期副行的下一次发生日用 `Intl.DateTimeFormat` 的「月长名 + 日」格式
+ * （UTC 解析，避免时区回退）。
  * 操作行：图钉（描边=置顶、实心=取消置顶，`aria-pressed`）、编辑、删除；
  * `aria-label` 携带名称，满足图标按钮的可访问性要求。
  */
@@ -61,7 +63,7 @@ export function MomentCard({
     timeZone: "UTC",
   });
 
-  /** 公历 `YYYY-MM-DD` → `12月1日` / `December 1`。 */
+  /** 公历 `YYYY-MM-DD` → `12月1日` / `December 1`（周期副行的下一次发生日）。 */
   const formatDate = (date: string) =>
     dateFormat.format(new Date(`${date}T00:00:00Z`));
 
@@ -86,11 +88,12 @@ export function MomentCard({
 
   /** 副行：正计时看起点，倒计时看目标日，周期看循环规则 + 下一次发生日。 */
   const subText = (() => {
+    // 原型对正计时 / 倒计时展示完整 ISO 日期「2025-09-15 至今」「目标 2031-06-30」。
     if (moment.mode === "count_up") {
-      return t("card.subSince", { date: formatDate(moment.anchorDate) });
+      return t("card.subSince", { date: moment.anchorDate });
     }
     if (moment.mode === "countdown") {
-      return t("card.subTarget", { date: formatDate(moment.anchorDate) });
+      return t("card.subTarget", { date: moment.anchorDate });
     }
 
     switch (moment.cycle) {

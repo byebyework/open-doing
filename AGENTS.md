@@ -52,7 +52,7 @@ Environment variable gotchas:
 
 ### Feature domain modules (`apps/web/src/features/`)
 
-Self-contained by domain: auth / users / teams / projects / tasks / kanban / calendar / days / analysis / notifications / personal / dashboard / landing. Each domain has:
+Self-contained by domain: auth / users / teams / projects / tasks / kanban / calendar / moments / analysis / notifications / personal / dashboard / landing. Each domain has:
 
 - `actions.ts` — Server Actions: validate input → check permissions → call service → return `ActionResult<T>` (`{ ok: true, data }` or `{ ok: false, errors: { form?, <field>?: string } }`). Field errors are mapped back to the corresponding form fields by client forms.
 - `service.ts` — data access and business rules (e.g. "a member cannot edit others' tasks"); never scattered inside pages.
@@ -121,6 +121,7 @@ Self-contained by domain: auth / users / teams / projects / tasks / kanban / cal
 - Database tests require the local PostgreSQL 16 container (`docker compose up -d --wait`); they replay the Drizzle migrations and TRUNCATE the test database between tests.
 - The test database (`TEST_DATABASE_URL`) is truncated between tests; it must never be the dev database.
 - e2e tests: Playwright, port 3100, against the separate `open_doing_e2e` database. Install chromium first (`pnpm --filter @open-doing/web exec playwright install chromium`).
+- Running e2e (or `pnpm dev`) from an agent session needs `env -u AI_AGENT -u CLAUDECODE`: Next 16's detect-agent nudge otherwise kills the e2e dev server on the first agent-triggered run.
 - Before `pnpm typecheck` on a clean checkout, generate route types via `pnpm build` or `pnpm --filter @open-doing/web exec next typegen`.
 
 ## Security Considerations

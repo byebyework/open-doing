@@ -406,7 +406,7 @@
       "subMonthly": "Monthly on day {day} · next {date}",
       "subYearly": "Yearly · next {date}",
       "prefixToday": "Today",
-      "prefixElapsed": "after",
+      "prefixElapsed": "for",
       "prefixCountdown": "in",
       "unit": "{count, plural, one {day} other {days}}",
       "actionPin": "Pin",

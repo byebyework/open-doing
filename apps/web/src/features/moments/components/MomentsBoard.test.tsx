@@ -219,12 +219,13 @@ describe("MomentsBoard", () => {
     expect(up?.textContent).toContain("正计时");
     expect(up?.textContent).toContain("已经");
     expect(up?.textContent).toContain("428");
-    expect(up?.textContent).toContain("9月15日 至今");
+    // 锚点日按原型展示完整 ISO（保留年份），不是「9月15日」。
+    expect(up?.textContent).toContain("2025-09-15 至今");
 
     const down = find('[data-testid="moment-card-距离退休"]');
     expect(down?.textContent).toContain("倒计时");
     expect(down?.textContent).toContain("1,690");
-    expect(down?.textContent).toContain("目标 6月30日");
+    expect(down?.textContent).toContain("目标 2031-06-30");
     expect(
       find('[data-testid="moment-pin-距离退休"]')?.getAttribute("aria-label"),
     ).toBe("置顶");

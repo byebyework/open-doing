@@ -157,6 +157,8 @@ describe("MomentsWidget", () => {
     expect(pill?.className).toContain("tone-down");
     expect(pill?.className).toContain("bg-[var(--warning-bg)]");
     expect(spansText(pill!)).toContain("还有 5,678 天");
+    // 目标日按原型展示完整 ISO（保留年份）。
+    expect(pill?.textContent).toContain("目标 2037-05-01");
     expect(numberSpan(pill!, "5,678")?.className).toContain(
       "text-[var(--moment-down-color)]",
     );
@@ -178,6 +180,8 @@ describe("MomentsWidget", () => {
     expect(pill?.className).toContain("tone-up");
     expect(pill?.className).toContain("bg-[var(--success-bg)]");
     expect(spansText(pill!)).toContain("已经 42 天");
+    // 起点日按原型展示完整 ISO（保留年份）。
+    expect(pill?.textContent).toContain("2025-09-15 至今");
     expect(numberSpan(pill!, "42")?.className).toContain(
       "text-[var(--moment-up-color)]",
     );
@@ -243,5 +247,24 @@ describe("MomentsWidget", () => {
     // v1 的 zh 预格式化 / en 原始数分支：en 的 ICU 复数用原始数字选形，
     // 大数字展示仍按 locale 加千分位 → "in 5,678 days"。
     expect(spansText(pill!)).toContain("in 5,678 days");
+  });
+
+  it("en 目录下正计时读作「for N days」，副行为完整 ISO 锚点日", async () => {
+    mockState.locale = "en";
+    await renderWidget([
+      momentView({
+        title: "Onboarding",
+        mode: "count_up",
+        direction: "elapsed",
+        days: 428,
+        anchorDate: "2025-09-15",
+      }),
+    ]);
+
+    const pill = findPill("Onboarding");
+
+    // 已流逝的天数用「for 428 days」（不是方向错误的 after）；副行保留年份。
+    expect(spansText(pill!)).toContain("for 428 days");
+    expect(pill?.textContent).toContain("2025-09-15 to now");
   });
 });
