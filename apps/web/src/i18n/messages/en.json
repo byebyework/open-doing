@@ -225,6 +225,7 @@
     "calendar": "Calendar",
     "analysis": "Analysis",
     "days": "Important Days",
+    "moments": "Moments",
     "openNavAria": "Open navigation",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
@@ -397,7 +398,28 @@
     "invalidCycle": "Incomplete timing mode",
     "invalidWeekday": "Weekday out of range",
     "invalidDayOfMonth": "Day of month out of range",
-    "notFound": "This moment does not exist or was deleted"
+    "notFound": "This moment does not exist or was deleted",
+    "widget": {
+      "title": "Moments · pinned overview",
+      "manage": "Manage all",
+      "emptyTitle": "No moments tracked yet",
+      "emptyBody": "Track work milestones, payday, anniversaries — see how far you have come and how long is left.",
+      "emptyAction": "Add your first moment"
+    },
+    "card": {
+      "badgeUp": "Count-up",
+      "badgeDown": "Countdown",
+      "badgeDaily": "Daily · repeats",
+      "badgeWeekly": "Weekly on {weekday} · repeats",
+      "badgeMonthly": "Monthly on day {day} · repeats",
+      "badgeYearly": "Yearly · repeats",
+      "subSince": "{date} to now",
+      "subTarget": "Target {date}",
+      "prefixToday": "Today",
+      "prefixElapsed": "after",
+      "prefixCountdown": "in",
+      "unit": "{count, plural, one {day} other {days}}"
+    }
   },
   "teams": {
     "team": "Team",
@@ -640,7 +662,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
-    "personalSubtitle": "Today's tasks, upcoming deadlines, and overdue follow-ups — all in one place. See the full picture in Kanban.",
+    "personalSubtitle": "What to do today, what's due soon, and the days you look forward to — all here.",
     "statInProgress": "In progress",
     "statInProgressHint": "{personal} personal · {team} team",
     "statDueSoon": "Due today / tomorrow",
@@ -1111,6 +1133,7 @@
     "calendarTitle": "Calendar · Open Doing",
     "analysisTitle": "Analysis · Open Doing",
     "daysTitle": "Important Days · Open Doing",
+    "momentsTitle": "Moments · Open Doing",
     "teamModuleTitle": "{team} {module} · Open Doing"
   },
   "about": {

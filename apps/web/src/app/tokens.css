@@ -270,6 +270,11 @@
   --status-overdue-bg: var(--error-bg);
   --status-due-soon: var(--warning-500);
   --status-due-soon-bg: var(--warning-bg);
+
+  /* 时刻域扩展（语义色文字档，与 docs/prototypes/moments.html 的 token 块 1:1 同步） */
+  --moment-up-color: var(--success-500);
+  --moment-down-color: #a66b00;
+  --moment-periodic-color: var(--purple-600);
 }
 
 /* 可选：暗色主题预留入口（v1 只做亮色）

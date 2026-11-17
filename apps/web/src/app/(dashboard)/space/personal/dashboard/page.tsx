@@ -13,8 +13,8 @@ import {
 } from "@/features/dashboard/my-tasks/service";
 import { NewTaskButton } from "@/features/dashboard/my-tasks/components/NewTaskModal";
 import { TodayTaskList } from "@/features/dashboard/personal-dashboard/components/TodayTaskList";
-import { DaysWidget } from "@/features/days/components/DaysWidget";
-import { listImportantDays } from "@/features/days/service";
+import { MomentsWidget } from "@/features/moments/components/MomentsWidget";
+import { listMoments } from "@/features/moments/service";
 import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
 import { todayInShanghai } from "@/lib/today";
 
@@ -38,8 +38,9 @@ function daysBetween(later: string, earlier: string): number {
  * 个人空间 Dashboard。
  *
  * RSC 取数：四项统计 + 「今天」列表（未完成且截止 ≤ 今天，逾期置顶）+
- * 新建任务可选项目 + 最近 5 个「重要日子」；勾选完成的交互下沉到 client
- * 组件，日子小组件只负责展示。
+ * 新建任务可选项目 + 前 3 个「时刻」速览（置顶优先，不足按最近发生补齐）；
+ * 「置顶速览」位于统计卡与「今天」列表之间，只负责展示，勾选完成的交互
+ * 下沉到 client 组件。
  * 「今天」口径统一为 Asia/Shanghai，由 `todayInShanghai()` 计算后作为
  * prop 传给 client，保证服务端/客户端渲染一致。
  */
@@ -50,11 +51,11 @@ export default async function PersonalDashboardPage() {
   const today = todayInShanghai();
   const weekStart = getWeekStart(today);
 
-  const [stats, board, projects, days] = await Promise.all([
+  const [stats, board, projects, moments] = await Promise.all([
     getMyTaskStats({ userId: user.id, today, weekStart }),
     getTodayBoard({ userId: user.id, today }),
     listCrossSpaceProjects(user.id),
-    listImportantDays({ userId: user.id, today, limit: 5 }),
+    listMoments({ userId: user.id, today, limit: 3 }),
   ]);
 
   // 「今日 / 明日到期」delta 使用不封顶的统计值：今天列表被 limit 截断，
@@ -116,6 +117,8 @@ export default async function PersonalDashboardPage() {
         />
       </div>
 
+      <MomentsWidget moments={moments} today={today} />
+
       <TodayTaskList
         tasks={board.tasks}
         today={today}
@@ -133,8 +136,6 @@ export default async function PersonalDashboardPage() {
           items={[t("listHintItem1"), t("listHintItem2")]}
         />
       </div>
-
-      <DaysWidget days={days} today={today} />
     </div>
   );
 }

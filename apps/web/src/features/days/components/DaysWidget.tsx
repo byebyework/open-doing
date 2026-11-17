@@ -3,7 +3,6 @@ import { getLocale, getTranslations } from "next-intl/server";
 
 import { CARD_SHELL } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { moduleHref } from "@/lib/routes";
 
 import type { ImportantDayView } from "../service";
 
@@ -53,7 +52,9 @@ export async function DaysWidget({
   const t = await getTranslations("days");
   const locale = await getLocale();
   const numberFormat = new Intl.NumberFormat(locale);
-  const href = moduleHref("personal", "days");
+  // v1 遗留：`SpaceModule` 已更名 moments，本组件在 Task 7 随 days 域一起删除；
+  // 为保持中间态构建全绿，这里临时用字面路由，不再经 moduleHref 的类型收窄。
+  const href = "/space/personal/days";
 
   return (
     <section className={`mt-5 min-w-0 ${CARD_SHELL}`}>

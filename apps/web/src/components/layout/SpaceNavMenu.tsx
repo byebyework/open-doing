@@ -121,8 +121,8 @@ function CalendarIcon() {
   );
 }
 
-/** Days 图标（日历 + 星标，重要日子语义）。 */
-function DaysIcon() {
+/** Moments 图标（表盘 + 指针，对齐原型分节 A 侧栏「时刻」）。 */
+function MomentsIcon() {
   return (
     <svg
       className={ICON_CLASS}
@@ -134,9 +134,8 @@ function DaysIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <rect x="3" y="4" width="18" height="17" rx="2" />
-      <path d="M16 2v4M8 2v4M3 10h18" />
-      <path d="M12 11.8l.76 2.15 2.28.06-1.8 1.39.64 2.19-1.88-1.29-1.88 1.29.64-2.19-1.8-1.39 2.28-.06z" />
+      <circle cx="12" cy="12" r="9" />
+      <path d="M12 7v5l3 3" />
     </svg>
   );
 }
@@ -245,7 +244,7 @@ interface SpaceNavModule {
     | "projects"
     | "kanban"
     | "calendar"
-    | "days"
+    | "moments"
     | "analysis"
     | "teamManagement";
   Icon: ComponentType;
@@ -270,7 +269,7 @@ function ProjectsIcon() {
 }
 
 /**
- * 个人空间六模块：「重要日子」为个人空间专属（不进团队导航），
+ * 个人空间六模块：「时刻」为个人空间专属（不进团队导航），
  * 排在 Calendar 与 Analysis 之间（时间语义相邻）；
  * 个人设置已上移为系统级 `/settings`，不再出现在空间导航。
  */
@@ -279,13 +278,13 @@ const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
   { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
-  { module: "days", labelKey: "days", Icon: DaysIcon },
+  { module: "moments", labelKey: "moments", Icon: MomentsIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
 ];
 
 /**
  * 团队空间六模块：显式枚举而非展开 `PERSONAL_MODULES`——
- * `days` 为个人空间专属，展开写法会让它泄漏进团队侧栏；
+ * `moments` 为个人空间专属，展开写法会让它泄漏进团队侧栏；
  * 末项「团队管理」沿用团队 settings 路由（路径不变）。
  */
 const TEAM_MODULES: SpaceNavModule[] = [
@@ -339,8 +338,8 @@ export function resolveSpaceLabel(
  *
  * 结构对照原型 `space-dashboard-*.html` 侧栏：
  * - 当前空间名作为分组标题；个人空间 6 项（Dashboard / 项目 / Kanban /
- *   Calendar / 重要日子 / Analysis，v1.2 新增「项目」，「重要日子」为
- *   个人空间专属），团队空间不含「重要日子」，额外第 6 项「团队管理」
+ *   Calendar / 时刻 / Analysis，v1.2 新增「项目」，「时刻」为
+ *   个人空间专属），团队空间不含「时刻」，额外第 6 项「团队管理」
  *   （团队的 settings 路由）；
  * - 「账号」分组待处理邀请入口，pending 数 > 0 时显示红色角标；
  * - 未登录（`data.loggedIn === false`）整体不渲染。

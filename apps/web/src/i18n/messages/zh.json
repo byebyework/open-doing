@@ -225,6 +225,7 @@
     "calendar": "日历",
     "analysis": "分析",
     "days": "重要日子",
+    "moments": "时刻",
     "openNavAria": "打开导航",
     "collapseSidebar": "收起侧栏",
     "expandSidebar": "展开侧栏",
@@ -397,7 +398,28 @@
     "invalidCycle": "计时模式不完整",
     "invalidWeekday": "星期不在有效范围",
     "invalidDayOfMonth": "日期不在有效范围",
-    "notFound": "该时刻不存在或已被删除"
+    "notFound": "该时刻不存在或已被删除",
+    "widget": {
+      "title": "时刻 · 置顶速览",
+      "manage": "管理全部",
+      "emptyTitle": "还没有记录的时刻",
+      "emptyBody": "记录入职、退休、发薪日、纪念日……随时看到走了多远、还剩多久。",
+      "emptyAction": "去记录第一个时刻"
+    },
+    "card": {
+      "badgeUp": "正计时",
+      "badgeDown": "倒计时",
+      "badgeDaily": "每天 · 循环",
+      "badgeWeekly": "每周{weekday} · 循环",
+      "badgeMonthly": "每月 {day} 日 · 循环",
+      "badgeYearly": "每年 · 循环",
+      "subSince": "{date} 至今",
+      "subTarget": "目标 {date}",
+      "prefixToday": "今天",
+      "prefixElapsed": "已经",
+      "prefixCountdown": "还有",
+      "unit": "天"
+    }
   },
   "teams": {
     "team": "团队",
@@ -640,7 +662,7 @@
   },
   "dashboard": {
     "title": "仪表盘",
-    "personalSubtitle": "今天要做的、快到期的，以及逾期需要兜底的，都在这里；任务全景看「看板」。",
+    "personalSubtitle": "今天要做的、快到期的，以及期待的日子，都在这里。",
     "statInProgress": "进行中",
     "statInProgressHint": "个人 {personal} 项 · 团队 {team} 项",
     "statDueSoon": "今日 / 明日到期",
@@ -1111,6 +1133,7 @@
     "calendarTitle": "日历 · Open Doing",
     "analysisTitle": "分析 · Open Doing",
     "daysTitle": "重要日子 · Open Doing",
+    "momentsTitle": "时刻 · Open Doing",
     "teamModuleTitle": "{team} {module} · Open Doing"
   },
   "about": {

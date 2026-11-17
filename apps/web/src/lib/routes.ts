@@ -8,7 +8,7 @@ export type SpaceModule =
   | "projects"
   | "kanban"
   | "calendar"
-  | "days"
+  | "moments"
   | "analysis"
   | "settings";
 
