@@ -399,6 +399,40 @@
     "invalidWeekday": "Weekday out of range",
     "invalidDayOfMonth": "Day of month out of range",
     "notFound": "This moment does not exist or was deleted",
+    "deleteConfirmTitle": "Delete \"{title}\"?",
+    "deleteConfirmBody": "This cannot be undone.",
+    "deleteConfirmAction": "Delete",
+    "page": {
+      "title": "Moments",
+      "subtitle": "The days that count, in one place.",
+      "create": "New moment"
+    },
+    "form": {
+      "createTitle": "New moment",
+      "editTitle": "Edit moment",
+      "titleLabel": "Name",
+      "titlePlaceholder": "First day at work, payday, anniversary…",
+      "modeLabel": "Timing mode",
+      "modeUp": "Count-up",
+      "modeDown": "Countdown",
+      "modePeriodic": "Repeating",
+      "upPanelLabel": "Start date",
+      "upHint": "Counts the days since this date.",
+      "downPanelLabel": "Target date",
+      "downHint": "Counts down to this date; afterwards it shows the days since.",
+      "cycleLabel": "Repeats",
+      "cycleDaily": "Daily",
+      "cycleWeekly": "Weekly",
+      "cycleMonthly": "Monthly",
+      "cycleYearly": "Yearly",
+      "dailyHint": "Repeats every day — no date needed.",
+      "monthlyNote": "Clamped to the last day of short months",
+      "yearlyHint": "Repeats on the same month and day",
+      "occurrenceHint": "The number always shows the next occurrence; daily shows today.",
+      "saveAndPin": "Save & pin",
+      "save": "Save",
+      "pinnedLabel": "Pinned"
+    },
     "widget": {
       "title": "Moments · pinned overview",
       "manage": "Manage all",
@@ -407,6 +441,7 @@
       "emptyAction": "Add your first moment"
     },
     "card": {
+      "badgePinned": "Pinned",
       "badgeUp": "Count-up",
       "badgeDown": "Countdown",
       "badgeDaily": "Daily · repeats",
@@ -415,10 +450,18 @@
       "badgeYearly": "Yearly · repeats",
       "subSince": "{date} to now",
       "subTarget": "Target {date}",
+      "subDaily": "Daily · current round in progress",
+      "subWeekly": "Every {weekday} · next {date}",
+      "subMonthly": "Monthly on day {day} · next {date}",
+      "subYearly": "Yearly · next {date}",
       "prefixToday": "Today",
       "prefixElapsed": "after",
       "prefixCountdown": "in",
-      "unit": "{count, plural, one {day} other {days}}"
+      "unit": "{count, plural, one {day} other {days}}",
+      "actionPin": "Pin",
+      "actionUnpin": "Unpin",
+      "actionEdit": "Edit {title}",
+      "actionDelete": "Delete {title}"
     }
   },
   "teams": {

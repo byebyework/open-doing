@@ -84,6 +84,27 @@ export const TEST_IDS = {
     /** 卡片 testid 前缀（组件侧硬编码 `day-card-<id>`）。 */
     cardPrefix: "day-card-",
   },
+  moments: {
+    createButton: "moments-create-button",
+    formTitle: "moment-form-title",
+    formModeUp: "moment-form-mode-up",
+    formModeDown: "moment-form-mode-down",
+    formModePeriodic: "moment-form-mode-periodic",
+    formCycleDaily: "moment-form-cycle-daily",
+    formCycleWeekly: "moment-form-cycle-weekly",
+    formCycleMonthly: "moment-form-cycle-monthly",
+    formCycleYearly: "moment-form-cycle-yearly",
+    /** 正计时 / 倒计时共用的日期输入。 */
+    formDate: "moment-form-date",
+    /** 每年周期独立的日期输入（避免与非周期日期共用同一 id）。 */
+    formYearlyDate: "moment-form-yearly-date",
+    formWeekday: "moment-form-weekday",
+    formMonthDay: "moment-form-monthday",
+    formSubmit: "moment-form-submit",
+    deleteConfirm: "moment-delete-confirm",
+    /** 卡片 testid 前缀（组件侧硬编码 `moment-card-<id>`）。 */
+    cardPrefix: "moment-card-",
+  },
   analysis: {
     range: (value: 7 | 30 | 90) => `analysis-range-${value}`,
   },

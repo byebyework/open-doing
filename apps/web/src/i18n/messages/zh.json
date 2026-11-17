@@ -399,6 +399,40 @@
     "invalidWeekday": "星期不在有效范围",
     "invalidDayOfMonth": "日期不在有效范围",
     "notFound": "该时刻不存在或已被删除",
+    "deleteConfirmTitle": "删除「{title}」？",
+    "deleteConfirmBody": "删除后无法恢复。",
+    "deleteConfirmAction": "删除",
+    "page": {
+      "title": "时刻",
+      "subtitle": "正在走的日子和正在靠近的日子，都在这里。",
+      "create": "新建时刻"
+    },
+    "form": {
+      "createTitle": "新建时刻",
+      "editTitle": "编辑时刻",
+      "titleLabel": "事件名称",
+      "titlePlaceholder": "例如：发薪日、周末、生日、春节放假",
+      "modeLabel": "计时模式",
+      "modeUp": "正计时",
+      "modeDown": "倒计时",
+      "modePeriodic": "周期计时",
+      "upPanelLabel": "起始日期",
+      "upHint": "从这一天起算，已经多少天。",
+      "downPanelLabel": "目标日期",
+      "downHint": "到这一天还有多少天；到期后自动翻转为「已过 N 天」。",
+      "cycleLabel": "循环周期",
+      "cycleDaily": "每日",
+      "cycleWeekly": "每周",
+      "cycleMonthly": "每月",
+      "cycleYearly": "每年",
+      "dailyHint": "每天循环一次，无需具体日期。",
+      "monthlyNote": "大月顺延，31 号在 30 天月取月末",
+      "yearlyHint": "按同月同日取周年",
+      "occurrenceHint": "数字始终显示「距离下一次」；每日循环显示「今天」。",
+      "saveAndPin": "保存并置顶",
+      "save": "保存",
+      "pinnedLabel": "置顶"
+    },
     "widget": {
       "title": "时刻 · 置顶速览",
       "manage": "管理全部",
@@ -407,6 +441,7 @@
       "emptyAction": "去记录第一个时刻"
     },
     "card": {
+      "badgePinned": "置顶",
       "badgeUp": "正计时",
       "badgeDown": "倒计时",
       "badgeDaily": "每天 · 循环",
@@ -415,10 +450,18 @@
       "badgeYearly": "每年 · 循环",
       "subSince": "{date} 至今",
       "subTarget": "目标 {date}",
+      "subDaily": "每天 · 循环（今天这一轮进行中）",
+      "subWeekly": "每{weekday} · 下次 {date}",
+      "subMonthly": "每月 {day} 日 · 下次 {date}",
+      "subYearly": "每年 · 下次 {date}",
       "prefixToday": "今天",
       "prefixElapsed": "已经",
       "prefixCountdown": "还有",
-      "unit": "天"
+      "unit": "天",
+      "actionPin": "置顶",
+      "actionUnpin": "取消置顶",
+      "actionEdit": "编辑 {title}",
+      "actionDelete": "删除 {title}"
     }
   },
   "teams": {
