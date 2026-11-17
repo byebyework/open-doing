@@ -202,6 +202,28 @@ describe("MomentsWidget", () => {
     expect(spansText(pill!)).toContain("每天 · 循环");
   });
 
+  it("周期·每周 pill 的副行展示完整「每周五 · 循环」文案", async () => {
+    await renderWidget([
+      momentView({
+        title: "周末下班",
+        mode: "periodic",
+        cycle: "weekly",
+        weekday: 5,
+        direction: "upcoming",
+        days: 3,
+      }),
+    ]);
+
+    const pill = findPill("周末下班");
+    // 星期名复用 `date` ns 的 WEEKDAY_KEYS（周五，已含「周」前缀），
+    // 因此 zh 模板是「每{weekday}」而不是「每周{weekday}」。
+    const desc = Array.from(pill!.querySelectorAll("span")).find(
+      (span) => span.textContent === "每周五 · 循环",
+    );
+
+    expect(desc?.textContent).toBe("每周五 · 循环");
+  });
+
   it("en 目录下大数字带千分位，unit 复数按原始数字解析", async () => {
     mockState.locale = "en";
     await renderWidget([

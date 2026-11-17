@@ -410,7 +410,7 @@
       "badgeUp": "正计时",
       "badgeDown": "倒计时",
       "badgeDaily": "每天 · 循环",
-      "badgeWeekly": "每周{weekday} · 循环",
+      "badgeWeekly": "每{weekday} · 循环",
       "badgeMonthly": "每月 {day} 日 · 循环",
       "badgeYearly": "每年 · 循环",
       "subSince": "{date} 至今",
