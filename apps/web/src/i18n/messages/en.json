@@ -389,6 +389,16 @@
     "deleteConfirmBody": "This cannot be undone.",
     "deleteConfirmAction": "Delete"
   },
+  "moments": {
+    "titleRequired": "Title is required",
+    "titleTooLong": "Title must be {max} characters or fewer",
+    "invalidDate": "Invalid date",
+    "anchorInFuture": "A count-up start date cannot be in the future",
+    "invalidCycle": "Incomplete timing mode",
+    "invalidWeekday": "Weekday out of range",
+    "invalidDayOfMonth": "Day of month out of range",
+    "notFound": "This moment does not exist or was deleted"
+  },
   "teams": {
     "team": "Team",
     "createFailed": "Failed to create team. Please try again later.",

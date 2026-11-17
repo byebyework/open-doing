@@ -389,6 +389,16 @@
     "deleteConfirmBody": "删除后无法恢复。",
     "deleteConfirmAction": "删除"
   },
+  "moments": {
+    "titleRequired": "请填写名称",
+    "titleTooLong": "名称不能超过 {max} 个字符",
+    "invalidDate": "日期格式不正确",
+    "anchorInFuture": "正计时的起始日期不能晚于今天",
+    "invalidCycle": "计时模式不完整",
+    "invalidWeekday": "星期不在有效范围",
+    "invalidDayOfMonth": "日期不在有效范围",
+    "notFound": "该时刻不存在或已被删除"
+  },
   "teams": {
     "team": "团队",
     "createFailed": "创建团队失败，请稍后重试",
