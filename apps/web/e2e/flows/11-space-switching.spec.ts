@@ -11,8 +11,8 @@ import { registerUser, uniqueLabel, uniqueUsername } from "../utils/flows";
  * 2. 保留字：团队名为 "Personal" 时 slug 不占用 `personal`，
  *    `/space/personal/dashboard` 仍是个人 Dashboard（Task 2 行为）；
  * 3. 移动端（375px）：汉堡按钮打开 Sheet 抽屉（与桌面同源导航树），
- *    个人空间 6 模块（仪表盘 / 项目 / 看板 / 日历 / 重要日子 / 分析）、
- *    团队空间第 6 项为「团队管理」且不含「重要日子」（个人空间专属），
+ *    个人空间 6 模块（仪表盘 / 项目 / 看板 / 日历 / 时刻 / 分析）、
+ *    团队空间第 6 项为「团队管理」且不含「时刻」（个人空间专属），
  *    经抽屉内 Kanban 项跳转并断言页面渲染，随后可关闭抽屉。
  *
  * 切换器选择器对照 `SpaceSwitcher.tsx`：aside 内唯一按钮为触发器，
@@ -89,10 +89,10 @@ test.describe("flow 11: 空间切换", () => {
       page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
     await expect(switcherTrigger(page)).toHaveText(teamName);
-    // 「重要日子」是个人空间专属模块：团队侧栏不得出现该入口。
+    // 「时刻」是个人空间专属模块：团队侧栏不得出现该入口。
     await expect(
       page.locator("aside").getByRole("link", {
-        name: "重要日子",
+        name: "时刻",
         exact: true,
       }),
     ).toHaveCount(0);
@@ -107,10 +107,10 @@ test.describe("flow 11: 空间切换", () => {
       page.getByRole("heading", { name: "仪表盘", level: 1 }),
     ).toBeVisible();
     await expect(switcherTrigger(page)).toHaveText(/个人空间/);
-    // 回到个人空间后侧栏恢复「重要日子」入口。
+    // 回到个人空间后侧栏恢复「时刻」入口。
     await expect(
       page.locator("aside").getByRole("link", {
-        name: "重要日子",
+        name: "时刻",
         exact: true,
       }),
     ).toBeVisible();
@@ -213,9 +213,9 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     await expect(
       drawer.getByRole("button", { name: /个人空间/ }),
     ).toBeVisible();
-    // 个人空间 6 个模块（含 v1.2 新增的「项目」与个人专属的「重要日子」）；
+    // 个人空间 6 个模块（含 v1.2 新增的「项目」与个人专属的「时刻」）；
     // 个人设置已上移至顶栏用户菜单（/settings）。
-    for (const label of ["仪表盘", "项目", "看板", "日历", "重要日子", "分析"]) {
+    for (const label of ["仪表盘", "项目", "看板", "日历", "时刻", "分析"]) {
       await expect(
         drawer.getByRole("link", { name: label, exact: true }),
       ).toBeVisible();
@@ -245,7 +245,7 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     await expect(drawer).toBeHidden();
 
     // 团队空间的 Drawer 有第 6 项「团队管理」（沿用团队 settings 路由）；
-    // 团队侧栏不含个人专属的「重要日子」。
+    // 团队侧栏不含个人专属的「时刻」。
     // 建团后落在团队管理页，页面标题与抽屉末项同步切换。
     await createTeam(page, uniqueLabel("E2E mobile team"));
     await expect(
@@ -267,7 +267,7 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
       ).toBeVisible();
     }
     await expect(
-      drawer.getByRole("link", { name: "重要日子", exact: true }),
+      drawer.getByRole("link", { name: "时刻", exact: true }),
     ).toHaveCount(0);
     await drawer.getByRole("button", { name: "关闭" }).click();
     await expect(drawer).toBeHidden();

@@ -96,6 +96,7 @@ const E2E_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/e2e/flows/13-projects-module.spec.ts", reason: "项目模块列表/空态/邀请 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/14-task-priority.spec.ts", reason: "优先级档位（高/低）与操作列权限 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/15-registration-consent.spec.ts", reason: "中文 describe/test 标题（断言文案取自消息包，不硬编码）" },
+  { prefix: "apps/web/e2e/flows/16-moments.spec.ts", reason: "时刻模块空态/弹窗/徽标/速览/删除确认 zh 文案断言" },
   { prefix: "apps/web/e2e/responsive.spec.ts", reason: "响应式路由 zh 就绪断言" },
 ];
 
