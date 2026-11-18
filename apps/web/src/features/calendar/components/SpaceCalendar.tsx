@@ -364,8 +364,10 @@ function CalendarDayCell({
       }`}
       style={{ height: CELL_HEIGHT - 6 }}
     >
-      {/* hover / 键盘聚焦浮现的快捷「+」（今天格保持唯一重音，不显示） */}
-      {onAddTask && !isToday ? (
+      {/* hover / 键盘聚焦浮现的快捷「+」（今天格同样可用：此前排除今天导致
+          当天无法从日历新建任务——「+」是日历内唯一的新建入口，见
+          2026-11-19 反馈；今天的紫色重音样式与悬浮「+」不冲突） */}
+      {onAddTask ? (
         <button
           type="button"
           aria-label={tCalendar("addTaskAria", { date: cellDateKey })}
