@@ -14,6 +14,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/shadcn/dialog";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
 import {
@@ -264,19 +265,16 @@ export function MomentFormModal({
               <Label htmlFor="moment-form-date" className="mb-3 block">
                 {t("form.upPanelLabel")}
               </Label>
-              <Input
+              <DatePicker
                 id="moment-form-date"
-                data-testid="moment-form-date"
-                type="date"
+                testid="moment-form-date"
                 value={form.anchorDate}
                 disabled={submitting}
-                aria-invalid={dateErrorFor("shared") ? true : undefined}
-                aria-describedby={
+                invalid={dateErrorFor("shared") ? true : undefined}
+                describedby={
                   dateErrorFor("shared") ? "moment-form-date-error" : undefined
                 }
-                onChange={(event) =>
-                  patchForm({ anchorDate: event.target.value })
-                }
+                onChange={(value) => patchForm({ anchorDate: value })}
               />
               {dateErrorFor("shared") ? (
                 <p
@@ -297,19 +295,16 @@ export function MomentFormModal({
               <Label htmlFor="moment-form-date" className="mb-3 block">
                 {t("form.downPanelLabel")}
               </Label>
-              <Input
+              <DatePicker
                 id="moment-form-date"
-                data-testid="moment-form-date"
-                type="date"
+                testid="moment-form-date"
                 value={form.anchorDate}
                 disabled={submitting}
-                aria-invalid={dateErrorFor("shared") ? true : undefined}
-                aria-describedby={
+                invalid={dateErrorFor("shared") ? true : undefined}
+                describedby={
                   dateErrorFor("shared") ? "moment-form-date-error" : undefined
                 }
-                onChange={(event) =>
-                  patchForm({ anchorDate: event.target.value })
-                }
+                onChange={(value) => patchForm({ anchorDate: value })}
               />
               {dateErrorFor("shared") ? (
                 <p
@@ -422,21 +417,18 @@ export function MomentFormModal({
                   <Label htmlFor="moment-form-yearly-date" className="mb-2 block">
                     {t("form.cycleYearly")}
                   </Label>
-                  <Input
+                  <DatePicker
                     id="moment-form-yearly-date"
-                    data-testid="moment-form-yearly-date"
-                    type="date"
+                    testid="moment-form-yearly-date"
                     value={form.yearlyDate}
                     disabled={submitting}
-                    aria-invalid={dateErrorFor("yearly") ? true : undefined}
-                    aria-describedby={
+                    invalid={dateErrorFor("yearly") ? true : undefined}
+                    describedby={
                       dateErrorFor("yearly")
                         ? "moment-form-yearly-date-error"
                         : undefined
                     }
-                    onChange={(event) =>
-                      patchForm({ yearlyDate: event.target.value })
-                    }
+                    onChange={(value) => patchForm({ yearlyDate: value })}
                   />
                   {dateErrorFor("yearly") ? (
                     <p
