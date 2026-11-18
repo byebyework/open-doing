@@ -3,10 +3,10 @@
  * （输出文案逐字不变），供 recharts 版图表复用。
  */
 
-/** 单条趋势系列的色相。 */
+/** 单条趋势系列的语义身份。 */
 export interface TrendSeries {
-  /** `primary` = 品牌紫；`teal` = 新增系列。 */
-  tone: "primary" | "teal";
+  /** `created` = 新增（cyan-500）；`primary` = 完成（品牌紫）。 */
+  tone: "created" | "primary";
   /** 与桶序列等长的计数数组。 */
   values: number[];
 }
@@ -61,7 +61,7 @@ export function columnTitle(input: {
     const value = item.values[input.index] ?? 0;
     if (value <= 0) return [];
     const template =
-      item.tone === "teal" ? input.createdTemplate : input.doneTemplate;
+      item.tone === "created" ? input.createdTemplate : input.doneTemplate;
     return [template.replace("{value}", String(value))];
   });
 

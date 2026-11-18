@@ -123,4 +123,28 @@ describe("TrendChart（recharts 版趋势柱状图）", () => {
     expect(html).toContain(">11-06<");
     expect(html).toContain(">2026-11-30<");
   });
+
+  it("双系列柱填充走设计系统 token：created → --color-created（cyan-500），primary → --color-primary", () => {
+    const buckets = dailyBuckets(14);
+    const html = renderToStaticMarkup(
+      withIntl(
+        <TrendChart
+          buckets={buckets}
+          series={[
+            { tone: "created", values: Array<number>(14).fill(1) },
+            { tone: "primary", values: Array<number>(14).fill(1) },
+          ]}
+        />,
+      ),
+    );
+
+    // ChartContainer 的 ChartStyle 按 config key 注入 --color-* 变量。
+    expect(html).toContain("--color-created: var(--cyan-500)");
+    expect(html).toContain("--color-primary: var(--purple-600)");
+    // 柱形 shape 的填充引用对应变量（不再出现游离的 teal 字面色）。
+    expect(html).toContain('fill="var(--color-created)"');
+    expect(html).toContain('fill="var(--color-primary)"');
+    expect(html).not.toContain("#0e9ba3");
+    expect(html).not.toContain("color-teal");
+  });
 });

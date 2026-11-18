@@ -4,7 +4,7 @@ import { columnTitle, type TrendSeries } from "./chart-title";
 
 describe("columnTitle", () => {
   const done = (values: number[]): TrendSeries => ({ tone: "primary", values });
-  const created = (values: number[]): TrendSeries => ({ tone: "teal", values });
+  const created = (values: number[]): TrendSeries => ({ tone: "created", values });
 
   it("单系列今日桶：今天前缀 + 完成数", () => {
     expect(

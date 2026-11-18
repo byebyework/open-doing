@@ -285,7 +285,7 @@ async function PersonalBody({
             extra={
               <span className="inline-flex items-center gap-3.5 text-[12.5px] text-[var(--ink-500)]">
                 <span className="inline-flex items-center">
-                  <LegendSwatch color="#0e9ba3" />
+                  <LegendSwatch color="var(--cyan-500)" />
                   {t("legendCreated")}
                 </span>
                 <span className="inline-flex items-center">
@@ -313,7 +313,7 @@ async function PersonalBody({
             <TrendChart
               buckets={buckets}
               series={[
-                { tone: "teal", values: createdValues },
+                { tone: "created", values: createdValues },
                 { tone: "primary", values: completedValues },
               ]}
               todayIndex={todayIndex}

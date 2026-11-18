@@ -10,7 +10,11 @@ import {
   YAxis,
 } from "recharts";
 
-import { ChartContainer } from "@/components/ui/shadcn/chart";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/shadcn/chart";
 
 import { tickDisplayLabel, xTickIndexes } from "../axis";
 import { columnTitle, type TrendSeries } from "../chart-title";
@@ -19,20 +23,24 @@ import type { TrendBucket } from "../buckets";
 /**
  * 趋势柱状图（recharts 版，客户端）。
  *
- * 由旧自绘服务端图表（`charts.tsx`）迁移而来：分桶、悬停文案、峰值/末桶
- * 标数、x 轴标签密度都与原型 `space-analysis-{personal,team}.html` 的
- * `.vz-*` 区块逐项对应。差异仅在实现手段：recharts 负责布局与坐标轴，
- * 绘图区固定 260px 高（根治过去两张并排卡片的行高失衡）。
+ * 分桶、悬停文案、峰值/末桶标数、x 轴标签密度沿用原有语义；视觉遵循
+ * shadcn 图表惯例 + 设计系统（2026-11-18 重设计）：
+ * - 系列色全 token：`created` → `--cyan-500`（品牌渐变第二色），
+ *   `primary` → `--purple-600`；由 ChartContainer 的 ChartStyle 按
+ *   config key 注入 `--color-*`，柱形填充引用注入变量（dataviz 校验器
+ *   对双系列对全项 PASS，cyan 的低对比由峰值/末桶直接标数救济）；
+ * - 柱宽跟随槽位（barCategoryGap 20%、maxBarSize 28），相邻柱 2px 表面
+ *   间隙；顶部两角 4px 圆角锚定基线；
+ * - 悬停层：shadcn ChartTooltip（设计化 tooltip + 系列色光标）叠加在
+ *   原生 `title` 之上——后者为 e2e 断言保留（字节级文案不变）。
  *
- * 悬停说明沿用原生 `title` 属性（挂在自定义柱形的 SVG 元素上），
- * 文案由 `columnTitle` 按当前语言拼装；e2e 依赖其字节级输出。
+ * 绘图区固定 260px 高（并排卡片行高恒定）。
  */
 
-/** 系列色值：主系列走 ChartContainer 注入的 `--color-primary`，
- * teal 不是主题令牌，只能沿用既有字面 hex（与旧图一致）。 */
+/** 系列色值：走 ChartContainer 按 config key 注入的 `--color-*` 变量。 */
 const SERIES_FILL: Record<TrendSeries["tone"], string> = {
   primary: "var(--color-primary)",
-  teal: "var(--color-teal)",
+  created: "var(--color-created)",
 };
 
 /** 峰值 / 末桶标数的字色（既有非令牌字面值，按原型沿用）。 */
@@ -183,7 +191,7 @@ export function TrendChart({
     <ChartContainer
       config={{
         primary: { color: "var(--purple-600)" },
-        teal: { color: "#0e9ba3" },
+        created: { color: "var(--cyan-500)" },
       }}
       style={{ height: PLOT_HEIGHT }}
       className="w-full min-w-0"
@@ -191,8 +199,14 @@ export function TrendChart({
       <BarChart
         data={chartData}
         margin={{ top: 24, right: 4, left: 0, bottom: 0 }}
+        barCategoryGap="20%"
+        barGap={2}
       >
         <CartesianGrid vertical={false} stroke="var(--border-default)" />
+        <ChartTooltip
+          cursor={{ fill: "var(--purple-08)" }}
+          content={<ChartTooltipContent />}
+        />
         <YAxis
           width={26}
           axisLine={false}
@@ -227,7 +241,7 @@ export function TrendChart({
               key={`${item.tone}-${seriesIndex}`}
               dataKey={dataKey}
               fill={SERIES_FILL[item.tone]}
-              maxBarSize={24}
+              maxBarSize={28}
               radius={[4, 4, 0, 0]}
               isAnimationActive={false}
               shape={(shapeProps: unknown) => {
