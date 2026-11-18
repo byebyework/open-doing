@@ -278,7 +278,7 @@ async function PersonalBody({
         </div>
       </section>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 min-[861px]:grid-cols-2">
         <section className={CARD_CLASS}>
           <CardHeader
             title={t("flowTitle")}
@@ -494,7 +494,7 @@ async function TeamBody({
         </div>
       </section>
 
-      <div className="mt-4 grid grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
+      <div className="mt-4 grid grid-cols-1 gap-4 min-[861px]:grid-cols-2">
         <section className={CARD_CLASS}>
           <CardHeader
             title={t("memberLoadTitle")}
