@@ -14,10 +14,11 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { useEffect, useState, type ReactNode } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { z } from "zod";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import { DatePicker } from "@/components/ui/date-picker";
 import { PriorityChip, priorityLabelKey } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { StatusTag } from "@/components/ui/StatusTag";
@@ -166,6 +167,7 @@ function EditTaskModal({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     formState: { errors },
@@ -250,12 +252,18 @@ function EditTaskModal({
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="edit-task-start-date">{t("startDateLabel")}</Label>
-              <Input
-                id="edit-task-start-date"
-                type="date"
-                aria-invalid={errors.startDate ? true : undefined}
-                disabled={submitting}
-                {...register("startDate")}
+              <Controller
+                control={control}
+                name="startDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="edit-task-start-date"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={submitting}
+                    invalid={errors.startDate ? true : undefined}
+                  />
+                )}
               />
               {errors.startDate ? (
                 <p className="text-[12.5px] text-[var(--error)]">
@@ -266,12 +274,18 @@ function EditTaskModal({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="edit-task-due-date">{t("dueDateLabel")}</Label>
-              <Input
-                id="edit-task-due-date"
-                type="date"
-                aria-invalid={errors.dueDate ? true : undefined}
-                disabled={submitting}
-                {...register("dueDate")}
+              <Controller
+                control={control}
+                name="dueDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="edit-task-due-date"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={submitting}
+                    invalid={errors.dueDate ? true : undefined}
+                  />
+                )}
               />
               {errors.dueDate ? (
                 <p className="text-[12.5px] text-[var(--error)]">

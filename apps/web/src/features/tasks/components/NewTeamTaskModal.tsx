@@ -2,11 +2,12 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
+import { DatePicker } from "@/components/ui/date-picker";
 import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -120,6 +121,7 @@ export function NewTeamTaskModal({
 
   const {
     register,
+    control,
     handleSubmit,
     setError,
     setValue,
@@ -315,13 +317,19 @@ export function NewTeamTaskModal({
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="team-task-start-date">{t("startDateLabel")}</Label>
-              <Input
-                id="team-task-start-date"
-                type="date"
-                data-testid="task-start-date-input"
-                aria-invalid={errors.startDate ? true : undefined}
-                disabled={submitting}
-                {...register("startDate")}
+              <Controller
+                control={control}
+                name="startDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="team-task-start-date"
+                    testid="task-start-date-input"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={submitting}
+                    invalid={errors.startDate ? true : undefined}
+                  />
+                )}
               />
               {errors.startDate ? (
                 <p className="text-[12.5px] text-[var(--error)]">
@@ -332,13 +340,19 @@ export function NewTeamTaskModal({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="team-task-due-date">{t("dueDateLabel")}</Label>
-              <Input
-                id="team-task-due-date"
-                type="date"
-                data-testid="task-due-date-input"
-                aria-invalid={errors.dueDate ? true : undefined}
-                disabled={submitting}
-                {...register("dueDate")}
+              <Controller
+                control={control}
+                name="dueDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="team-task-due-date"
+                    testid="task-due-date-input"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={submitting}
+                    invalid={errors.dueDate ? true : undefined}
+                  />
+                )}
               />
               {errors.dueDate ? (
                 <p className="text-[12.5px] text-[var(--error)]">
