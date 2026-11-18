@@ -27,9 +27,13 @@ import { cn } from "@/lib/utils";
 /** 各元素的默认 Tailwind 映射（网格布局 / hover / 选中 / 禁用态）。 */
 const defaultClassNames: Partial<ClassNames> = {
   root: "w-fit p-3",
-  months: "relative flex flex-col gap-4 md:flex-row",
+  // 单月固定纵排：不要 md:flex-row / gap-4——nav 的按钮全是 absolute，
+  // nav 自身在流内是零宽盒子，在行向 flex 里会作为一个 flex item 把
+  // month 顶出一个 gap-4 的左偏移（2026-11-18 取证：网格左 55 / 右 19）。
+  months: "relative flex flex-col",
   month: "flex w-full flex-col gap-4",
-  nav: "flex w-full items-center justify-between gap-1",
+  // display:contents：nav 不产生盒，prev/next（absolute）直接锚定 months。
+  nav: "contents",
   button_previous:
     "absolute left-0 top-0 inline-flex size-8 items-center justify-center rounded-lg text-[var(--ink-700)] transition-colors hover:bg-[var(--surface-subtle)] hover:text-[var(--ink-900)] disabled:pointer-events-none disabled:opacity-40",
   button_next:
@@ -120,7 +124,7 @@ function Calendar({
   return (
     <DayPicker
       showOutsideDays={showOutsideDays}
-      className={cn(defaultClassNames.root, className)}
+      className={className}
       classNames={mergeClassNames(defaultClassNames, classNames)}
       formatters={{ formatCaption: formatMonthCaption, ...formatters }}
       {...props}

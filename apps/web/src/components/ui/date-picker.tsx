@@ -147,7 +147,11 @@ export function DatePicker({
           )}
         />
       </PopoverAnchor>
-      <PopoverContent collisionBoundary={boundary} collisionPadding={8}>
+      <PopoverContent
+        className="w-auto p-2"
+        collisionBoundary={boundary}
+        collisionPadding={8}
+      >
         <Calendar
           mode="single"
           required

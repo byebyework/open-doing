@@ -104,4 +104,40 @@ describe("Calendar（react-day-picker v10 薄封装）", () => {
 
     calendar.unmount();
   });
+
+  it("单月布局：months 不参与 md:flex-row（零宽 nav 在行向 flex 里顶出 16px gap），nav 以 contents 移出盒树", () => {
+    const calendar = renderCalendar({
+      defaultMonth: new Date(2026, 10, 1),
+      locale: enUS,
+    });
+
+    // months 容器：单月固定纵排。
+    const months = document.body.querySelector('[class*="relative flex"]');
+    expect(months).not.toBeNull();
+    expect(months?.className).toContain("flex-col");
+    expect(months?.className).not.toContain("md:flex-row");
+    expect(months?.className).not.toContain("gap-4");
+
+    // nav：display:contents，不产生盒（prev/next 按钮锚定 months）。
+    const nav = months?.querySelector("nav");
+    expect(nav).not.toBeNull();
+    expect(nav?.className).toContain("contents");
+    expect(nav?.className).not.toContain("w-full");
+
+    calendar.unmount();
+  });
+
+  it("root 默认类不重复：classNames.root 与 className 各只出现一次 w-fit/p-3", () => {
+    const calendar = renderCalendar({
+      defaultMonth: new Date(2026, 10, 1),
+      locale: enUS,
+    });
+
+    const root = calendar.grid!.closest("[class*='w-fit']");
+    expect(root).not.toBeNull();
+    expect(root?.className.match(/w-fit/g)?.length).toBe(1);
+    expect(root?.className.match(/p-3/g)?.length).toBe(1);
+
+    calendar.unmount();
+  });
 });
