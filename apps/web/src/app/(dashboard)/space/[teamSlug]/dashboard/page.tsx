@@ -96,7 +96,7 @@ export default async function TeamDashboardPage(
         />
       </div>
 
-      <div className="mt-6 grid min-w-0 grid-cols-1 items-start gap-4 min-[861px]:grid-cols-2">
+      <div className="mt-6 grid min-w-0 grid-cols-1 gap-4 min-[861px]:grid-cols-2">
         <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <h2 className="text-[15px] font-bold text-[var(--ink-900)]">

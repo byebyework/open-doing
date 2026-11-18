@@ -50,6 +50,10 @@ export interface MilestoneListProps {
  *
  * 行内展示任务标题与「项目 · 责任人 · 截止日期」；逾期行追加逾期天数。
  * 行内链接直达任务详情，卡片尾部引导到空间级 Kanban 看全部任务。
+ *
+ * 卡内滚动：列表封顶 5 行（max-h 272px ≈ 5 × 54px 行高），超出时卡内
+ * 纵向滚动（细滚动条 token 色），「查看全部」脚注由 mt-auto 钉在卡底——
+ * 与同排「项目健康度」卡片等高（grid stretch），见 2026-11-18 视觉反馈。
  */
 export async function MilestoneList({
   teamSlug,
@@ -60,7 +64,7 @@ export async function MilestoneList({
   const tTasks = await getTranslations("tasks");
 
   return (
-    <section className="min-w-0 rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
+    <section className="flex min-w-0 flex-col rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
       <div className="flex min-w-0 flex-wrap items-center gap-2">
         <h2 className="text-[15px] font-bold text-[var(--ink-900)]">
           {t("milestonesTitle")}
@@ -76,7 +80,7 @@ export async function MilestoneList({
           description={t("emptyMilestonesDescription")}
         />
       ) : (
-        <ul className="mt-1 flex flex-col">
+        <ul className="mt-1 flex max-h-[272px] flex-none flex-col overflow-y-auto overscroll-contain pb-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border-strong)] [&::-webkit-scrollbar]:w-1.5">
           {tasks.map((task) => {
             const meta = KIND_META[task.kind];
             const overdueDays =
@@ -132,7 +136,7 @@ export async function MilestoneList({
         </ul>
       )}
 
-      <div className="-mx-4 mt-1 border-t border-[var(--border-default)] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
+      <div className="-mx-4 mt-auto border-t border-[var(--border-default)] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
         <Link
           href={moduleHref(teamSlug, "kanban")}
           className="text-[12.5px] font-medium text-[var(--purple-600)] hover:underline"
