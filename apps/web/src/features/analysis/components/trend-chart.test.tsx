@@ -85,6 +85,27 @@ describe("TrendChart（recharts 版趋势柱状图）", () => {
     expect(html).toContain('title="2026-11-02 · 2 项到期"');
   });
 
+  it("全 0 数据：y 轴 0 刻度仍贴在底部基线（domain 不退化为 [0,0]）", () => {
+    const buckets = dailyBuckets(7);
+    const values = Array<number>(7).fill(0);
+
+    const html = renderToStaticMarkup(
+      withIntl(
+        <TrendChart
+          buckets={buckets}
+          series={[{ tone: "primary", values }]}
+        />,
+      ),
+    );
+
+    // 绘图区高 206（260 - top margin 24 - x 轴 30），底部基线 y = 24 + 206 = 230；
+    // 退化 domain [0,0] 会把唯一的 0 刻度映射到垂直中点（y = 127）。
+    expect(html).toMatch(/<text[^>]*orientation="left"[^>]*y="230"[^>]*>/);
+    expect(html).not.toMatch(/<text[^>]*orientation="left"[^>]*y="127"/);
+    // ticks 仍按 maxValue 计算，不应出现凭空多出的 "1" 刻度。
+    expect(html).not.toMatch(/<text[^>]*orientation="left"[^>]*>[^<]*<tspan[^>]*>1<\/tspan>/);
+  });
+
   it("x 轴首桶、末桶显示完整日期，中间桶显示 MM-DD", () => {
     const buckets = dailyBuckets(30);
     const values = Array<number>(30).fill(0);

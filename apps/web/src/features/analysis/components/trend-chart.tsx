@@ -197,7 +197,7 @@ export function TrendChart({
           width={26}
           axisLine={false}
           tickLine={false}
-          domain={[0, maxValue]}
+          domain={[0, maxValue === 0 ? 1 : maxValue]}
           ticks={yTicks}
           allowDecimals={false}
           tick={{
