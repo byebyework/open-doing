@@ -23,7 +23,8 @@ import {
 } from "../buckets";
 import type { PersonalSpaceAnalysis, TeamSpaceAnalysis } from "../service";
 import { AnalysisRangeSelector } from "./AnalysisRangeSelector";
-import { HBarList, TrendChart, WeekMiniBars } from "./charts";
+import { HBarList, WeekMiniBars } from "./charts";
+import { TrendChart } from "./trend-chart";
 
 /** 分析页入参：`variant` 决定消费哪一份 DTO（另一份传 null）。 */
 export interface SpaceAnalysisProps {
@@ -340,7 +341,7 @@ async function PersonalBody({
             <TrendChart
               buckets={dueBuckets}
               series={[{ tone: "primary", values: futureDueValues }]}
-              formatValue={(value) => t("valueDue", { value })}
+              valueTemplate={t("valueDue", { value: "{value}" })}
               emptyLabel={t("none")}
               todayIndex={0}
               axisDensity="narrow"

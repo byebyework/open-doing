@@ -24,13 +24,3 @@ export function xTickIndexes(count: number, density: AxisDensity): number[] {
 export function tickDisplayLabel(label: string, index: number, count: number): string {
   return index === 0 || index === count - 1 ? label : label.slice(5);
 }
-
-/**
- * x 轴标签步长（每 N 桶标一个；末桶始终标注，由渲染层保证）。
- *
- * @deprecated 旧自绘 TrendChart（components/charts.tsx）专用；改用
- * `xTickIndexes` 取刻度下标。Task 7 删除旧 TrendChart 时一并移除本导出。
- */
-export function axisLabelStep(density: AxisDensity): number {
-  return density === "narrow" ? 10 : 5;
-}
