@@ -86,7 +86,9 @@
     "todayCaption": "基准日期 {date}（{weekday}）",
     "todayHintAria": "基准日期说明",
     "todayHintTitle": "基准日期",
-    "todayHintItem": "「今天」统一按 Asia/Shanghai（中国标准时间）计算，逾期与临期判定以它为准。"
+    "todayHintItem": "「今天」统一按 Asia/Shanghai（中国标准时间）计算，逾期与临期判定以它为准。",
+    "pickerPreviousMonth": "上个月",
+    "pickerNextMonth": "下个月"
   },
   "auth": {
     "signIn": "登录",

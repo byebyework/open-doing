@@ -86,7 +86,9 @@
     "todayCaption": "Reference date {date} ({weekday})",
     "todayHintAria": "Reference date explanation",
     "todayHintTitle": "Reference date",
-    "todayHintItem": "Today is always computed in Asia/Shanghai (China Standard Time); overdue and due-soon checks follow it."
+    "todayHintItem": "Today is always computed in Asia/Shanghai (China Standard Time); overdue and due-soon checks follow it.",
+    "pickerPreviousMonth": "Previous month",
+    "pickerNextMonth": "Next month"
   },
   "auth": {
     "signIn": "Sign in",
