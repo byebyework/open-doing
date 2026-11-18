@@ -11,7 +11,7 @@ import en from "@/i18n/messages/en.json";
 import zh from "@/i18n/messages/zh.json";
 import { OD_MS } from "@/components/ui/overlay-motion";
 
-import { DatePicker, formatISODate, parseISODate } from "./date-picker";
+import { closestDialog, DatePicker, formatISODate, parseISODate } from "./date-picker";
 
 /**
  * 仓库 vitest 是 node 环境（无 @testing-library），沿用 popover.test.tsx 的
@@ -192,5 +192,20 @@ describe("DatePicker（原生 date input + Popover 日历）", () => {
     expect(picker.caption).toContain("November 2026");
 
     picker.unmount();
+  });
+
+  it("closestDialog 返回最近的对话框祖先，无则返回 null（弹层碰撞边界的取值依据）", async () => {
+    const host = document.createElement("div");
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    dialog.appendChild(host);
+    document.body.appendChild(dialog);
+
+    expect(closestDialog(host)).toBe(dialog);
+    expect(closestDialog(dialog)).toBe(dialog);
+    expect(closestDialog(document.body)).toBeNull();
+    expect(closestDialog(null)).toBeNull();
+
+    dialog.remove();
   });
 });

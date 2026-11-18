@@ -19,6 +19,12 @@
  * RDP 的上一月/下一月 aria label 走 `date.pickerPreviousMonth` /
  * `date.pickerNextMonth` 消息键。样式只走 token CSS 变量（继承 shadcn Input
  * 与 vendored Calendar 的默认映射）。
+ *
+ * 弹层碰撞边界：日历（w-72）比 date input 宽，在表单 Dialog 里若以视口做
+ * 碰撞边界会溢出卡片（挂到卡外，见 2026-11-18 视觉反馈）。这里把 Radix
+ * `collisionBoundary` 设为点击时取到的最近 `[role="dialog"]` 祖先（无对话
+ * 框环境回落视口默认行为），加 `collisionPadding: 8`——放不下时由 Radix
+ * 自动翻到输入框上方并平移回卡片内，与同弹窗 Select 的行为一致。
  */
 import { enUS, zhCN } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
@@ -90,6 +96,15 @@ export function formatISODate(day: Date): string {
 }
 
 /**
+ * 弹层碰撞边界：返回最近的 `[role="dialog"]` 祖先（含自身），无则 null
+ * （Radix 回落视口边界）。挂载后经 anchor ref 取值，Portal 弹层只在
+ * open 翻 true 后渲染，此时 ref 已就位。
+ */
+export function closestDialog(node: Element | null): Element | null {
+  return node?.closest('[role="dialog"]') ?? null;
+}
+
+/**
  * 混合式日期选择器。input 点击弹出 Popover 日历；选择后写回并关闭。
  */
 export function DatePicker({
@@ -103,6 +118,8 @@ export function DatePicker({
   className,
 }: DatePickerProps): ReactNode {
   const [open, setOpen] = useState(false);
+  // 碰撞边界在点击时一次性取值（事件期读 DOM 合规；弹层开着时对话框不会动）。
+  const [boundary, setBoundary] = useState<Element | null>(null);
   const locale = useLocale();
   const t = useTranslations("date");
   const dateLocale = locale === "en" ? enUS : zhCN;
@@ -115,8 +132,10 @@ export function DatePicker({
           type="date"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          onClick={() => {
-            if (!disabled) setOpen(true);
+          onClick={(event) => {
+            if (disabled) return;
+            setBoundary(closestDialog(event.currentTarget));
+            setOpen(true);
           }}
           disabled={disabled}
           aria-invalid={invalid ? true : undefined}
@@ -128,7 +147,7 @@ export function DatePicker({
           )}
         />
       </PopoverAnchor>
-      <PopoverContent>
+      <PopoverContent collisionBoundary={boundary} collisionPadding={8}>
         <Calendar
           mode="single"
           required
