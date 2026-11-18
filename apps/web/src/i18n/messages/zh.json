@@ -726,7 +726,11 @@
     "unassignedHintTitle": "未指派任务",
     "unassignedHintLead": "完整列表与指派引导已移至 ",
     "unassignedHintLink": "看板",
-    "unassignedHintTail": "（空间级看板）。"
+    "unassignedHintTail": "（空间级看板）。",
+    "milestonesPagerLabel": "重要节点翻页",
+    "milestonesPrevPage": "上一页",
+    "milestonesNextPage": "下一页",
+    "milestonesGoToPage": "转到第 {page} 页"
   },
   "kanban": {
     "kanban": "看板",

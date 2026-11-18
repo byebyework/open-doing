@@ -726,7 +726,11 @@
     "unassignedHintTitle": "Unassigned tasks",
     "unassignedHintLead": "The full list and assignment guidance now live in the ",
     "unassignedHintLink": "Kanban board",
-    "unassignedHintTail": " (space-level board)."
+    "unassignedHintTail": " (space-level board).",
+    "milestonesPagerLabel": "Milestones pagination",
+    "milestonesPrevPage": "Previous page",
+    "milestonesNextPage": "Next page",
+    "milestonesGoToPage": "Go to page {page}"
   },
   "kanban": {
     "kanban": "Kanban",

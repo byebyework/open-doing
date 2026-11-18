@@ -3,37 +3,9 @@ import Link from "next/link";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import type { MilestoneTaskItem } from "@/features/dashboard/team-overview/service";
-import { formatTaskDate } from "@/lib/date-display";
 import { moduleHref } from "@/lib/routes";
 
-/** 三态节点的原型配色与图标。 */
-const KIND_META = {
-  overdue: {
-    icon: "⏰",
-    color: "var(--status-overdue)",
-    background: "var(--status-overdue-bg)",
-  },
-  dueSoon: {
-    icon: "⏳",
-    color: "#a66b00",
-    background: "var(--status-due-soon-bg)",
-  },
-  upcoming: {
-    icon: "📅",
-    color: "var(--ink-500)",
-    background: "#e8eaed",
-  },
-} as const;
-
-/** 两个 `YYYY-MM-DD` 之间的整天数（UTC 毫秒算术，不依赖本地时区）。 */
-function daysBetween(later: string, earlier: string): number {
-  const toUtc = (date: string) => {
-    const [year, month, day] = date.split("-").map(Number);
-    return Date.UTC(year!, month! - 1, day!);
-  };
-
-  return Math.round((toUtc(later) - toUtc(earlier)) / 86_400_000);
-}
+import { MilestoneCarousel } from "./MilestoneCarousel";
 
 /** 重要节点列表入参。 */
 export interface MilestoneListProps {
@@ -48,12 +20,9 @@ export interface MilestoneListProps {
 /**
  * 团队 Dashboard「重要节点」（server，纯渲染）。
  *
- * 行内展示任务标题与「项目 · 责任人 · 截止日期」；逾期行追加逾期天数。
- * 行内链接直达任务详情，卡片尾部引导到空间级 Kanban 看全部任务。
- *
- * 卡内滚动：列表封顶 5 行（max-h 272px ≈ 5 × 54px 行高），超出时卡内
- * 纵向滚动（细滚动条 token 色），「查看全部」脚注由 mt-auto 钉在卡底——
- * 与同排「项目健康度」卡片等高（grid stretch），见 2026-11-18 视觉反馈。
+ * 头部与「查看全部」脚注留在服务端；列表本体由客户端
+ * `MilestoneCarousel` 承接——横向幻灯片翻页（每页 5 行），卡片高度恒定，
+ * 与同排「项目健康度」等高（grid stretch），见 2026-11-18 视觉反馈。
  */
 export async function MilestoneList({
   teamSlug,
@@ -61,7 +30,6 @@ export async function MilestoneList({
   today,
 }: MilestoneListProps) {
   const t = await getTranslations("dashboard");
-  const tTasks = await getTranslations("tasks");
 
   return (
     <section className="flex min-w-0 flex-col rounded-xl border border-[var(--border-default)] bg-white p-4 shadow-[var(--shadow-rest)] min-[861px]:p-5">
@@ -80,60 +48,7 @@ export async function MilestoneList({
           description={t("emptyMilestonesDescription")}
         />
       ) : (
-        <ul className="mt-1 flex max-h-[272px] flex-none flex-col overflow-y-auto overscroll-contain pb-1 [scrollbar-width:thin] [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-[var(--border-strong)] [&::-webkit-scrollbar]:w-1.5">
-          {tasks.map((task) => {
-            const meta = KIND_META[task.kind];
-            const overdueDays =
-              task.kind === "overdue" ? daysBetween(today, task.dueDate) : 0;
-
-            return (
-              <li
-                key={task.id}
-                className="border-t border-[#eceef0] first:border-t-0"
-              >
-                <Link
-                  href={task.href}
-                  className="flex min-w-0 items-start gap-2.5 rounded-md py-[11px] hover:bg-[#f4f5f7]"
-                >
-                  <span
-                    aria-hidden="true"
-                    className="grid h-7 w-7 flex-none place-items-center rounded-lg text-[14px]"
-                    style={{ background: meta.background, color: meta.color }}
-                  >
-                    {meta.icon}
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[13.5px] font-semibold leading-[1.35] text-[var(--ink-900)]">
-                      {task.title}
-                    </div>
-                    <div className="mt-[3px] flex min-w-0 flex-wrap items-center gap-x-1 text-[12px] text-[var(--ink-500)]">
-                      <span className="max-w-full truncate">
-                        {task.projectName}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span
-                        className={
-                          task.assigneeName ? undefined : "text-[#a66b00]"
-                        }
-                      >
-                        {task.assigneeName ?? tTasks("unassigned")}
-                      </span>
-                      <span aria-hidden="true">·</span>
-                      <span className="whitespace-nowrap" title={task.dueDate}>
-                        {task.kind === "overdue"
-                          ? t("dueOverdueLine", {
-                              date: formatTaskDate(task.dueDate),
-                              days: overdueDays,
-                            })
-                          : t("dueLine", { date: formatTaskDate(task.dueDate) })}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
+        <MilestoneCarousel tasks={tasks} today={today} />
       )}
 
       <div className="-mx-4 mt-auto border-t border-[var(--border-default)] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
