@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { Subtask, Tag, TaskPriority, TaskStatus } from "@open-doing/types";
 
 /** 任务详情里的评论：额外带上作者用户名。 */
@@ -120,4 +122,10 @@ export interface TaskDetailViewProps {
    * 提示文案由调用方负责。
    */
   onAssign?: (assigneeId: string) => Promise<void>;
+  /**
+   * 元信息区附加行内容（加法扩展）：渲染为「优先级」行之后的一行
+   * MetaRow（label = tasks.tagsLabel），调用方（标签功能）传入标签单元。
+   * 缺省不渲染该行，零行为变化。
+   */
+  metaExtra?: ReactNode;
 }

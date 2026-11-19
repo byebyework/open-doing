@@ -79,7 +79,6 @@ export function TeamTaskDetailClient({
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
-  const tTags = useTranslations("tags");
 
   /** 执行 Server Action：失败统一 `toast.error`，并向调用方抛出。 */
   async function runAction<T>(
@@ -160,12 +159,17 @@ export function TeamTaskDetailClient({
   }
 
   return (
-    <>
-      {tagPool ? (
-        <div className="mb-4 flex items-center gap-2" data-testid="task-tags-row">
-          <span className="shrink-0 text-[12.5px] font-medium text-[var(--muted-foreground)]">
-            {tTags("tagNameLabel")}
-          </span>
+    <TaskDetailView
+      task={task}
+      space="team"
+      permissions={permissions}
+      onAction={onAction}
+      backHref={backHref}
+      currentUserId={currentUserId}
+      assigneeOptions={assigneeOptions}
+      onAssign={handleAssign}
+      metaExtra={
+        tagPool ? (
           <TaskTagsCell
             taskId={task.id}
             space={{ kind: "team", teamId }}
@@ -174,18 +178,8 @@ export function TeamTaskDetailClient({
             canEdit={permissions.canEdit}
             max={6}
           />
-        </div>
-      ) : null}
-      <TaskDetailView
-        task={task}
-        space="team"
-        permissions={permissions}
-        onAction={onAction}
-        backHref={backHref}
-        currentUserId={currentUserId}
-        assigneeOptions={assigneeOptions}
-        onAssign={handleAssign}
-      />
-    </>
+        ) : undefined
+      }
+    />
   );
 }

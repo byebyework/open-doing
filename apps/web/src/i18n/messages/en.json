@@ -341,7 +341,8 @@
     "statusMenuAria": "Change status: {title}",
     "editTaskAria": "Edit task: {title}",
     "deleteTaskAria": "Delete task: {title}",
-    "dueSoonFull": "Due {date}"
+    "dueSoonFull": "Due {date}",
+    "tagsLabel": "Tags"
   },
   "moments": {
     "titleRequired": "Title is required",

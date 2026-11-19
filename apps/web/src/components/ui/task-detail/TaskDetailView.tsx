@@ -355,6 +355,7 @@ export function TaskDetailView({
   currentUserId,
   assigneeOptions,
   onAssign,
+  metaExtra,
 }: TaskDetailViewProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -700,6 +701,10 @@ export function TaskDetailView({
                 <PriorityChip priority={priority} />
               )}
             </MetaRow>
+
+            {metaExtra ? (
+              <MetaRow label={t("tagsLabel")}>{metaExtra}</MetaRow>
+            ) : null}
 
             <MetaRow label={t("assigneeLabel")}>
               {space === "team" &&

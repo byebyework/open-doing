@@ -341,7 +341,8 @@
     "statusMenuAria": "更改状态：{title}",
     "editTaskAria": "编辑任务：{title}",
     "deleteTaskAria": "删除任务：{title}",
-    "dueSoonFull": "{date} 到期"
+    "dueSoonFull": "{date} 到期",
+    "tagsLabel": "标签"
   },
   "moments": {
     "titleRequired": "请填写名称",

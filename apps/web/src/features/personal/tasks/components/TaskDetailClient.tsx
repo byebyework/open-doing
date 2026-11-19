@@ -74,7 +74,6 @@ export function TaskDetailClient({
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
-  const tTags = useTranslations("tags");
 
   /** 执行 Server Action：失败统一 `toast.error`，并向调用方抛出。 */
   async function runAction<T>(
@@ -139,12 +138,16 @@ export function TaskDetailClient({
   };
 
   return (
-    <>
-      {tagPool ? (
-        <div className="mb-4 flex items-center gap-2" data-testid="task-tags-row">
-          <span className="shrink-0 text-[12.5px] font-medium text-[var(--muted-foreground)]">
-            {tTags("tagNameLabel")}
-          </span>
+    <TaskDetailView
+      task={task}
+      space="personal"
+      permissions={{ canEdit: true, canDelete: true, canAssign: false }}
+      onAction={onAction}
+      backHref={backHref}
+      backLabel={backLabel}
+      currentUserId={currentUserId}
+      metaExtra={
+        tagPool ? (
           <TaskTagsCell
             taskId={task.id}
             space={{ kind: "personal" }}
@@ -153,17 +156,8 @@ export function TaskDetailClient({
             canEdit
             max={6}
           />
-        </div>
-      ) : null}
-      <TaskDetailView
-        task={task}
-        space="personal"
-        permissions={{ canEdit: true, canDelete: true, canAssign: false }}
-        onAction={onAction}
-        backHref={backHref}
-        backLabel={backLabel}
-        currentUserId={currentUserId}
-      />
-    </>
+        ) : undefined
+      }
+    />
   );
 }
