@@ -57,7 +57,7 @@ function ColorDots({
   const t = useTranslations("tags");
 
   return (
-    <div className="flex items-center gap-1.5" role="radiogroup" aria-label={t("tagColorLabel")}>
+    <div className="flex items-center gap-2" role="radiogroup" aria-label={t("tagColorLabel")}>
       {TAG_COLORS.map((color) => {
         const style = tagColorStyle(color);
         const active = color === value;
@@ -70,17 +70,17 @@ function ColorDots({
             data-testid={`${testPrefix}-${color}`}
             data-active={active ? "true" : undefined}
             onClick={() => onChange(color)}
-            className="relative flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110"
-            style={{ backgroundColor: style.backgroundColor }}
+            className={`flex size-7 items-center justify-center rounded-full transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] ${
+              active
+                ? "scale-110 ring-2 ring-[var(--ink-900)] ring-offset-2 ring-offset-white"
+                : "hover:scale-110"
+            }`}
           >
             <span
               aria-hidden
-              className="size-3 rounded-full"
+              className="size-5 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
               style={{ backgroundColor: style.color }}
             />
-            {active ? (
-              <CheckIcon className="absolute size-3.5" style={{ color: style.color }} aria-hidden />
-            ) : null}
           </button>
         );
       })}
