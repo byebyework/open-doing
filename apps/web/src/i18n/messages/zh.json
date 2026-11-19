@@ -617,7 +617,15 @@
     "tagPickerEmpty": "添加标签",
     "taskNotFound": "任务不存在或无权访问",
     "editTags": "编辑标签",
-    "deleteTag": "删除标签"
+    "deleteTag": "删除标签",
+    "searchPlaceholder": "搜索标签",
+    "sortByCreated": "按创建",
+    "sortByUsage": "按使用",
+    "sortToggle": "切换排序",
+    "noSearchResult": "没有匹配的标签",
+    "moreActions": "更多操作",
+    "deleteTagConfirmUsed": "该标签正被 {count} 个任务使用，删除后将从这些任务上一并移除，且不可恢复。确定删除吗？",
+    "deleteTagConfirmUnused": "该标签未被使用，删除后不可恢复。确定删除吗？"
   },
   "personal": {
     "space": "个人空间",

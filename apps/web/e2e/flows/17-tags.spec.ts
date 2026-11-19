@@ -111,8 +111,9 @@ test.describe("flow 17: 项目标签", () => {
     await ownerPage.getByTestId("tags-manage-button").click();
     const manager = ownerPage.getByTestId("tag-manager");
     await expect(manager).toBeVisible();
+    await ownerPage.getByTestId("tag-new-toggle").click();
     await ownerPage.getByTestId("tag-name-input").fill(tagName);
-    await ownerPage.getByTestId("tag-create-submit").click();
+    await ownerPage.getByTestId("tag-save-name-input").click();
     await expect(manager.getByTestId("tag-list")).toContainText(tagName);
     await ownerPage.keyboard.press("Escape");
 
@@ -162,7 +163,8 @@ test.describe("flow 17: 项目标签", () => {
     await ownerPage.goto(`/space/${teamSlug}/projects`);
     await ownerPage.getByTestId("tags-manage-button").click();
     const row = manager.getByTestId("tag-row").filter({ hasText: tagName });
-    await row.locator("button[data-testid^='tag-delete-']").click();
+    await row.locator("button[data-testid^='tag-menu-']").click();
+    await ownerPage.locator("[data-testid^='tag-delete-']").click();
     await ownerPage.getByTestId("tag-delete-confirm").click();
     await expect(manager.getByTestId("tag-row")).toHaveCount(0);
     await ownerPage.keyboard.press("Escape");

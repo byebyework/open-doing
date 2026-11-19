@@ -130,10 +130,14 @@ describe("TagManagerDialog", () => {
 
     harness.render({ open: true, onOpenChange: vi.fn(), space: SPACE, initialTags: [], canManage: true });
 
+    // 创建区默认收起：先点「新建标签」展开编辑行（空池则自动展开）。
+    const toggle = document.querySelector<HTMLButtonElement>("[data-testid='tag-new-toggle']")!;
+    click(toggle);
+
     const input = document.querySelector<HTMLInputElement>("[data-testid='tag-name-input']")!;
     setInputValue(input, "新标签");
 
-    const submit = document.querySelector<HTMLButtonElement>("[data-testid='tag-create-submit']")!;
+    const submit = document.querySelector<HTMLButtonElement>("[data-testid='tag-save-name-input']")!;
     await act(async () => {
       submit.click();
     });
@@ -142,26 +146,41 @@ describe("TagManagerDialog", () => {
     expect(refreshSpy).toHaveBeenCalled();
   });
 
+  it("空池自动展开创建编辑行", () => {
+    harness.render({ open: true, onOpenChange: vi.fn(), space: SPACE, initialTags: [], canManage: true });
+    expect(document.querySelector("[data-testid='tag-name-input']")).not.toBeNull();
+  });
+
   it("新建失败（field 错误）：错误文案回显且不 refresh", async () => {
     mockCreate.mockResolvedValue({ ok: false, errors: { name: "同名标签已存在" } });
 
     harness.render({ open: true, onOpenChange: vi.fn(), space: SPACE, initialTags: [], canManage: true });
 
+    click(document.querySelector<HTMLButtonElement>("[data-testid='tag-new-toggle']")!);
     const input = document.querySelector<HTMLInputElement>("[data-testid='tag-name-input']")!;
     setInputValue(input, "重复");
-    const submit = document.querySelector<HTMLButtonElement>("[data-testid='tag-create-submit']")!;
+    const submit = document.querySelector<HTMLButtonElement>("[data-testid='tag-save-name-input']")!;
     await act(async () => {
       submit.click();
     });
 
     expect(refreshSpy).not.toHaveBeenCalled();
-    expect(document.querySelector("[data-testid='tag-name-error']")).not.toBeNull();
+    expect(document.querySelector("[data-testid='tag-error-name-input']")).not.toBeNull();
   });
 
   it("删除走确认弹窗，成功后 refresh", async () => {
     mockDelete.mockResolvedValue({ ok: true, data: true });
 
     harness.render({ open: true, onOpenChange: vi.fn(), space: SPACE, initialTags: fakeTags, canManage: true });
+
+    const menu = document.querySelector<HTMLButtonElement>("[data-testid='tag-menu-tag-1']")!;
+    await act(async () => {
+      // Radix DropdownMenu 以 pointerdown 开启（click 不触发）。
+      menu.dispatchEvent(
+        new PointerEvent("pointerdown", { bubbles: true, button: 0, pointerType: "mouse" }),
+      );
+    });
+    await act(async () => {});
 
     const remove = document.querySelector<HTMLButtonElement>("[data-testid='tag-delete-tag-1']")!;
     await act(async () => {

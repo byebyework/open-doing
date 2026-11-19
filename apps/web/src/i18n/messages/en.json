@@ -617,7 +617,15 @@
     "tagPickerEmpty": "Add tag",
     "taskNotFound": "Task not found or no access",
     "editTags": "Edit tags",
-    "deleteTag": "Delete tag"
+    "deleteTag": "Delete tag",
+    "searchPlaceholder": "Search tags",
+    "sortByCreated": "By created",
+    "sortByUsage": "By usage",
+    "sortToggle": "Toggle sort",
+    "noSearchResult": "No matching tags",
+    "moreActions": "More actions",
+    "deleteTagConfirmUsed": "This tag is used by {count} task(s); deleting removes it from all of them and cannot be undone. Delete?",
+    "deleteTagConfirmUnused": "This tag is unused. Deleting cannot be undone. Delete?"
   },
   "personal": {
     "space": "Personal space",
