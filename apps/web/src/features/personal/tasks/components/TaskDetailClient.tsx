@@ -1,5 +1,6 @@
 "use client";
 
+import type { Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -10,6 +11,7 @@ import type {
   TaskDetailViewActions,
 } from "@/components/ui/task-detail/types";
 import type { ActionResult } from "@/features/auth/actions";
+import { TaskTagsEditor } from "@/features/tags/components/TaskTagsEditor";
 
 import {
   addPersonalCommentAction,
@@ -51,6 +53,8 @@ export interface TaskDetailClientProps {
   backLabel?: string;
   /** 当前登录用户 ID（个人任务恒为责任人）。 */
   currentUserId: string;
+  /** 本人标签池（RSC 注入；详情页标签编辑区用）。 */
+  tagPool?: Tag[];
 }
 
 /**
@@ -65,6 +69,7 @@ export function TaskDetailClient({
   backHref,
   backLabel,
   currentUserId,
+  tagPool,
 }: TaskDetailClientProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
@@ -133,14 +138,27 @@ export function TaskDetailClient({
   };
 
   return (
-    <TaskDetailView
-      task={task}
-      space="personal"
-      permissions={{ canEdit: true, canDelete: true, canAssign: false }}
-      onAction={onAction}
-      backHref={backHref}
-      backLabel={backLabel}
-      currentUserId={currentUserId}
-    />
+    <>
+      {tagPool ? (
+        <div className="mb-4">
+          <TaskTagsEditor
+            taskId={task.id}
+            space={{ kind: "personal" }}
+            pool={tagPool}
+            tags={task.tags ?? []}
+            canEdit
+          />
+        </div>
+      ) : null}
+      <TaskDetailView
+        task={task}
+        space="personal"
+        permissions={{ canEdit: true, canDelete: true, canAssign: false }}
+        onAction={onAction}
+        backHref={backHref}
+        backLabel={backLabel}
+        currentUserId={currentUserId}
+      />
+    </>
   );
 }

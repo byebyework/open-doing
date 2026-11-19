@@ -25,6 +25,7 @@ import { PriorityDot } from "@/components/ui/PriorityChip";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
+import { TaskTags } from "@/features/tags/components/TaskTags";
 import { canEditTask } from "@/features/tasks/permissions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
 import type { TeamRole } from "@/features/teams/permissions";
@@ -378,6 +379,12 @@ function SpaceKanbanCard({
         ) : (
           <span className={`block ${titleClassName}`}>{card.title}</span>
         )}
+
+        {card.tags && card.tags.length > 0 ? (
+          <div className="mt-2">
+            <TaskTags tags={card.tags} />
+          </div>
+        ) : null}
 
         <div
           className={`mt-2.5 flex items-center gap-2 ${

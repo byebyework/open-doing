@@ -339,3 +339,31 @@ export function assertTagsBelongToSpace(
     }
   }
 }
+
+/**
+ * 批量取任务 → 标签映射（展示层数据组装）。
+ *
+ * 一次 `taskTags JOIN tags` 查询按 taskId 分组，防 N+1；空集合返回空 Map。
+ * 已删除的标签因外键级联天然不出现，无需调用方过滤。
+ */
+export async function tagsByTaskId(
+  taskIds: string[],
+  client: DbClient = db,
+): Promise<Map<string, Tag[]>> {
+  const map = new Map<string, Tag[]>();
+  if (taskIds.length === 0) return map;
+
+  const rows = await client
+    .select({ taskId: taskTags.taskId, tag: tags })
+    .from(taskTags)
+    .innerJoin(tags, eq(taskTags.tagId, tags.id))
+    .where(inArray(taskTags.taskId, taskIds))
+    .orderBy(asc(tags.createdAt));
+
+  for (const row of rows) {
+    const list = map.get(row.taskId) ?? [];
+    list.push(toTag(row.tag));
+    map.set(row.taskId, list);
+  }
+  return map;
+}

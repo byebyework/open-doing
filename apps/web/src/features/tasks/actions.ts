@@ -72,6 +72,7 @@ export async function createTeamTaskAction(input: {
   dueDate?: string | null;
   startDate?: string | null;
   assigneeId?: string | null;
+  tagIds?: string[];
 }): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
@@ -96,6 +97,7 @@ export async function updateTeamTaskAction(
     startDate?: string | null;
     status?: TaskStatus;
     assigneeId?: string;
+    tagIds?: string[];
   },
 ): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();

@@ -9,6 +9,7 @@ import {
   canDeleteTask,
   canEditTask,
 } from "@/features/tasks/permissions";
+import { listTags } from "@/features/tags/service";
 import { getTeamTaskDetail } from "@/features/tasks/service";
 import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
@@ -67,6 +68,8 @@ export default async function TeamTaskDetailPage({
     assigneeId: task.assigneeId,
   };
 
+  const tagPool = await listTags({ teamId: team.id });
+
   return (
     <TeamTaskDetailClient
       task={task}
@@ -79,6 +82,7 @@ export default async function TeamTaskDetailPage({
         canAssign: canAssignTask(permissionInput),
       }}
       assigneeOptions={assigneeOptions}
+      tagPool={tagPool}
     />
   );
 }

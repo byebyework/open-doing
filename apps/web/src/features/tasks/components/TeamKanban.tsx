@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskStatus } from "@open-doing/types";
+import type { Tag, TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import {
   DndContext,
@@ -58,6 +58,8 @@ export interface TeamKanbanProps {
   role: TeamRole;
   actorId: string;
   projectSlug: string;
+  /** 本团队标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
+  tagPool?: Tag[];
 }
 
 /** 状态筛选值：全部 + 三种状态。 */
@@ -341,6 +343,7 @@ export function TeamKanban({
   projects,
   role,
   actorId,
+  tagPool,
 }: TeamKanbanProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -529,6 +532,7 @@ export function TeamKanban({
       <NewTeamTaskModal
         open={newTaskOpen}
         teamId={teamId}
+        tagPool={tagPool}
         projects={projects}
         defaultProjectId={projectId}
         members={members}

@@ -1,5 +1,6 @@
 import type {
   SpaceType as SharedSpaceType,
+  Tag,
   TaskPriority,
   TaskStatus,
 } from "@open-doing/types";
@@ -21,6 +22,7 @@ import {
 
 import { db, type DbClient } from "@/server/db/client";
 import { projects, subtasks, tasks, users } from "@/server/db/schema";
+import { tagsByTaskId } from "@/features/tags/service";
 
 /** 空间类型（沿用共享领域类型，本模块对外导出以便看板组件消费）。 */
 export type SpaceType = SharedSpaceType;
@@ -59,6 +61,8 @@ export interface KanbanCardItem {
   subtaskDone: number;
   /** 仅 done 卡有值：任务 updatedAt（无独立完成时间列，完成时间以 updatedAt 为口径）。 */
   completedAt: string | null;
+  /** 任务标签（可选扩展；一次 JOIN 组装，看板卡片渲染 pill）。 */
+  tags?: Tag[];
 }
 
 /** 个人空间看板：todo / in_progress 全量，done 收敛到近 7 天。 */
@@ -125,6 +129,19 @@ interface TeamKanbanCardRow extends KanbanCardRow {
  * 第三个位置兼容两种入参：历史调用传 `DbClient`（测试注入），页面传筛选条件；
  * 也可同时传 `client` + `filter`。筛选同时作用于三列与 done 计数查询。
  */
+/** 卡片批量组装标签（一次 JOIN 按 taskId 分组，防逐卡 N+1）。 */
+async function withTags<T extends KanbanCardItem>(
+  items: T[],
+  client: DbClient,
+): Promise<T[]> {
+  if (items.length === 0) return items;
+  const tagsMap = await tagsByTaskId(
+    items.map((item) => item.id),
+    client,
+  );
+  return items.map((item) => ({ ...item, tags: tagsMap.get(item.id) ?? [] }));
+}
+
 export async function getPersonalSpaceBoard(
   userId: string,
   today: string,
@@ -172,10 +189,16 @@ export async function getPersonalSpaceBoard(
 
   const doneOlderCount = olderCountRows[0]?.count ?? 0;
 
+  const [todo, inProgress, doneRecent] = await Promise.all([
+    withTags(todoRows.map(toCard), client),
+    withTags(inProgressRows.map(toCard), client),
+    withTags(doneRows.map(toCard), client),
+  ]);
+
   return {
-    todo: todoRows.map(toCard),
-    inProgress: inProgressRows.map(toCard),
-    doneRecent: doneRows.map(toCard),
+    todo,
+    inProgress,
+    doneRecent,
     doneOlderCount,
     doneTotal: doneRows.length + doneOlderCount,
   };
@@ -213,7 +236,7 @@ export async function getOlderDonePersonalTasks(
     doneOrder,
   );
 
-  return rows.map(toCard);
+  return withTags(rows.map(toCard), client);
 }
 
 /**
@@ -279,10 +302,16 @@ export async function getTeamSpaceBoard(
 
   const doneOlderCount = olderCountRows[0]?.count ?? 0;
 
+  const [todo, inProgress, doneRecent] = await Promise.all([
+    withTags(todoRows.map(toTeamCard), client),
+    withTags(inProgressRows.map(toTeamCard), client),
+    withTags(doneRows.map(toTeamCard), client),
+  ]);
+
   return {
-    todo: todoRows.map(toTeamCard),
-    inProgress: inProgressRows.map(toTeamCard),
-    doneRecent: doneRows.map(toTeamCard),
+    todo,
+    inProgress,
+    doneRecent,
     doneOlderCount,
     doneTotal: doneRows.length + doneOlderCount,
   };
@@ -321,7 +350,7 @@ export async function getOlderDoneTeamTasks(
     doneOrder,
   );
 
-  return rows.map(toTeamCard);
+  return withTags(rows.map(toTeamCard), client);
 }
 
 /** 个人任务范围：本人的个人任务 + 可选项目筛选。 */

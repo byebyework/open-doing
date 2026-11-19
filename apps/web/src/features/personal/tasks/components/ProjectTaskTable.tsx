@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskStatus } from "@open-doing/types";
+import type { Tag, TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
+import { TaskTags } from "@/features/tags/components/TaskTags";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/shadcn/button";
 import {
@@ -74,6 +75,8 @@ export interface ProjectTaskTableProps {
   projectId: string;
   /** 新建任务弹窗可选的全部个人项目。 */
   projects: { id: string; name: string }[];
+  /** 本人标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
+  tagPool?: Tag[];
 }
 
 /**
@@ -87,6 +90,7 @@ export function ProjectTaskTable({
   today,
   projectId,
   projects,
+  tagPool,
 }: ProjectTaskTableProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -236,6 +240,11 @@ export function ProjectTaskTable({
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <PriorityChip priority={task.priority} />
+                        {task.tags && task.tags.length > 0 ? (
+                          <div className="mt-1">
+                            <TaskTags tags={task.tags} max={2} />
+                          </div>
+                        ) : null}
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
@@ -302,6 +311,7 @@ export function ProjectTaskTable({
       <NewTaskModal
         open={newTaskOpen}
         projects={projects}
+        tagPool={tagPool}
         defaultProjectId={projectId}
         onSuccess={() => {
           setNewTaskOpen(false);

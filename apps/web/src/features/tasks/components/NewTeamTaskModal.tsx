@@ -3,7 +3,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { DatePicker } from "@/components/ui/date-picker";
-import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
+import { TASK_PRIORITIES, type Tag, type TaskPriority } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -38,6 +38,7 @@ import {
 } from "@/lib/task-fields";
 
 import { createTeamTaskAction } from "../actions";
+import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 
 /** 新建团队任务弹窗入参。 */
 export interface NewTeamTaskModalProps {
@@ -58,6 +59,8 @@ export interface NewTeamTaskModalProps {
   onSuccess: () => void;
   /** 取消 / 关闭。 */
   onCancel: () => void;
+  /** 本团队标签池（RSC 注入；为空时不渲染标签选择区）。 */
+  tagPool?: Tag[];
 }
 
 /**
@@ -78,11 +81,14 @@ export function NewTeamTaskModal({
   defaultDueDate,
   onSuccess,
   onCancel,
+  tagPool = [],
 }: NewTeamTaskModalProps) {
   const t = useTranslations("tasks");
+  const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
 
   const defaultProject =
     defaultProjectId &&
@@ -154,6 +160,7 @@ export function NewTeamTaskModal({
         description: "",
       });
       setFormError(null);
+      setTagIds([]);
     }
   }, [open, reset, defaultProject, defaultAssignee, dueDateDefault]);
 
@@ -177,6 +184,7 @@ export function NewTeamTaskModal({
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
         assigneeId: values.assigneeId || null,
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
       });
 
       if (!result.ok) {
@@ -312,6 +320,19 @@ export function NewTeamTaskModal({
               </SelectContent>
             </Select>
           </div>
+
+          {tagPool.length > 0 ? (
+            <div className="mb-4 flex flex-col gap-2">
+              <Label>{tTags("tagNameLabel")}</Label>
+              <TaskTagPicker
+                space={{ kind: "team", teamId }}
+                pool={tagPool}
+                value={tagIds}
+                onChange={setTagIds}
+                canEdit={!submitting}
+              />
+            </div>
+          ) : null}
 
           {/* 开始 / 截止同行排布（两列）。 */}
           <div className="mb-4 grid grid-cols-2 gap-4">

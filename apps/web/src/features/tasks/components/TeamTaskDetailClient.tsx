@@ -1,5 +1,6 @@
 "use client";
 
+import type { Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ import type {
   TaskDetailViewActions,
 } from "@/components/ui/task-detail/types";
 import type { ActionResult } from "@/features/auth/actions";
+import { TaskTagsEditor } from "@/features/tags/components/TaskTagsEditor";
 
 import {
   addTeamCommentAction,
@@ -54,6 +56,8 @@ export interface TeamTaskDetailClientProps {
   permissions: TaskDetailPermissions;
   /** 团队成员（责任人选择器选项）；email 选填，用于负责人信息处展示。 */
   assigneeOptions: { id: string; name: string; email?: string | null }[];
+  /** 本团队标签池（RSC 注入；详情页标签编辑区用）。 */
+  tagPool?: Tag[];
 }
 
 /**
@@ -70,6 +74,7 @@ export function TeamTaskDetailClient({
   currentUserId,
   permissions,
   assigneeOptions,
+  tagPool,
 }: TeamTaskDetailClientProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
@@ -154,15 +159,28 @@ export function TeamTaskDetailClient({
   }
 
   return (
-    <TaskDetailView
-      task={task}
-      space="team"
-      permissions={permissions}
-      onAction={onAction}
-      backHref={backHref}
-      currentUserId={currentUserId}
-      assigneeOptions={assigneeOptions}
-      onAssign={handleAssign}
-    />
+    <>
+      {tagPool ? (
+        <div className="mb-4">
+          <TaskTagsEditor
+            taskId={task.id}
+            space={{ kind: "team", teamId }}
+            pool={tagPool}
+            tags={task.tags ?? []}
+            canEdit={permissions.canEdit}
+          />
+        </div>
+      ) : null}
+      <TaskDetailView
+        task={task}
+        space="team"
+        permissions={permissions}
+        onAction={onAction}
+        backHref={backHref}
+        currentUserId={currentUserId}
+        assigneeOptions={assigneeOptions}
+        onAssign={handleAssign}
+      />
+    </>
   );
 }

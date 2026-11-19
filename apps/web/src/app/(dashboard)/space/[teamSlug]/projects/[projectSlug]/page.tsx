@@ -14,6 +14,7 @@ import {
 } from "@/features/tasks/components/TeamProjectHeader";
 import { TeamProjectTaskTable } from "@/features/tasks/components/TeamProjectTaskTable";
 import { TeamKanban } from "@/features/tasks/components/TeamKanban";
+import { listTags } from "@/features/tags/service";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
@@ -55,10 +56,11 @@ export default async function TeamProjectPage({
   const project = await getTeamProjectBySlug(team.id, projectSlug);
   if (!project) notFound();
 
-  const [tasks, projectList, memberList] = await Promise.all([
+  const [tasks, projectList, memberList, tagPool] = await Promise.all([
     listTeamProjectTasks({ teamId: team.id, projectId: project.id, actorId: user.id }),
     listTeamProjects(team.id),
     listMembers(team.id),
+    listTags({ teamId: team.id }),
   ]);
 
   const projectOptions = projectList.map(({ id, name }) => ({ id, name }));
@@ -108,6 +110,7 @@ export default async function TeamProjectPage({
             actorId={user.id}
             canManage={can(membership.role, "team:manage_projects")}
             redirectTo={teamSettingsHref(team.slug)}
+            tagPool={tagPool}
           />
         }
       />
@@ -125,6 +128,7 @@ export default async function TeamProjectPage({
             role={membership.role}
             actorId={user.id}
             projectSlug={project.slug}
+            tagPool={tagPool}
           />
         ) : (
           <TeamProjectTaskTable

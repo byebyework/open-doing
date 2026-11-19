@@ -86,6 +86,8 @@ export async function updatePersonalTaskAction(
     dueDate?: string | null;
     startDate?: string | null;
     status?: TaskStatus;
+    /** 标签全量覆写；仅标签变更不推进 updatedAt（完成日代理口径）。 */
+    tagIds?: string[];
   },
 ): Promise<ActionResult<Task>> {
   const user = await requireUser();

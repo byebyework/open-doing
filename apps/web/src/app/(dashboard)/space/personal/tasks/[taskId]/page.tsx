@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
 
 import { requireUser } from "@/features/auth/session";
+import { listTags } from "@/features/tags/service";
 import { personalProjectHref, spaceDashboardHref } from "@/lib/routes";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { TaskDetailClient } from "@/features/personal/tasks/components/TaskDetailClient";
@@ -40,12 +41,15 @@ export default async function PersonalTaskDetailPage({
     }
   }
 
+  const tagPool = await listTags({ ownerId: user.id });
+
   return (
     <TaskDetailClient
       task={{ ...task, creatorName: displayName(user) }}
       backHref={backHref}
       backLabel={task.projectId ? t("backToProject") : t("backToMyTasks")}
       currentUserId={user.id}
+      tagPool={tagPool}
     />
   );
 }

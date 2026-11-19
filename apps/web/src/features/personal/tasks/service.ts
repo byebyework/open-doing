@@ -9,7 +9,7 @@ import { getTaskProgress } from "@open-doing/types";
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 
 import type { TaskDetailModel } from "@/components/ui/task-detail/types";
-import { assertTagsBelongToSpace, getTagsByIds } from "@/features/tags/service";
+import { assertTagsBelongToSpace, getTagsByIds, tagsByTaskId } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import {
@@ -48,6 +48,8 @@ export interface PersonalTaskInput {
   /** 开始日期（`YYYY-MM-DD`，可空）；与 dueDate 同粒度，不得晚于截止日期。 */
   startDate?: string | null;
   projectId?: string | null;
+  /** 初始标签（全量覆写语义）；仅写 task_tags，不影响 updated_at。 */
+  tagIds?: string[];
 }
 
 type TaskRow = typeof tasks.$inferSelect;
@@ -353,6 +355,10 @@ export async function createPersonalTask(
     throw new DomainError("任务创建失败，请稍后重试", undefined, { key: "taskCreateFailed" });
   }
 
+  if (input.tagIds?.length) {
+    await applyOwnedTaskTags(client, row.id, Array.from(new Set(input.tagIds)), userId);
+  }
+
   return toTask(row);
 }
 
@@ -400,9 +406,12 @@ export async function listPersonalProjectTasks(
     subtasksByTaskId.set(row.taskId, list);
   }
 
+  const tagsMap = await tagsByTaskId(taskIds, client);
+
   return taskRows.map((row) => ({
     ...toTask(row),
     subtasks: subtasksByTaskId.get(row.id) ?? [],
+    tags: tagsMap.get(row.id) ?? [],
   }));
 }
 
@@ -459,6 +468,7 @@ export async function getPersonalTaskDetail(
 
   const mappedSubtasks = subtaskRows.map(toSubtask);
   const task = row.task;
+  const tagsMap = await tagsByTaskId([task.id], client);
 
   return {
     id: task.id,
@@ -475,6 +485,7 @@ export async function getPersonalTaskDetail(
     startDate: task.startDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
+    tags: tagsMap.get(task.id) ?? [],
     projectName: row.projectName ?? null,
     progress: getTaskProgress({
       status: task.status,
@@ -510,6 +521,8 @@ export async function updatePersonalTask(
     dueDate?: string | null;
     startDate?: string | null;
     status?: TaskStatus;
+    /** 标签全量覆写；仅标签变更不推进 updatedAt（完成日代理口径）。 */
+    tagIds?: string[];
   },
   client: DbClient = db,
 ): Promise<Task> {
@@ -548,6 +561,12 @@ export async function updatePersonalTask(
   );
 
   if (Object.keys(changes).length === 0) {
+    // 仅打标（无其他字段变更）：只写 task_tags，不触碰 tasks 行。
+    if (input.tagIds !== undefined) {
+      await applyOwnedTaskTags(client, taskId, Array.from(new Set(input.tagIds)), userId);
+      const refreshed = await requireOwnedPersonalTaskRow(userId, taskId, client);
+      return toTask(refreshed);
+    }
     return toTask(existing);
   }
 
@@ -567,6 +586,11 @@ export async function updatePersonalTask(
 
   if (!row) {
     throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+  }
+
+  // 混合更新（其他字段 + 标签）：标签部分同样只写 task_tags。
+  if (input.tagIds !== undefined) {
+    await applyOwnedTaskTags(client, taskId, Array.from(new Set(input.tagIds)), userId);
   }
 
   return toTask(row);
@@ -750,27 +774,36 @@ export async function setPersonalTaskTags(
 ): Promise<Task> {
   const existing = await requireOwnedPersonalTaskRow(input.actorId, input.taskId, client);
 
-  const tagIds = Array.from(new Set(input.tagIds));
-  const pool = await getTagsByIds(tagIds, client);
-  assertTagsBelongToSpace(pool, { ownerId: input.actorId });
-
-  await client.transaction(async (tx) => {
-    await tx.delete(taskTags).where(
-      tagIds.length === 0
-        ? eq(taskTags.taskId, existing.id)
-        : and(eq(taskTags.taskId, existing.id), notInArray(taskTags.tagId, tagIds)),
-    );
-    if (tagIds.length > 0) {
-      await tx
-        .insert(taskTags)
-        .values(tagIds.map((tagId) => ({ taskId: existing.id, tagId })))
-        .onConflictDoNothing();
-    }
-  });
+  await applyOwnedTaskTags(client, existing.id, Array.from(new Set(input.tagIds)), input.actorId);
 
   const refreshed = await findOwnedPersonalTaskRow(input.actorId, input.taskId, client);
   if (!refreshed) {
     throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
   }
   return toTask(refreshed);
+}
+
+/** 个人任务打标落库（diff 覆写）：校验归属 + 删差集 + 插缺失。 */
+async function applyOwnedTaskTags(
+  client: DbClient,
+  taskId: string,
+  tagIds: string[],
+  ownerId: string,
+): Promise<void> {
+  const pool = await getTagsByIds(tagIds, client);
+  assertTagsBelongToSpace(pool, { ownerId });
+
+  await client.transaction(async (tx) => {
+    await tx.delete(taskTags).where(
+      tagIds.length === 0
+        ? eq(taskTags.taskId, taskId)
+        : and(eq(taskTags.taskId, taskId), notInArray(taskTags.tagId, tagIds)),
+    );
+    if (tagIds.length > 0) {
+      await tx
+        .insert(taskTags)
+        .values(tagIds.map((tagId) => ({ taskId, tagId })))
+        .onConflictDoNothing();
+    }
+  });
 }

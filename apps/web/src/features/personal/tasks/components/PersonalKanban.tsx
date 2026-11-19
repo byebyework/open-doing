@@ -1,6 +1,6 @@
 "use client";
 
-import type { TaskStatus } from "@open-doing/types";
+import type { Tag, TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
 import {
   DndContext,
@@ -50,6 +50,8 @@ export interface PersonalKanbanProps {
   projectId: string;
   /** 新建任务弹窗可选的全部个人项目。 */
   projects: { id: string; name: string }[];
+  /** 本人标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
+  tagPool?: Tag[];
 }
 
 /** 可拖拽的任务卡片。 */
@@ -238,6 +240,7 @@ export function PersonalKanban({
   today,
   projectId,
   projects,
+  tagPool,
 }: PersonalKanbanProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
@@ -345,6 +348,7 @@ export function PersonalKanban({
       <NewTaskModal
         open={newTaskOpen}
         projects={projects}
+        tagPool={tagPool}
         defaultProjectId={projectId}
         onSuccess={() => {
           setNewTaskOpen(false);

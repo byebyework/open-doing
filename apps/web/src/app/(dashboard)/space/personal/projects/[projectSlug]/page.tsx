@@ -8,6 +8,7 @@ import {
   listPersonalProjects,
 } from "@/features/personal/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
+import { listTags } from "@/features/tags/service";
 import { PersonalKanban } from "@/features/personal/tasks/components/PersonalKanban";
 import { ProjectTaskTable } from "@/features/personal/tasks/components/ProjectTaskTable";
 import { listPersonalProjectTasks } from "@/features/personal/tasks/service";
@@ -48,9 +49,10 @@ export default async function PersonalProjectPage({
 
   if (!project) notFound();
 
-  const [tasks, projects] = await Promise.all([
+  const [tasks, projects, tagPool] = await Promise.all([
     listPersonalProjectTasks(user.id, project.id),
     listPersonalProjects(user.id),
+    listTags({ ownerId: user.id }),
   ]);
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
@@ -99,6 +101,7 @@ export default async function PersonalProjectPage({
             today={today}
             projectId={project.id}
             projects={projectOptions}
+            tagPool={tagPool}
           />
         ) : (
           <ProjectTaskTable
@@ -106,6 +109,7 @@ export default async function PersonalProjectPage({
             today={today}
             projectId={project.id}
             projects={projectOptions}
+            tagPool={tagPool}
           />
         )}
       </div>

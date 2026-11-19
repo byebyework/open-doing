@@ -30,10 +30,11 @@ import {
 } from "@/components/ui/shadcn/select";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { applyActionErrors } from "@/lib/action-form";
-import { TASK_PRIORITIES, type TaskPriority } from "@open-doing/types";
+import { TASK_PRIORITIES, type Tag, type TaskPriority } from "@open-doing/types";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 
 import { createPersonalTaskAction } from "../actions";
+import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 import {
   TASK_DESCRIPTION_MAX_LENGTH,
   TASK_TITLE_MAX_LENGTH,
@@ -53,6 +54,8 @@ export interface NewTaskModalProps {
   onSuccess: () => void;
   /** 取消 / 关闭。 */
   onCancel: () => void;
+  /** 本人标签池（RSC 注入；为空时不渲染标签选择区）。 */
+  tagPool?: Tag[];
 }
 
 /** 「不属于项目」在 Radix Select 里的哨兵值（不允许空字符串 item value）。 */
@@ -73,11 +76,14 @@ export function NewTaskModal({
   defaultDueDate,
   onSuccess,
   onCancel,
+  tagPool = [],
 }: NewTaskModalProps) {
   const t = useTranslations("tasks");
+  const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [tagIds, setTagIds] = useState<string[]>([]);
 
   const defaultProject =
     defaultProjectId &&
@@ -140,6 +146,7 @@ export function NewTaskModal({
         description: "",
       });
       setFormError(null);
+      setTagIds([]);
     }
   }, [open, reset, defaultProject, dueDateDefault]);
 
@@ -161,6 +168,7 @@ export function NewTaskModal({
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
         projectId: values.projectId === NO_PROJECT ? null : values.projectId,
+        tagIds: tagIds.length > 0 ? tagIds : undefined,
       });
 
       if (!result.ok) {
@@ -260,6 +268,19 @@ export function NewTaskModal({
               </SelectContent>
             </Select>
           </div>
+
+          {tagPool.length > 0 ? (
+            <div className="mb-4 flex flex-col gap-2">
+              <Label>{tTags("tagNameLabel")}</Label>
+              <TaskTagPicker
+                space={{ kind: "personal" }}
+                pool={tagPool}
+                value={tagIds}
+                onChange={setTagIds}
+                canEdit={!submitting}
+              />
+            </div>
+          ) : null}
 
           {/* 开始 / 截止同行排布（两列）。 */}
           <div className="mb-4 grid grid-cols-2 gap-4">

@@ -15,7 +15,7 @@ import {
   type CreateNotificationInput,
 } from "@/features/notifications/service";
 import { getMembership, type TeamRole } from "@/features/teams/permissions";
-import { assertTagsBelongToSpace, getTagsByIds } from "@/features/tags/service";
+import { assertTagsBelongToSpace, getTagsByIds, tagsByTaskId } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import {
   assertStartNotAfterTaskDue,
@@ -242,6 +242,8 @@ export async function createTeamTask(
     dueDate?: string | null;
     startDate?: string | null;
     assigneeId?: string | null;
+    /** 初始标签（全量覆写语义）；仅写 task_tags，不影响 updated_at。 */
+    tagIds?: string[];
   },
   client: DbClient = db,
 ): Promise<Task> {
@@ -290,6 +292,10 @@ export async function createTeamTask(
       });
     }
 
+    if (input.tagIds?.length) {
+      await applyTaskTags(tx, row.id, Array.from(new Set(input.tagIds)), { teamId });
+    }
+
     return toTask(row);
   });
 }
@@ -308,6 +314,8 @@ export interface UpdateTeamTaskInput {
   startDate?: string | null;
   status?: TaskStatus;
   assigneeId?: string;
+  /** 标签全量覆写；仅标签变更不推进 updatedAt（完成日代理口径）。 */
+  tagIds?: string[];
 }
 
 /**
@@ -418,6 +426,16 @@ export async function updateTeamTask(
   }
 
   if (Object.keys(changes).length === 0 && nextAssigneeId === undefined) {
+    // 仅打标（无其他字段变更）：只写 task_tags，不触碰 tasks 行——updated_at
+    // 是完成日的上海日代理口径，打标不得移动完成日。
+    if (input.tagIds !== undefined) {
+      await applyTaskTags(client, taskId, Array.from(new Set(input.tagIds)), { teamId });
+      const refreshed = await findTeamTaskRow(teamId, taskId, client);
+      if (!refreshed) {
+        throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+      }
+      return toTask(refreshed.task);
+    }
     return toTask(existing.task);
   }
 
@@ -463,6 +481,11 @@ export async function updateTeamTask(
         taskId,
         actorId,
       });
+    }
+
+    // 混合更新（其他字段 + 标签）：标签部分同样只写 task_tags。
+    if (input.tagIds !== undefined) {
+      await applyTaskTags(tx, taskId, Array.from(new Set(input.tagIds)), { teamId });
     }
 
     return toTask(row);
@@ -721,11 +744,14 @@ export async function listTeamProjectTasks(
     subtasksByTaskId.set(row.taskId, list);
   }
 
+  const tagsMap = await tagsByTaskId(taskIds, client);
+
   return rows.map(({ task, assigneeUsername, assigneeNickname }) => ({
     ...toTask(task),
     // 展示名：昵称优先，未填写（或被移除成员）回退到用户名。
     assigneeName: assigneeNickname ?? assigneeUsername ?? null,
     subtasks: subtasksByTaskId.get(task.id) ?? [],
+    tags: tagsMap.get(task.id) ?? [],
   }));
 }
 
@@ -789,6 +815,7 @@ export async function getTeamTaskDetail(
 
   const mappedSubtasks = subtaskRows.map(toSubtask);
   const task = row.task;
+  const tagsMap = await tagsByTaskId([task.id], client);
 
   return {
     id: task.id,
@@ -807,6 +834,7 @@ export async function getTeamTaskDetail(
     startDate: task.startDate ?? undefined,
     createdAt: task.createdAt.toISOString(),
     updatedAt: task.updatedAt.toISOString(),
+    tags: tagsMap.get(task.id) ?? [],
     projectName: row.projectName ?? null,
     creatorName: row.creatorNickname ?? row.creatorUsername ?? undefined,
     progress: getTaskProgress({

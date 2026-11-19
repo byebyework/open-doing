@@ -1,14 +1,19 @@
 "use server";
 
-import type { Tag, TagColor } from "@open-doing/types";
+import type { Tag, TagColor, Task } from "@open-doing/types";
+import { eq } from "drizzle-orm";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
+import { db } from "@/server/db/client";
+import { projects, tasks } from "@/server/db/schema";
 import { DomainError } from "@/lib/domain-error";
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
 import { createTag, deleteTag, updateTag } from "./service";
+import { setTeamTaskTags } from "@/features/tasks/service";
+import { setPersonalTaskTags } from "@/features/personal/tasks/service";
 
 type Failure = Extract<ActionResult<never>, { ok: false }>;
 
@@ -94,6 +99,57 @@ export async function deleteTagAction(input: {
   try {
     await deleteTag({ ...withSpace(user, input), tagId: input.tagId });
     return { ok: true, data: true };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/**
+ * 任务打标（详情页即改即存）：按任务归属路由——团队任务走
+ * `setTeamTaskTags`（task:edit 权限），个人任务走 `setPersonalTaskTags`
+ * （owner-only）。全量覆写语义；仅标签变更不推进 updated_at。
+ */
+export async function setTaskTagsAction(input: {
+  taskId: string;
+  tagIds: string[];
+}): Promise<ActionResult<Task>> {
+  const user = await getCurrentUser();
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
+
+  try {
+    const [row] = await db
+      .select({
+        spaceType: tasks.spaceType,
+        teamId: projects.teamId,
+      })
+      .from(tasks)
+      .leftJoin(projects, eq(tasks.projectId, projects.id))
+      .where(eq(tasks.id, input.taskId))
+      .limit(1);
+
+    if (!row) {
+      throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+    }
+
+    if (row.spaceType === "team") {
+      if (!row.teamId) {
+        throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+      }
+      const task = await setTeamTaskTags({
+        teamId: row.teamId,
+        taskId: input.taskId,
+        actorId: user.id,
+        tagIds: input.tagIds,
+      });
+      return { ok: true, data: task };
+    }
+
+    const task = await setPersonalTaskTags({
+      taskId: input.taskId,
+      actorId: user.id,
+      tagIds: input.tagIds,
+    });
+    return { ok: true, data: task };
   } catch (error) {
     return toFailure(error);
   }

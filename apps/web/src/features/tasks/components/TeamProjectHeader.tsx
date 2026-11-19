@@ -1,5 +1,6 @@
 "use client";
 
+import type { Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -31,6 +32,8 @@ export interface TeamProjectHeaderProps {
   canManage: boolean;
   /** 删除项目成功后的跳转地址。 */
   redirectTo: string;
+  /** 本团队标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
+  tagPool?: Tag[];
 }
 
 /**
@@ -47,6 +50,7 @@ export function TeamProjectHeader({
   actorId,
   canManage,
   redirectTo,
+  tagPool,
 }: TeamProjectHeaderProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -76,6 +80,7 @@ export function TeamProjectHeader({
       <NewTeamTaskModal
         open={newTaskOpen}
         teamId={teamId}
+        tagPool={tagPool}
         projects={projects}
         defaultProjectId={project.id}
         members={members}

@@ -1,4 +1,4 @@
-import type { Subtask, TaskPriority, TaskStatus } from "@open-doing/types";
+import type { Subtask, Tag, TaskPriority, TaskStatus } from "@open-doing/types";
 
 /** 任务详情里的评论：额外带上作者用户名。 */
 export interface TaskDetailComment {
@@ -44,6 +44,11 @@ export interface TaskDetailModel {
   comments: TaskDetailComment[];
   /** 创建人用户名；可选扩展，缺省时不渲染「创建人」行。 */
   creatorName?: string;
+  /**
+   * 任务标签（可选扩展）：读路径按需组装；详情页包装件渲染标签编辑区。
+   * 未组装时缺省，不渲染该区。
+   */
+  tags?: Tag[];
 }
 
 /** 任务详情页的权限位（团队态由 J-5 按角色计算；个人态恒为可编辑 / 可删除）。 */

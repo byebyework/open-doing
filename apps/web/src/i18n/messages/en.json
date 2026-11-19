@@ -613,7 +613,9 @@
     "tagInvalidForSpace": "Tag does not belong to this space",
     "tagCreated": "Tag created",
     "tagSaved": "Tag saved",
-    "tagDeleted": "Tag deleted"
+    "tagDeleted": "Tag deleted",
+    "tagPickerEmpty": "Add tag",
+    "taskNotFound": "Task not found or no access"
   },
   "personal": {
     "space": "Personal space",

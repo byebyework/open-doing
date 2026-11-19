@@ -11,6 +11,8 @@
 /** 任务状态：手动切换 */
 export type TaskStatus = "todo" | "in_progress" | "done";
 
+import type { Tag } from "./tags";
+
 /** 任务优先级：三档，默认 medium */
 export type TaskPriority = "low" | "medium" | "high";
 
@@ -150,6 +152,12 @@ export interface Task {
   startDate?: string;
   createdAt: string;
   updatedAt: string;
+  /**
+   * 任务标签（可选扩展）：读路径按需组装（features/tags/service 的
+   * tagsByTaskId）；未组装或未打标时缺省。写路径走全量覆写的
+   * setTeamTaskTags / setPersonalTaskTags（仅标签变更不推进 updated_at）。
+   */
+  tags?: Tag[];
 }
 
 /** 子任务：只有已完成 / 未完成两种状态，无责任人、无截止日期 */

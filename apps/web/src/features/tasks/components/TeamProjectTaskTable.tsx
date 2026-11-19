@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
+import { TaskTags } from "@/features/tags/components/TaskTags";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
@@ -28,6 +29,7 @@ import {
   PaginationItem,
 } from "@/components/ui/shadcn/pagination";
 import type { TeamRole } from "@/features/teams/permissions";
+import type { Tag } from "@open-doing/types";
 import { compareByPriority } from "@/lib/task-sort";
 import { teamTaskHref } from "@/lib/routes";
 
@@ -118,6 +120,8 @@ export interface TeamProjectTaskTableProps {
   actorId: string;
   /** 当前项目 slug（拼任务详情地址）。 */
   projectSlug: string;
+  /** 本团队标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
+  tagPool?: Tag[];
 }
 
 /**
@@ -137,6 +141,7 @@ export function TeamProjectTaskTable({
   role,
   actorId,
   projectSlug,
+  tagPool,
 }: TeamProjectTaskTableProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -341,6 +346,11 @@ export function TeamProjectTaskTable({
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <PriorityChip priority={task.priority} />
+                        {task.tags && task.tags.length > 0 ? (
+                          <div className="mt-1">
+                            <TaskTags tags={task.tags} max={2} />
+                          </div>
+                        ) : null}
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
@@ -484,6 +494,7 @@ export function TeamProjectTaskTable({
       <NewTeamTaskModal
         open={newTaskOpen}
         teamId={teamId}
+        tagPool={tagPool}
         projects={projects}
         defaultProjectId={projectId}
         members={members}
