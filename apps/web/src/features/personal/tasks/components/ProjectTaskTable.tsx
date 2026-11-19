@@ -10,7 +10,7 @@ import { useMemo, useState } from "react";
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
-import { TaskTags } from "@/features/tags/components/TaskTags";
+import { TaskTagsCell } from "@/features/tags/components/TaskTagsCell";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Button } from "@/components/ui/shadcn/button";
 import {
@@ -94,6 +94,7 @@ export function ProjectTaskTable({
 }: ProjectTaskTableProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
+  const tTags = useTranslations("tags");
   const tStatus = useTranslations("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sort, setSort] = useState<SortKey>("dueDate");
@@ -189,6 +190,9 @@ export function ProjectTaskTable({
                   <th className="border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("colTask")}
                   </th>
+                  <th className="w-[130px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                    {tTags("tagNameLabel")}
+                  </th>
                   <th className="w-[72px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("priority")}
                   </th>
@@ -239,12 +243,18 @@ export function ProjectTaskTable({
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                        <TaskTagsCell
+                          taskId={task.id}
+                          space={{ kind: "personal" }}
+                          pool={tagPool ?? []}
+                          tags={task.tags ?? []}
+                          canEdit
+                          max={2}
+                        />
+                      </td>
+
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <PriorityChip priority={task.priority} />
-                        {task.tags && task.tags.length > 0 ? (
-                          <div className="mt-1">
-                            <TaskTags tags={task.tags} max={2} />
-                          </div>
-                        ) : null}
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">

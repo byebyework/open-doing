@@ -12,7 +12,7 @@ import type {
   TaskDetailViewActions,
 } from "@/components/ui/task-detail/types";
 import type { ActionResult } from "@/features/auth/actions";
-import { TaskTagsEditor } from "@/features/tags/components/TaskTagsEditor";
+import { TaskTagsCell } from "@/features/tags/components/TaskTagsCell";
 
 import {
   addTeamCommentAction,
@@ -79,6 +79,7 @@ export function TeamTaskDetailClient({
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
+  const tTags = useTranslations("tags");
 
   /** 执行 Server Action：失败统一 `toast.error`，并向调用方抛出。 */
   async function runAction<T>(
@@ -161,13 +162,17 @@ export function TeamTaskDetailClient({
   return (
     <>
       {tagPool ? (
-        <div className="mb-4">
-          <TaskTagsEditor
+        <div className="mb-4 flex items-center gap-2" data-testid="task-tags-row">
+          <span className="shrink-0 text-[12.5px] font-medium text-[var(--muted-foreground)]">
+            {tTags("tagNameLabel")}
+          </span>
+          <TaskTagsCell
             taskId={task.id}
             space={{ kind: "team", teamId }}
             pool={tagPool}
             tags={task.tags ?? []}
             canEdit={permissions.canEdit}
+            max={6}
           />
         </div>
       ) : null}

@@ -11,7 +11,8 @@ import { useMemo, useState } from "react";
 import { DueText } from "@/components/ui/DueText";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
-import { TaskTags } from "@/features/tags/components/TaskTags";
+import { TaskTagsCell } from "@/features/tags/components/TaskTagsCell";
+import { canEditTask } from "@/features/tasks/permissions";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { Button } from "@/components/ui/shadcn/button";
@@ -145,6 +146,7 @@ export function TeamProjectTaskTable({
 }: TeamProjectTaskTableProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
+  const tTags = useTranslations("tags");
   const tStatus = useTranslations("status");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [assigneeFilter, setAssigneeFilter] = useState<AssigneeFilter>("all");
@@ -286,6 +288,7 @@ export function TeamProjectTaskTable({
                 <tr>
                   {[
                     { label: t("colTask"), className: "" },
+                    { label: tTags("tagNameLabel"), className: "w-[130px]" },
                     { label: t("priority"), className: "w-[72px]" },
                     { label: t("statusLabel"), className: "w-24" },
                     { label: t("assigneeLabel"), className: "w-[120px]" },
@@ -345,12 +348,17 @@ export function TeamProjectTaskTable({
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                        <TaskTagsCell
+                          taskId={task.id}
+                          space={{ kind: "team", teamId }}
+                          pool={tagPool ?? []}
+                          tags={task.tags ?? []}
+                          canEdit={canEditTask({ role, actorId, assigneeId: task.assigneeId })}
+                        />
+                      </td>
+
+                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         <PriorityChip priority={task.priority} />
-                        {task.tags && task.tags.length > 0 ? (
-                          <div className="mt-1">
-                            <TaskTags tags={task.tags} max={2} />
-                          </div>
-                        ) : null}
                       </td>
 
                       <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">

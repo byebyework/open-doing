@@ -1,6 +1,6 @@
 "use client";
 
-import type { Tag } from "@open-doing/types";
+import type { Tag, TagWithUsage } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -33,7 +33,7 @@ export interface TeamProjectHeaderProps {
   /** 删除项目成功后的跳转地址。 */
   redirectTo: string;
   /** 本团队标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
-  tagPool?: Tag[];
+  tagPool?: TagWithUsage[];
 }
 
 /**
@@ -63,6 +63,7 @@ export function TeamProjectHeader({
           teamId={teamId}
           project={project}
           redirectTo={redirectTo}
+          tagPool={tagPool}
         />
       ) : null}
 

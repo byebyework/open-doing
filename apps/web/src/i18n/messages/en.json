@@ -615,7 +615,9 @@
     "tagSaved": "Tag saved",
     "tagDeleted": "Tag deleted",
     "tagPickerEmpty": "Add tag",
-    "taskNotFound": "Task not found or no access"
+    "taskNotFound": "Task not found or no access",
+    "editTags": "Edit tags",
+    "deleteTag": "Delete tag"
   },
   "personal": {
     "space": "Personal space",

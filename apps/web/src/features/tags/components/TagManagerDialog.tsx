@@ -70,7 +70,7 @@ function ColorDots({
             data-testid={`${testPrefix}-${color}`}
             data-active={active ? "true" : undefined}
             onClick={() => onChange(color)}
-            className="flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110"
+            className="relative flex size-6 items-center justify-center rounded-full transition-transform hover:scale-110"
             style={{ backgroundColor: style.backgroundColor }}
           >
             <span
@@ -327,7 +327,7 @@ export function TagManagerDialog({
                             variant="ghost"
                             size="sm"
                             onClick={() => setPendingDelete(tag)}
-                            aria-label={t("manageTags")}
+                            aria-label={t("deleteTag")}
                             data-testid={`tag-delete-${tag.id}`}
                           >
                             <Trash2Icon className="size-3.5 text-[var(--error)]" aria-hidden />
@@ -344,7 +344,7 @@ export function TagManagerDialog({
 
         <ConfirmModal
           open={pendingDelete !== null}
-          title={t("manageTags")}
+          title={t("deleteTag")}
           content={t("deleteTagConfirm")}
           danger
           loading={deleting}

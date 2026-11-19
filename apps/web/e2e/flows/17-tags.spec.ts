@@ -125,7 +125,7 @@ test.describe("flow 17: 项目标签", () => {
     await expect(taskDialog).toBeVisible();
     await taskDialog.getByTestId("task-title-input").fill(ownerTaskTitle);
     await taskDialog.getByTestId("task-tag-picker-trigger").click();
-    await taskDialog.getByRole("menuitemcheckbox", { name: tagName }).click();
+    await taskDialog.getByRole("checkbox", { name: tagName }).click();
     await taskDialog.getByTestId("task-create-submit-button").click();
     // 等创建 toast：action 提交完成（含 task_tags 落库）再导航。
     await expect(ownerPage.getByText("任务已创建")).toBeVisible();
@@ -149,7 +149,7 @@ test.describe("flow 17: 项目标签", () => {
     await expect(memberDialog).toBeVisible();
     await memberDialog.getByTestId("task-title-input").fill(memberTaskTitle);
     await memberDialog.getByTestId("task-tag-picker-trigger").click();
-    await memberDialog.getByRole("menuitemcheckbox", { name: tagName }).click();
+    await memberDialog.getByRole("checkbox", { name: tagName }).click();
     await memberDialog.getByTestId("task-create-submit-button").click();
     await expect(memberPage.getByText("任务已创建")).toBeVisible();
     await expect(memberPage.getByTestId("new-task-button")).toBeVisible();

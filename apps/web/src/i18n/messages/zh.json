@@ -615,7 +615,9 @@
     "tagSaved": "标签已保存",
     "tagDeleted": "标签已删除",
     "tagPickerEmpty": "添加标签",
-    "taskNotFound": "任务不存在或无权访问"
+    "taskNotFound": "任务不存在或无权访问",
+    "editTags": "编辑标签",
+    "deleteTag": "删除标签"
   },
   "personal": {
     "space": "个人空间",
