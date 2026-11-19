@@ -539,18 +539,21 @@ async function TeamBody({
           </InfoCallout>
         </section>
 
-        <section className={CARD_CLASS}>
-          <CardHeader
-            title={t("tagStatsTitle")}
-            caption={t("tagStatsCaptionTeam", { range })}
-          />
-          <TagStatsBars
-            rows={analysis.tagStats}
-            emptyText={t("tagStatsEmpty")}
-            doneLabel={t("tagStatsDone")}
-            openLabel={t("tagStatsOpen")}
-          />
-        </section>
+        {/* 空间级聚合仅在多项目时有增量价值：单项目团队与下方健康度下钻完全重复。 */}
+        {analysis.projectHealth.length > 1 ? (
+          <section className={CARD_CLASS}>
+            <CardHeader
+              title={t("tagStatsTitle")}
+              caption={t("tagStatsCaptionTeam", { range })}
+            />
+            <TagStatsBars
+              rows={analysis.tagStats}
+              emptyText={t("tagStatsEmpty")}
+              doneLabel={t("tagStatsDone")}
+              openLabel={t("tagStatsOpen")}
+            />
+          </section>
+        ) : null}
 
         <section className={CARD_CLASS}>
           <CardHeader
