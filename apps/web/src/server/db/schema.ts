@@ -35,6 +35,7 @@ import {
   index,
   integer,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -45,6 +46,7 @@ import type {
   Gender,
   NotificationType,
   SpaceType,
+  TagColor,
   TaskPriority,
   TaskStatus,
   TeamJoinStatus,
@@ -288,6 +290,9 @@ export const projects = pgTable(
     name: text("name").notNull(),
     slug: text("slug").notNull(),
     description: text("description"),
+    // 起止时间（可选，按天粒度，与 due_date 同口径）：end >= start 由服务层校验。
+    startDate: date("start_date", { mode: "string" }),
+    endDate: date("end_date", { mode: "string" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -304,6 +309,38 @@ export const projects = pgTable(
       .where(isNotNull(t.ownerId)),
     // 查询索引：个人项目列表 / 归属校验。
     index("projects_owner_id_idx").on(t.ownerId),
+  ],
+);
+
+/**
+ * 标签池：空间级（团队或个人二选一，与 projects 同款互斥 CHECK），非项目级。
+ * 团队标签归团队，旗下所有项目共用；个人标签归用户。颜色为预设色板 key
+ * （`TagColor`，运行时映射 tokens.css 同名变量）。空间内同名唯一
+ * （部分唯一索引，谓词必须用原始 sql 字符串——见 team_invites 的 drizzle-kit 陷阱注释）。
+ */
+export const tags = pgTable(
+  "tags",
+  {
+    id: uuidPk(),
+    teamId: uuidRef("team_id").references(() => teams.id, { onDelete: "cascade" }),
+    ownerId: uuidRef("owner_id").references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    color: text("color").$type<TagColor>().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    check(
+      "tags_team_or_owner_check",
+      sql`(${t.teamId} IS NOT NULL) <> (${t.ownerId} IS NOT NULL)`,
+    ),
+    uniqueIndex("tags_team_id_name_unique")
+      .on(t.teamId, t.name)
+      .where(isNotNull(t.teamId)),
+    uniqueIndex("tags_owner_id_name_unique")
+      .on(t.ownerId, t.name)
+      .where(isNotNull(t.ownerId)),
+    index("tags_team_id_idx").on(t.teamId),
+    index("tags_owner_id_idx").on(t.ownerId),
   ],
 );
 
@@ -348,6 +385,28 @@ export const subtasks = pgTable("subtasks", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   completedAt: timestamp("completed_at", { withTimezone: true }),
 });
+
+/**
+ * 任务↔标签多对多：复合主键天然去重；任务 / 标签删除均级联清关联，
+ * 应用层无需清理。仅标签变更不触碰 tasks 行（不推进 updated_at，
+ * 完成日代理口径见分析模块）。
+ */
+export const taskTags = pgTable(
+  "task_tags",
+  {
+    taskId: uuidRef("task_id")
+      .notNull()
+      .references(() => tasks.id, { onDelete: "cascade" }),
+    tagId: uuidRef("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ name: "task_tags_task_id_tag_id_pk", columns: [t.taskId, t.tagId] }),
+    // 查询索引：按标签聚合（分析模块标签维度统计）。
+    index("task_tags_tag_id_idx").on(t.tagId),
+  ],
+);
 
 /** 任务评论：个人任务下即自我备注。 */
 export const comments = pgTable("comments", {

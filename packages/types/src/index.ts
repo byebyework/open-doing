@@ -187,3 +187,4 @@ export interface Notification {
 export * from "./progress";
 export * from "./project-health";
 export * from "./date";
+export * from "./tags";

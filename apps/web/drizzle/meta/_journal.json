@@ -50,6 +50,13 @@
       "when": 1794928809622,
       "tag": "0006_large_invisible_woman",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1795095239874,
+      "tag": "0007_gifted_betty_ross",
+      "breakpoints": true
     }
   ]
 }
