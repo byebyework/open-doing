@@ -7,6 +7,8 @@ import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
 import {
   projects,
+  tags,
+  taskTags,
   tasks,
   teamMemberships,
   teams,
@@ -1487,5 +1489,180 @@ describe.skipIf(!hasTestDatabase)("团队空间 Analysis 聚合", () => {
 
     // 手算：只有「未指派待办」与「未指派进行中」两条。
     expect(data.unassignedCount).toBe(2);
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("分析标签维度统计", () => {
+  let db: DbClient;
+  let seq = 0;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    seq = 0;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  /** 直插空间级标签。 */
+  async function createTagRow(
+    db: DbClient,
+    input: { teamId?: string | null; ownerId?: string | null; name: string; color?: "purple" | "coral" | "mint" | "sky" | "tangerine" | "lavender" },
+  ) {
+    const id = crypto.randomUUID();
+    await db.insert(tags).values({
+      id,
+      teamId: input.teamId ?? null,
+      ownerId: input.ownerId ?? null,
+      name: input.name,
+      color: input.color ?? "purple",
+    });
+    return { id, name: input.name };
+  }
+
+  async function tagTask(db: DbClient, taskId: string, tagId: string) {
+    await db.insert(taskTags).values({ taskId, tagId });
+  }
+
+  it("多标签任务在每个标签下各计一次；窗口与快照口径分开", async () => {
+    seq += 1;
+    const user = await createUser(db, `tagme-${seq}`);
+    const team = await createTeam(db, { ownerId: user.id, name: "TagTeam", slug: `tag-team-${seq}` });
+    const project = await createTeamProject(db, { teamId: team.id, name: "P", slug: "p" });
+    const tagA = await createTagRow(db, { teamId: team.id, name: "A" });
+    const tagB = await createTagRow(db, { teamId: team.id, name: "B", color: "coral" });
+
+    // 窗口内完成 + 挂双标签 → A/B 各 +1
+    const both = await createTask(db, {
+      title: "Both",
+      createdById: user.id,
+      status: "done",
+      spaceType: "team",
+      projectId: project.id,
+      createdAt: shanghai("2026-10-10"),
+      updatedAt: shanghai("2026-10-20"),
+    });
+    await tagTask(db, both.id, tagA.id);
+    await tagTask(db, both.id, tagB.id);
+
+    // 窗口外完成 → 不进 doneCount，但进 openCount 不对——已完成，openCount 也不含
+    const outside = await createTask(db, {
+      title: "Outside",
+      createdById: user.id,
+      status: "done",
+      spaceType: "team",
+      projectId: project.id,
+      createdAt: shanghai("2026-09-01"),
+      updatedAt: shanghai("2026-09-05"),
+    });
+    await tagTask(db, outside.id, tagA.id);
+
+    // 未完成 → openCount
+    const open = await createTask(db, {
+      title: "Open",
+      createdById: user.id,
+      status: "in_progress",
+      spaceType: "team",
+      projectId: project.id,
+      createdAt: shanghai("2026-10-01"),
+      updatedAt: shanghai("2026-10-01"),
+    });
+    await tagTask(db, open.id, tagA.id);
+
+    const result = await getTeamSpaceAnalysis(
+      { teamId: team.id, teamSlug: team.slug, range: 30, today: TODAY },
+      db,
+    );
+
+    const statsA = result.tagStats.find((row) => row.tagName === "A");
+    const statsB = result.tagStats.find((row) => row.tagName === "B");
+    expect(statsA).toMatchObject({ doneCount: 1, openCount: 1, color: "purple" });
+    expect(statsB).toMatchObject({ doneCount: 1, openCount: 0, color: "coral" });
+  });
+
+  it("个人空间：个人池 × 个人任务；被指派的团队任务不入个人 tagStats", async () => {
+    seq += 1;
+    const me = await createUser(db, `me-${seq}`);
+    const mate = await createUser(db, `mate-${seq}`);
+    const team = await createTeam(db, { ownerId: mate.id, name: "OtherTeam", slug: `other-${seq}` });
+    const teamProject = await createTeamProject(db, { teamId: team.id, name: "TP", slug: "tp" });
+    const personalTag = await createTagRow(db, { ownerId: me.id, name: "Mine", color: "mint" });
+    const teamTag = await createTagRow(db, { teamId: team.id, name: "TeamTag" });
+
+    const personalTask = await createTask(db, {
+      title: "Personal",
+      createdById: me.id,
+      status: "todo",
+      spaceType: "personal",
+      createdAt: shanghai("2026-10-02"),
+      updatedAt: shanghai("2026-10-02"),
+    });
+    await tagTask(db, personalTask.id, personalTag.id);
+
+    // 被指派给我的团队任务（带团队池标签）——不进个人 tagStats
+    const assigned = await createTask(db, {
+      title: "Assigned",
+      createdById: mate.id,
+      assigneeId: me.id,
+      status: "todo",
+      spaceType: "team",
+      projectId: teamProject.id,
+      createdAt: shanghai("2026-10-02"),
+      updatedAt: shanghai("2026-10-02"),
+    });
+    await tagTask(db, assigned.id, teamTag.id);
+
+    const result = await getPersonalSpaceAnalysis(me.id, 30, TODAY, db);
+
+    expect(result.tagStats).toHaveLength(1);
+    expect(result.tagStats[0]).toMatchObject({ tagName: "Mine", openCount: 1 });
+  });
+
+  it("无标签的空间返回空数组", async () => {
+    seq += 1;
+    const user = await createUser(db, `empty-${seq}`);
+    const result = await getPersonalSpaceAnalysis(user.id, 30, TODAY, db);
+    expect(result.tagStats).toEqual([]);
+  });
+
+  it("团队下钻：按项目分组的标签统计与状态计数", async () => {
+    seq += 1;
+    const user = await createUser(db, `drill-${seq}`);
+    const team = await createTeam(db, { ownerId: user.id, name: "Drill", slug: `drill-${seq}` });
+    const projectA = await createTeamProject(db, { teamId: team.id, name: "PA", slug: "pa" });
+    const tag = await createTagRow(db, { teamId: team.id, name: "DrillTag" });
+
+    const done = await createTask(db, {
+      title: "Done",
+      createdById: user.id,
+      status: "done",
+      spaceType: "team",
+      projectId: projectA.id,
+      createdAt: shanghai("2026-10-03"),
+      updatedAt: shanghai("2026-10-04"),
+    });
+    await tagTask(db, done.id, tag.id);
+    const todo = await createTask(db, {
+      title: "Todo",
+      createdById: user.id,
+      status: "todo",
+      spaceType: "team",
+      projectId: projectA.id,
+      createdAt: shanghai("2026-10-03"),
+      updatedAt: shanghai("2026-10-03"),
+    });
+    await tagTask(db, todo.id, tag.id);
+
+    const result = await getTeamSpaceAnalysis(
+      { teamId: team.id, teamSlug: team.slug, range: 30, today: TODAY },
+      db,
+    );
+
+    const drill = result.projectTagDrillDowns.find((row) => row.projectId === projectA.id);
+    expect(drill).toMatchObject({
+      statusCounts: { todo: 1, inProgress: 0, done: 1 },
+    });
+    expect(drill?.tagStats[0]).toMatchObject({ tagName: "DrillTag", doneCount: 1, openCount: 1 });
   });
 });

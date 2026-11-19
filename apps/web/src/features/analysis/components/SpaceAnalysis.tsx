@@ -24,6 +24,7 @@ import {
 import type { PersonalSpaceAnalysis, TeamSpaceAnalysis } from "../service";
 import { AnalysisRangeSelector } from "./AnalysisRangeSelector";
 import { HBarList, WeekMiniBars } from "./charts";
+import { TagStatsBars } from "./TagStatsBars";
 import { TrendChart } from "./trend-chart";
 
 /** 分析页入参：`variant` 决定消费哪一份 DTO（另一份传 null）。 */
@@ -352,6 +353,19 @@ async function PersonalBody({
 
       <section className={`${CARD_CLASS} mt-4`}>
         <CardHeader
+          title={t("tagStatsTitle")}
+          caption={t("tagStatsCaptionPersonal", { range })}
+        />
+        <TagStatsBars
+          rows={analysis.tagStats}
+          emptyText={t("tagStatsEmpty")}
+          doneLabel={t("tagStatsDone")}
+          openLabel={t("tagStatsOpen")}
+        />
+      </section>
+
+      <section className={`${CARD_CLASS} mt-4`}>
+        <CardHeader
           title={t("projectCompareTitle")}
           caption={t("projectCompareCaption", { range })}
         />
@@ -405,6 +419,10 @@ async function TeamBody({
   const { stats } = analysis;
   const weekStart = getWeekStart(today);
   const kanbanHref = moduleHref(spaceRef, "kanban");
+
+  const drillByProject = new Map(
+    analysis.projectTagDrillDowns.map((drill) => [drill.projectId, drill]),
+  );
 
   const throughputValues = analysis.throughput.map((point) => point.count);
   const throughputTotal = sum(throughputValues);
@@ -523,6 +541,19 @@ async function TeamBody({
 
         <section className={CARD_CLASS}>
           <CardHeader
+            title={t("tagStatsTitle")}
+            caption={t("tagStatsCaptionTeam", { range })}
+          />
+          <TagStatsBars
+            rows={analysis.tagStats}
+            emptyText={t("tagStatsEmpty")}
+            doneLabel={t("tagStatsDone")}
+            openLabel={t("tagStatsOpen")}
+          />
+        </section>
+
+        <section className={CARD_CLASS}>
+          <CardHeader
             title={tDashboard("healthTitle")}
             caption={tDashboard("healthHint")}
           />
@@ -607,6 +638,36 @@ async function TeamBody({
                         })}
                       />
                     </div>
+
+                    {(() => {
+                      const drill = drillByProject.get(project.projectId);
+                      if (!drill) return null;
+                      return (
+                        <details
+                          className="mt-2"
+                          data-testid={`project-drill-${project.projectId}`}
+                        >
+                          <summary className="cursor-pointer text-[12px] font-medium text-[var(--purple-600)] hover:underline">
+                            {t("drillSummary")}
+                          </summary>
+                          <div className="mt-2 rounded-lg bg-[var(--purple-08)] p-3">
+                            <p className="text-[12px] text-[var(--muted-foreground)]">
+                              {t("drillStatusLine", {
+                                todo: drill.statusCounts.todo,
+                                inProgress: drill.statusCounts.inProgress,
+                                done: drill.statusCounts.done,
+                              })}
+                            </p>
+                            <TagStatsBars
+                              rows={drill.tagStats}
+                              emptyText={t("tagStatsEmpty")}
+                              doneLabel={t("tagStatsDone")}
+                              openLabel={t("tagStatsOpen")}
+                            />
+                          </div>
+                        </details>
+                      );
+                    })()}
                   </div>
                 );
               })

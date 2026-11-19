@@ -916,7 +916,15 @@
     "personalFooterHintSummary": "Method notes",
     "personalFooterHintTitle": "Personal analysis notes",
     "teamFooterHintSummary": "Method notes",
-    "teamFooterHintTitle": "Team analysis notes"
+    "teamFooterHintTitle": "Team analysis notes",
+    "tagStatsTitle": "By tag",
+    "tagStatsCaptionPersonal": "Personal tag pool × personal tasks; done counts use the selected range window, open is a live snapshot (assigned team tasks excluded)",
+    "tagStatsCaptionTeam": "Team tag pool × team tasks; done counts use the selected range window, open is a live snapshot; multi-tag tasks count once per tag",
+    "tagStatsEmpty": "No tagged tasks yet",
+    "tagStatsDone": "Done",
+    "tagStatsOpen": "Open",
+    "drillSummary": "Expand per-project tag stats",
+    "drillStatusLine": "To-do {todo} · In progress {inProgress} · Done {done}"
   },
   "notifications": {
     "notifications": "Notifications",

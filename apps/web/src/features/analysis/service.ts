@@ -1,11 +1,11 @@
-import { addDays, type SpaceType } from "@open-doing/types";
-import { and, asc, desc, eq, gte, lte, ne, sql } from "drizzle-orm";
+import { addDays, type SpaceType, type TagColor } from "@open-doing/types";
+import { and, asc, desc, eq, gte, lte, ne, sql, type SQL } from "drizzle-orm";
 
 import { getTeamOverview } from "@/features/dashboard/team-overview/service";
 import { teamScope } from "@/features/kanban/service";
 import { daysBetween, getWeekStart } from "@/lib/today";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks, users } from "@/server/db/schema";
+import { projects, tags, taskTags, tasks, users } from "@/server/db/schema";
 
 import {
   bucketIndexForDay,
@@ -59,6 +59,22 @@ export interface ProjectComparisonRow {
   doneCount: number;
 }
 
+/** 标签统计行：doneCount 为 range 窗口内完成且挂该标签的任务数，openCount 为当前未完成快照。 */
+export interface TagStatsRow {
+  tagId: string;
+  tagName: string;
+  color: TagColor;
+  doneCount: number;
+  openCount: number;
+}
+
+/** 单项目标签下钻：项目自身的标签统计 + 任务状态计数（全部不计窗口）。 */
+export interface ProjectTagDrillDown {
+  projectId: string;
+  tagStats: TagStatsRow[];
+  statusCounts: { todo: number; inProgress: number; done: number };
+}
+
 /** 个人空间 Analysis 一次取数的全部数据（DTO 可序列化）。 */
 export interface PersonalSpaceAnalysis {
   stats: PersonalAnalysisStats;
@@ -66,6 +82,12 @@ export interface PersonalSpaceAnalysis {
   createdVsCompleted: CreatedCompletedPoint[];
   futureDue: AnalysisTrendPoint[];
   projectComparison: ProjectComparisonRow[];
+  /**
+   * 按标签统计（个人口径）：本人个人标签池 × 个人空间任务
+   * （`spaceType='personal' AND assigneeId=userId`），不含被指派的团队
+   * 任务——其标签属各团队池，混入会跨池串味（spec §6.4）。
+   */
+  tagStats: TagStatsRow[];
 }
 
 /** 僵尸任务行：长时间停留在 `in_progress` 的团队任务。 */
@@ -124,6 +146,10 @@ export interface TeamSpaceAnalysis {
   unassignedCount: number;
   projectHealth: ProjectHealthRow[];
   zombieTasks: ZombieTaskItem[];
+  /** 按标签统计（团队口径：`teamScope(teamId)` × 该团队标签池）。 */
+  tagStats: TagStatsRow[];
+  /** 单项目下钻（`projectHealth` 行展开用；一次 GROUP BY 聚合，无 N+1）。 */
+  projectTagDrillDowns: ProjectTagDrillDown[];
 }
 
 /**
@@ -137,6 +163,41 @@ const completedDay = sql<string>`(${tasks.updatedAt} AT TIME ZONE 'Asia/Shanghai
 
 /** 创建日的上海日历日文本，口径同 `completedDay`。 */
 const createdDay = sql<string>`(${tasks.createdAt} AT TIME ZONE 'Asia/Shanghai')::date::text`;
+
+/**
+ * 标签统计聚合（口径见 `TagStatsRow`）：
+ * 多标签任务在每个标签下各计一次；`doneCount` 看 range 窗口、`openCount` 看当前快照。
+ * `scope` 必须限定任务范围（个人 / 团队口径由调用方给定），`pool` 限定标签池归属。
+ */
+async function selectTagStats(
+  client: DbClient,
+  scope: ReturnType<typeof teamScope>,
+  pool: SQL,
+  window: { start: string; end: string },
+): Promise<TagStatsRow[]> {
+  const rows = await client
+    .select({
+      tagId: tags.id,
+      tagName: tags.name,
+      color: tags.color,
+      doneCount:
+        sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${completedDay} >= ${window.start} and ${completedDay} <= ${window.end}))::int`,
+      openCount: sql<number>`(count(*) filter (where ${tasks.status} <> 'done'))::int`,
+    })
+    .from(taskTags)
+    .innerJoin(tags, eq(taskTags.tagId, tags.id))
+    .innerJoin(tasks, eq(taskTags.taskId, tasks.id))
+    // teamScope 谓词引用 projects.team_id，需带出 projects。
+    .leftJoin(projects, eq(tasks.projectId, projects.id))
+    .where(and(scope, pool))
+    .groupBy(tags.id, tags.name, tags.color)
+    .orderBy(
+      desc(sql`count(*) filter (where ${tasks.status} = 'done')`),
+      asc(tags.name),
+    );
+
+  return rows;
+}
 
 /** 单条 `count(*) FILTER` 聚合的原始行。 */
 interface StatsRow {
@@ -174,7 +235,7 @@ export async function getPersonalSpaceAnalysis(
   const monthStart = `${today.slice(0, 7)}-01`;
   const futureEnd = addDays(today, 13);
 
-  const [statsRow, createdRows, completedRows, futureRows, projectRows] =
+  const [statsRow, createdRows, completedRows, futureRows, projectRows, tagStats] =
     await Promise.all([
       selectStats(client, userId, today, monthStart, onTimeStart),
       client
@@ -232,6 +293,12 @@ export async function getPersonalSpaceAnalysis(
           // doneCount 平局时按项目名升序；无项目任务用空串参与排序。
           asc(sql`coalesce(${projects.name}, '')`),
         ),
+      selectTagStats(
+        client,
+        and(eq(tasks.spaceType, "personal"), eq(tasks.assigneeId, userId))!,
+        eq(tags.ownerId, userId),
+        window,
+      ),
     ]);
 
   return {
@@ -244,6 +311,7 @@ export async function getPersonalSpaceAnalysis(
       completedRows,
     ),
     futureDue: toFutureDue(today, futureRows),
+    tagStats,
     projectComparison: projectRows.map((row) => ({
       projectId: row.projectId ?? null,
       projectName: row.projectName ?? "",
@@ -303,6 +371,9 @@ export async function getTeamSpaceAnalysis(
     throughputRows,
     projectDoneRows,
     zombieRows,
+    tagStats,
+    drillTagRows,
+    drillStatusRows,
   ] = await Promise.all([
     getTeamOverview({ teamId, teamSlug, today }, client),
     client
@@ -356,9 +427,73 @@ export async function getTeamSpaceAnalysis(
       )
       .orderBy(asc(tasks.updatedAt))
       .limit(10),
+      selectTagStats(
+        client,
+        scope,
+        eq(tags.teamId, teamId),
+        window,
+      ),
+      // 下钻：按 (project, tag) 聚合，一次查询防 N+1。
+      client
+        .select({
+          projectId: tasks.projectId,
+          tagId: tags.id,
+          tagName: tags.name,
+          color: tags.color,
+          doneCount:
+            sql<number>`(count(*) filter (where ${tasks.status} = 'done' and ${completedDay} >= ${window.start} and ${completedDay} <= ${window.end}))::int`,
+          openCount: sql<number>`(count(*) filter (where ${tasks.status} <> 'done'))::int`,
+        })
+        .from(taskTags)
+        .innerJoin(tags, eq(taskTags.tagId, tags.id))
+        .innerJoin(tasks, eq(taskTags.taskId, tasks.id))
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(and(scope, eq(tags.teamId, teamId)))
+        .groupBy(tasks.projectId, tags.id, tags.name, tags.color),
+      // 下钻状态计数：按项目聚合全部状态（快照口径）。
+      client
+        .select({
+          projectId: tasks.projectId,
+          todo:
+            sql<number>`(count(*) filter (where ${tasks.status} = 'todo'))::int`,
+          inProgress:
+            sql<number>`(count(*) filter (where ${tasks.status} = 'in_progress'))::int`,
+          done:
+            sql<number>`(count(*) filter (where ${tasks.status} = 'done'))::int`,
+        })
+        .from(tasks)
+        .leftJoin(projects, eq(tasks.projectId, projects.id))
+        .where(and(scope))
+        .groupBy(tasks.projectId),
   ]);
 
   const projectAggregates = aggregateProjectDone(projectDoneRows, weekBuckets);
+
+  // 下钻按 projectHealth 已知项目组装（未挂项目的散任务不进任何项目行）。
+  const drillByProject = new Map<string, ProjectTagDrillDown>();
+  for (const project of overview.projects) {
+    drillByProject.set(project.projectId, {
+      projectId: project.projectId,
+      tagStats: [],
+      statusCounts: { todo: 0, inProgress: 0, done: 0 },
+    });
+  }
+  for (const row of drillTagRows) {
+    const drill = row.projectId ? drillByProject.get(row.projectId) : undefined;
+    if (!drill) continue;
+    drill.tagStats.push({
+      tagId: row.tagId,
+      tagName: row.tagName,
+      color: row.color,
+      doneCount: row.doneCount,
+      openCount: row.openCount,
+    });
+  }
+  for (const row of drillStatusRows) {
+    const drill = row.projectId ? drillByProject.get(row.projectId) : undefined;
+    if (!drill) continue;
+    drill.statusCounts = { todo: row.todo, inProgress: row.inProgress, done: row.done };
+  }
 
   return {
     stats: {
@@ -405,6 +540,8 @@ export async function getTeamSpaceAnalysis(
       // 按上海日历日计算停留天数：跨 UTC 日边界的更新不会多算一天。
       stalledDays: daysBetween(shanghaiDay(row.updatedAt), today),
     })),
+    tagStats,
+    projectTagDrillDowns: [...drillByProject.values()],
   };
 }
 
