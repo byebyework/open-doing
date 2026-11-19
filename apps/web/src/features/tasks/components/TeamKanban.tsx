@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/shadcn/select";
 
 import { DueText } from "@/components/ui/DueText";
+import { TaskTags } from "@/features/tags/components/TaskTags";
 import { PriorityDot } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
@@ -187,6 +188,12 @@ function TeamKanbanCard({
         >
           {task.title}
         </div>
+
+        {task.tags && task.tags.length > 0 ? (
+          <div className="mt-2">
+            <TaskTags tags={task.tags} />
+          </div>
+        ) : null}
 
         {hasSubtasks ? (
           <div className="mb-2.5 mt-2">

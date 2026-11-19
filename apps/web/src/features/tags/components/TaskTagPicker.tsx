@@ -1,12 +1,11 @@
 "use client";
 
-import { ChevronsUpDownIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import type { Tag } from "@open-doing/types";
 
-import { Checkbox } from "@/components/ui/shadcn/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -102,7 +101,16 @@ export function TaskTagPicker({ pool, value, onChange, canEdit }: TaskTagPickerP
                     onClick={() => toggle(tag.id)}
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--purple-08)]"
                   >
-                    <Checkbox checked={checked} aria-hidden tabIndex={-1} />
+                    {/* 勾选态用图标 span： vendored Checkbox 本体是 <button>，
+                        嵌在 option button 内会触发 HTML button-in-button 水合错误。 */}
+                    <span
+                      aria-hidden
+                      className="flex size-3.5 shrink-0 items-center justify-center rounded border border-[var(--line-300)]"
+                    >
+                      {checked ? (
+                        <CheckIcon className="size-3 text-[var(--purple-600)]" />
+                      ) : null}
+                    </span>
                     <span
                       className="inline-block size-2.5 shrink-0 rounded-full"
                       style={{ backgroundColor: style.color }}

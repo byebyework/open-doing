@@ -73,18 +73,18 @@ export default async function TeamProjectsPage(
         title={t("listTitle")}
         subtitle={t("listSubtitleTeam")}
         actions={
-          <>
-            {canManageProjects ? (
+          canManageProjects ? (
+            <>
               <TagManagerButton
                 space={{ kind: "team", teamId: team.id }}
                 initialTags={tagPool}
                 canManage={canManageProjects}
               />
-            ) : null}
-            <Link href={teamProjectNewHref(team.slug)} data-testid="projects-new-team-button">
-              <Button variant="outline">{t("newProjectButton")}</Button>
-            </Link>
-          </>
+              <Link href={teamProjectNewHref(team.slug)} data-testid="projects-new-team-button">
+                <Button variant="outline">{t("newProjectButton")}</Button>
+              </Link>
+            </>
+          ) : null
         }
       />
 
