@@ -9,6 +9,8 @@ import { requireUser } from "@/features/auth/session";
 import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
 import { getPersonalProjectListWithStats } from "@/features/personal/projects/service";
 import { ProjectStatsCard } from "@/features/projects/components/ProjectStatsCard";
+import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
+import { listTags } from "@/features/tags/service";
 import { personalProjectHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
@@ -30,14 +32,22 @@ export default async function PersonalProjectsPage() {
   const user = await requireUser();
 
   const today = todayInShanghai();
-  const list = await getPersonalProjectListWithStats(user.id, today);
+  const [list, tagPool] = await Promise.all([
+    getPersonalProjectListWithStats(user.id, today),
+    listTags({ ownerId: user.id }),
+  ]);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]" data-testid="projects-list-page">
       <PageHeader
         title={t("listTitle")}
         subtitle={t("listSubtitlePersonal")}
-        actions={<NewPersonalProjectButton />}
+        actions={
+          <>
+            <TagManagerButton space={{ kind: "personal" }} initialTags={tagPool} canManage />
+            <NewPersonalProjectButton />
+          </>
+        }
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-[var(--muted-foreground)]">

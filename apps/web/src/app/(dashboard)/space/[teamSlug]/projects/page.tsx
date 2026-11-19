@@ -11,6 +11,8 @@ import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
 import { ProjectStatsCard } from "@/features/projects/components/ProjectStatsCard";
 import { getTeamProjectListWithStats } from "@/features/projects/service";
+import { listTags } from "@/features/tags/service";
+import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
 import { teamProjectHref, teamProjectNewHref } from "@/lib/routes";
@@ -56,7 +58,10 @@ export default async function TeamProjectsPage(
   if (!team || !membership) notFound();
 
   const today = todayInShanghai();
-  const list = await getTeamProjectListWithStats(team.id, today);
+  const [list, tagPool] = await Promise.all([
+    getTeamProjectListWithStats(team.id, today),
+    listTags({ teamId: team.id }),
+  ]);
   const overallPercent = Math.round(
     averageProjectProgress(list.map((item) => item.stats.progress)) * 100,
   );
@@ -68,11 +73,18 @@ export default async function TeamProjectsPage(
         title={t("listTitle")}
         subtitle={t("listSubtitleTeam")}
         actions={
-          canManageProjects ? (
+          <>
+            {canManageProjects ? (
+              <TagManagerButton
+                space={{ kind: "team", teamId: team.id }}
+                initialTags={tagPool}
+                canManage={canManageProjects}
+              />
+            ) : null}
             <Link href={teamProjectNewHref(team.slug)} data-testid="projects-new-team-button">
               <Button variant="outline">{t("newProjectButton")}</Button>
             </Link>
-          ) : null
+          </>
         }
       />
 

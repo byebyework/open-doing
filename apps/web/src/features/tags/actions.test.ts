@@ -61,10 +61,9 @@ describe("标签 actions", () => {
       deleteTagAction({ teamId: TEAM_ID, tagId: fakeTag.id }),
     ]);
 
-    expect(created.ok).toBe(false);
-    expect(updated.ok).toBe(false);
-    expect(deleted.ok).toBe(false);
-    expect(created.errors.form).toBeTruthy();
+    expect(created).toMatchObject({ ok: false, errors: { form: expect.any(String) } });
+    expect(updated).toMatchObject({ ok: false, errors: { form: expect.any(String) } });
+    expect(deleted).toMatchObject({ ok: false, errors: { form: expect.any(String) } });
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockUpdate).not.toHaveBeenCalled();
     expect(mockDelete).not.toHaveBeenCalled();
@@ -129,8 +128,7 @@ describe("标签 actions", () => {
     );
 
     const result = await createTagAction({ teamId: TEAM_ID, name: "Dup", color: "mint" });
-    expect(result.ok).toBe(false);
-    expect(result.errors.name).toBeTruthy();
+    expect(result).toMatchObject({ ok: false, errors: { name: expect.any(String) } });
   });
 
   it("无 field 的 DomainError：映射到 form", async () => {
@@ -140,8 +138,7 @@ describe("标签 actions", () => {
     );
 
     const result = await deleteTagAction({ teamId: TEAM_ID, tagId: fakeTag.id });
-    expect(result.ok).toBe(false);
-    expect(result.errors.form).toBeTruthy();
+    expect(result).toMatchObject({ ok: false, errors: { form: expect.any(String) } });
   });
 
   it("权限错误：映射为表单级 403 文案", async () => {
@@ -149,7 +146,6 @@ describe("标签 actions", () => {
     mockCreate.mockRejectedValue(new TeamPermissionError("team:manage_projects"));
 
     const result = await createTagAction({ teamId: TEAM_ID, name: "Nope", color: "mint" });
-    expect(result.ok).toBe(false);
-    expect(result.errors.form).toBeTruthy();
+    expect(result).toMatchObject({ ok: false, errors: { form: expect.any(String) } });
   });
 });

@@ -236,7 +236,6 @@ describe("团队任务 actions", () => {
       tagIds: ["00000000-0000-0000-0000-000000000009"],
     });
 
-    expect(result.ok).toBe(false);
-    expect(result.errors.tags).toBeTruthy();
+    expect(result).toMatchObject({ ok: false, errors: { tags: expect.any(String) } });
   });
 });
