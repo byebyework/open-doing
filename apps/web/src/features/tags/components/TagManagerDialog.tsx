@@ -316,41 +316,27 @@ export function TagManagerDialog({
 
   return (
     <Dialog open={open} onOpenChange={(next) => (!next ? closeDialog() : onOpenChange(true))}>
-      <DialogContent className="max-w-md" data-testid="tag-manager">
-        <DialogHeader className="flex-row items-center justify-between space-y-0">
+      <DialogContent className="max-w-lg" data-testid="tag-manager">
+        <DialogHeader>
           <DialogTitle>{t("manageTags")}</DialogTitle>
-          {canManage ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setEditingId(null);
-                setCreateOpen(true);
-              }}
-              data-testid="tag-new-toggle"
-            >
-              <PlusIcon className="size-4" aria-hidden />
-              {t("createTag")}
-            </Button>
-          ) : null}
         </DialogHeader>
 
-        {tags.length > 0 ? (
-          <div className="flex items-center gap-2">
-            <div className="relative min-w-0 flex-1">
-              <SearchIcon
-                aria-hidden
-                className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--ink-400)]"
-              />
-              <Input
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
-                placeholder={t("searchPlaceholder")}
-                className="pl-8"
-                data-testid="tag-search-input"
-              />
-            </div>
+        {/* 工具栏：搜索 + 排序 + 新建同行；关闭钮回到 vendored 的右上角标准位。 */}
+        <div className="flex items-center gap-2">
+          <div className="relative min-w-0 flex-1">
+            <SearchIcon
+              aria-hidden
+              className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-[var(--ink-400)]"
+            />
+            <Input
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              placeholder={t("searchPlaceholder")}
+              className="pl-8"
+              data-testid="tag-search-input"
+            />
+          </div>
+          {tags.length > 0 ? (
             <Button
               type="button"
               variant="ghost"
@@ -364,8 +350,24 @@ export function TagManagerDialog({
               <ArrowUpDownIcon className="size-3.5" aria-hidden />
               {sortByUsage ? t("sortByUsage") : t("sortByCreated")}
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+          {canManage ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="shrink-0"
+              onClick={() => {
+                setEditingId(null);
+                setCreateOpen(true);
+              }}
+              data-testid="tag-new-toggle"
+            >
+              <PlusIcon className="size-4" aria-hidden />
+              {t("createTag")}
+            </Button>
+          ) : null}
+        </div>
 
         <div className="max-h-72 overflow-y-auto">
           {createOpen || (canManage && tags.length === 0) ? (
