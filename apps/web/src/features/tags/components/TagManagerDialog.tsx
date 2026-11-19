@@ -70,17 +70,19 @@ function ColorDots({
             data-testid={`${testPrefix}-${color}`}
             data-active={active ? "true" : undefined}
             onClick={() => onChange(color)}
-            className={`flex size-7 items-center justify-center rounded-full transition-transform focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)] ${
-              active
-                ? "scale-110 ring-2 ring-[var(--ink-900)] ring-offset-2 ring-offset-white"
-                : "hover:scale-110"
-            }`}
+            className="relative flex size-7 items-center justify-center rounded-full transition-transform hover:scale-105 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
           >
             <span
               aria-hidden
               className="size-5 rounded-full shadow-[inset_0_0_0_1px_rgba(0,0,0,0.08)]"
               style={{ backgroundColor: style.color }}
             />
+            {active ? (
+              <CheckIcon
+                aria-hidden
+                className="absolute size-3.5 text-white drop-shadow-[0_1px_1px_rgba(0,0,0,0.25)]"
+              />
+            ) : null}
           </button>
         );
       })}
