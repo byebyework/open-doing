@@ -235,9 +235,6 @@ export function PersonalProjectFormModal({
               disabled={submitting}
               {...register("description")}
             />
-            <div className="text-right text-[12px] text-[var(--ink-400)]">
-              {watch("description").length} / 500
-            </div>
             <CharCounter value={descriptionValue} max={PROJECT_DESCRIPTION_MAX_LENGTH} />
             {errors.description ? (
               <p className="text-[12.5px] text-[var(--error)]">
