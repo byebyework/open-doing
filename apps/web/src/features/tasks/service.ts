@@ -429,6 +429,9 @@ export async function updateTeamTask(
     // 仅打标（无其他字段变更）：只写 task_tags，不触碰 tasks 行——updated_at
     // 是完成日的上海日代理口径，打标不得移动完成日。
     if (input.tagIds !== undefined) {
+      // 打标是内容编辑：Server Action 是公开入口，此处必须独立校验 task:edit
+      // （requireTeamTask 只校验了成员资格，member 不能借该路径改他人任务）。
+      assertCanEditTask({ role: existing.role, actorId, assigneeId: existing.task.assigneeId });
       await applyTaskTags(client, taskId, Array.from(new Set(input.tagIds)), { teamId });
       const refreshed = await findTeamTaskRow(teamId, taskId, client);
       if (!refreshed) {
@@ -902,6 +905,11 @@ async function applyTaskTags(
   space: { teamId?: string; ownerId?: string },
 ): Promise<void> {
   const pool = await getTagsByIds(tagIds, client);
+  // 不存在的 tagId（他端已删 / 客户端缓存过期）与越界同样按领域错误拒绝，
+  // 否则会落到 task_tags 外键裸错误上。
+  if (pool.length !== tagIds.length) {
+    throw new DomainError("标签不存在或无权访问", "tags", { key: "tagInvalidForSpace" });
+  }
   assertTagsBelongToSpace(pool, space);
 
   await client.transaction(async (tx) => {

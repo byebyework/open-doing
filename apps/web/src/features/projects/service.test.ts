@@ -488,3 +488,41 @@ describe.skipIf(!hasTestDatabase)("项目起止时间", () => {
     expect(cleared).toMatchObject({ startDate: undefined, endDate: undefined });
   });
 });
+
+describe.skipIf(!hasTestDatabase)("项目起止时间修复（终审）", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("移动 start 同时清空 end：最终状态合法，不误报 projectDateRange", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Clear End",
+        startDate: "2026-01-01",
+        endDate: "2026-02-01",
+      },
+      db,
+    );
+
+    const updated = await updateTeamProject(
+      {
+        teamId: team.id,
+        projectId: project.id,
+        actorId: owner.id,
+        startDate: "2026-03-01",
+        endDate: null,
+      },
+      db,
+    );
+    expect(updated).toMatchObject({ startDate: "2026-03-01", endDate: undefined });
+  });
+});

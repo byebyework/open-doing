@@ -791,6 +791,10 @@ async function applyOwnedTaskTags(
   ownerId: string,
 ): Promise<void> {
   const pool = await getTagsByIds(tagIds, client);
+  // 同团队侧：不存在的 tagId 按领域错误拒绝，不落外键裸错误。
+  if (pool.length !== tagIds.length) {
+    throw new DomainError("标签不存在或无权访问", "tags", { key: "tagInvalidForSpace" });
+  }
   assertTagsBelongToSpace(pool, { ownerId });
 
   await client.transaction(async (tx) => {

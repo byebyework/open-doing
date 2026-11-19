@@ -232,10 +232,11 @@ export async function updatePersonalProject(
   if (input?.endDate !== undefined) {
     changes.endDate = input.endDate;
   }
-  // 与新值组合出最终日期对再校验（允许先改一端）。
+  // 与新值组合出最终日期对再校验（允许先改一端；显式 null 是"清空"，
+  // 必须按新值参与校验，否则清空一端会被旧值误判为区间倒挂）。
   assertProjectDateRange(
-    (changes.startDate ?? existing.startDate ?? null) as string | null,
-    (changes.endDate ?? existing.endDate ?? null) as string | null,
+    changes.startDate !== undefined ? changes.startDate : (existing.startDate ?? null),
+    changes.endDate !== undefined ? changes.endDate : (existing.endDate ?? null),
   );
 
   if (Object.keys(changes).length === 0) {

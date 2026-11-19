@@ -932,3 +932,47 @@ describe.skipIf(!hasTestDatabase)("团队任务打标 service", () => {
     ).rejects.toBeInstanceOf(TaskPermissionError);
   });
 });
+
+describe.skipIf(!hasTestDatabase)("任务打标边界修复（终审）", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("member 不能借 updateTeamTask 仅标签路径改他人任务（task:edit）", async () => {
+    const fixture = await setupTeamWithProject(db);
+    const member = await createUser(db, uniqueName("member"));
+    await addMember(db, fixture.team.id, member.id, "member");
+    const others = await createTeamTask(
+      { teamId: fixture.team.id, actorId: fixture.owner.id, projectId: fixture.project.id, title: "Owners" },
+      db,
+    );
+
+    await expect(
+      updateTeamTask(
+        { teamId: fixture.team.id, taskId: others.id, actorId: member.id, tagIds: [] },
+        db,
+      ),
+    ).rejects.toBeInstanceOf(TaskPermissionError);
+  });
+
+  it("不存在的 tagId 报领域错误（而非外键裸错误）", async () => {
+    const fixture = await setupTeamWithProject(db);
+    const task = await createTeamTask(
+      { teamId: fixture.team.id, actorId: fixture.owner.id, projectId: fixture.project.id, title: uniqueName("Ghost") },
+      db,
+    );
+
+    await expect(
+      setTeamTaskTags(
+        { teamId: fixture.team.id, taskId: task.id, actorId: fixture.owner.id, tagIds: [crypto.randomUUID()] },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "tagInvalidForSpace" }, field: "tags" });
+  });
+});
