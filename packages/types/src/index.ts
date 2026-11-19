@@ -129,6 +129,10 @@ export interface Project {
   name: string;
   slug: string;
   description?: string;
+  /** 开始日期（`YYYY-MM-DD`，可选扩展；end >= start 由服务层校验） */
+  startDate?: string;
+  /** 结束日期（`YYYY-MM-DD`，可选扩展） */
+  endDate?: string;
   createdAt: string;
 }
 

@@ -677,7 +677,11 @@
     "healthNotStarted": "未开始",
     "healthNormal": "正常",
     "listEmptyTitle": "还没有项目",
-    "listEmptyHint": "创建第一个项目，把任务归集到一起。"
+    "listEmptyHint": "创建第一个项目，把任务归集到一起。",
+    "startDate": "开始日期",
+    "endDate": "结束日期",
+    "projectDateRange": "结束日期不能早于开始日期",
+    "dateRange": "项目周期"
   },
   "dashboard": {
     "title": "仪表盘",

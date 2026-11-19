@@ -75,11 +75,9 @@ export default async function PersonalProjectPage({
       <PageHeader
         className="mt-2"
         title={project.name}
-        subtitle={
-          view === "board"
-            ? t("boardDragHint")
-            : t("personalProjectMeta", { tasks: tasks.length })
-        }
+        subtitle={`${view === "board"
+          ? t("boardDragHint")
+          : t("personalProjectMeta", { tasks: tasks.length })}${project.startDate && project.endDate ? ` · ${t("dateRange")}: ${project.startDate} → ${project.endDate}` : ""}`}
         actions={
           <PersonalProjectPageActions
             project={{

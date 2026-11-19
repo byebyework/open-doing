@@ -3,6 +3,7 @@
 import type { Project } from "@open-doing/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
+import { DatePicker } from "@/components/ui/date-picker";
 import {
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
@@ -11,7 +12,7 @@ import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -32,7 +33,13 @@ import {
 /** 团队项目表单入参：传 `project` 即编辑态，否则新建。 */
 export interface TeamProjectFormProps {
   teamId: string;
-  project?: { id: string; name: string; description?: string };
+  project?: {
+    id: string;
+    name: string;
+    description?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  };
   /** 成功后回调（页面跳转 / 弹窗关闭由调用方决定）。 */
   onSuccess: (project: Project) => void;
   /** 取消（编辑弹窗内使用）。 */
@@ -66,6 +73,8 @@ export function TeamProjectForm({
       .min(1, t("nameRequired"))
       .max(50, t("nameTooLong", { max: 50 })),
     description: z.string().max(500, t("descriptionTooLong", { max: 500 })),
+    startDate: z.string(),
+    endDate: z.string(),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -75,11 +84,14 @@ export function TeamProjectForm({
     setError,
     formState: { errors },
     watch,
+    control,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: project?.name ?? "",
       description: project?.description ?? "",
+      startDate: project?.startDate ?? "",
+      endDate: project?.endDate ?? "",
     },
   });
 
@@ -97,11 +109,15 @@ export function TeamProjectForm({
             projectId: project.id,
             name: values.name,
             description: values.description ?? "",
+            startDate: values.startDate.trim() ? values.startDate : null,
+            endDate: values.endDate.trim() ? values.endDate : null,
           })
         : await createTeamProjectAction({
             teamId,
             name: values.name,
             description: values.description ?? "",
+            startDate: values.startDate.trim() ? values.startDate : null,
+            endDate: values.endDate.trim() ? values.endDate : null,
           });
 
       if (!result.ok) {
@@ -171,6 +187,48 @@ export function TeamProjectForm({
             {errors.description.message}
           </p>
         ) : null}
+      </div>
+
+      {/* 起止时间（可选，两列排布；end < start 由服务层校验并回填 endDate 错误）。 */}
+      <div className="mb-4 grid grid-cols-2 gap-4">
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="team-project-start-date">{t("startDate")}</Label>
+          <Controller
+            control={control}
+            name="startDate"
+            render={({ field }) => (
+              <DatePicker
+                id="team-project-start-date"
+                testid="team-project-start-date"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                disabled={submitting}
+              />
+            )}
+          />
+        </div>
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="team-project-end-date">{t("endDate")}</Label>
+          <Controller
+            control={control}
+            name="endDate"
+            render={({ field }) => (
+              <DatePicker
+                id="team-project-end-date"
+                testid="team-project-end-date"
+                value={field.value ?? ""}
+                onChange={field.onChange}
+                disabled={submitting}
+                invalid={errors.endDate ? true : undefined}
+              />
+            )}
+          />
+          {errors.endDate ? (
+            <p id="team-project-end-date-error" className="text-[12.5px] text-[var(--error)]">
+              {errors.endDate.message}
+            </p>
+          ) : null}
+        </div>
       </div>
 
       <div className="flex gap-2">

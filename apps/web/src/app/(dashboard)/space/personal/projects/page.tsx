@@ -70,6 +70,8 @@ export default async function PersonalProjectsPage() {
               key={item.project.id}
               name={item.project.name}
               description={item.project.description}
+              startDate={item.project.startDate}
+              endDate={item.project.endDate}
               href={personalProjectHref(item.project.slug)}
               stats={item.stats}
               health={getProjectHealthKind(item.stats) as ProjectHealthKind}

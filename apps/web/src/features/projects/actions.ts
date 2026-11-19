@@ -45,6 +45,9 @@ export async function createTeamProjectAction(input: {
   teamId: string;
   name: string;
   description?: string;
+  /** 起止日期（`YYYY-MM-DD`，可空）。 */
+  startDate?: string | null;
+  endDate?: string | null;
 }): Promise<ActionResult<Project>> {
   const user = await getCurrentUser();
   if (!user) {
@@ -65,6 +68,9 @@ export async function updateTeamProjectAction(input: {
   projectId: string;
   name?: string;
   description?: string;
+  /** 起止日期；`null` 清空。 */
+  startDate?: string | null;
+  endDate?: string | null;
 }): Promise<ActionResult<Project>> {
   const user = await getCurrentUser();
   if (!user) {

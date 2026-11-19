@@ -49,6 +49,9 @@ async function toFailure(error: unknown): Promise<Failure> {
 export async function createPersonalProjectAction(input: {
   name: string;
   description?: string;
+  /** 起止日期（`YYYY-MM-DD`，可空）。 */
+  startDate?: string | null;
+  endDate?: string | null;
 }): Promise<ActionResult<Project>> {
   const user = await requireUser();
 
@@ -63,7 +66,13 @@ export async function createPersonalProjectAction(input: {
 /** 更新个人项目（仅本人；slug 保持不变）。 */
 export async function updatePersonalProjectAction(
   projectId: string,
-  input: { name?: string; description?: string },
+  input: {
+    name?: string;
+    description?: string;
+    /** 起止日期；`null` 清空。 */
+    startDate?: string | null;
+    endDate?: string | null;
+  },
 ): Promise<ActionResult<Project>> {
   const user = await requireUser();
 

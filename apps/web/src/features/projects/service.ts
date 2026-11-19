@@ -37,6 +37,8 @@ function toProject(row: ProjectRow): Project {
     name: row.name,
     slug: row.slug,
     description: row.description ?? undefined,
+    startDate: row.startDate ?? undefined,
+    endDate: row.endDate ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -88,6 +90,18 @@ async function requireManageRole(
 ): Promise<void> {
   const membership = await getMembership(teamId, actorId, client);
   assertCan(membership?.role ?? null, "team:manage_projects");
+}
+
+/** 起止日期对校验：都非空时 end >= start；非法抛 DomainError（projects ns）。 */
+function assertProjectDateRange(
+  startDate: string | null,
+  endDate: string | null,
+): void {
+  if (startDate && endDate && endDate < startDate) {
+    throw new DomainError("结束日期不能早于开始日期", "endDate", {
+      key: "projectDateRange",
+    });
+  }
 }
 
 /** 列出某团队的全部项目，按创建时间升序。 */
@@ -150,11 +164,22 @@ export async function getTeamProjectBySlug(
  * 纯中文名回退为 `project`，重名追加 `-2`…（与个人项目口径一致）。
  */
 export async function createTeamProject(
-  input: { teamId: string; actorId: string; name: string; description?: string },
+  input: {
+    teamId: string;
+    actorId: string;
+    name: string;
+    description?: string;
+    /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
+    startDate?: string | null;
+    endDate?: string | null;
+  },
   client: DbClient = db,
 ): Promise<Project> {
   const name = validateName(input?.name);
   const description = validateDescription(input?.description);
+  const startDate = input?.startDate ?? null;
+  const endDate = input?.endDate ?? null;
+  assertProjectDateRange(startDate, endDate);
 
   // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
   // 构造越界入参，故该不变量用普通 Error 兜底，不分配 i18n key。
@@ -177,7 +202,7 @@ export async function createTeamProject(
 
   const [row] = await client
     .insert(projects)
-    .values({ teamId: input.teamId, name, slug, description })
+    .values({ teamId: input.teamId, name, slug, description, startDate, endDate })
     .returning();
 
   return toProject(row!);
@@ -210,6 +235,9 @@ export async function updateTeamProject(
     actorId: string;
     name?: string;
     description?: string;
+    /** 起止日期；`null` 清空，未传保持不变。 */
+    startDate?: string | null;
+    endDate?: string | null;
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -220,7 +248,7 @@ export async function updateTeamProject(
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
-  const changes: Partial<Pick<ProjectRow, "name" | "description">> = {};
+  const changes: Partial<Pick<ProjectRow, "name" | "description" | "startDate" | "endDate">> = {};
 
   if (input?.name !== undefined) {
     changes.name = validateName(input.name);
@@ -228,6 +256,17 @@ export async function updateTeamProject(
   if (input?.description !== undefined) {
     changes.description = validateDescription(input.description);
   }
+  if (input?.startDate !== undefined) {
+    changes.startDate = input.startDate;
+  }
+  if (input?.endDate !== undefined) {
+    changes.endDate = input.endDate;
+  }
+  // 与新值组合出最终日期对再校验（允许先改一端）。
+  assertProjectDateRange(
+    (changes.startDate ?? existing.startDate ?? null) as string | null,
+    (changes.endDate ?? existing.endDate ?? null) as string | null,
+  );
 
   if (Object.keys(changes).length === 0) {
     return toProject(existing);

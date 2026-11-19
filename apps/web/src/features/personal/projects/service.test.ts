@@ -419,3 +419,50 @@ describe.skipIf(!hasTestDatabase)("getPersonalProjectListWithStats", () => {
     expect(await getPersonalProjectListWithStats(nobody, "2026-11-11", db)).toEqual([]);
   });
 });
+
+describe.skipIf(!hasTestDatabase)("个人项目起止时间", () => {
+  let db: DbClient;
+  let userSeq = 0;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    userSeq = 0;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  async function createUser(username = `user_${(userSeq += 1)}`) {
+    const id = crypto.randomUUID();
+    await db
+      .insert(users)
+      .values({ id, uid: generateUid(), username, name: username, email: `${id}@test.local`, displayUsername: username });
+    return id;
+  }
+
+  it("创建接受起止时间；end < start 被拒；null 清空", async () => {
+    const userId = await createUser();
+
+    const project = await createPersonalProject(
+      userId,
+      { name: "Dated Personal", startDate: "2026-12-01", endDate: "2026-12-31" },
+      db,
+    );
+    expect(project).toMatchObject({ startDate: "2026-12-01", endDate: "2026-12-31" });
+
+    await expect(
+      createPersonalProject(
+        userId,
+        { name: "Inverted", startDate: "2026-12-31", endDate: "2026-12-01" },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "projectDateRange" }, field: "endDate" });
+
+    const cleared = await updatePersonalProject(userId, project.id, {
+      startDate: null,
+      endDate: null,
+    }, db);
+    expect(cleared).toMatchObject({ startDate: undefined, endDate: undefined });
+  });
+});

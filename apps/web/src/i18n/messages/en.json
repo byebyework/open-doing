@@ -677,7 +677,11 @@
     "healthNotStarted": "Not started",
     "healthNormal": "On track",
     "listEmptyTitle": "No projects yet",
-    "listEmptyHint": "Create your first project to gather related tasks in one place."
+    "listEmptyHint": "Create your first project to gather related tasks in one place.",
+    "startDate": "Start date",
+    "endDate": "End date",
+    "projectDateRange": "End date cannot be earlier than start date",
+    "dateRange": "Timeline"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -9,7 +9,7 @@ import {
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/shadcn/dialog";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
+import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 
 import {
@@ -38,7 +39,13 @@ export interface PersonalProjectFormModalProps {
   /** 新建或编辑。 */
   mode: "create" | "edit";
   /** 编辑模式下的项目数据。 */
-  project?: { id: string; name: string; description?: string };
+  project?: {
+    id: string;
+    name: string;
+    description?: string;
+    startDate?: string | null;
+    endDate?: string | null;
+  };
   /** 提交成功后回调（由调用方关闭弹窗并刷新数据）。 */
   onSuccess: () => void;
   /** 取消 / 关闭。 */
@@ -61,6 +68,7 @@ export function PersonalProjectFormModal({
   onCancel,
 }: PersonalProjectFormModalProps) {
   const t = useTranslations("personal");
+  const tProjects = useTranslations("projects");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -75,6 +83,8 @@ export function PersonalProjectFormModal({
     description: z
       .string()
       .max(500, t("descriptionTooLong", { max: 500 })),
+    startDate: z.string(),
+    endDate: z.string(),
   });
   type FormValues = z.infer<typeof schema>;
 
@@ -85,11 +95,14 @@ export function PersonalProjectFormModal({
     watch,
     reset,
     formState: { errors },
+    control,
   } = useForm<FormValues>({
     resolver: zodResolver(schema),
     defaultValues: {
       name: mode === "edit" ? (project?.name ?? "") : "",
       description: mode === "edit" ? (project?.description ?? "") : "",
+      startDate: mode === "edit" ? (project?.startDate ?? "") : "",
+      endDate: mode === "edit" ? (project?.endDate ?? "") : "",
     },
   });
 
@@ -99,6 +112,8 @@ export function PersonalProjectFormModal({
       reset({
         name: mode === "edit" ? (project?.name ?? "") : "",
         description: mode === "edit" ? (project?.description ?? "") : "",
+        startDate: mode === "edit" ? (project?.startDate ?? "") : "",
+        endDate: mode === "edit" ? (project?.endDate ?? "") : "",
       });
       setFormError(null);
     }
@@ -122,6 +137,8 @@ export function PersonalProjectFormModal({
     const input = {
       name: values.name,
       description: values.description ?? "",
+      startDate: values.startDate.trim() ? values.startDate : null,
+      endDate: values.endDate.trim() ? values.endDate : null,
     };
 
     try {
@@ -136,6 +153,9 @@ export function PersonalProjectFormModal({
         }
         if (result.errors.description) {
           setError("description", { message: result.errors.description });
+        }
+        if (result.errors.endDate) {
+          setError("endDate", { message: result.errors.endDate });
         }
         if (result.errors.form) setFormError(result.errors.form);
         return;
@@ -219,6 +239,52 @@ export function PersonalProjectFormModal({
                 {errors.description.message}
               </p>
             ) : null}
+          </div>
+
+          {/* 起止时间（可选，两列排布；end < start 错误回填 endDate）。 */}
+          <div className="mb-4 grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="personal-project-start-date">
+                {tProjects("startDate")}
+              </Label>
+              <Controller
+                control={control}
+                name="startDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="personal-project-start-date"
+                    testid="personal-project-start-date"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={submitting}
+                  />
+                )}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="personal-project-end-date">
+                {tProjects("endDate")}
+              </Label>
+              <Controller
+                control={control}
+                name="endDate"
+                render={({ field }) => (
+                  <DatePicker
+                    id="personal-project-end-date"
+                    testid="personal-project-end-date"
+                    value={field.value ?? ""}
+                    onChange={field.onChange}
+                    disabled={submitting}
+                    invalid={errors.endDate ? true : undefined}
+                  />
+                )}
+              />
+              {errors.endDate ? (
+                <p className="text-[12.5px] text-[var(--error)]">
+                  {errors.endDate.message}
+                </p>
+              ) : null}
+            </div>
           </div>
 
           <DialogFooter>

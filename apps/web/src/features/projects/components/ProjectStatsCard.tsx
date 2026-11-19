@@ -15,6 +15,9 @@ export interface ProjectStatsCardProps {
   href: string;
   stats: ProjectStats;
   health: ProjectHealthKind;
+  /** 项目周期（可选扩展；未设置不渲染该行）。 */
+  startDate?: string;
+  endDate?: string;
 }
 
 /** 徽标与进度条/pct 的颜色映射(对齐原型 16/17:逾期红 / 临期黄 / 正常绿)。 */
@@ -63,6 +66,8 @@ export function ProjectStatsCard({
   href,
   stats,
   health,
+  startDate,
+  endDate,
 }: ProjectStatsCardProps) {
   const t = useTranslations("projects");
   const style = HEALTH_STYLE[health];
@@ -85,6 +90,11 @@ export function ProjectStatsCard({
           {t(HEALTH_LABEL_KEY[health])}
         </Badge>
       </div>
+      {startDate && endDate ? (
+        <p className="mb-1 text-[12px] tabular-nums text-[var(--muted-foreground)]">
+          {t("dateRange")}: {startDate} → {endDate}
+        </p>
+      ) : null}
       {description ? (
         <p className="mb-3.5 line-clamp-2 min-h-[34px] text-[12.5px] leading-5 text-[var(--muted-foreground)]">
           {description}

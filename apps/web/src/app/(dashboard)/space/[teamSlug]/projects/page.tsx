@@ -108,6 +108,8 @@ export default async function TeamProjectsPage(
               key={item.project.id}
               name={item.project.name}
               description={item.project.description}
+              startDate={item.project.startDate}
+              endDate={item.project.endDate}
               href={teamProjectHref(team.slug, item.project.slug)}
               stats={item.stats}
               health={getProjectHealthKind(item.stats) as ProjectHealthKind}

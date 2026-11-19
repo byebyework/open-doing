@@ -431,3 +431,60 @@ describe.skipIf(!hasTestDatabase)("getTeamProjectListWithStats", () => {
     expect(await getTeamProjectListWithStats(team.id, "2026-11-11", db)).toEqual([]);
   });
 });
+
+describe.skipIf(!hasTestDatabase)("项目起止时间", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("创建与更新接受起止时间；end < start 被拒", async () => {
+    const { owner, team } = await setupTeam(db);
+
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Dated",
+        startDate: "2026-12-01",
+        endDate: "2026-12-31",
+      },
+      db,
+    );
+    expect(project).toMatchObject({ startDate: "2026-12-01", endDate: "2026-12-31" });
+
+    const updated = await updateTeamProject(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, startDate: "2026-11-01" },
+      db,
+    );
+    expect(updated).toMatchObject({ startDate: "2026-11-01", endDate: "2026-12-31" });
+
+    await expect(
+      updateTeamProject(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, endDate: "2026-10-31" },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "projectDateRange" }, field: "endDate" });
+  });
+
+  it("null 清空日期；未传字段保持不变；单独设置其一合法", async () => {
+    const { owner, team } = await setupTeam(db);
+
+    const single = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Half", startDate: "2026-12-01" },
+      db,
+    );
+    expect(single).toMatchObject({ startDate: "2026-12-01", endDate: undefined });
+
+    const cleared = await updateTeamProject(
+      { teamId: team.id, projectId: single.id, actorId: owner.id, startDate: null },
+      db,
+    );
+    expect(cleared).toMatchObject({ startDate: undefined, endDate: undefined });
+  });
+});
