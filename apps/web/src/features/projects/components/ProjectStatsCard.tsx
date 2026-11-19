@@ -100,7 +100,7 @@ export function ProjectStatsCard({
           {description}
         </p>
       ) : null}
-      <Progress value={stats.progress} color={style.bar} className="h-[6px]" aria-label={`${name} ${percent}%`} />
+      <Progress value={percent} color={style.bar} className="h-[6px]" aria-label={`${name} ${percent}%`} />
       <div className="mt-2 flex items-baseline gap-2">
         <span
           className="text-[15px] font-bold tabular-nums"

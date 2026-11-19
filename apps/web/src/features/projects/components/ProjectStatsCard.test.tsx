@@ -120,3 +120,15 @@ describe("ProjectStatsCard", () => {
     expect(card?.querySelector("p")).toBeNull();
   });
 });
+
+  it("进度条按百分比填充（67% ≈ translateX(-33%)），不把 0~1 小数当百分比", () => {
+    const h = createHarness();
+    h.renderCard({ health: "normal" });
+
+    const indicator = h.container.querySelector("[data-slot='progress-indicator']");
+    expect(indicator).not.toBeNull();
+    const style = (indicator as HTMLElement).style.transform;
+    // progress=0.62 → 62% 填充 → translateX(-38%)
+    expect(style).toBe("translateX(-38%)");
+    h.cleanup();
+  });
