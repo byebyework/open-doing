@@ -4,6 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import type { NotificationType } from "@open-doing/types";
 
 import { createTeamProject } from "@/features/projects/service";
+import { createTag } from "@/features/tags/service";
 import { createTeam } from "@/features/teams/service";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
@@ -12,6 +13,7 @@ import {
   comments,
   notifications,
   subtasks,
+  taskTags,
   tasks,
   teamMemberships,
   users,
@@ -28,6 +30,7 @@ import {
   getTeamTaskDetail,
   listTeamProjectTasks,
   removeTeamSubtask,
+  setTeamTaskTags,
   toggleTeamSubtask,
   updateTeamTask,
 } from "./service";
@@ -837,5 +840,95 @@ describe.skipIf(!hasTestDatabase)("团队任务 service", () => {
       );
       expect(updated).toMatchObject({ startDate: "2026-09-01", dueDate: "2026-09-30" });
     });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("团队任务打标 service", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  /** 每用例独立造数：团队 + 项目 + 一个 owner 建的任务。 */
+  async function setupTask() {
+    const fixture = await setupTeamWithProject(db);
+    const task = await createTeamTask(
+      {
+        teamId: fixture.team.id,
+        actorId: fixture.owner.id,
+        projectId: fixture.project.id,
+        title: uniqueName("Tagged"),
+      },
+      db,
+    );
+    return { ...fixture, task };
+  }
+
+  it("设置并全量覆写标签；空数组清空", async () => {
+    const { owner, team, task } = await setupTask();
+    const tagA = await createTag({ teamId: team.id, actorId: owner.id, name: uniqueName("A"), color: "purple" }, db);
+    const tagB = await createTag({ teamId: team.id, actorId: owner.id, name: uniqueName("B"), color: "mint" }, db);
+
+    await setTeamTaskTags({ teamId: team.id, taskId: task.id, actorId: owner.id, tagIds: [tagA.id] }, db);
+    let rows = await db.select().from(taskTags).where(eq(taskTags.taskId, task.id));
+    expect(rows.map((r) => r.tagId)).toEqual([tagA.id]);
+
+    await setTeamTaskTags({ teamId: team.id, taskId: task.id, actorId: owner.id, tagIds: [tagB.id, tagA.id] }, db);
+    rows = await db.select().from(taskTags).where(eq(taskTags.taskId, task.id));
+    expect(new Set(rows.map((r) => r.tagId))).toEqual(new Set([tagA.id, tagB.id]));
+
+    await setTeamTaskTags({ teamId: team.id, taskId: task.id, actorId: owner.id, tagIds: [] }, db);
+    rows = await db.select().from(taskTags).where(eq(taskTags.taskId, task.id));
+    expect(rows).toHaveLength(0);
+  });
+
+  it("仅标签变更不推进 updated_at（完成日代理口径）", async () => {
+    const { owner, team, task } = await setupTask();
+    const tag = await createTag({ teamId: team.id, actorId: owner.id, name: uniqueName("K"), color: "sky" }, db);
+
+    const before = await db.select().from(tasks).where(eq(tasks.id, task.id)).limit(1);
+    const updatedAtBefore = before[0]!.updatedAt;
+
+    await setTeamTaskTags({ teamId: team.id, taskId: task.id, actorId: owner.id, tagIds: [tag.id] }, db);
+
+    const after = await db.select().from(tasks).where(eq(tasks.id, task.id)).limit(1);
+    expect(after[0]!.updatedAt.getTime()).toBe(updatedAtBefore.getTime());
+  });
+
+  it("越界 tagId（其他空间的标签）被拒", async () => {
+    const { owner, team, task } = await setupTask();
+    const personalTag = await createTag({ ownerId: owner.id, name: uniqueName("Mine"), color: "coral" }, db);
+
+    await expect(
+      setTeamTaskTags({ teamId: team.id, taskId: task.id, actorId: owner.id, tagIds: [personalTag.id] }, db),
+    ).rejects.toMatchObject({ i18n: { key: "tagInvalidForSpace" }, field: "tags" });
+  });
+
+  it("member 可给被指派任务打标；他人任务被拒（task:edit）", async () => {
+    const fixture = await setupTeamWithProject(db);
+    const member = await createUser(db, uniqueName("member"));
+    await addMember(db, fixture.team.id, member.id, "member");
+    const mine = await createTeamTask(
+      { teamId: fixture.team.id, actorId: fixture.owner.id, projectId: fixture.project.id, title: "Mine", assigneeId: member.id },
+      db,
+    );
+    const others = await createTeamTask(
+      { teamId: fixture.team.id, actorId: fixture.owner.id, projectId: fixture.project.id, title: "Others" },
+      db,
+    );
+    const tag = await createTag({ teamId: fixture.team.id, actorId: fixture.owner.id, name: uniqueName("M"), color: "mint" }, db);
+
+    await expect(
+      setTeamTaskTags({ teamId: fixture.team.id, taskId: mine.id, actorId: member.id, tagIds: [tag.id] }, db),
+    ).resolves.toBeTruthy();
+
+    await expect(
+      setTeamTaskTags({ teamId: fixture.team.id, taskId: others.id, actorId: member.id, tagIds: [] }, db),
+    ).rejects.toBeInstanceOf(TaskPermissionError);
   });
 });

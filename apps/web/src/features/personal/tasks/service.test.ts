@@ -3,10 +3,11 @@ import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { createPersonalProject } from "@/features/personal/projects/service";
+import { createTag } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { comments, subtasks, tasks, users } from "@/server/db/schema";
+import { comments, subtasks, taskTags, tasks, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import {
@@ -18,6 +19,7 @@ import {
   getPersonalTaskDetail,
   listPersonalProjectTasks,
   removePersonalSubtask,
+  setPersonalTaskTags,
   togglePersonalSubtask,
   updatePersonalTask,
 } from "./service";
@@ -568,5 +570,68 @@ describe.skipIf(!hasTestDatabase)("个人任务 / 子任务 / 评论 service", (
         db,
       ),
     ).rejects.toMatchObject({ field: "status" });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("个人任务打标 service", () => {
+  let db: DbClient;
+  let userSeq = 0;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    userSeq += 1000;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  async function createUser(): Promise<string> {
+    const id = crypto.randomUUID();
+    await db.insert(users).values({
+      id,
+      uid: generateUid(),
+      username: `tag-user-${userSeq}-${id.slice(0, 8)}`,
+      name: `tag-user-${userSeq}`,
+      email: `${id}@test.local`,
+      displayUsername: `tag-user-${userSeq}`,
+    });
+    return id;
+  }
+
+  it("设置并覆写标签；仅标签变更不推进 updated_at", async () => {
+    const userId = await createUser();
+    const otherId = await createUser();
+    const task = await createPersonalTask(userId, { title: "带标签的任务" }, db);
+    const mine = await createTag({ ownerId: userId, name: "Mine", color: "purple" }, db);
+    const foreign = await createTag({ ownerId: otherId, name: "Foreign", color: "mint" }, db);
+
+    const before = await db.select().from(tasks).where(eq(tasks.id, task.id)).limit(1);
+    const updatedAtBefore = before[0]!.updatedAt;
+
+    await expect(
+      setPersonalTaskTags({ taskId: task.id, actorId: userId, tagIds: [foreign.id] }, db),
+    ).rejects.toMatchObject({ i18n: { key: "tagInvalidForSpace" }, field: "tags" });
+
+    await setPersonalTaskTags({ taskId: task.id, actorId: userId, tagIds: [mine.id] }, db);
+    let rows = await db.select().from(taskTags).where(eq(taskTags.taskId, task.id));
+    expect(rows.map((r) => r.tagId)).toEqual([mine.id]);
+
+    await setPersonalTaskTags({ taskId: task.id, actorId: userId, tagIds: [] }, db);
+    rows = await db.select().from(taskTags).where(eq(taskTags.taskId, task.id));
+    expect(rows).toHaveLength(0);
+
+    const after = await db.select().from(tasks).where(eq(tasks.id, task.id)).limit(1);
+    expect(after[0]!.updatedAt.getTime()).toBe(updatedAtBefore.getTime());
+  });
+
+  it("他人任务被拒（owner-only）", async () => {
+    const owner = await createUser();
+    const stranger = await createUser();
+    const task = await createPersonalTask(owner, { title: "Owner only" }, db);
+
+    await expect(
+      setPersonalTaskTags({ taskId: task.id, actorId: stranger, tagIds: [] }, db),
+    ).rejects.toMatchObject({ i18n: { key: "taskNotFound" } });
   });
 });

@@ -6,7 +6,7 @@ import type {
   TaskStatus,
 } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 import type { TaskDetailModel } from "@/components/ui/task-detail/types";
@@ -15,6 +15,7 @@ import {
   type CreateNotificationInput,
 } from "@/features/notifications/service";
 import { getMembership, type TeamRole } from "@/features/teams/permissions";
+import { assertTagsBelongToSpace, getTagsByIds } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import {
   assertStartNotAfterTaskDue,
@@ -33,6 +34,7 @@ import {
   comments,
   projects,
   subtasks,
+  taskTags,
   tasks,
   users,
 } from "@/server/db/schema";
@@ -823,4 +825,68 @@ export async function getTeamTaskDetail(
       }),
     ),
   };
+}
+
+/**
+ * 团队任务打标：`tagIds` 全量覆写为任务最终标签集。
+ *
+ * 权限 = `task:edit`（owner/admin 任意；member 仅被指派给自己的任务）。
+ * **只写 task_tags，绝不触碰 tasks 行**——`updated_at` 是完成日的上海日
+ * 代理口径（分析 / 通知 / 僵尸任务同源），给已完成任务补标签不得移动完成日。
+ * tagIds 必须全部属于该团队标签池，越界抛 DomainError（tags ns）。
+ */
+export async function setTeamTaskTags(
+  input: {
+    teamId: string;
+    taskId: string;
+    actorId: string;
+    tagIds: string[];
+  },
+  client: DbClient = db,
+): Promise<Task> {
+  const { task, role } = await requireTeamTask(
+    input.teamId,
+    input.taskId,
+    input.actorId,
+    client,
+  );
+  assertCanEditTask({ role, actorId: input.actorId, assigneeId: task.assigneeId });
+
+  await applyTaskTags(
+    client,
+    input.taskId,
+    Array.from(new Set(input.tagIds)),
+    { teamId: input.teamId },
+  );
+
+  const refreshed = await findTeamTaskRow(input.teamId, input.taskId, client);
+  if (!refreshed) {
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+  }
+  return toTask(refreshed.task);
+}
+
+/** 打标落库（diff 覆写）：删除不在集合内的关联，插入缺失对。 */
+async function applyTaskTags(
+  client: DbClient,
+  taskId: string,
+  tagIds: string[],
+  space: { teamId?: string; ownerId?: string },
+): Promise<void> {
+  const pool = await getTagsByIds(tagIds, client);
+  assertTagsBelongToSpace(pool, space);
+
+  await client.transaction(async (tx) => {
+    await tx.delete(taskTags).where(
+      tagIds.length === 0
+        ? eq(taskTags.taskId, taskId)
+        : and(eq(taskTags.taskId, taskId), notInArray(taskTags.tagId, tagIds)),
+    );
+    if (tagIds.length > 0) {
+      await tx
+        .insert(taskTags)
+        .values(tagIds.map((tagId) => ({ taskId, tagId })))
+        .onConflictDoNothing();
+    }
+  });
 }

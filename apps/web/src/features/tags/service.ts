@@ -1,5 +1,5 @@
 import { isTagColor, type Tag, type TagColor, type TagWithUsage } from "@open-doing/types";
-import { and, asc, count, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
 import type { DbClient } from "@/server/db/client";
@@ -304,4 +304,38 @@ export async function deleteTag(
   }
 
   await client.delete(tags).where(eq(tags.id, existing.id));
+}
+
+/** 按 id 批量取标签（打标校验用）；空数组直接返回空，避免无谓 `IN ()`。 */
+export async function getTagsByIds(
+  ids: string[],
+  client: DbClient = db,
+): Promise<Tag[]> {
+  if (ids.length === 0) return [];
+
+  const rows = await client.select().from(tags).where(inArray(tags.id, ids));
+  return rows.map(toTag);
+}
+
+/**
+ * 断言标签全部属于指定空间（团队 / 个人）；越界抛 DomainError（tags ns）。
+ * 纯函数，供任务打标服务复用。
+ */
+export function assertTagsBelongToSpace(
+  found: Tag[],
+  space: { teamId?: string; ownerId?: string },
+): void {
+  for (const tag of found) {
+    const inSpace =
+      space.teamId != null
+        ? tag.teamId === space.teamId
+        : space.ownerId != null
+          ? tag.ownerId === space.ownerId
+          : false;
+    if (!inSpace) {
+      throw new DomainError("标签不属于当前空间", "tags", {
+        key: "tagInvalidForSpace",
+      });
+    }
+  }
 }

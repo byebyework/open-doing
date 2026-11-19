@@ -6,15 +6,17 @@ import type {
   TaskStatus,
 } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 
 import type { TaskDetailModel } from "@/components/ui/task-detail/types";
+import { assertTagsBelongToSpace, getTagsByIds } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import {
   comments,
   projects,
   subtasks,
+  taskTags,
   tasks,
   users,
 } from "@/server/db/schema";
@@ -729,4 +731,46 @@ export async function deletePersonalComment(
   if (!row) {
     throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
   }
+}
+
+/**
+ * 个人任务打标：`tagIds` 全量覆写为任务最终标签集（owner-only）。
+ *
+ * **只写 task_tags，绝不触碰 tasks 行**——`updated_at` 是完成日的上海日
+ * 代理口径，给已完成任务补标签不得移动完成日。tagIds 必须全部属于本人
+ * 个人标签池，越界抛 DomainError（tags ns）。
+ */
+export async function setPersonalTaskTags(
+  input: {
+    taskId: string;
+    actorId: string;
+    tagIds: string[];
+  },
+  client: DbClient = db,
+): Promise<Task> {
+  const existing = await requireOwnedPersonalTaskRow(input.actorId, input.taskId, client);
+
+  const tagIds = Array.from(new Set(input.tagIds));
+  const pool = await getTagsByIds(tagIds, client);
+  assertTagsBelongToSpace(pool, { ownerId: input.actorId });
+
+  await client.transaction(async (tx) => {
+    await tx.delete(taskTags).where(
+      tagIds.length === 0
+        ? eq(taskTags.taskId, existing.id)
+        : and(eq(taskTags.taskId, existing.id), notInArray(taskTags.tagId, tagIds)),
+    );
+    if (tagIds.length > 0) {
+      await tx
+        .insert(taskTags)
+        .values(tagIds.map((tagId) => ({ taskId: existing.id, tagId })))
+        .onConflictDoNothing();
+    }
+  });
+
+  const refreshed = await findOwnedPersonalTaskRow(input.actorId, input.taskId, client);
+  if (!refreshed) {
+    throw new DomainError("任务不存在或无权访问", undefined, { key: "taskNotFound" });
+  }
+  return toTask(refreshed);
 }

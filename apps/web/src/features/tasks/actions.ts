@@ -21,6 +21,7 @@ import {
   deleteTeamComment,
   deleteTeamTask,
   removeTeamSubtask,
+  setTeamTaskTags,
   toggleTeamSubtask,
   updateTeamTask,
 } from "./service";
@@ -31,8 +32,14 @@ type Failure = Extract<ActionResult<never>, { ok: false }>;
 /**
  * 领域错误 -> 字段错误；权限错误 -> 表单级 403 文案；
  * 未知错误只返回通用提示，避免泄露内部信息。
+ *
+ * `domainNs`：领域文案命名空间——任务本体用 tasks；打标转调
+ * features/tags 抛出的 DomainError 用 tags（`setTeamTaskTagsAction`）。
  */
-async function toFailure(error: unknown): Promise<Failure> {
+async function toFailure(
+  error: unknown,
+  domainNs: "tasks" | "tags" = "tasks",
+): Promise<Failure> {
   if (error instanceof DomainError) {
     // 团队任务领域文案在 tasks 命名空间；无 i18n 通道时回退 message（zh 兜底）。
     if (error.i18n) {
@@ -41,7 +48,7 @@ async function toFailure(error: unknown): Promise<Failure> {
         ok: false,
         errors: {
           [error.field ?? "form"]: failures
-            .custom(`tasks.${error.i18n.key}`, error.i18n.params).errors.form!,
+            .custom(`${domainNs}.${error.i18n.key}`, error.i18n.params).errors.form!,
         },
       };
     }
@@ -201,5 +208,22 @@ export async function deleteTeamCommentAction(input: {
     return { ok: true, data: true };
   } catch (error) {
     return toFailure(error);
+  }
+}
+
+/** 团队任务打标（全量覆写；权限 = task:edit）。标签错误走 tags 域文案。 */
+export async function setTeamTaskTagsAction(input: {
+  teamId: string;
+  taskId: string;
+  tagIds: string[];
+}): Promise<ActionResult<Task>> {
+  const user = await getCurrentUser();
+  if (!user) return (await standardFailuresForRequest()).notLoggedIn();
+
+  try {
+    const task = await setTeamTaskTags({ ...input, actorId: user.id });
+    return { ok: true, data: task };
+  } catch (error) {
+    return toFailure(error, "tags");
   }
 }

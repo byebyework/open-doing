@@ -12,6 +12,7 @@ import {
   deleteTeamCommentAction,
   deleteTeamTaskAction,
   removeTeamSubtaskAction,
+  setTeamTaskTagsAction,
   toggleTeamSubtaskAction,
   updateTeamTaskAction,
 } from "./actions";
@@ -23,6 +24,7 @@ import {
   deleteTeamComment,
   deleteTeamTask,
   removeTeamSubtask,
+  setTeamTaskTags,
   toggleTeamSubtask,
   updateTeamTask,
 } from "./service";
@@ -48,6 +50,7 @@ vi.mock("./service", async (importOriginal) => {
     toggleTeamSubtask: vi.fn(),
     addTeamComment: vi.fn(),
     deleteTeamComment: vi.fn(),
+    setTeamTaskTags: vi.fn(),
   };
 });
 
@@ -60,6 +63,7 @@ const mockRemoveSubtask = vi.mocked(removeTeamSubtask);
 const mockToggleSubtask = vi.mocked(toggleTeamSubtask);
 const mockAddComment = vi.mocked(addTeamComment);
 const mockDeleteComment = vi.mocked(deleteTeamComment);
+const mockSetTags = vi.mocked(setTeamTaskTags);
 
 const TEAM_ID = "00000000-0000-0000-0000-000000000002";
 const PROJECT_ID = "00000000-0000-0000-0000-000000000003";
@@ -125,6 +129,7 @@ const allActions = [
     }),
   () => addTeamCommentAction({ teamId: TEAM_ID, taskId: TASK_ID, content: "评论" }),
   () => deleteTeamCommentAction({ teamId: TEAM_ID, taskId: TASK_ID, commentId: fakeComment.id }),
+  () => setTeamTaskTagsAction({ teamId: TEAM_ID, taskId: TASK_ID, tagIds: [] }),
 ];
 
 const mockedServices = [
@@ -217,5 +222,21 @@ describe("团队任务 actions", () => {
       taskId: TASK_ID,
       actorId: MEMBER_ID,
     });
+  });
+
+  it("打标 action：标签领域错误映射到 tags 域文案（field 保留）", async () => {
+    mockGetCurrentUser.mockResolvedValue(sessionUser);
+    mockSetTags.mockRejectedValue(
+      new DomainError("越界标签", "tags", { key: "tagInvalidForSpace" }),
+    );
+
+    const result = await setTeamTaskTagsAction({
+      teamId: TEAM_ID,
+      taskId: TASK_ID,
+      tagIds: ["00000000-0000-0000-0000-000000000009"],
+    });
+
+    expect(result.ok).toBe(false);
+    expect(result.errors.tags).toBeTruthy();
   });
 });

@@ -19,6 +19,7 @@ import {
   deletePersonalComment,
   deletePersonalTask,
   removePersonalSubtask,
+  setPersonalTaskTags,
   togglePersonalSubtask,
   updatePersonalTask,
   type PersonalTaskInput,
@@ -32,16 +33,20 @@ type Failure = Extract<ActionResult<never>, { ok: false }>;
  *
  * 复用 auth 的 `ActionResult` 契约，个人空间所有 Server Action 返回值一致。
  */
-async function toFailure(error: unknown): Promise<Failure> {
+async function toFailure(
+  error: unknown,
+  domainNs: "tasks" | "tags" = "tasks",
+): Promise<Failure> {
   if (error instanceof DomainError) {
     // 个人任务的领域文案共用 tasks 命名空间；无 i18n 通道时回退 message（zh 兜底）。
+    // 打标转调 features/tags 抛出的 DomainError 用 tags（setPersonalTaskTagsAction）。
     if (error.i18n) {
       const failures = await standardFailuresForRequest();
       return {
         ok: false,
         errors: {
           [error.field ?? "form"]: failures
-            .custom(`tasks.${error.i18n.key}`, error.i18n.params).errors.form!,
+            .custom(`${domainNs}.${error.i18n.key}`, error.i18n.params).errors.form!,
         },
       };
     }
@@ -185,5 +190,19 @@ export async function deletePersonalCommentAction(
     return { ok: true, data: true };
   } catch (error) {
     return toFailure(error);
+  }
+}
+
+/** 个人任务打标（全量覆写；owner-only）。 */
+export async function setPersonalTaskTagsAction(input: {
+  taskId: string;
+  tagIds: string[];
+}): Promise<ActionResult<Task>> {
+  const user = await requireUser();
+  try {
+    const task = await setPersonalTaskTags({ taskId: input.taskId, actorId: user.id, tagIds: input.tagIds });
+    return { ok: true, data: task };
+  } catch (error) {
+    return toFailure(error, "tags");
   }
 }
