@@ -594,6 +594,27 @@
     "emptyTitle": "暂无邀请与申请",
     "emptyDesc": "把你的 Doing ID 告诉团队管理员，或凭团队邀请码直接申请加入。"
   },
+  "tags": {
+    "manageTags": "管理标签",
+    "createTag": "新建标签",
+    "editTag": "编辑标签",
+    "tagNameLabel": "标签名称",
+    "tagNamePlaceholder": "例如：调研",
+    "tagColorLabel": "颜色",
+    "usageCount": "{count, plural, =0 {未使用} other {# 个任务使用}}",
+    "emptyPool": "还没有标签，先创建一个吧",
+    "deleteTagConfirm": "删除后已打标任务上的该标签一并移除，且不可恢复。确定删除吗？",
+    "nameRequired": "请输入标签名称",
+    "nameTooLong": "标签名称不能超过 {max} 个字符",
+    "colorInvalid": "标签颜色无效",
+    "tagNameDuplicate": "同名标签已存在",
+    "tagNotFound": "标签不存在或无权访问",
+    "tagLimitReached": "每个空间最多 {max} 个标签",
+    "tagInvalidForSpace": "标签不属于当前空间",
+    "tagCreated": "标签已创建",
+    "tagSaved": "标签已保存",
+    "tagDeleted": "标签已删除"
+  },
   "personal": {
     "space": "个人空间",
     "nameRequired": "请输入项目名称",

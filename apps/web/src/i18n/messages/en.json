@@ -594,6 +594,27 @@
     "emptyTitle": "No invites or requests",
     "emptyDesc": "Share your Doing ID with a team admin, or join directly with a team invite code."
   },
+  "tags": {
+    "manageTags": "Manage tags",
+    "createTag": "New tag",
+    "editTag": "Edit tag",
+    "tagNameLabel": "Tag name",
+    "tagNamePlaceholder": "e.g. Research",
+    "tagColorLabel": "Color",
+    "usageCount": "{count, plural, =0 {Unused} other {# task(s) use this}}",
+    "emptyPool": "No tags yet — create one first",
+    "deleteTagConfirm": "Deleting removes this tag from all tagged tasks and cannot be undone. Delete?",
+    "nameRequired": "Please enter a tag name",
+    "nameTooLong": "Tag name cannot exceed {max} characters",
+    "colorInvalid": "Invalid tag color",
+    "tagNameDuplicate": "A tag with this name already exists",
+    "tagNotFound": "Tag not found or no access",
+    "tagLimitReached": "Each space can have at most {max} tags",
+    "tagInvalidForSpace": "Tag does not belong to this space",
+    "tagCreated": "Tag created",
+    "tagSaved": "Tag saved",
+    "tagDeleted": "Tag deleted"
+  },
   "personal": {
     "space": "Personal space",
     "nameRequired": "Enter a project name",
