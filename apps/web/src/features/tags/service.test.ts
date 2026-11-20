@@ -4,7 +4,7 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { taskTags, teamMemberships, users } from "@/server/db/schema";
+import { projectTags, taskTags, teamMemberships, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 import { TeamPermissionError } from "@/features/teams/permissions";
 import { createTeam } from "@/features/teams/service";
@@ -244,5 +244,80 @@ describe.skipIf(!hasTestDatabase)("标签池 service", () => {
 
     const rows = await listTags({ teamId: team.id }, db);
     expect(rows[0]).toMatchObject({ id: tag.id, usageCount: 2 });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("标签类型与描述（T2）", () => {
+  let db: DbClient;
+  let seq = 0;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    seq = 0;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("createTag 接受 type 与 description；默认 task", async () => {
+    const owner = await createUser(db, `t2-owner-${(seq += 1)}`);
+    const taskTag = await createTag({ ownerId: owner.id, name: "T", color: "purple" }, db);
+    const projectTag = await createTag(
+      { ownerId: owner.id, name: "P", color: "mint", type: "project", description: "项目用" },
+      db,
+    );
+    expect(taskTag).toMatchObject({ type: "task" });
+    expect(projectTag).toMatchObject({ type: "project", description: "项目用" });
+  });
+
+  it("updateTag 不可改类型；description 可更新与清空", async () => {
+    const owner = await createUser(db, `t2-upd-${(seq += 1)}`);
+    const tag = await createTag(
+      { ownerId: owner.id, name: "Keep", color: "purple", type: "task", description: "d1" },
+      db,
+    );
+    const updated = await updateTag(
+      { ownerId: owner.id, tagId: tag.id, name: "Keep2", type: "project" as never, description: null } as never,
+      db,
+    );
+    expect(updated).toMatchObject({ type: "task", description: undefined });
+  });
+
+  it("description 超长被拒（descriptionTooLong）", async () => {
+    const owner = await createUser(db, `t2-len-${(seq += 1)}`);
+    await expect(
+      createTag(
+        { ownerId: owner.id, name: "X", color: "mint", description: "a".repeat(101) },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "descriptionTooLong" }, field: "description" });
+  });
+
+  it("双口径计数：任务标签计 task_tags，项目标签计 project_tags", async () => {
+    seq += 1;
+    const owner = await createUser(db, `t2-cnt-${seq}`);
+    const team = await createTeam({ name: `T2Team${seq}` }, owner.id, db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: `T2Proj${seq}` },
+      db,
+    );
+    const taskTag = await createTag({ teamId: team.id, actorId: owner.id, name: "TT", color: "purple" }, db);
+    const projectTag = await createTag(
+      { teamId: team.id, actorId: owner.id, name: "PP", color: "mint", type: "project" },
+      db,
+    );
+    const task = await createTeamTask(
+      { teamId: team.id, actorId: owner.id, projectId: project.id, title: "t" },
+      db,
+    );
+    await db.insert(taskTags).values({ taskId: task.id, tagId: taskTag.id });
+    await db.insert(projectTags).values({ projectId: project.id, tagId: projectTag.id });
+
+    const rows = await listTags({ teamId: team.id }, db);
+    const tt = rows.find((r) => r.name === "TT");
+    const pp = rows.find((r) => r.name === "PP");
+    expect(tt).toMatchObject({ usageCount: 1 });
+    expect(pp).toMatchObject({ usageCount: 1 });
   });
 });

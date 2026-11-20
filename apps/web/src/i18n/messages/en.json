@@ -626,7 +626,10 @@
     "noSearchResult": "No matching tags",
     "moreActions": "More actions",
     "deleteTagConfirmUsed": "This tag is used by {count} task(s); deleting removes it from all of them and cannot be undone. Delete?",
-    "deleteTagConfirmUnused": "This tag is unused. Deleting cannot be undone. Delete?"
+    "deleteTagConfirmUnused": "This tag is unused. Deleting cannot be undone. Delete?",
+    "typeInvalid": "Invalid tag type",
+    "descriptionTooLong": "Tag description cannot exceed {max} characters",
+    "tagTypeMismatch": "Tag type does not match the tagging target"
   },
   "personal": {
     "space": "Personal space",

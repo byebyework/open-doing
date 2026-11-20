@@ -626,7 +626,10 @@
     "noSearchResult": "没有匹配的标签",
     "moreActions": "更多操作",
     "deleteTagConfirmUsed": "该标签正被 {count} 个任务使用，删除后将从这些任务上一并移除，且不可恢复。确定删除吗？",
-    "deleteTagConfirmUnused": "该标签未被使用，删除后不可恢复。确定删除吗？"
+    "deleteTagConfirmUnused": "该标签未被使用，删除后不可恢复。确定删除吗？",
+    "typeInvalid": "标签类型无效",
+    "descriptionTooLong": "标签描述不能超过 {max} 个字符",
+    "tagTypeMismatch": "标签类型与打标对象不匹配"
   },
   "personal": {
     "space": "个人空间",

@@ -1,4 +1,4 @@
-import { isTagColor, type Tag, type TagColor, type TagWithUsage } from "@open-doing/types";
+import { isTagColor, isTagType, type Tag, type TagColor, type TagType, type TagWithUsage } from "@open-doing/types";
 import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
@@ -7,9 +7,9 @@ import { db } from "@/server/db/client";
 import { tags, taskTags } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 
-import { TAG_NAME_MAX_LENGTH, TAGS_PER_SPACE_LIMIT } from "./constants";
+import { TAG_DESCRIPTION_MAX_LENGTH, TAG_NAME_MAX_LENGTH, TAGS_PER_SPACE_LIMIT } from "./constants";
 
-export { TAG_NAME_MAX_LENGTH, TAGS_PER_SPACE_LIMIT } from "./constants";
+export { TAG_DESCRIPTION_MAX_LENGTH, TAG_NAME_MAX_LENGTH, TAGS_PER_SPACE_LIMIT } from "./constants";
 
 type TagRow = typeof tags.$inferSelect;
 
@@ -44,6 +44,32 @@ function validateTagName(value: unknown): string {
   }
 
   return name;
+}
+
+/** 校验描述：trim，限长 100，空串归 null；非法抛 DomainError（tags ns）。 */
+function validateTagDescription(value: unknown): string | null {
+  if (value === undefined || value === null) return null;
+  if (typeof value !== "string") {
+    throw new DomainError("标签描述无效", "description", { key: "descriptionTooLong" });
+  }
+  const description = value.trim();
+  if (!description) return null;
+  if (description.length > TAG_DESCRIPTION_MAX_LENGTH) {
+    throw new DomainError(
+      `标签描述不能超过 ${TAG_DESCRIPTION_MAX_LENGTH} 个字符`,
+      "description",
+      { key: "descriptionTooLong", params: { max: TAG_DESCRIPTION_MAX_LENGTH } },
+    );
+  }
+  return description;
+}
+
+/** 校验标签类型；非法抛 DomainError（tags ns）。 */
+function validateTagType(value: unknown): TagType {
+  if (!isTagType(value)) {
+    throw new DomainError("标签类型无效", "type", { key: "typeInvalid" });
+  }
+  return value;
 }
 
 /** 校验颜色为预设色板 key；非法抛 DomainError（tags ns）。 */
@@ -137,14 +163,15 @@ export async function listTags(
       description: tags.description,
       updatedAt: tags.updatedAt,
       createdAt: tags.createdAt,
-      usageCount: sql<number>`count(${taskTags.taskId})::int`,
+      // 双口径：任务标签计 task_tags，项目标签计 project_tags（子查询，互不串）。
+      usageCount: sql<number>`case when ${tags.type} = 'project'
+        then (select count(*)::int from project_tags pt where pt.tag_id = ${tags.id})
+        else (select count(*)::int from task_tags tt where tt.tag_id = ${tags.id}) end`,
     })
     .from(tags)
-    .leftJoin(taskTags, eq(taskTags.tagId, tags.id))
     .where(
       teamId != null ? eq(tags.teamId, teamId) : eq(tags.ownerId, ownerId!),
     )
-    .groupBy(tags.id)
     .orderBy(asc(tags.createdAt));
 
   return rows.map((row) => ({
@@ -177,11 +204,17 @@ export async function createTag(
     actorId?: string;
     name: string;
     color: TagColor;
+    /** 标签类型；缺省 'task'（存量语义）。创建时定型，updateTag 不接受。 */
+    type?: TagType;
+    /** 可选描述；trim 限长 100，空归 null。 */
+    description?: string | null;
   },
   client: DbClient = db,
 ): Promise<Tag> {
   const name = validateTagName(input?.name);
   const color = validateTagColor(input?.color);
+  const type = input?.type === undefined ? "task" : validateTagType(input.type);
+  const description = validateTagDescription(input?.description);
   const space = resolveSpace(input);
 
   if (space.teamId != null) {
@@ -219,6 +252,8 @@ export async function createTag(
       ownerId: space.ownerId,
       name,
       color,
+      type,
+      description,
     })
     .returning();
 
@@ -234,6 +269,8 @@ export async function updateTag(
     tagId: string;
     name?: string;
     color?: TagColor;
+    /** 可选描述；`null` 清空。类型不可改（刻意不接受 type）。 */
+    description?: string | null;
   },
   client: DbClient = db,
 ): Promise<Tag> {
@@ -248,7 +285,8 @@ export async function updateTag(
     throw new DomainError("标签不存在或无权访问", undefined, { key: "tagNotFound" });
   }
 
-  const changes: Partial<Pick<TagRow, "name" | "color">> = {};
+  // 注意：类型创建后不可改——updateTag 刻意不接受 type 入参，避免既有关联失效。
+  const changes: Partial<Pick<TagRow, "name" | "color" | "description">> = {};
 
   if (input?.name !== undefined) {
     const name = validateTagName(input.name);
@@ -273,6 +311,9 @@ export async function updateTag(
   }
   if (input?.color !== undefined) {
     changes.color = validateTagColor(input.color);
+  }
+  if (input?.description !== undefined) {
+    changes.description = validateTagDescription(input.description);
   }
 
   if (Object.keys(changes).length === 0) {

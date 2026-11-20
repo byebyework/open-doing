@@ -8,3 +8,6 @@ export const TAG_NAME_MAX_LENGTH = 20;
 
 /** 每个空间（团队 / 个人）标签池的标签数上限 */
 export const TAGS_PER_SPACE_LIMIT = 50;
+
+/** 标签描述最大长度 */
+export const TAG_DESCRIPTION_MAX_LENGTH = 100;
