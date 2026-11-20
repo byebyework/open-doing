@@ -68,7 +68,7 @@ export function ProjectMilestoneEditor({
           id={`${testIdPrefix}-milestone-name-input`}
           type="text"
           data-testid={`${testIdPrefix}-milestone-name-input`}
-          placeholder={t("milestoneNamePlaceholder")}
+          placeholder={t("milestoneNameLabel")}
           maxLength={MILESTONE_NAME_MAX_LENGTH}
           value={name}
           onChange={(event) => setName(event.target.value)}
@@ -89,7 +89,7 @@ export function ProjectMilestoneEditor({
       <Input
         type="text"
         data-testid={`${testIdPrefix}-milestone-description-input`}
-        placeholder={t("milestoneDescriptionPlaceholder")}
+        placeholder={t("descriptionLabel")}
         maxLength={MILESTONE_DESCRIPTION_MAX_LENGTH}
         value={description}
         onChange={(event) => setDescription(event.target.value)}

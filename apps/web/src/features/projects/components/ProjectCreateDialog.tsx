@@ -63,7 +63,7 @@ export function ProjectCreateDialog({
         }}
       >
         <DialogContent
-          className="max-h-[calc(100dvh-4rem)] gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-[520px]"
+          className="flex h-[min(90dvh,880px)] w-full flex-col gap-3 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-[900px]"
           data-testid={`${testIdPrefix}-create-dialog`}
         >
           <DialogHeader>

@@ -352,7 +352,7 @@ export function ProjectForm({
   ) : null;
 
   return (
-    <form onSubmit={onSubmit} noValidate>
+    <form onSubmit={onSubmit} noValidate className="flex h-full flex-col">
       {formError ? (
         <div
           role="alert"
@@ -373,7 +373,7 @@ export function ProjectForm({
               id={`${testIdPrefix}-name`}
               type="text"
               data-testid={`${testIdPrefix}-name-input`}
-              placeholder={t("namePlaceholder")}
+              placeholder={t("nameLabel")}
               maxLength={50}
               autoFocus
               aria-invalid={errors.name ? true : undefined}
@@ -395,7 +395,7 @@ export function ProjectForm({
               id={`${testIdPrefix}-summary`}
               type="text"
               data-testid={`${testIdPrefix}-summary-input`}
-              placeholder={t("summaryPlaceholder")}
+              placeholder={t("summaryLabel")}
               maxLength={100}
               aria-invalid={errors.summary ? true : undefined}
               disabled={submitting}
@@ -413,7 +413,7 @@ export function ProjectForm({
             <Textarea
               id={`${testIdPrefix}-description`}
               rows={3}
-              placeholder={t("descriptionPlaceholder")}
+              placeholder={t("descriptionLabel")}
               maxLength={500}
               aria-invalid={errors.description ? true : undefined}
               disabled={submitting}
@@ -510,7 +510,7 @@ export function ProjectForm({
           <Input
             type="text"
             data-testid={`${testIdPrefix}-name-input`}
-            placeholder={t("namePlaceholder")}
+            placeholder={t("nameLabel")}
             maxLength={50}
             autoFocus
             aria-invalid={errors.name ? true : undefined}
@@ -529,7 +529,7 @@ export function ProjectForm({
           <Input
             type="text"
             data-testid={`${testIdPrefix}-summary-input`}
-            placeholder={t("summaryPlaceholder")}
+            placeholder={t("summaryLabel")}
             maxLength={100}
             aria-invalid={errors.summary ? true : undefined}
             disabled={submitting}
@@ -649,17 +649,18 @@ export function ProjectForm({
 
           <div className="my-3 border-t border-[var(--border)]" />
 
-          {/* 详细描述大区域（对照 Linear「Write a description, a project brief...」）。 */}
-          <Textarea
-            rows={4}
-            data-testid={`${testIdPrefix}-description-input`}
-            placeholder={t("descriptionPlaceholder")}
-            maxLength={500}
-            aria-invalid={errors.description ? true : undefined}
-            disabled={submitting}
-            className="min-h-[120px] border-none bg-transparent px-0 text-[14px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
-            {...register("description")}
-          />
+          {/* 详细描述大区域（对照 Linear「Write a description...」）：弹窗内弹性伸展。 */}
+          <div className="flex min-h-0 flex-1 flex-col">
+            <Textarea
+              data-testid={`${testIdPrefix}-description-input`}
+              placeholder={t("descriptionLabel")}
+              maxLength={500}
+              aria-invalid={errors.description ? true : undefined}
+              disabled={submitting}
+              className="min-h-[160px] flex-1 resize-none border-none bg-transparent px-0 text-[14px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
+              {...register("description")}
+            />
+          </div>
           {errors.description ? (
             <p className="mb-2 text-[12.5px] text-[var(--error)]">
               {errors.description.message}
@@ -669,7 +670,7 @@ export function ProjectForm({
           <div className="my-3 border-t border-[var(--border)]" />
 
           {/* 里程碑折叠行（对照 Linear「Milestones 1 ▶ · + Add」）：行内切换列表展开。 */}
-          <div className="rounded-[var(--radius-lg)] border border-[var(--border)] px-4 py-3">
+          <div className="rounded-[var(--radius-lg)] border border-[var(--border)] px-3 py-2.5">
             <div className="flex items-center gap-2">
               <button
                 type="button"
