@@ -1,6 +1,7 @@
 "use client";
 
 import type { Project, Tag, TaskPriority } from "@open-doing/types";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { Calendar } from "@/components/ui/shadcn/calendar";
@@ -160,6 +161,7 @@ export function ProjectForm({
   const t = useTranslations("projects");
   const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
+  const prefersReducedMotion = useReducedMotion();
   const [submitting, setSubmitting] = useState(false);
   const [priority, setPriority] = useState<TaskPriority>(project?.priority ?? "medium");
   const [tagIds, setTagIds] = useState<string[]>(project?.tags?.map((tag) => tag.id) ?? []);
@@ -314,9 +316,8 @@ export function ProjectForm({
   const priorityLabel = (value: TaskPriority) =>
     t(value === "high" ? "priorityHighLabel" : value === "medium" ? "priorityMediumLabel" : "priorityLowLabel");
 
-  const milestoneList = !isEdit ? (
-    <div className="mt-2 flex flex-col gap-2">
-      {milestones.map((item, index) => (
+  const milestoneItems = !isEdit
+    ? milestones.map((item, index) => (
         <div
           key={item.key}
           data-testid={`${testIdPrefix}-milestone-item`}
@@ -336,20 +337,8 @@ export function ProjectForm({
             <XIcon className="size-3.5" aria-hidden="true" />
           </button>
         </div>
-      ))}
-      {milestoneAdding ? (
-        <ProjectMilestoneEditor
-          onSubmit={(draft) => {
-            addMilestone(draft);
-            setMilestoneAdding(false);
-          }}
-          onCancel={() => setMilestoneAdding(false)}
-          submitting={submitting}
-          testIdPrefix={testIdPrefix}
-        />
-      ) : null}
-    </div>
-  ) : null;
+      ))
+    : null;
 
   return (
     <form onSubmit={onSubmit} noValidate className="flex h-full flex-col">
@@ -691,22 +680,56 @@ export function ProjectForm({
                   aria-hidden="true"
                 />
               </button>
-              <Button
-                type="button"
-                variant="ghost"
-                className="ml-auto"
-                data-testid={`${testIdPrefix}-milestone-add-trigger`}
-                disabled={submitting || milestoneAdding}
-                onClick={() => {
-                  setMilestoneAdding(true);
-                  setMilestonesOpen(true);
-                }}
-              >
-                <PlusIcon className="size-4" aria-hidden="true" />
-                {t("milestoneAdd")}
-              </Button>
+              {!milestoneAdding ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="ml-auto"
+                  data-testid={`${testIdPrefix}-milestone-add-trigger`}
+                  disabled={submitting}
+                  onClick={() => {
+                    setMilestoneAdding(true);
+                    setMilestonesOpen(true);
+                  }}
+                >
+                  <PlusIcon className="size-4" aria-hidden="true" />
+                  {t("milestoneAdd")}
+                </Button>
+              ) : null}
             </div>
-            {milestonesOpen ? milestoneList : null}
+            {milestonesOpen && milestones.length > 0 ? (
+        <div className="mt-2 flex flex-col gap-2">{milestoneItems}</div>
+      ) : null}
+      {/* 展开动效：自上而下拉出（收起比展开快 1/3）；reduced-motion 时直接挂载。 */}
+      <AnimatePresence initial={false}>
+        {milestoneAdding ? (
+          <motion.div
+            key="milestone-editor"
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              prefersReducedMotion
+                ? { duration: 0 }
+                : { height: { duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }, opacity: { duration: 0.18 } }
+            }
+            className="overflow-hidden"
+          >
+            <ProjectMilestoneEditor
+              onSubmit={(draft) => {
+                addMilestone(draft);
+                setMilestoneAdding(false);
+              }}
+              onCancel={() => {
+                setMilestoneAdding(false);
+                if (milestones.length === 0) setMilestonesOpen(false);
+              }}
+              submitting={submitting}
+              testIdPrefix={testIdPrefix}
+            />
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
           </div>
         </>
       )}

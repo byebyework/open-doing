@@ -103,6 +103,7 @@ export function ProjectMilestoneEditor({
             variant="ghost"
             size="sm"
             disabled={submitting}
+            data-testid={`${testIdPrefix}-milestone-cancel`}
             onClick={onCancel}
           >
             {tCommon("cancel")}

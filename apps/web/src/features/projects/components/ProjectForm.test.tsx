@@ -308,6 +308,32 @@ describe("ProjectForm", () => {
     expect(mockTeamCreate).not.toHaveBeenCalled();
   });
 
+  it("点击添加后按钮消失、编辑卡拉出；取消回到未添加状态", async () => {
+    mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
+    renderForm();
+
+    click("test-project-milestone-add-trigger");
+    // 编辑卡打开期间行级「添加」消失（Linear 语义）
+    expect(
+      document.body.querySelector('[data-testid="test-project-milestone-add-trigger"]'),
+    ).toBeNull();
+    expect(
+      document.body.querySelector('[data-testid="test-project-milestone-add-button"]'),
+    ).not.toBeNull();
+
+    // 取消：行级「添加」恢复，编辑器关闭
+    const cancel = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="test-project-milestone-cancel"]',
+    );
+    if (!cancel) throw new Error("missing milestone cancel button");
+    act(() => {
+      cancel.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(
+      document.body.querySelector('[data-testid="test-project-milestone-add-trigger"]'),
+    ).not.toBeNull();
+  });
+
   it("里程碑列表折叠切换：展开见已加节点，收起只剩行；添加自动展开", async () => {
     mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm();
