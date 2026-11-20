@@ -642,7 +642,7 @@ export function ProjectForm({
           <div className="flex min-h-0 flex-1 flex-col">
             <Textarea
               data-testid={`${testIdPrefix}-description-input`}
-              placeholder={t("descriptionLabel")}
+              placeholder={t("descriptionHint")}
               maxLength={500}
               aria-invalid={errors.description ? true : undefined}
               disabled={submitting}

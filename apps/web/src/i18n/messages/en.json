@@ -775,7 +775,8 @@
     "summaryPlaceholder": "Add a short summary...",
     "summaryLabel": "Summary",
     "summaryTooLong": "Summary must be at most {max} characters",
-    "milestoneNameLabel": "Milestone name"
+    "milestoneNameLabel": "Milestone name",
+    "descriptionHint": "Write a description, a project brief, or collect ideas..."
   },
   "dashboard": {
     "title": "Dashboard",

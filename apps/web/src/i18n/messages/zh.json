@@ -775,7 +775,8 @@
     "summaryPlaceholder": "添加一句话简介...",
     "summaryLabel": "简述",
     "summaryTooLong": "简述不能超过 {max} 个字符",
-    "milestoneNameLabel": "里程碑名称"
+    "milestoneNameLabel": "里程碑名称",
+    "descriptionHint": "写下项目描述、项目简报，或记录一些想法..."
   },
   "dashboard": {
     "title": "仪表盘",
