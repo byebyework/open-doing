@@ -23,14 +23,21 @@ import { applyProjectTags } from "./service";
 import { createTeam } from "@/features/teams/service";
 
 import {
+  addTeamProjectMilestone,
   createTeamProject,
   deleteTeamProject,
+  deleteTeamProjectMilestone,
   getTeamProjectBySlug,
   getTeamProjectListWithStats,
+  listTeamProjectMilestones,
   listTeamProjects,
   listTeamProjectsForTeams,
+  milestoneCountsByProjectId,
+  normalizeMilestoneInputs,
+  normalizePriority,
   updateTeamProject,
 } from "./service";
+import { projectMilestones } from "@/server/db/schema";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -620,5 +627,260 @@ describe.skipIf(!hasTestDatabase)("项目打标（T4）", () => {
         db,
       ),
     ).rejects.toBeInstanceOf(TeamPermissionError);
+  });
+});
+
+describe("里程碑/优先级校验器（纯函数）", () => {
+  it("normalizePriority：undefined 回落 medium，非法值抛 priorityInvalid", () => {
+    expect(normalizePriority(undefined)).toBe("medium");
+    expect(normalizePriority("high")).toBe("high");
+    expect(normalizePriority("low")).toBe("low");
+    expect(normalizePriority("medium")).toBe("medium");
+    // @ts-expect-error 故意传入非法值验证运行时防线
+    expect(() => normalizePriority("urgent")).toThrow();
+  });
+
+  it("normalizeMilestoneInputs：trim、dueDate 空串归 null、顺序保留", () => {
+    expect(
+      normalizeMilestoneInputs([
+        { name: "  里程碑 A ", description: "  ", dueDate: "" },
+        { name: "里程碑 B", dueDate: "2026-12-01" },
+      ]),
+    ).toEqual([
+      { name: "里程碑 A", description: null, dueDate: null },
+      { name: "里程碑 B", description: null, dueDate: "2026-12-01" },
+    ]);
+    expect(normalizeMilestoneInputs(undefined)).toEqual([]);
+  });
+
+  it("normalizeMilestoneInputs：空名 → milestoneNameRequired，超长 → nameTooLong / descriptionTooLong", () => {
+    expect(() => normalizeMilestoneInputs([{ name: "   " }])).toThrow(
+      expect.objectContaining({ field: "milestones", i18n: { key: "milestoneNameRequired" } }),
+    );
+    expect(() =>
+      normalizeMilestoneInputs([{ name: "x".repeat(51) }]),
+    ).toThrow(
+      expect.objectContaining({
+        field: "milestones",
+        i18n: expect.objectContaining({ key: "milestoneNameTooLong" }),
+      }),
+    );
+    expect(() =>
+      normalizeMilestoneInputs([{ name: "OK", description: "x".repeat(201) }]),
+    ).toThrow(
+      expect.objectContaining({
+        field: "milestones",
+        i18n: expect.objectContaining({ key: "milestoneDescriptionTooLong" }),
+      }),
+    );
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("项目优先级与里程碑（表格模式）", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("创建项目：priority 缺省为 medium，显式 high 可入库；更新走显式字段赋值", async () => {
+    const { owner, team } = await setupTeam(db);
+
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Prio" },
+      db,
+    );
+    expect(project.priority).toBe("medium");
+
+    const high = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Prio High", priority: "high" },
+      db,
+    );
+    expect(high.priority).toBe("high");
+
+    const updated = await updateTeamProject(
+      { teamId: team.id, projectId: high.id, actorId: owner.id, priority: "low" },
+      db,
+    );
+    expect(updated.priority).toBe("low");
+    // 未传字段保持不变（显式赋值，不做整对象 spread）。
+    expect(updated.name).toBe("Prio High");
+  });
+
+  it("创建项目携带里程碑与标签在同一事务；标签非法时项目行回滚", async () => {
+    const { owner, team } = await setupTeam(db);
+    const tag = await createTag(
+      { teamId: team.id, actorId: owner.id, name: "MTag", color: "mint", type: "project" },
+      db,
+    );
+
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Milestoned",
+        tagIds: [tag.id],
+        milestones: [
+          { name: "里程碑 A", dueDate: "2026-12-05" },
+          { name: "里程碑 B", description: "首个交付", dueDate: "2026-12-01" },
+        ],
+      },
+      db,
+    );
+
+    const rows = await db
+      .select()
+      .from(projectMilestones)
+      .where(eq(projectMilestones.projectId, project.id));
+    expect(rows).toHaveLength(2);
+    expect(
+      await db.select().from(projectTags).where(eq(projectTags.projectId, project.id)),
+    ).toHaveLength(1);
+
+    // 标签断言失败 → 整个事务回滚，项目行不存在。
+    await expect(
+      createTeamProject(
+        {
+          teamId: team.id,
+          actorId: owner.id,
+          name: "Broken",
+          tagIds: [crypto.randomUUID()],
+          milestones: [{ name: "孤儿", dueDate: "2026-12-01" }],
+        },
+        db,
+      ),
+    ).rejects.toBeInstanceOf(DomainError);
+    expect(
+      await db.select().from(projects).where(eq(projects.name, "Broken")),
+    ).toHaveLength(0);
+  });
+
+  it("里程碑列表按 dueDate 升序（PG ASC NULLS LAST），同日按 createdAt", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Sorted",
+        milestones: [
+          { name: "里程碑 A", dueDate: "2026-12-05" },
+          { name: "里程碑 B", dueDate: "2026-12-01" },
+          { name: "无日期" },
+        ],
+      },
+      db,
+    );
+
+    const list = await listTeamProjectMilestones(team.id, project.id, db);
+    expect(list.map((m) => m.name)).toEqual(["里程碑 B", "里程碑 A", "无日期"]);
+    expect(list[0]).toMatchObject({
+      projectId: project.id,
+      name: "里程碑 B",
+      dueDate: "2026-12-01",
+    });
+  });
+
+  it("addTeamProjectMilestone 追加；member 被拒；跨项目 milestoneId → milestoneNotFound", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member = await createUser(db, "m-milestone");
+    await addMember(db, team.id, member.id, "member");
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Addable" },
+      db,
+    );
+    const other = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Other" },
+      db,
+    );
+
+    const added = await addTeamProjectMilestone(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, name: "上线", dueDate: "2026-12-20" },
+      db,
+    );
+    expect(added).toMatchObject({ projectId: project.id, name: "上线", dueDate: "2026-12-20" });
+
+    await expect(
+      addTeamProjectMilestone(
+        { teamId: team.id, projectId: project.id, actorId: member.id, name: "越权" },
+        db,
+      ),
+    ).rejects.toBeInstanceOf(TeamPermissionError);
+
+    // 用另一项目作归属探针：其 id 不是本项目的里程碑。
+    await expect(
+      deleteTeamProjectMilestone(
+        { teamId: team.id, projectId: project.id, milestoneId: other.id, actorId: owner.id },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "milestoneNotFound" } });
+
+    await deleteTeamProjectMilestone(
+      { teamId: team.id, projectId: project.id, milestoneId: added.id, actorId: owner.id },
+      db,
+    );
+    expect(
+      await db.select().from(projectMilestones).where(eq(projectMilestones.projectId, project.id)),
+    ).toHaveLength(0);
+  });
+
+  it("listTeamProjectMilestones / delete：错团队、跨归属 → projectNotFound", async () => {
+    const { owner, team } = await setupTeam(db);
+    const other = await setupTeam(db);
+    const project = await createTeamProject(
+      {
+        teamId: other.team.id,
+        actorId: other.owner.id,
+        name: "Foreign",
+        milestones: [{ name: "外部节点", dueDate: "2026-12-05" }],
+      },
+      db,
+    );
+
+    await expect(listTeamProjectMilestones(team.id, project.id, db)).rejects.toMatchObject({
+      i18n: { key: "projectNotFound" },
+    });
+    await expect(
+      addTeamProjectMilestone(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, name: "越界" },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+  });
+
+  it("getTeamProjectListWithStats 附 milestoneCount（空项目为 0）", async () => {
+    const { owner, team } = await setupTeam(db);
+    const withMilestones = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Counted",
+        milestones: [
+          { name: "M1", dueDate: "2026-12-01" },
+          { name: "M2", dueDate: "2026-12-02" },
+        ],
+      },
+      db,
+    );
+    const empty = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "EmptyCount" },
+      db,
+    );
+
+    const counts = await milestoneCountsByProjectId([withMilestones.id, empty.id], db);
+    expect(counts.get(withMilestones.id)).toBe(2);
+    // group-by 只返回有行项目；零计数由列表层 `?? 0` 兜底。
+    expect(counts.get(empty.id)).toBeUndefined();
+
+    const list = await getTeamProjectListWithStats(team.id, "2026-11-20", db);
+    const counted = list.find((item) => item.project.id === withMilestones.id);
+    const emptyItem = list.find((item) => item.project.id === empty.id);
+    expect(counted?.milestoneCount).toBe(2);
+    expect(emptyItem?.milestoneCount).toBe(0);
+    expect(counts.get("nonexistent")).toBeUndefined();
+    expect(await milestoneCountsByProjectId([], db)).toEqual(new Map());
   });
 });

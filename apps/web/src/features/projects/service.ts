@@ -1,9 +1,10 @@
-import type { Project, ProjectStats, TaskStatus } from "@open-doing/types";
+import type { Project, ProjectMilestone, ProjectStats, TaskPriority, TaskStatus } from "@open-doing/types";
 import {
   averageProjectProgress,
   getTaskProgress,
   isDueSoon,
   isOverdue,
+  TASK_PRIORITIES,
 } from "@open-doing/types";
 import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 
@@ -11,23 +12,28 @@ import { DomainError } from "@/lib/domain-error";
 import { generateUniqueSlug } from "@/lib/slug";
 import type { DbClient } from "@/server/db/client";
 import { db } from "@/server/db/client";
-import { projectTags, projects, subtasks, tasks } from "@/server/db/schema";
+import { projectMilestones, projectTags, projects, subtasks, tasks } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
 
 // 限长常量唯一来源：features/projects/constants.ts（客户端安全）。
 // 服务端校验器仍在本模块（server-only），常量经重导出兼容既有引用。
 import {
+  MILESTONE_DESCRIPTION_MAX_LENGTH,
+  MILESTONE_NAME_MAX_LENGTH,
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
 } from "./constants";
 
 export {
+  MILESTONE_DESCRIPTION_MAX_LENGTH,
+  MILESTONE_NAME_MAX_LENGTH,
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
 } from "./constants";
 
 type ProjectRow = typeof projects.$inferSelect;
+type MilestoneRow = typeof projectMilestones.$inferSelect;
 
 /** 数据库行 -> 可跨边界传递的领域 Project（时间统一为 ISO 字符串）。 */
 function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
@@ -40,9 +46,80 @@ function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
     endDate: row.endDate ?? undefined,
+    priority: row.priority,
     tags,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/** 里程碑数据库行 -> 领域 ProjectMilestone（时间统一为 ISO 字符串）。 */
+function toMilestone(row: MilestoneRow): ProjectMilestone {
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    name: row.name,
+    description: row.description ?? undefined,
+    dueDate: row.dueDate ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/**
+ * 优先级归一：undefined 回落 "medium"；非法值抛 DomainError
+ * （field "priority"，key "priorityInvalid"）。团队/个人服务共用。
+ */
+export function normalizePriority(value?: TaskPriority): TaskPriority {
+  if (value === undefined) return "medium";
+  if (!TASK_PRIORITIES.includes(value)) {
+    throw new DomainError("优先级取值非法", "priority", { key: "priorityInvalid" });
+  }
+  return value;
+}
+
+/** 里程碑表单入参（创建时随表单一次性提交）。 */
+export interface ProjectMilestoneInput {
+  name: string;
+  description?: string;
+  dueDate?: string | null;
+}
+
+/**
+ * 里程碑入参校验（共享校验器，个人侧复用）：名称必填 ≤50 字，描述 ≤200 字，
+ * dueDate 空串归 null；非法抛 DomainError（field "milestones"，projects ns）。
+ */
+export function normalizeMilestoneInputs(
+  inputs?: ProjectMilestoneInput[],
+): { name: string; description: string | null; dueDate: string | null }[] {
+  if (!inputs?.length) return [];
+
+  return inputs.map((input) => {
+    const name = typeof input?.name === "string" ? input.name.trim() : "";
+    if (!name) {
+      throw new DomainError("请输入里程碑名称", "milestones", { key: "milestoneNameRequired" });
+    }
+    if (name.length > MILESTONE_NAME_MAX_LENGTH) {
+      throw new DomainError(
+        `里程碑名称不能超过 ${MILESTONE_NAME_MAX_LENGTH} 个字符`,
+        "milestones",
+        { key: "milestoneNameTooLong", params: { max: MILESTONE_NAME_MAX_LENGTH } },
+      );
+    }
+
+    const description = typeof input?.description === "string" ? input.description.trim() : "";
+    if (description.length > MILESTONE_DESCRIPTION_MAX_LENGTH) {
+      throw new DomainError(
+        `里程碑描述不能超过 ${MILESTONE_DESCRIPTION_MAX_LENGTH} 个字符`,
+        "milestones",
+        { key: "milestoneDescriptionTooLong", params: { max: MILESTONE_DESCRIPTION_MAX_LENGTH } },
+      );
+    }
+
+    return {
+      name,
+      description: description || null,
+      dueDate: input?.dueDate ? input.dueDate : null,
+    };
+  });
 }
 
 function validateName(value: unknown): string {
@@ -174,8 +251,12 @@ export async function createTeamProject(
     /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目优先级；缺省 medium。 */
+    priority?: TaskPriority;
     /** 初始项目标签（全量覆写语义；仅写 project_tags）。 */
     tagIds?: string[];
+    /** 初始里程碑（创建弹窗随表单一次性提交）。 */
+    milestones?: ProjectMilestoneInput[];
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -184,6 +265,8 @@ export async function createTeamProject(
   const startDate = input?.startDate ?? null;
   const endDate = input?.endDate ?? null;
   assertProjectDateRange(startDate, endDate);
+  const priority = normalizePriority(input?.priority);
+  const milestones = normalizeMilestoneInputs(input?.milestones);
 
   // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
   // 构造越界入参，故该不变量用普通 Error 兜底，不分配 i18n key。
@@ -204,20 +287,36 @@ export async function createTeamProject(
     return Boolean(existing);
   });
 
-  const [row] = await client
-    .insert(projects)
-    .values({ teamId: input.teamId, name, slug, description, startDate, endDate })
-    .returning();
+  // 项目行、初始里程碑、初始标签收进同一事务：任一失败整体回滚。
+  const row = await client.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(projects)
+      .values({ teamId: input.teamId, name, slug, description, startDate, endDate, priority })
+      .returning();
 
-  if (input.tagIds?.length) {
-    await applyProjectTags(
-      { teamId: input.teamId, projectId: row!.id, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
-      client,
-    );
-  }
+    if (milestones.length > 0) {
+      await tx.insert(projectMilestones).values(
+        milestones.map((milestone) => ({
+          projectId: inserted!.id,
+          name: milestone.name,
+          description: milestone.description,
+          dueDate: milestone.dueDate,
+        })),
+      );
+    }
 
-  const tagsMap = await tagsByProjectId([row!.id], client);
-  return toProject(row!, tagsMap.get(row!.id) ?? []);
+    if (input.tagIds?.length) {
+      await applyProjectTags(
+        { teamId: input.teamId, projectId: inserted!.id, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
+        tx,
+      );
+    }
+
+    return inserted!;
+  });
+
+  const tagsMap = await tagsByProjectId([row.id], client);
+  return toProject(row, tagsMap.get(row.id) ?? []);
 }
 
 /** 读取团队项目行（内部使用）；团队不匹配 / 不存在返回 undefined。 */
@@ -250,6 +349,8 @@ export async function updateTeamProject(
     /** 起止日期；`null` 清空，未传保持不变。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目优先级；未传保持不变。 */
+    priority?: TaskPriority;
     /** 项目标签全量覆写；仅写 project_tags，不动 projects 行。 */
     tagIds?: string[];
   },
@@ -262,7 +363,9 @@ export async function updateTeamProject(
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
-  const changes: Partial<Pick<ProjectRow, "name" | "description" | "startDate" | "endDate">> = {};
+  const changes: Partial<
+    Pick<ProjectRow, "name" | "description" | "startDate" | "endDate" | "priority">
+  > = {};
 
   if (input?.name !== undefined) {
     changes.name = validateName(input.name);
@@ -272,6 +375,13 @@ export async function updateTeamProject(
   }
   if (input?.startDate !== undefined) {
     changes.startDate = input.startDate;
+  }
+  if (input?.endDate !== undefined) {
+    changes.endDate = input.endDate;
+  }
+  // 显式字段赋值（禁止整对象 spread 装载走私）：未传的 priority 不进 changes。
+  if (input?.priority !== undefined) {
+    changes.priority = normalizePriority(input.priority);
   }
   if (input?.endDate !== undefined) {
     changes.endDate = input.endDate;
@@ -336,10 +446,115 @@ export async function deleteTeamProject(
   }
 }
 
-/** 项目列表项:项目 + 聚合统计(空间级「项目」列表页)。 */
+/** 项目列表项:项目 + 聚合统计 + 里程碑计数(空间级「项目」列表页)。 */
 export interface ProjectListItem {
   project: Project;
   stats: ProjectStats;
+  milestoneCount: number;
+}
+
+/** 读取团队项目行（供里程碑函数复用）；团队不匹配 / 不存在抛 projectNotFound。 */
+async function requireTeamProjectRow(
+  teamId: string,
+  projectId: string,
+  client: DbClient,
+): Promise<ProjectRow> {
+  const row = await findTeamProjectRow(teamId, projectId, client);
+  if (!row) {
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+  }
+  return row;
+}
+
+/**
+ * 新增团队项目里程碑（owner/admin）。名称/描述校验复用共享校验器
+ * （field "milestones"）；dueDate 可空（表单侧必填，服务层容错）。
+ */
+export async function addTeamProjectMilestone(
+  input: {
+    teamId: string;
+    projectId: string;
+    actorId: string;
+    name: string;
+    description?: string;
+    dueDate?: string | null;
+  },
+  client: DbClient = db,
+): Promise<ProjectMilestone> {
+  await requireManageRole(input.teamId, input.actorId, client);
+  const project = await requireTeamProjectRow(input.teamId, input.projectId, client);
+  const [milestone] = normalizeMilestoneInputs([input]);
+
+  const [row] = await client
+    .insert(projectMilestones)
+    .values({
+      projectId: project.id,
+      name: milestone!.name,
+      description: milestone!.description,
+      dueDate: milestone!.dueDate,
+    })
+    .returning();
+
+  return toMilestone(row!);
+}
+
+/** 删除团队项目里程碑（owner/admin）；milestoneId 不属于该项目 → milestoneNotFound。 */
+export async function deleteTeamProjectMilestone(
+  input: { teamId: string; projectId: string; milestoneId: string; actorId: string },
+  client: DbClient = db,
+): Promise<void> {
+  await requireManageRole(input.teamId, input.actorId, client);
+  await requireTeamProjectRow(input.teamId, input.projectId, client);
+
+  const [row] = await client
+    .delete(projectMilestones)
+    .where(
+      and(
+        eq(projectMilestones.id, input.milestoneId),
+        eq(projectMilestones.projectId, input.projectId),
+      ),
+    )
+    .returning({ id: projectMilestones.id });
+
+  if (!row) {
+    throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
+  }
+}
+
+/** 列出团队项目的里程碑：dueDate 升序（PG ASC 默认 NULLS LAST），同日按创建序。 */
+export async function listTeamProjectMilestones(
+  teamId: string,
+  projectId: string,
+  client: DbClient = db,
+): Promise<ProjectMilestone[]> {
+  await requireTeamProjectRow(teamId, projectId, client);
+
+  const rows = await client
+    .select()
+    .from(projectMilestones)
+    .where(eq(projectMilestones.projectId, projectId))
+    .orderBy(asc(projectMilestones.dueDate), asc(projectMilestones.createdAt));
+
+  return rows.map(toMilestone);
+}
+
+/** 批量统计项目里程碑数（group by 一次查询，防 N+1）；空集合返回空 Map。 */
+export async function milestoneCountsByProjectId(
+  projectIds: string[],
+  client: DbClient,
+): Promise<Map<string, number>> {
+  if (projectIds.length === 0) return new Map();
+
+  const rows = await client
+    .select({
+      projectId: projectMilestones.projectId,
+      count: sql<number>`count(*)::int`.as("milestone_count"),
+    })
+    .from(projectMilestones)
+    .where(inArray(projectMilestones.projectId, projectIds))
+    .groupBy(projectMilestones.projectId);
+
+  return new Map(rows.map((row) => [row.projectId, row.count]));
 }
 
 /** 任务聚合输入行:项目维度统计所需的最小字段集。 */
@@ -483,9 +698,14 @@ export async function getTeamProjectListWithStats(
     projectRows.map((row) => row.id),
     client,
   );
+  const milestoneCounts = await milestoneCountsByProjectId(
+    projectRows.map((row) => row.id),
+    client,
+  );
   return projectRows.map((row) => ({
     project: toProject(row, projectTagsMap.get(row.id) ?? []),
     stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
+    milestoneCount: milestoneCounts.get(row.id) ?? 0,
   }));
 }
 
