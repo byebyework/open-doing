@@ -976,3 +976,31 @@ describe.skipIf(!hasTestDatabase)("任务打标边界修复（终审）", () => 
     ).rejects.toMatchObject({ i18n: { key: "tagInvalidForSpace" }, field: "tags" });
   });
 });
+
+describe.skipIf(!hasTestDatabase)("任务打标类型收紧（T3）", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("给任务提交 project 类型标签 → tagTypeMismatch", async () => {
+    const fixture = await setupTeamWithProject(db);
+    const pTag = await createTag(
+      { teamId: fixture.team.id, actorId: fixture.owner.id, name: uniqueName("PT"), color: "mint", type: "project" },
+      db,
+    );
+    const task = await createTeamTask(
+      { teamId: fixture.team.id, actorId: fixture.owner.id, projectId: fixture.project.id, title: uniqueName("T") },
+      db,
+    );
+
+    await expect(
+      setTeamTaskTags({ teamId: fixture.team.id, taskId: task.id, actorId: fixture.owner.id, tagIds: [pTag.id] }, db),
+    ).rejects.toMatchObject({ i18n: { key: "tagTypeMismatch" }, field: "tags" });
+  });
+});

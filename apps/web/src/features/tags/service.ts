@@ -388,6 +388,20 @@ export function assertTagsBelongToSpace(
 }
 
 /**
+ * 断言标签全部为任务类型（任务打标专用）：混入 project 类型即类型错配。
+ * 纯函数，供团队 / 个人任务打标服务复用。
+ */
+export function assertTagsAreTaskTags(found: Tag[]): void {
+  for (const tag of found) {
+    if (tag.type !== "task") {
+      throw new DomainError("标签类型与打标对象不匹配", "tags", {
+        key: "tagTypeMismatch",
+      });
+    }
+  }
+}
+
+/**
  * 批量取任务 → 标签映射（展示层数据组装）。
  *
  * 一次 `taskTags JOIN tags` 查询按 taskId 分组，防 N+1；空集合返回空 Map。

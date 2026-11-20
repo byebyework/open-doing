@@ -15,7 +15,7 @@ import {
   type CreateNotificationInput,
 } from "@/features/notifications/service";
 import { getMembership, type TeamRole } from "@/features/teams/permissions";
-import { assertTagsBelongToSpace, getTagsByIds, tagsByTaskId } from "@/features/tags/service";
+import { assertTagsAreTaskTags, assertTagsBelongToSpace, getTagsByIds, tagsByTaskId } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import {
   assertStartNotAfterTaskDue,
@@ -911,6 +911,7 @@ async function applyTaskTags(
     throw new DomainError("标签不存在或无权访问", "tags", { key: "tagInvalidForSpace" });
   }
   assertTagsBelongToSpace(pool, space);
+  assertTagsAreTaskTags(pool);
 
   await client.transaction(async (tx) => {
     await tx.delete(taskTags).where(

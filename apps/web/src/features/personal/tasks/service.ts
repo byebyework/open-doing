@@ -9,7 +9,7 @@ import { getTaskProgress } from "@open-doing/types";
 import { and, asc, eq, inArray, notInArray } from "drizzle-orm";
 
 import type { TaskDetailModel } from "@/components/ui/task-detail/types";
-import { assertTagsBelongToSpace, getTagsByIds, tagsByTaskId } from "@/features/tags/service";
+import { assertTagsAreTaskTags, assertTagsBelongToSpace, getTagsByIds, tagsByTaskId } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import {
@@ -796,6 +796,7 @@ async function applyOwnedTaskTags(
     throw new DomainError("标签不存在或无权访问", "tags", { key: "tagInvalidForSpace" });
   }
   assertTagsBelongToSpace(pool, { ownerId });
+  assertTagsAreTaskTags(pool);
 
   await client.transaction(async (tx) => {
     await tx.delete(taskTags).where(
