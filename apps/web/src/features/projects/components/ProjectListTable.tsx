@@ -3,12 +3,11 @@
 import type { Tag, TaskPriority } from "@open-doing/types";
 import type { ProjectStatusKind } from "@open-doing/types";
 import { motion } from "motion/react";
-import { FlagIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon, FlagIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
+import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import {
   Select,
@@ -19,6 +18,11 @@ import {
 } from "@/components/ui/shadcn/select";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { TagPill } from "@/features/tags/components/TagPill";
+import { ProjectDetailDrawer } from "./ProjectDetailDrawer";
+import type { ProjectFormSpace } from "./ProjectForm";
+
+/** 每页行数（客户端分页；筛选变化重置页码）。 */
+const PAGE_SIZE = 10;
 
 /** 表格行（RSC 侧组装的可序列化数据；派生字段在页面算好传入）。 */
 export interface ProjectListRow {
@@ -34,6 +38,10 @@ export interface ProjectListRow {
   milestoneCount: number;
   startDate?: string;
   endDate?: string;
+  /** 任务统计（Drawer 概览用）。 */
+  taskCount: number;
+  doneCount: number;
+  overdueCount: number;
 }
 
 export interface ProjectListFilters {
@@ -77,7 +85,7 @@ function statusPillClass(kind: ProjectStatusKind): string {
     case "in_progress":
       return "bg-[var(--color-primary-bg)] text-[var(--color-primary)]";
     case "not_started":
-      return "bg-[var(--color-todo-bg)] text-[var(--color-todo)]";
+      return "border border-[var(--border)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)]";
   }
 }
 
@@ -98,16 +106,35 @@ const progressFillVar: Record<ProjectStatusKind, string> = {
   not_started: "transparent",
 };
 
-/** 项目列表表格（对照原型 projects-list.png）：筛选栏 + 七列表格。 */
-export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
+/**
+ * 项目列表表格（对照原型 projects-list.png）：筛选栏 + 七列表格 +
+ * 客户端分页（每页 10 条）+ 行点击打开右侧详情 Drawer。
+ */
+export function ProjectListTable({
+  rows,
+  space,
+  canManage,
+}: {
+  rows: ProjectListRow[];
+  space: ProjectFormSpace;
+  /** 团队 owner/admin、个人 owner（Drawer 里程碑管理入口）。 */
+  canManage: boolean;
+}) {
   const t = useTranslations("projects");
-  const router = useRouter();
   const [filters, setFilters] = useState<ProjectListFilters>({
     status: "all",
     priority: "all",
     tagId: "all",
     keyword: "",
   });
+  const [page, setPage] = useState(1);
+  const [selected, setSelected] = useState<ProjectListRow | null>(null);
+  // 任一筛选变化重置回第 1 页：React 推荐的渲染期调整状态模式（不用 effect）。
+  const [prevFilters, setPrevFilters] = useState(filters);
+  if (filters !== prevFilters) {
+    setPrevFilters(filters);
+    setPage(1);
+  }
 
   // 标签筛选项从行内标签去重派生（保持首次出现顺序）。
   const tagOptions = useMemo(() => {
@@ -121,6 +148,11 @@ export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
   }, [rows]);
 
   const filtered = useMemo(() => filterProjectRows(rows, filters), [rows, filters]);
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const pageRows = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page],
+  );
 
   const statusLabel = (kind: ProjectStatusKind) =>
     t(kind === "not_started" ? "statusNotStarted" : kind === "in_progress" ? "statusInProgress" : "statusCompleted");
@@ -228,7 +260,7 @@ export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
                 </td>
               </tr>
             ) : (
-              filtered.map((row, index) => (
+              pageRows.map((row, index) => (
                 <motion.tr
                   key={row.id}
                   data-testid="project-row"
@@ -236,24 +268,27 @@ export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
                   onClick={(event) => {
-                    // 整行可点（对照原型文案）；名称 Link 已承担导航，避免重复 push。
                     const target = event.target as HTMLElement;
-                    if (target.closest("a")) return;
-                    router.push(row.href);
+                    if (target.closest("a,button")) return;
+                    setSelected(row);
                   }}
                   className="cursor-pointer border-b border-[var(--border)] transition-colors last:border-b-0 hover:bg-[var(--color-surface-hover)]"
                 >
                   <td className="px-4 py-3" data-testid={`project-row-${index}`}>
-                    <Link href={row.href} className="group block min-w-0">
-                      <span className="block truncate font-semibold text-[var(--color-text)] group-hover:text-[var(--color-primary)]">
+                    <button
+                      type="button"
+                      className="block min-w-0 max-w-full cursor-pointer text-left"
+                      onClick={() => setSelected(row)}
+                    >
+                      <span className="block truncate font-semibold text-[var(--color-text)] hover:text-[var(--color-primary)]">
                         {row.name}
                       </span>
                       {row.description ? (
-                        <span className="mt-0.5 block truncate text-[12.5px] text-[var(--color-text-muted)]">
+                        <span className="mt-0.5 block truncate text-[12.5px] font-normal text-[var(--color-text-muted)]">
                           {row.description}
                         </span>
                       ) : null}
-                    </Link>
+                    </button>
                   </td>
                   <td className="px-3 py-3">
                     <span
@@ -317,6 +352,49 @@ export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
           </tbody>
         </table>
       </div>
+
+      {/* 客户端分页：仅超过一页时显示（上一页/下一页 + 页码 + 总数）。 */}
+      {totalPages > 1 ? (
+        <div className="flex items-center justify-end gap-3 text-[12.5px] text-[var(--color-text-muted)]">
+          <span data-testid="project-page-info">
+            {t("pageInfo", { page, total: totalPages, count: filtered.length })}
+          </span>
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("pagePrev")}
+              data-testid="project-page-prev"
+              disabled={page <= 1}
+              onClick={() => setPage((current) => Math.max(1, current - 1))}
+            >
+              <ChevronLeftIcon className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("pageNext")}
+              data-testid="project-page-next"
+              disabled={page >= totalPages}
+              onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+            >
+              <ChevronRightIcon className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+
+      <ProjectDetailDrawer
+        open={selected !== null}
+        onOpenChange={(next) => {
+          if (!next) setSelected(null);
+        }}
+        space={space}
+        project={selected}
+        canManage={canManage}
+      />
     </div>
   );
 }

@@ -80,6 +80,9 @@ export default async function TeamProjectsPage(
     milestoneCount: item.milestoneCount,
     startDate: item.project.startDate,
     endDate: item.project.endDate,
+    taskCount: item.stats.taskCount,
+    doneCount: item.stats.doneCount,
+    overdueCount: item.stats.overdueCount,
   }));
 
   return (
@@ -112,7 +115,11 @@ export default async function TeamProjectsPage(
         </div>
       ) : (
         <div className="mt-6">
-          <ProjectListTable rows={rows} />
+          <ProjectListTable
+            rows={rows}
+            space={{ kind: "team", teamId: team.id }}
+            canManage={canManageProjects}
+          />
         </div>
       )}
     </div>

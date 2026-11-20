@@ -665,7 +665,7 @@
     "nameTooLong": "Project name cannot exceed {max} characters",
     "descriptionTooLong": "Description cannot exceed {max} characters",
     "projectNotFound": "The project does not exist or you do not have access",
-    "newProjectButton": "＋ New personal project",
+    "newProjectButton": "New personal project",
     "missingProject": "Missing project information",
     "projectSaved": "Project saved",
     "projectCreated": "Project created",
@@ -761,7 +761,14 @@
     "milestoneNameTooLong": "Milestone name must be at most {max} characters",
     "milestoneDescriptionTooLong": "Milestone description must be at most {max} characters",
     "milestoneNotFound": "Milestone not found or inaccessible",
-    "dialogTitleCreate": "New project"
+    "dialogTitleCreate": "New project",
+    "openFullPage": "Open full project page",
+    "pagePrev": "Previous",
+    "pageNext": "Next",
+    "pageInfo": "Page {page} / {total} · {count} projects",
+    "drawerTasksLabel": "Tasks",
+    "drawerDoneLabel": "Done",
+    "drawerOverdueLabel": "Overdue"
   },
   "dashboard": {
     "title": "Dashboard",

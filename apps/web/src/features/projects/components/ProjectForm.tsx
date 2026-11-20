@@ -242,7 +242,7 @@ export function ProjectForm({
         </div>
       ) : null}
 
-      <div className="mb-4 flex flex-col gap-2">
+      <div className="mb-3 flex flex-col gap-2">
         <Label htmlFor={`${testIdPrefix}-name`}>
           {t("nameLabel")} <span className="text-[var(--error)]">*</span>
         </Label>
@@ -266,7 +266,7 @@ export function ProjectForm({
         ) : null}
       </div>
 
-      <div className="mb-4 flex flex-col gap-2">
+      <div className="mb-3 flex flex-col gap-2">
         <Label htmlFor={`${testIdPrefix}-description`}>{t("descriptionLabel")}</Label>
         <Textarea
           id={`${testIdPrefix}-description`}
@@ -286,7 +286,7 @@ export function ProjectForm({
       </div>
 
       {/* 起止时间（可选，两列排布；end < start 由服务层校验并回填 endDate 错误）。 */}
-      <div className="mb-4 grid grid-cols-2 gap-4">
+      <div className="mb-3 grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor={`${testIdPrefix}-start-date`}>{t("startDate")}</Label>
           <Controller
@@ -328,7 +328,7 @@ export function ProjectForm({
       </div>
 
       {/* 优先级：三档 segmented，默认「中」。 */}
-      <div className="mb-4 flex flex-col gap-2">
+      <div className="mb-3 flex flex-col gap-2">
         <Label>{t("priorityLabel")}</Label>
         <div className="grid grid-cols-3 gap-2">
           {PRIORITIES.map(({ value, testidSuffix }) => (
@@ -354,7 +354,7 @@ export function ProjectForm({
       </div>
 
       {projectTagPool.length > 0 ? (
-        <div className="mb-4 flex flex-col gap-2">
+        <div className="mb-3 flex flex-col gap-2">
           <Label>{tTags("tagNameLabel")}</Label>
           <TaskTagPicker
             space={space.kind === "team" ? { kind: "team", teamId: space.teamId } : { kind: "personal" }}
@@ -368,7 +368,7 @@ export function ProjectForm({
 
       {/* 里程碑编辑器：仅新建（编辑态统一在详情页管理，避免双编辑入口）。 */}
       {!isEdit ? (
-        <div className="mb-4 flex flex-col gap-2">
+        <div className="mb-3 flex flex-col gap-2">
           <ProjectMilestoneEditor
             onSubmit={addMilestone}
             submitting={submitting}
@@ -407,7 +407,7 @@ export function ProjectForm({
         </div>
       ) : null}
 
-      <div className="flex gap-2">
+      <div className="flex justify-end gap-2">
         <Button
           type="submit"
           disabled={submitting}

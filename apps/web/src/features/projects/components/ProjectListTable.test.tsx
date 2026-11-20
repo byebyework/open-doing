@@ -11,14 +11,20 @@ import type { AppLocale } from "@/i18n/config";
 import zh from "@/i18n/messages/zh.json";
 
 import { vi } from "vitest";
+import { listTeamProjectMilestonesAction } from "../actions";
 import { filterProjectRows, ProjectListTable, type ProjectListRow } from "./ProjectListTable";
 
-vi.mock("next/navigation", () => {
-  const push = vi.fn();
-  return { useRouter: () => ({ push }) };
-});
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+}));
 
-import { useRouter } from "next/navigation";
+vi.mock("../actions", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../actions")>();
+  return {
+    ...actual,
+    listTeamProjectMilestonesAction: vi.fn(),
+  };
+});
 
 /**
  * 仓库 vitest 是 node 环境的 jsdom 探针写法（同 ProjectStatsCard.test.tsx）。
@@ -53,6 +59,9 @@ const rows: ProjectListRow[] = [
     milestoneCount: 1,
     startDate: "2026-11-01",
     endDate: "2026-11-30",
+    taskCount: 12,
+    doneCount: 7,
+    overdueCount: 1,
   },
   {
     id: "b",
@@ -63,6 +72,9 @@ const rows: ProjectListRow[] = [
     statusKind: "not_started",
     progressPercent: 0,
     milestoneCount: 0,
+    taskCount: 0,
+    doneCount: 0,
+    overdueCount: 0,
   },
   {
     id: "c",
@@ -73,6 +85,9 @@ const rows: ProjectListRow[] = [
     statusKind: "completed",
     progressPercent: 100,
     milestoneCount: 2,
+    taskCount: 5,
+    doneCount: 5,
+    overdueCount: 0,
   },
 ];
 
@@ -131,11 +146,16 @@ describe("ProjectListTable（DOM 探针）", () => {
     container.remove();
   });
 
-  function renderTable(inputRows: ProjectListRow[]) {
+  function renderTable(inputRows: ProjectListRow[], canManage = true) {
+    vi.mocked(listTeamProjectMilestonesAction).mockResolvedValue({ ok: true, data: [] });
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
-          <ProjectListTable rows={inputRows} />
+          <ProjectListTable
+            rows={inputRows}
+            space={{ kind: "team", teamId: "66666666-6666-6666-6666-666666666666" }}
+            canManage={canManage}
+          />
         </NextIntlClientProvider>,
       );
     });
@@ -145,10 +165,25 @@ describe("ProjectListTable（DOM 探针）", () => {
     return document.body.querySelectorAll(`[data-testid="${testid}"]`);
   }
 
-  it("默认渲染全部行；行名称是指向 href 的链接", () => {
+  function clickButton(selector: string) {
+    const button = document.body.querySelector<HTMLElement>(selector);
+    if (!button) throw new Error(`missing button ${selector}`);
+    act(() => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
+  it("默认渲染全部行；点击名称打开右侧 Drawer（含完整页入口）", async () => {
     renderTable(rows);
     expect(queryAll("project-row")).toHaveLength(3);
-    const link = document.body.querySelector<HTMLAnchorElement>('[data-testid="project-row-0"] a');
+
+    clickButton('[data-testid="project-row-0"] button');
+    await act(async () => {});
+    await act(async () => {});
+
+    const drawer = document.body.querySelector('[data-testid="project-detail-drawer"]');
+    expect(drawer).not.toBeNull();
+    const link = drawer!.querySelector<HTMLAnchorElement>('[data-testid="project-drawer-full-page-link"]');
     expect(link?.getAttribute("href")).toBe("/space/growth/projects/alpha");
   });
 
@@ -190,17 +225,53 @@ describe("ProjectListTable（DOM 探针）", () => {
     expect(document.body.querySelector('[data-testid="project-filter-empty"]')).not.toBeNull();
   });
 
-  it("整行可点：点击行内非链接单元格导航到项目详情", async () => {
+  it("整行可点：点击行内非链接单元格打开 Drawer", async () => {
     renderTable(rows);
-    const push = vi.mocked(useRouter().push);
-    // 点状态 pill 所在单元格（非名称链接区）。
+    // 点状态 pill 所在单元格（非名称按钮区）。
     const row = document.body.querySelectorAll('[data-testid="project-row"]')[0];
     const cell = row?.querySelector<HTMLTableCellElement>("td:nth-child(4)");
     if (!cell) throw new Error("missing status cell");
     act(() => {
       cell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    expect(push).toHaveBeenCalledWith("/space/growth/projects/alpha");
+    await act(async () => {});
+    expect(
+      document.body.querySelector('[data-testid="project-detail-drawer"]'),
+    ).not.toBeNull();
+  });
+
+  it("分页：11 行时第 1 页 10 行，翻页见余行；筛选变化重置页码", async () => {
+    const many: ProjectListRow[] = Array.from({ length: 11 }, (_, i) => ({
+      id: `p${i}`,
+      name: `项目 ${i}`,
+      href: `/space/growth/projects/p${i}`,
+      priority: "medium",
+      tags: [],
+      statusKind: "not_started",
+      progressPercent: 0,
+      milestoneCount: 0,
+      taskCount: 0,
+      doneCount: 0,
+      overdueCount: 0,
+    }));
+    renderTable(many);
+    expect(queryAll("project-row")).toHaveLength(10);
+    expect(document.body.querySelector('[data-testid="project-page-prev"]')).not.toBeNull();
+    expect(document.body.textContent).toContain("共 11 个");
+
+    clickButton('[data-testid="project-page-next"]');
+    expect(queryAll("project-row")).toHaveLength(1);
+
+    // 筛选变化重置回第 1 页
+    const input = document.body.querySelector<HTMLInputElement>('[data-testid="project-search-input"]');
+    if (!input) throw new Error("missing search input");
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      setter.call(input, "项目 1");
+      input.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+    // 关键字命中 2 个（1、10），重置后第 1 页全见
+    expect(queryAll("project-row")).toHaveLength(2);
   });
 
   it("里程碑 0 显示「-」，非 0 显示 N 个节点", () => {

@@ -3,6 +3,8 @@ import { getProjectStatusKind } from "@open-doing/types";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
+import { averageProjectProgress } from "@open-doing/types";
+
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
@@ -48,12 +50,29 @@ export default async function PersonalProjectsPage() {
     milestoneCount: item.milestoneCount,
     startDate: item.project.startDate,
     endDate: item.project.endDate,
+    taskCount: item.stats.taskCount,
+    doneCount: item.stats.doneCount,
+    overdueCount: item.stats.overdueCount,
   }));
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]" data-testid="projects-list-page">
       <PageHeader
-        title={t("listTitle")}
+        title={
+          <>
+            {t("listTitle")}{" "}
+            <span className="inline-flex items-center rounded-full bg-[var(--color-primary-bg)] px-2.5 py-0.5 align-middle text-[12.5px] font-medium text-[var(--color-primary)]">
+              {t("headerBadge", {
+                count: rows.length,
+                percent: Math.round(
+                  averageProjectProgress(
+                    list.map((item) => item.stats.progress),
+                  ) * 100,
+                ),
+              })}
+            </span>
+          </>
+        }
         subtitle={t("listSubtitlePersonal")}
         actions={<NewPersonalProjectButton />}
       />
@@ -64,7 +83,11 @@ export default async function PersonalProjectsPage() {
         </div>
       ) : (
         <div className="mt-6">
-          <ProjectListTable rows={rows} />
+          <ProjectListTable
+            rows={rows}
+            space={{ kind: "personal" }}
+            canManage
+          />
         </div>
       )}
     </div>

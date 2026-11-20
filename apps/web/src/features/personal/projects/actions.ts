@@ -12,6 +12,7 @@ import {
   createPersonalProject,
   deletePersonalProject,
   deletePersonalProjectMilestone,
+  listPersonalProjectMilestones,
   updatePersonalProject,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
@@ -141,6 +142,20 @@ export async function deletePersonalProjectMilestoneAction(
   try {
     await deletePersonalProjectMilestone(user.id, projectId, milestoneId);
     return { ok: true, data: true };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 列出个人项目里程碑（owner-only；drawer 打开时按需取数）。 */
+export async function listPersonalProjectMilestonesAction(
+  projectId: string,
+): Promise<ActionResult<ProjectMilestone[]>> {
+  const user = await requireUser();
+
+  try {
+    const milestones = await listPersonalProjectMilestones(user.id, projectId);
+    return { ok: true, data: milestones };
   } catch (error) {
     return toFailure(error);
   }

@@ -665,7 +665,7 @@
     "nameTooLong": "项目名称不能超过 {max} 个字符",
     "descriptionTooLong": "描述不能超过 {max} 个字符",
     "projectNotFound": "项目不存在或无权访问",
-    "newProjectButton": "＋ 新建个人项目",
+    "newProjectButton": "新建个人项目",
     "missingProject": "缺少项目信息",
     "projectSaved": "项目已保存",
     "projectCreated": "项目已创建",
@@ -761,7 +761,14 @@
     "milestoneNameTooLong": "里程碑名称不能超过 {max} 个字符",
     "milestoneDescriptionTooLong": "里程碑描述不能超过 {max} 个字符",
     "milestoneNotFound": "里程碑不存在或无权访问",
-    "dialogTitleCreate": "新建项目"
+    "dialogTitleCreate": "新建项目",
+    "openFullPage": "打开完整项目页",
+    "pagePrev": "上一页",
+    "pageNext": "下一页",
+    "pageInfo": "第 {page} / {total} 页 · 共 {count} 个",
+    "drawerTasksLabel": "任务",
+    "drawerDoneLabel": "已完成",
+    "drawerOverdueLabel": "逾期"
   },
   "dashboard": {
     "title": "仪表盘",

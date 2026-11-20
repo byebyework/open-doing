@@ -9,6 +9,7 @@ import {
   createPersonalProjectAction,
   deletePersonalProjectAction,
   deletePersonalProjectMilestoneAction,
+  listPersonalProjectMilestonesAction,
   updatePersonalProjectAction,
 } from "./actions";
 import {
@@ -16,6 +17,7 @@ import {
   createPersonalProject,
   deletePersonalProject,
   deletePersonalProjectMilestone,
+  listPersonalProjectMilestones,
   updatePersonalProject,
 } from "./service";
 
@@ -37,6 +39,7 @@ vi.mock("./service", async (importOriginal) => {
     deletePersonalProject: vi.fn(),
     addPersonalProjectMilestone: vi.fn(),
     deletePersonalProjectMilestone: vi.fn(),
+    listPersonalProjectMilestones: vi.fn(),
   };
 });
 
@@ -46,6 +49,7 @@ const mockUpdate = vi.mocked(updatePersonalProject);
 const mockDelete = vi.mocked(deletePersonalProject);
 const mockAddMilestone = vi.mocked(addPersonalProjectMilestone);
 const mockDeleteMilestone = vi.mocked(deletePersonalProjectMilestone);
+const mockListMilestones = vi.mocked(listPersonalProjectMilestones);
 
 const PROJECT_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -135,6 +139,16 @@ describe("个人项目 actions", () => {
     ).rejects.toThrow("NEXT_REDIRECT");
     expect(mockCreate).not.toHaveBeenCalled();
     expect(mockAddMilestone).not.toHaveBeenCalled();
+  });
+
+  it("listPersonalProjectMilestonesAction：透传", async () => {
+    mockRequireUser.mockResolvedValue({ id: "u1" } as never);
+    mockListMilestones.mockResolvedValue([]);
+
+    await expect(
+      listPersonalProjectMilestonesAction(PROJECT_ID),
+    ).resolves.toEqual({ ok: true, data: [] });
+    expect(mockListMilestones).toHaveBeenCalledWith("u1", PROJECT_ID);
   });
 
   it("删除个人项目：透传（既有行为回归）", async () => {

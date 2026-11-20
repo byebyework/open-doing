@@ -30,6 +30,8 @@ export interface ProjectMilestonesSectionProps {
   milestones: ProjectMilestone[];
   /** 团队 owner/admin、个人 owner 才为 true。 */
   canManage: boolean;
+  /** 增删成功后的附加回调（嵌入 Drawer 等自有数据面时重取列表）。 */
+  onChanged?: () => void;
 }
 
 /**
@@ -44,6 +46,7 @@ export function ProjectMilestonesSection({
   projectId,
   milestones,
   canManage,
+  onChanged,
 }: ProjectMilestonesSectionProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
@@ -80,6 +83,7 @@ export function ProjectMilestonesSection({
       }
 
       setAdding(false);
+      onChanged?.();
       router.refresh();
     } catch {
       toast.error(tCommon("networkError"));
@@ -108,6 +112,7 @@ export function ProjectMilestonesSection({
       }
 
       setDeleteTarget(null);
+      onChanged?.();
       router.refresh();
     } catch {
       toast.error(tCommon("networkError"));

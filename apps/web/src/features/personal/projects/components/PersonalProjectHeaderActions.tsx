@@ -81,7 +81,7 @@ export function PersonalProjectHeaderActions({
           if (!next) setEditOpen(false);
         }}
       >
-        <DialogContent className="sm:max-w-[480px]">
+        <DialogContent className="max-h-[calc(100dvh-4rem)] gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-[480px]">
           <DialogHeader>
             <DialogTitle>{t("modalTitleEdit")}</DialogTitle>
           </DialogHeader>

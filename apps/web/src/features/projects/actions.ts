@@ -13,6 +13,7 @@ import {
   createTeamProject,
   deleteTeamProject,
   deleteTeamProjectMilestone,
+  listTeamProjectMilestones,
   updateTeamProject,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
@@ -152,6 +153,24 @@ export async function deleteTeamProjectAction(input: {
   try {
     await deleteTeamProject({ ...input, actorId: user.id });
     return { ok: true, data: true };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 列出团队项目里程碑（owner/admin，服务层校验；drawer 打开时按需取数）。 */
+export async function listTeamProjectMilestonesAction(input: {
+  teamId: string;
+  projectId: string;
+}): Promise<ActionResult<ProjectMilestone[]>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    const milestones = await listTeamProjectMilestones(input.teamId, input.projectId);
+    return { ok: true, data: milestones };
   } catch (error) {
     return toFailure(error);
   }

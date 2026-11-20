@@ -45,8 +45,11 @@ test.describe("flow 13: 项目模块", () => {
     await expect(projectRows.filter({ hasText: projectA })).toBeVisible();
     await expect(projectRows.filter({ hasText: projectB })).toBeVisible();
 
-    // 点项目行（名称链接）进详情页。
-    await projectRows.filter({ hasText: projectA }).locator("a").first().click();
+    // 点项目行打开右侧详情 Drawer，再经「打开完整项目页」进详情页。
+    await projectRows.filter({ hasText: projectA }).locator("button").first().click();
+    const drawer = page.getByTestId("project-detail-drawer");
+    await expect(drawer).toBeVisible();
+    await drawer.getByTestId("project-drawer-full-page-link").click();
     await expect(page).toHaveURL(
       new RegExp(
         `/space/personal/projects/${projectA

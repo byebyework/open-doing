@@ -62,7 +62,10 @@ export function ProjectCreateDialog({
           if (!next) setOpen(false);
         }}
       >
-        <DialogContent className="sm:max-w-[520px]" data-testid={`${testIdPrefix}-create-dialog`}>
+        <DialogContent
+          className="max-h-[calc(100dvh-4rem)] gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-[520px]"
+          data-testid={`${testIdPrefix}-create-dialog`}
+        >
           <DialogHeader>
             <DialogTitle>{t("dialogTitleCreate")}</DialogTitle>
           </DialogHeader>
