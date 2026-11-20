@@ -78,3 +78,12 @@ pnpm --filter @open-doing/web exec playwright install chromium   # first e2e run
 - Domain errors: service throws `<X>Error(zh fallback, field, { key, params })`; never display the constructor's Chinese directly — it is translated per request locale.
 - Routes use slugs for teams/projects and opaque IDs for task details. `personal` is a reserved spaceRef.
 - Component interaction tests use jsdom (`@vitest-environment jsdom` pragma) + `createRoot` + React `act` + `vi.useFakeTimers` — there is no @testing-library in this repo; static components may use `renderToStaticMarkup`. Overlay tests assert the exit-hold contract (content present during the hold window, removed after `OD_MS.* + 50`).
+
+
+## React Coding Guidelines
+- **Strictly forbid using `useEffect` in business components.**
+- Use the following alternatives instead:
+  1. **Data Fetching**: Use the project's data-fetching library (e.g., TanStack Query / SWR). Never `fetch` inside `useEffect`.
+  2. **Derived State**: Calculate values directly during render (e.g., `const fullName = first + last`) instead of using `useEffect` + `useState`.
+  3. **User Interactions**: Put logic directly inside event handlers (e.g., `onClick`, `onSubmit`) rather than updating a state and watching it in `useEffect`.
+  4. **Resetting Component State**: Pass a different `key` prop to reset a component instead of using `useEffect` to watch props and call `setState`.
