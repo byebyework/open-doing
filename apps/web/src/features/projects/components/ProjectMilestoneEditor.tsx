@@ -28,7 +28,7 @@ export interface ProjectMilestoneEditorProps {
 /**
  * Linear「Create milestone」式里程碑编辑卡：名称 + 描述 + 时间节点 + 添加。
  *
- * 名称与时间节点为空时「添加」禁用（客户端必填闸）；描述可选。
+ * 名称必填（客户端必填闸）；描述与时间节点选填。
  * 服务层校验（field "milestones"）失败时错误落在表单级（调用方映射）。
  */
 export function ProjectMilestoneEditor({
@@ -43,7 +43,8 @@ export function ProjectMilestoneEditor({
   const [description, setDescription] = useState("");
   const [dueDate, setDueDate] = useState("");
 
-  const canAdd = name.trim().length > 0 && dueDate.length > 0 && !submitting;
+  // 名称必填；描述与时间节点选填（dueDate 空串由服务层归 null）。
+  const canAdd = name.trim().length > 0 && !submitting;
 
   const handleAdd = () => {
     if (!canAdd) return;

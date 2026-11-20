@@ -174,7 +174,7 @@ describe("ProjectForm", () => {
     });
   });
 
-  it("里程碑折叠行：展开编辑器，名称或日期为空时「添加」禁用；添加后随表单一次性提交", async () => {
+  it("里程碑折叠行：名称必填（日期选填），添加后随表单一次性提交", async () => {
     mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm();
 
@@ -190,9 +190,10 @@ describe("ProjectForm", () => {
       )!;
     expect(add().disabled).toBe(true);
 
+    // 仅名称即可添加（日期选填）。
     setInput("test-project-name-input", "Milestone Project");
     setInput("test-project-milestone-name-input", "上线");
-    expect(add().disabled).toBe(true);
+    expect(add().disabled).toBe(false);
 
     const dateInput = document.body.querySelector<HTMLInputElement>(
       '[data-testid="test-project-milestone-due-date"] input, input[data-testid="test-project-milestone-due-date"]',
