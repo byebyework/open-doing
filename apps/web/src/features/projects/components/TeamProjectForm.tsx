@@ -1,9 +1,10 @@
 "use client";
 
-import type { Project } from "@open-doing/types";
+import type { Project, Tag } from "@open-doing/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { DatePicker } from "@/components/ui/date-picker";
+import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 import {
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
@@ -39,11 +40,14 @@ export interface TeamProjectFormProps {
     description?: string;
     startDate?: string | null;
     endDate?: string | null;
+    tags?: Tag[];
   };
   /** 成功后回调（页面跳转 / 弹窗关闭由调用方决定）。 */
   onSuccess: (project: Project) => void;
   /** 取消（编辑弹窗内使用）。 */
   onCancel?: () => void;
+  /** 项目类型标签池（RSC 注入；打标入口，空池不渲染）。 */
+  projectTagPool?: Tag[];
 }
 
 /**
@@ -57,10 +61,13 @@ export function TeamProjectForm({
   project,
   onSuccess,
   onCancel,
+  projectTagPool = [],
 }: TeamProjectFormProps) {
   const t = useTranslations("projects");
+  const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
+  const [tagIds, setTagIds] = useState<string[]>(project?.tags?.map((tag) => tag.id) ?? []);
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEdit = Boolean(project);
@@ -111,6 +118,7 @@ export function TeamProjectForm({
             description: values.description ?? "",
             startDate: values.startDate.trim() ? values.startDate : null,
             endDate: values.endDate.trim() ? values.endDate : null,
+            tagIds: projectTagPool.length > 0 ? tagIds : undefined,
           })
         : await createTeamProjectAction({
             teamId,
@@ -118,6 +126,7 @@ export function TeamProjectForm({
             description: values.description ?? "",
             startDate: values.startDate.trim() ? values.startDate : null,
             endDate: values.endDate.trim() ? values.endDate : null,
+            tagIds: projectTagPool.length > 0 && tagIds.length > 0 ? tagIds : undefined,
           });
 
       if (!result.ok) {
@@ -189,7 +198,20 @@ export function TeamProjectForm({
         ) : null}
       </div>
 
-      {/* 起止时间（可选，两列排布；end < start 由服务层校验并回填 endDate 错误）。 */}
+      {projectTagPool.length > 0 ? (
+      <div className="mb-4 flex flex-col gap-2">
+        <Label>{tTags("tagNameLabel")}</Label>
+        <TaskTagPicker
+          space={{ kind: "team", teamId }}
+          pool={projectTagPool}
+          value={tagIds}
+          onChange={setTagIds}
+          canEdit={!submitting}
+        />
+      </div>
+    ) : null}
+
+    {/* 起止时间（可选，两列排布；end < start 由服务层校验并回填 endDate 错误）。 */}
       <div className="mb-4 grid grid-cols-2 gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="team-project-start-date">{t("startDate")}</Label>

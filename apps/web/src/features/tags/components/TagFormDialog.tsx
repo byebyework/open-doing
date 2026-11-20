@@ -128,6 +128,22 @@ export function TagFormDialog({
   const [pending, setPending] = useState(false);
   const [fieldError, setFieldError] = useState<string | null>(null);
 
+  // 每次打开都按 editing 重置（渲染期同步，组件常驻避免状态残留；
+  // 沿仓库 sync-props 约定，不用 effect setState）。
+  const [syncedOpen, setSyncedOpen] = useState(open);
+  const [syncedEditing, setSyncedEditing] = useState(editing);
+  if (open !== syncedOpen || editing !== syncedEditing) {
+    setSyncedOpen(open);
+    setSyncedEditing(editing);
+    if (open) {
+      setName(editing?.name ?? "");
+      setType(editing?.type ?? "task");
+      setDescription(editing?.description ?? "");
+      setColor(editing?.color ?? "purple");
+      setFieldError(null);
+    }
+  }
+
   function closeDialog(): void {
     if (pending) return;
     onOpenChange(false);

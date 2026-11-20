@@ -54,6 +54,8 @@ export default async function PersonalProjectPage({
     listPersonalProjects(user.id),
     listTags({ ownerId: user.id }),
   ]);
+  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
+  const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
   const today = todayInShanghai();
@@ -88,6 +90,7 @@ export default async function PersonalProjectPage({
             projectPath={projectPath}
             view={view}
             projects={projectOptions}
+            projectTagPool={projectTagPool}
           />
         }
       />
@@ -99,7 +102,7 @@ export default async function PersonalProjectPage({
             today={today}
             projectId={project.id}
             projects={projectOptions}
-            tagPool={tagPool}
+            tagPool={taskTagPool}
           />
         ) : (
           <ProjectTaskTable
@@ -107,7 +110,7 @@ export default async function PersonalProjectPage({
             today={today}
             projectId={project.id}
             projects={projectOptions}
-            tagPool={tagPool}
+            tagPool={taskTagPool}
           />
         )}
       </div>

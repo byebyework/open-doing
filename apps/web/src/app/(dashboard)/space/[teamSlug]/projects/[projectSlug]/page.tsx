@@ -62,6 +62,9 @@ export default async function TeamProjectPage({
     listMembers(team.id),
     listTags({ teamId: team.id }),
   ]);
+  // 类型分流：任务打标入口只列 task 标签，项目编辑弹层只列 project 标签。
+  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
+  const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
   const projectOptions = projectList.map(({ id, name }) => ({ id, name }));
   const members = memberList.map(({ user: member }) => ({
@@ -108,7 +111,8 @@ export default async function TeamProjectPage({
             actorId={user.id}
             canManage={can(membership.role, "team:manage_projects")}
             redirectTo={teamSettingsHref(team.slug)}
-            tagPool={tagPool}
+            tagPool={taskTagPool}
+            projectTagPool={projectTagPool}
           />
         }
       />
@@ -126,7 +130,7 @@ export default async function TeamProjectPage({
             role={membership.role}
             actorId={user.id}
             projectSlug={project.slug}
-            tagPool={tagPool}
+            tagPool={taskTagPool}
           />
         ) : (
           <TeamProjectTaskTable

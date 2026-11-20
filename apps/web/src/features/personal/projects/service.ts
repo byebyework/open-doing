@@ -1,5 +1,5 @@
 import type { Project } from "@open-doing/types";
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
 import {
@@ -10,7 +10,8 @@ import {
 } from "@/features/projects/service";
 import { generateUniqueSlug } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks } from "@/server/db/schema";
+import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
+import { projectTags, projects, tasks } from "@/server/db/schema";
 
 /** 项目名称长度上限（与表单校验一致）。 */
 export const PROJECT_NAME_MAX_LENGTH = 50;
@@ -21,7 +22,7 @@ export const PROJECT_DESCRIPTION_MAX_LENGTH = 500;
 type ProjectRow = typeof projects.$inferSelect;
 
 /** 数据库行 -> 可跨边界传递的领域 Project（时间统一为 ISO 字符串）。 */
-function toProject(row: ProjectRow): Project {
+function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
   return {
     id: row.id,
     teamId: row.teamId,
@@ -31,6 +32,7 @@ function toProject(row: ProjectRow): Project {
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
     endDate: row.endDate ?? undefined,
+    tags,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -100,7 +102,7 @@ export async function listPersonalProjects(
     .where(eq(projects.ownerId, userId))
     .orderBy(desc(lastActivityAt), desc(projects.createdAt));
 
-  return rows.map(toProject);
+  return rows.map((row) => toProject(row));
 }
 
 /**
@@ -119,7 +121,9 @@ export async function getPersonalProjectBySlug(
     .where(and(eq(projects.ownerId, userId), eq(projects.slug, slug)))
     .limit(1);
 
-  return row ? toProject(row) : null;
+  if (!row) return null;
+  const tagsMap = await tagsByProjectId([row.id], client);
+  return toProject(row, tagsMap.get(row.id) ?? []);
 }
 
 /**
@@ -129,6 +133,35 @@ export async function getPersonalProjectBySlug(
  * - slug 由名称 ASCII 化生成，查重范围限定为 `owner_id = userId`；
  * - 个人项目不设置 `team_id`，由服务层断言与数据库 CHECK 约束共同保证归属唯一。
  */
+/** 项目打标：全量覆写 project_tags（owner-only 由调用方保证）；不动 projects 行。 */
+async function applyOwnedProjectTags(
+  projectId: string,
+  tagIds: string[],
+  ownerId: string,
+  client: DbClient,
+): Promise<void> {
+  const pool = await getTagsByIds(tagIds, client);
+  if (pool.length !== tagIds.length) {
+    throw new DomainError("标签不存在或无权访问", "tags", { key: "tagInvalidForSpace" });
+  }
+  assertTagsBelongToSpace(pool, { ownerId });
+  assertTagsAreProjectTags(pool);
+
+  await client.transaction(async (tx) => {
+    await tx.delete(projectTags).where(
+      tagIds.length === 0
+        ? eq(projectTags.projectId, projectId)
+        : and(eq(projectTags.projectId, projectId), notInArray(projectTags.tagId, tagIds)),
+    );
+    if (tagIds.length > 0) {
+      await tx
+        .insert(projectTags)
+        .values(tagIds.map((tagId) => ({ projectId, tagId })))
+        .onConflictDoNothing();
+    }
+  });
+}
+
 /** 起止日期对校验：都非空时 end >= start；非法抛 DomainError（projects ns）。 */
 function assertProjectDateRange(startDate: string | null, endDate: string | null): void {
   if (startDate && endDate && endDate < startDate) {
@@ -144,6 +177,8 @@ export async function createPersonalProject(
     /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 初始项目标签（全量覆写）。 */
+    tagIds?: string[];
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -177,7 +212,11 @@ export async function createPersonalProject(
     .values({ ownerId: userId, name, slug, description: description ?? null, startDate, endDate })
     .returning();
 
-  return toProject(row!);
+  if (input.tagIds?.length) {
+    await applyOwnedProjectTags(row!.id, Array.from(new Set(input.tagIds)), userId, client);
+  }
+  const tagsMap = await tagsByProjectId([row!.id], client);
+  return toProject(row!, tagsMap.get(row!.id) ?? []);
 }
 
 /** 读取本人项目行（内部使用）；不存在 / 非本人返回 undefined。 */
@@ -210,6 +249,8 @@ export async function updatePersonalProject(
     /** 起止日期；`null` 清空，未传保持不变。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目标签全量覆写；仅写 project_tags。 */
+    tagIds?: string[];
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -240,7 +281,12 @@ export async function updatePersonalProject(
   );
 
   if (Object.keys(changes).length === 0) {
-    return toProject(existing);
+    // 仅打标（无其他字段变更）：只写 project_tags，不触碰 projects 行。
+    if (input.tagIds !== undefined) {
+      await applyOwnedProjectTags(projectId, Array.from(new Set(input.tagIds)), userId, client);
+    }
+    const tagsMap = await tagsByProjectId([existing.id], client);
+    return toProject(existing, tagsMap.get(existing.id) ?? []);
   }
 
   const [row] = await client
@@ -253,7 +299,11 @@ export async function updatePersonalProject(
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
-  return toProject(row);
+  if (input.tagIds !== undefined) {
+    await applyOwnedProjectTags(projectId, Array.from(new Set(input.tagIds)), userId, client);
+  }
+  const tagsMap = await tagsByProjectId([row.id], client);
+  return toProject(row, tagsMap.get(row.id) ?? []);
 }
 
 /**
@@ -310,8 +360,12 @@ export async function getPersonalProjectListWithStats(
     rowsByProject.get(row.projectId)?.push(row);
   }
 
+  const projectTagsMap = await tagsByProjectId(
+    projectRows.map((row) => row.id),
+    client,
+  );
   return projectRows.map((row) => ({
-    project: toProject(row),
+    project: toProject(row, projectTagsMap.get(row.id) ?? []),
     stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
   }));
 }

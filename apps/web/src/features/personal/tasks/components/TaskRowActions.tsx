@@ -1,6 +1,6 @@
 "use client";
 
-import type { Subtask, Task, TaskStatus } from "@open-doing/types";
+import type { Subtask, Tag, Task, TaskStatus } from "@open-doing/types";
 import { ChevronDownIcon, Loader2Icon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -288,6 +288,8 @@ export interface PersonalProjectPageActionsProps {
   project: { id: string; name: string; description?: string };
   /** 项目页路径，用于写 `?view=`。 */
   projectPath: string;
+  /** 项目类型标签池（编辑弹层打标用）。 */
+  projectTagPool?: Tag[];
   /** 当前视图：列表 / 看板。 */
   view: "list" | "board";
   /** 新建任务弹窗可选的个人项目。 */
@@ -305,6 +307,7 @@ export function PersonalProjectPageActions({
   projectPath,
   view,
   projects,
+  projectTagPool,
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -312,7 +315,7 @@ export function PersonalProjectPageActions({
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
-      <PersonalProjectHeaderActions project={project} />
+      <PersonalProjectHeaderActions project={project} projectTagPool={projectTagPool} />
 
       <Tabs value={view} onValueChange={(nextView) => {
         if (nextView === "list" || nextView === "board") {

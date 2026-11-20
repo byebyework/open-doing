@@ -11,6 +11,7 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
+import type { Tag } from "@open-doing/types";
 import { z } from "zod";
 
 import { Alert } from "@/components/ui/shadcn/alert";
@@ -27,6 +28,7 @@ import { Label } from "@/components/ui/shadcn/label";
 import { DatePicker } from "@/components/ui/date-picker";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 
+import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 import {
   createPersonalProjectAction,
   updatePersonalProjectAction,
@@ -45,7 +47,10 @@ export interface PersonalProjectFormModalProps {
     description?: string;
     startDate?: string | null;
     endDate?: string | null;
+    tags?: Tag[];
   };
+  /** 项目类型标签池（RSC 注入；打标入口，空池不渲染）。 */
+  projectTagPool?: Tag[];
   /** 提交成功后回调（由调用方关闭弹窗并刷新数据）。 */
   onSuccess: () => void;
   /** 取消 / 关闭。 */
@@ -66,11 +71,14 @@ export function PersonalProjectFormModal({
   project,
   onSuccess,
   onCancel,
+  projectTagPool = [],
 }: PersonalProjectFormModalProps) {
   const t = useTranslations("personal");
   const tProjects = useTranslations("projects");
+  const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
+  const [tagIds, setTagIds] = useState<string[]>(mode === "edit" ? (project?.tags?.map((tag) => tag.id) ?? []) : []);
   const [formError, setFormError] = useState<string | null>(null);
 
   // zod schema 在组件内构建:必填文案取自 next-intl。
@@ -139,6 +147,7 @@ export function PersonalProjectFormModal({
       description: values.description ?? "",
       startDate: values.startDate.trim() ? values.startDate : null,
       endDate: values.endDate.trim() ? values.endDate : null,
+      tagIds: (projectTagPool?.length ?? 0) > 0 ? tagIds : undefined,
     };
 
     try {
@@ -237,6 +246,19 @@ export function PersonalProjectFormModal({
               </p>
             ) : null}
           </div>
+
+          {projectTagPool.length > 0 ? (
+            <div className="mb-4 flex flex-col gap-2">
+              <Label>{tTags("tagNameLabel")}</Label>
+              <TaskTagPicker
+                space={{ kind: "personal" }}
+                pool={projectTagPool}
+                value={tagIds}
+                onChange={setTagIds}
+                canEdit={!submitting}
+              />
+            </div>
+          ) : null}
 
           {/* 起止时间（可选，两列排布；end < start 错误回填 endDate）。 */}
           <div className="mb-4 grid grid-cols-2 gap-4">

@@ -479,8 +479,12 @@ export async function getTeamProjectListWithStats(
     rowsByProject.get(row.projectId)?.push(row);
   }
 
+  const projectTagsMap = await tagsByProjectId(
+    projectRows.map((row) => row.id),
+    client,
+  );
   return projectRows.map((row) => ({
-    project: toProject(row),
+    project: toProject(row, projectTagsMap.get(row.id) ?? []),
     stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
   }));
 }

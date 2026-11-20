@@ -32,8 +32,10 @@ export interface TeamProjectHeaderProps {
   canManage: boolean;
   /** 删除项目成功后的跳转地址。 */
   redirectTo: string;
-  /** 本团队标签池（RSC 注入；新建任务弹窗的标签选择用）。 */
+  /** 本团队任务标签池（type='task'；新建任务弹窗用）。 */
   tagPool?: Tag[];
+  /** 项目类型标签池（type='project'；编辑弹层打标用）。 */
+  projectTagPool?: Tag[];
 }
 
 /**
@@ -51,6 +53,7 @@ export function TeamProjectHeader({
   canManage,
   redirectTo,
   tagPool,
+  projectTagPool,
 }: TeamProjectHeaderProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -63,6 +66,7 @@ export function TeamProjectHeader({
           teamId={teamId}
           project={project}
           redirectTo={redirectTo}
+          projectTagPool={projectTagPool}
         />
       ) : null}
 

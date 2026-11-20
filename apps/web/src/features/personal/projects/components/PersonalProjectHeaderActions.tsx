@@ -1,5 +1,6 @@
 "use client";
 
+import type { Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,6 +15,8 @@ import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
 
 export interface PersonalProjectHeaderActionsProps {
   project: { id: string; name: string; description?: string };
+  /** 项目类型标签池（编辑弹层打标用）。 */
+  projectTagPool?: Tag[];
 }
 
 /**
@@ -24,6 +27,7 @@ export interface PersonalProjectHeaderActionsProps {
  */
 export function PersonalProjectHeaderActions({
   project,
+  projectTagPool,
 }: PersonalProjectHeaderActionsProps) {
   const router = useRouter();
   const t = useTranslations("personal");
@@ -68,6 +72,7 @@ export function PersonalProjectHeaderActions({
         open={editOpen}
         mode="edit"
         project={project}
+        projectTagPool={projectTagPool}
         onSuccess={() => {
           setEditOpen(false);
           router.refresh();

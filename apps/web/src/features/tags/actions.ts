@@ -67,7 +67,13 @@ export async function createTagAction(input: {
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
-    const tag = await createTag({ ...withSpace(user, input), name: input.name, color: input.color });
+    const tag = await createTag({
+      ...withSpace(user, input),
+      name: input.name,
+      color: input.color,
+      type: input.type,
+      description: input.description,
+    });
     return { ok: true, data: tag };
   } catch (error) {
     return toFailure(error);
@@ -87,7 +93,13 @@ export async function updateTagAction(input: {
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
 
   try {
-    const tag = await updateTag({ ...withSpace(user, input), tagId: input.tagId, name: input.name, color: input.color });
+    const tag = await updateTag({
+      ...withSpace(user, input),
+      tagId: input.tagId,
+      name: input.name,
+      color: input.color,
+      description: input.description,
+    });
     return { ok: true, data: tag };
   } catch (error) {
     return toFailure(error);

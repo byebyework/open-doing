@@ -52,6 +52,8 @@ export async function createPersonalProjectAction(input: {
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
   endDate?: string | null;
+  /** 初始项目标签（全量覆写）。 */
+  tagIds?: string[];
 }): Promise<ActionResult<Project>> {
   const user = await requireUser();
 
@@ -72,6 +74,8 @@ export async function updatePersonalProjectAction(
     /** 起止日期；`null` 清空。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目标签全量覆写；仅写 project_tags。 */
+    tagIds?: string[];
   },
 ): Promise<ActionResult<Project>> {
   const user = await requireUser();
