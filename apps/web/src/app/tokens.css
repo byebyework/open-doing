@@ -165,7 +165,7 @@
 
   /* 按钮 */
   --button-padding: 8px 16px;
-  --button-radius: var(--radius-btn);
+  --button-radius: var(--radius-pill);
   --button-font-size: var(--text-base);
   --button-shadow: var(--shadow-btn);
   --button-shadow-hover: var(--shadow-btn-hover);

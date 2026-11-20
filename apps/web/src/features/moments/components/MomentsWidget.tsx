@@ -119,7 +119,7 @@ export async function MomentsWidget({
           action={
             <Link
               href={href}
-              className="inline-flex h-9 items-center justify-center rounded-[var(--radius-8)] bg-[image:var(--brand-gradient)] px-4 text-[14px] font-semibold text-white no-underline shadow-[var(--shadow-btn)] transition-shadow hover:shadow-[var(--shadow-btn-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple-600)]"
+              className="inline-flex h-9 items-center justify-center rounded-[var(--radius-pill)] bg-[image:var(--brand-gradient)] px-4 text-[14px] font-semibold text-white no-underline shadow-[var(--shadow-btn)] transition-shadow hover:shadow-[var(--shadow-btn-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--purple-600)]"
             >
               {t("widget.emptyAction")}
             </Link>
