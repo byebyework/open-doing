@@ -3,8 +3,10 @@ import { getTranslations } from "next-intl/server";
 
 import { HintBadge } from "@/components/ui/HintBadge";
 import { PageHeader } from "@/components/ui/PageHeader";
+import { WelcomeToast } from "@/features/dashboard/personal-dashboard/WelcomeToast";
 import { StatCard } from "@/components/ui/StatCard";
 import { requireUser } from "@/features/auth/session";
+import { displayName } from "@open-doing/types";
 import {
   getMyTaskStats,
   getTodayBoard,
@@ -74,6 +76,7 @@ export default async function PersonalDashboardPage() {
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1080px]">
+      <WelcomeToast name={displayName(user)} />
       <PageHeader
         title={tNav("dashboard")}
         subtitle={t("personalSubtitle")}

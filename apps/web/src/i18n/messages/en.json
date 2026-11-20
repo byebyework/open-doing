@@ -799,7 +799,10 @@
     "milestonesPagerLabel": "Milestones pagination",
     "milestonesPrevPage": "Previous page",
     "milestonesNextPage": "Next page",
-    "milestonesGoToPage": "Go to page {page}"
+    "milestonesGoToPage": "Go to page {page}",
+    "welcomeMorning": "Good morning, {name}",
+    "welcomeAfternoon": "Good afternoon, {name}",
+    "welcomeEvening": "Good evening, {name}"
   },
   "kanban": {
     "kanban": "Kanban",

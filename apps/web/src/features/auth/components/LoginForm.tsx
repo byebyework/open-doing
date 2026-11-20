@@ -69,6 +69,8 @@ export function LoginForm() {
         return;
       }
 
+      // 登录成功：落地仪表盘消费一次欢迎 toast（sessionStorage 单标记）。
+      sessionStorage.setItem("od_welcome", "1");
       router.push(spaceDashboardHref("personal"));
       router.refresh();
     } catch {

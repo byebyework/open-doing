@@ -106,3 +106,19 @@ export function getMonthEnd(month: string): string {
 export function daysBetween(from: string, to: string): number {
   return (parseUtcDate(to) - parseUtcDate(from)) / 86400000;
 }
+
+/** 问候时段：按 Asia/Shanghai 小时划分（与 todayInShanghai 同口径）。 */
+export type GreetingKey = "morning" | "afternoon" | "evening";
+
+/**
+ * 按当前时刻返回问候时段（客户端也可安全调用：时区换算走 UTC+8 显式偏移，
+ * 不依赖本地时区）。5:00–12:00 早晨，12:00–18:00 下午，其余为晚上。
+ */
+export function greetingKey(now: Date = new Date()): GreetingKey {
+  // 上海时区小时：UTC+8，不经过本地时区。
+  const shanghaiHour =
+    (now.getUTCHours() + 8 + now.getUTCMinutes() / 60) % 24;
+  if (shanghaiHour >= 5 && shanghaiHour < 12) return "morning";
+  if (shanghaiHour >= 12 && shanghaiHour < 18) return "afternoon";
+  return "evening";
+}

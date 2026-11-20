@@ -799,7 +799,10 @@
     "milestonesPagerLabel": "重要节点翻页",
     "milestonesPrevPage": "上一页",
     "milestonesNextPage": "下一页",
-    "milestonesGoToPage": "转到第 {page} 页"
+    "milestonesGoToPage": "转到第 {page} 页",
+    "welcomeMorning": "早上好，{name}",
+    "welcomeAfternoon": "下午好，{name}",
+    "welcomeEvening": "晚上好，{name}"
   },
   "kanban": {
     "kanban": "看板",
