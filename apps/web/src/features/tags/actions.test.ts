@@ -45,6 +45,8 @@ const fakeTag: Tag = {
   name: "Research",
   color: "purple",
   createdAt: "2026-11-19T00:00:00.000Z",
+  type: "task",
+  updatedAt: "2026-11-19T00:00:00.000Z",
 };
 
 describe("标签 actions", () => {

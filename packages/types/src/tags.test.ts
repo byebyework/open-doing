@@ -32,3 +32,23 @@ describe("isTagColor", () => {
     expect(isTagColor(undefined)).toBe(false);
   });
 });
+
+import { TAG_TYPES, isTagType } from "./tags";
+
+describe("TAG_TYPES", () => {
+  it("exposes exactly the two tag kinds", () => {
+    expect([...TAG_TYPES]).toEqual(["project", "task"]);
+  });
+});
+
+describe("isTagType", () => {
+  it("accepts both kinds", () => {
+    expect(isTagType("project")).toBe(true);
+    expect(isTagType("task")).toBe(true);
+  });
+  it("rejects other values", () => {
+    expect(isTagType("x")).toBe(false);
+    expect(isTagType(1)).toBe(false);
+    expect(isTagColor("purple")).toBe(true); // 色板判定不受影响
+  });
+});

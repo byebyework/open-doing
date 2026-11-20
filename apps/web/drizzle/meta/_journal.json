@@ -57,6 +57,13 @@
       "when": 1795095239874,
       "tag": "0007_gifted_betty_ross",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795171437213,
+      "tag": "0008_ambitious_shen",
+      "breakpoints": true
     }
   ]
 }

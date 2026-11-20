@@ -66,6 +66,8 @@ const fakeTags: TagWithUsage[] = [
     name: "调研",
     color: "purple",
     createdAt: "2026-11-19T00:00:00.000Z",
+    type: "task",
+    updatedAt: "2026-11-19T00:00:00.000Z",
     usageCount: 2,
   },
   {
@@ -75,6 +77,8 @@ const fakeTags: TagWithUsage[] = [
     name: "Bug",
     color: "coral",
     createdAt: "2026-11-19T01:00:00.000Z",
+    type: "task",
+    updatedAt: "2026-11-19T00:00:00.000Z",
     usageCount: 0,
   },
 ];

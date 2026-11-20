@@ -47,6 +47,7 @@ import type {
   NotificationType,
   SpaceType,
   TagColor,
+  TagType,
   TaskPriority,
   TaskStatus,
   TeamJoinStatus,
@@ -326,6 +327,11 @@ export const tags = pgTable(
     ownerId: uuidRef("owner_id").references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     color: text("color").$type<TagColor>().notNull(),
+    // 标签类型：project（打在项目上）/ task（打在任务上）；创建时定型不可兼任。
+    // 存量标签由 DEFAULT 回填为 'task'。
+    type: text("type").$type<TagType>().notNull().default("task"),
+    description: text("description"),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -341,6 +347,27 @@ export const tags = pgTable(
       .where(isNotNull(t.ownerId)),
     index("tags_team_id_idx").on(t.teamId),
     index("tags_owner_id_idx").on(t.ownerId),
+  ],
+);
+
+/**
+ * 项目↔标签多对多（语义同 task_tags）：复合主键去重；项目 / 标签删除均级联
+ * 清关联。仅打标不触碰 projects 行。项目打标只接受 type='project' 的标签
+ * （服务层校验）。
+ */
+export const projectTags = pgTable(
+  "project_tags",
+  {
+    projectId: uuidRef("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    tagId: uuidRef("tag_id")
+      .notNull()
+      .references(() => tags.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ name: "project_tags_project_id_tag_id_pk", columns: [t.projectId, t.tagId] }),
+    index("project_tags_tag_id_idx").on(t.tagId),
   ],
 );
 

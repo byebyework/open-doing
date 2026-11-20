@@ -21,6 +21,9 @@ function toTag(row: TagRow): Tag {
     ownerId: row.ownerId,
     name: row.name,
     color: row.color,
+    type: row.type,
+    description: row.description ?? undefined,
+    updatedAt: row.updatedAt.toISOString(),
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -130,6 +133,9 @@ export async function listTags(
       ownerId: tags.ownerId,
       name: tags.name,
       color: tags.color,
+      type: tags.type,
+      description: tags.description,
+      updatedAt: tags.updatedAt,
       createdAt: tags.createdAt,
       usageCount: sql<number>`count(${taskTags.taskId})::int`,
     })

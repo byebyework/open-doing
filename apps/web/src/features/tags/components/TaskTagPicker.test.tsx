@@ -16,9 +16,9 @@ import { TaskTags } from "./TaskTags";
 /** 沿用仓库 jsdom + act 最小探针写法。覆盖：勾选/取消回调、pool 空提示、
  * canEdit=false 只读、TaskTags 截断 +N、失效标签跳过渲染。 */
 const fakePool: Tag[] = [
-  { id: "t1", teamId: "team-1", ownerId: null, name: "调研", color: "purple", createdAt: "" },
-  { id: "t2", teamId: "team-1", ownerId: null, name: "Bug", color: "coral", createdAt: "" },
-  { id: "t3", teamId: "team-1", ownerId: null, name: "前端", color: "sky", createdAt: "" },
+  { id: "t1", teamId: "team-1", ownerId: null, name: "调研", color: "purple", createdAt: "", type: "task", updatedAt: "" },
+  { id: "t2", teamId: "team-1", ownerId: null, name: "Bug", color: "coral", createdAt: "", type: "task", updatedAt: "" },
+  { id: "t3", teamId: "team-1", ownerId: null, name: "前端", color: "sky", createdAt: "", type: "task", updatedAt: "" },
 ];
 
 function createHarness() {
@@ -132,6 +132,8 @@ describe("TaskTags", () => {
       name: `标签${i}`,
       color: "purple",
       createdAt: "",
+      type: "task",
+      updatedAt: "2026-11-19T00:00:00.000Z",
     }));
     const { container, root } = renderTags(tags);
     expect(container.querySelectorAll("[data-testid='tag-pill']").length).toBe(3);
@@ -141,8 +143,8 @@ describe("TaskTags", () => {
   });
 
   it("失效（已删除）标签跳过渲染", () => {
-    const stale = { id: "gone", teamId: "team-1", ownerId: null, name: "已删", color: "mint" as const, createdAt: "" };
-    const live: Tag = { id: "live", teamId: "team-1", ownerId: null, name: "存活", color: "mint", createdAt: "" };
+    const stale: Tag = { id: "gone", teamId: "team-1", ownerId: null, name: "已删", color: "mint", createdAt: "", type: "task", updatedAt: "" };
+    const live: Tag = { id: "live", teamId: "team-1", ownerId: null, name: "存活", color: "mint", createdAt: "", type: "task", updatedAt: "" };
     // 失效 = 调用方未把该 id 解析进 tags；渲染层对 undefined 容错由 picker 层过滤，
     // TaskTags 收到的数组本身只含可渲染项——这里验证空数组不渲染容器。
     const { container, root } = renderTags([stale, live].filter((t) => t.id !== "gone"));

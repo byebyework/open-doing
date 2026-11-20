@@ -19,6 +19,17 @@ export const TAG_COLORS = [
 /** 标签颜色：预设色板 key */
 export type TagColor = (typeof TAG_COLORS)[number];
 
+/** 标签类型全集：项目标签（打在项目上）与任务标签（打在任务上） */
+export const TAG_TYPES = ["project", "task"] as const;
+
+/** 标签类型：创建时定型，不可兼任 */
+export type TagType = (typeof TAG_TYPES)[number];
+
+/** 判定任意值是否为合法标签类型 */
+export function isTagType(value: unknown): value is TagType {
+  return typeof value === "string" && (TAG_TYPES as readonly string[]).includes(value);
+}
+
 /** 判定任意值是否为合法色板 key（服务层校验与客户端防御共用） */
 export function isTagColor(value: unknown): value is TagColor {
   return (
@@ -36,6 +47,12 @@ export interface Tag {
   ownerId: string | null;
   name: string;
   color: TagColor;
+  /** 标签类型：创建时定型，不可兼任（任务打标只接受 task，项目打标只接受 project） */
+  type: TagType;
+  /** 可选描述：说明该标签的适用场景 */
+  description?: string;
+  /** ISO 字符串；创建时等于 createdAt，改名/换色/改描述时推进 */
+  updatedAt: string;
   /** ISO 字符串 */
   createdAt: string;
 }
