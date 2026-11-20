@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/shadcn/input";
 import { deleteTagAction } from "../actions";
 import { TagFormDialog } from "./TagFormDialog";
 import { TagPill } from "./TagPill";
-import type { TagSpace } from "./TagManagerDialog";
+import type { TagSpace } from "./TagFormDialog";
 
 type TabFilter = "all" | TagType;
 

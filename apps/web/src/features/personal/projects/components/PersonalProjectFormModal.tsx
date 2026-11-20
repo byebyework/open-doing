@@ -11,7 +11,6 @@ import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
 import { toast } from "sonner";
-import type { TagWithUsage } from "@open-doing/types";
 import { z } from "zod";
 
 import { Alert } from "@/components/ui/shadcn/alert";
@@ -26,7 +25,6 @@ import {
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
 import { DatePicker } from "@/components/ui/date-picker";
-import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 
 import {
@@ -48,8 +46,6 @@ export interface PersonalProjectFormModalProps {
     startDate?: string | null;
     endDate?: string | null;
   };
-  /** 本人标签池（RSC 注入；编辑态在表单底部提供「管理标签」入口）。 */
-  tagPool?: TagWithUsage[];
   /** 提交成功后回调（由调用方关闭弹窗并刷新数据）。 */
   onSuccess: () => void;
   /** 取消 / 关闭。 */
@@ -70,7 +66,6 @@ export function PersonalProjectFormModal({
   project,
   onSuccess,
   onCancel,
-  tagPool,
 }: PersonalProjectFormModalProps) {
   const t = useTranslations("personal");
   const tProjects = useTranslations("projects");
@@ -290,13 +285,6 @@ export function PersonalProjectFormModal({
           </div>
 
           <DialogFooter>
-            {mode === "edit" && tagPool ? (
-              <TagManagerButton
-                space={{ kind: "personal" }}
-                initialTags={tagPool}
-                canManage
-              />
-            ) : null}
             <Button
               type="button"
               variant="outline"

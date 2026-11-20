@@ -1,6 +1,5 @@
 "use client";
 
-import type { TagWithUsage } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -24,8 +23,6 @@ export interface TeamProjectHeaderActionsProps {
   project: { id: string; name: string; description?: string };
   /** 删除成功后跳转地址（项目页已不存在）。 */
   redirectTo: string;
-  /** 本团队标签池（RSC 注入；编辑表单内的「管理标签」入口用）。 */
-  tagPool?: TagWithUsage[];
 }
 
 /**
@@ -37,7 +34,6 @@ export function TeamProjectHeaderActions({
   teamId,
   project,
   redirectTo,
-  tagPool,
 }: TeamProjectHeaderActionsProps) {
   const router = useRouter();
   const t = useTranslations("projects");
@@ -94,7 +90,6 @@ export function TeamProjectHeaderActions({
           <TeamProjectForm
             teamId={teamId}
             project={project}
-            tagPool={tagPool}
             onCancel={() => setEditOpen(false)}
             onSuccess={() => {
               toast.success(t("saved"));

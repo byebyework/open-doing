@@ -9,8 +9,7 @@ import { requireUser } from "@/features/auth/session";
 import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
 import { getPersonalProjectListWithStats } from "@/features/personal/projects/service";
 import { ProjectStatsCard } from "@/features/projects/components/ProjectStatsCard";
-import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
-import { listTags, tagsByProjectId } from "@/features/tags/service";
+import { tagsByProjectId } from "@/features/tags/service";
 import { personalProjectHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
@@ -32,10 +31,7 @@ export default async function PersonalProjectsPage() {
   const user = await requireUser();
 
   const today = todayInShanghai();
-  const [list, tagPool] = await Promise.all([
-    getPersonalProjectListWithStats(user.id, today),
-    listTags({ ownerId: user.id }),
-  ]);
+  const list = await getPersonalProjectListWithStats(user.id, today);
   const projectTagsMap = await tagsByProjectId(list.map((item) => item.project.id));
 
   return (
@@ -43,12 +39,7 @@ export default async function PersonalProjectsPage() {
       <PageHeader
         title={t("listTitle")}
         subtitle={t("listSubtitlePersonal")}
-        actions={
-          <>
-            <TagManagerButton space={{ kind: "personal" }} initialTags={tagPool} canManage />
-            <NewPersonalProjectButton />
-          </>
-        }
+        actions={<NewPersonalProjectButton />}
       />
 
       <div className="mt-6 flex flex-wrap items-center gap-2 text-[13px] text-[var(--muted-foreground)]">

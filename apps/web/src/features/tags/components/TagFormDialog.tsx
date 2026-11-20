@@ -24,7 +24,10 @@ import { TAG_DESCRIPTION_MAX_LENGTH, TAG_NAME_MAX_LENGTH } from "../constants";
 import { createTagAction, updateTagAction } from "../actions";
 import { tagColorStyle } from "./tag-colors";
 import { TagPill } from "./TagPill";
-import type { TagSpace } from "./TagManagerDialog";
+
+
+/** 空间定位：团队空间带 teamId，个人空间缺省（action 取会话用户）。 */
+export type TagSpace = { kind: "team"; teamId: string } | { kind: "personal" };
 
 /** TagFormDialog 入参：`editing` 传空即创建态；类型创建后不可改。删除走模块表格。 */
 export interface TagFormDialogProps {

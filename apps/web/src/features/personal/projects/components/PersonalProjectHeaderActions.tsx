@@ -1,6 +1,5 @@
 "use client";
 
-import type { TagWithUsage } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -14,15 +13,7 @@ import { deletePersonalProjectAction } from "../actions";
 import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
 
 export interface PersonalProjectHeaderActionsProps {
-  project: {
-    id: string;
-    name: string;
-    description?: string;
-    startDate?: string | null;
-    endDate?: string | null;
-  };
-  /** 本人标签池（RSC 注入；编辑弹层内的「管理标签」入口用）。 */
-  tagPool?: TagWithUsage[];
+  project: { id: string; name: string; description?: string };
 }
 
 /**
@@ -33,7 +24,6 @@ export interface PersonalProjectHeaderActionsProps {
  */
 export function PersonalProjectHeaderActions({
   project,
-  tagPool,
 }: PersonalProjectHeaderActionsProps) {
   const router = useRouter();
   const t = useTranslations("personal");
@@ -78,7 +68,6 @@ export function PersonalProjectHeaderActions({
         open={editOpen}
         mode="edit"
         project={project}
-        tagPool={tagPool}
         onSuccess={() => {
           setEditOpen(false);
           router.refresh();

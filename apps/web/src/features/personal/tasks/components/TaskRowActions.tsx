@@ -1,6 +1,6 @@
 "use client";
 
-import type { Subtask, TagWithUsage, Task, TaskStatus } from "@open-doing/types";
+import type { Subtask, Task, TaskStatus } from "@open-doing/types";
 import { ChevronDownIcon, Loader2Icon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -286,8 +286,6 @@ export function TaskStatusButtons({
 export interface PersonalProjectPageActionsProps {
   /** 当前项目（编辑 / 删除复用 Task 1 的操作区）。 */
   project: { id: string; name: string; description?: string };
-  /** 本人标签池（RSC 注入；编辑弹层的「管理标签」入口用）。 */
-  tagPool?: TagWithUsage[];
   /** 项目页路径，用于写 `?view=`。 */
   projectPath: string;
   /** 当前视图：列表 / 看板。 */
@@ -307,7 +305,6 @@ export function PersonalProjectPageActions({
   projectPath,
   view,
   projects,
-  tagPool,
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -315,7 +312,7 @@ export function PersonalProjectPageActions({
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
-      <PersonalProjectHeaderActions project={project} tagPool={tagPool} />
+      <PersonalProjectHeaderActions project={project} />
 
       <Tabs value={view} onValueChange={(nextView) => {
         if (nextView === "list" || nextView === "board") {

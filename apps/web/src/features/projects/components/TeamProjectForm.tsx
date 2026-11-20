@@ -1,10 +1,9 @@
 "use client";
 
-import type { Project, TagWithUsage } from "@open-doing/types";
+import type { Project } from "@open-doing/types";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { DatePicker } from "@/components/ui/date-picker";
-import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
 import {
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
@@ -41,8 +40,6 @@ export interface TeamProjectFormProps {
     startDate?: string | null;
     endDate?: string | null;
   };
-  /** 本团队标签池（RSC 注入；编辑态在表单底部提供「管理标签」入口）。 */
-  tagPool?: TagWithUsage[];
   /** 成功后回调（页面跳转 / 弹窗关闭由调用方决定）。 */
   onSuccess: (project: Project) => void;
   /** 取消（编辑弹窗内使用）。 */
@@ -60,7 +57,6 @@ export function TeamProjectForm({
   project,
   onSuccess,
   onCancel,
-  tagPool,
 }: TeamProjectFormProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
@@ -244,13 +240,6 @@ export function TeamProjectForm({
           <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
             {tCommon("cancel")}
           </Button>
-        ) : null}
-        {isEdit && tagPool ? (
-          <TagManagerButton
-            space={{ kind: "team", teamId }}
-            initialTags={tagPool}
-            canManage
-          />
         ) : null}
       </div>
     </form>
