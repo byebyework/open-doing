@@ -1,6 +1,6 @@
 # Open Doing Architecture
 
-Companion doc: [2026-10-21-open-doing-v1-design.md](./2026-10-21-open-doing-v1-design.md)
+Companion doc: [archive/2026-10-21-open-doing-v1-design.md](./archive/2026-10-21-open-doing-v1-design.md)（已退役的历史设计文档）
 
 This document describes the target architecture and how the system is built. What the features are and why they exist is defined in the design document.
 
