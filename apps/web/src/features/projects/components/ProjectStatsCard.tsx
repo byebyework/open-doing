@@ -1,7 +1,8 @@
-import type { ProjectHealthKind, ProjectStats } from "@open-doing/types";
+import type { ProjectHealthKind, ProjectStats, Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 
+import { TagPill } from "@/features/tags/components/TagPill";
 import { Badge } from "@/components/ui/shadcn/badge";
 import { Progress } from "@/components/ui/shadcn/progress";
 
@@ -18,6 +19,8 @@ export interface ProjectStatsCardProps {
   /** 项目周期（可选扩展；未设置不渲染该行）。 */
   startDate?: string;
   endDate?: string;
+  /** 项目标签（可选扩展；最多 2 + 折叠）。 */
+  tags?: Tag[];
 }
 
 /** 徽标与进度条/pct 的颜色映射(对齐原型 16/17:逾期红 / 临期黄 / 正常绿)。 */
@@ -68,6 +71,7 @@ export function ProjectStatsCard({
   health,
   startDate,
   endDate,
+  tags,
 }: ProjectStatsCardProps) {
   const t = useTranslations("projects");
   const style = HEALTH_STYLE[health];
@@ -90,6 +94,16 @@ export function ProjectStatsCard({
           {t(HEALTH_LABEL_KEY[health])}
         </Badge>
       </div>
+      {tags && tags.length > 0 ? (
+        <div className="mb-2 flex flex-wrap gap-1">
+          {tags.slice(0, 2).map((tag) => (
+            <TagPill key={tag.id} name={tag.name} color={tag.color} />
+          ))}
+          {tags.length > 2 ? (
+            <span className="text-[12px] text-[var(--ink-400)]">+{tags.length - 2}</span>
+          ) : null}
+        </div>
+      ) : null}
       {startDate && endDate ? (
         <p className="mb-1 text-[12px] tabular-nums text-[var(--muted-foreground)]">
           {t("dateRange")}: {startDate} → {endDate}

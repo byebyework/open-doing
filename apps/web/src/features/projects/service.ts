@@ -5,14 +5,15 @@ import {
   isDueSoon,
   isOverdue,
 } from "@open-doing/types";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
 import { generateUniqueSlug } from "@/lib/slug";
 import type { DbClient } from "@/server/db/client";
 import { db } from "@/server/db/client";
-import { projects, subtasks, tasks } from "@/server/db/schema";
+import { projectTags, projects, subtasks, tasks } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
+import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
 
 // 限长常量唯一来源：features/projects/constants.ts（客户端安全）。
 // 服务端校验器仍在本模块（server-only），常量经重导出兼容既有引用。
@@ -29,7 +30,7 @@ export {
 type ProjectRow = typeof projects.$inferSelect;
 
 /** 数据库行 -> 可跨边界传递的领域 Project（时间统一为 ISO 字符串）。 */
-function toProject(row: ProjectRow): Project {
+function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
   return {
     id: row.id,
     teamId: row.teamId,
@@ -39,6 +40,7 @@ function toProject(row: ProjectRow): Project {
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
     endDate: row.endDate ?? undefined,
+    tags,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -115,7 +117,7 @@ export async function listTeamProjects(
     .where(eq(projects.teamId, teamId))
     .orderBy(asc(projects.createdAt));
 
-  return rows.map(toProject);
+  return rows.map((row) => toProject(row));
 }
 
 /**
@@ -135,7 +137,7 @@ export async function listTeamProjectsForTeams(
     .where(inArray(projects.teamId, teamIds))
     .orderBy(asc(projects.createdAt));
 
-  return rows.map(toProject);
+  return rows.map((row) => toProject(row));
 }
 
 /**
@@ -172,6 +174,8 @@ export async function createTeamProject(
     /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 初始项目标签（全量覆写语义；仅写 project_tags）。 */
+    tagIds?: string[];
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -205,7 +209,15 @@ export async function createTeamProject(
     .values({ teamId: input.teamId, name, slug, description, startDate, endDate })
     .returning();
 
-  return toProject(row!);
+  if (input.tagIds?.length) {
+    await applyProjectTags(
+      { teamId: input.teamId, projectId: row!.id, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
+      client,
+    );
+  }
+
+  const tagsMap = await tagsByProjectId([row!.id], client);
+  return toProject(row!, tagsMap.get(row!.id) ?? []);
 }
 
 /** 读取团队项目行（内部使用）；团队不匹配 / 不存在返回 undefined。 */
@@ -238,6 +250,8 @@ export async function updateTeamProject(
     /** 起止日期；`null` 清空，未传保持不变。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目标签全量覆写；仅写 project_tags，不动 projects 行。 */
+    tagIds?: string[];
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -270,7 +284,15 @@ export async function updateTeamProject(
   );
 
   if (Object.keys(changes).length === 0) {
-    return toProject(existing);
+    // 仅打标（无其他字段变更）：只写 project_tags，不触碰 projects 行。
+    if (input.tagIds !== undefined) {
+      await applyProjectTags(
+        { teamId: input.teamId, projectId: input.projectId, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
+        client,
+      );
+    }
+    const tagsMap = await tagsByProjectId([existing.id], client);
+    return toProject(existing, tagsMap.get(existing.id) ?? []);
   }
 
   const [row] = await client
@@ -283,7 +305,14 @@ export async function updateTeamProject(
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
-  return toProject(row);
+  if (input.tagIds !== undefined) {
+    await applyProjectTags(
+      { teamId: input.teamId, projectId: input.projectId, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
+      client,
+    );
+  }
+  const tagsMap = await tagsByProjectId([row.id], client);
+  return toProject(row, tagsMap.get(row.id) ?? []);
 }
 
 /**
@@ -454,4 +483,42 @@ export async function getTeamProjectListWithStats(
     project: toProject(row),
     stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
   }));
+}
+
+/**
+ * 项目打标：`tagIds` 全量覆写为项目最终标签集（owner/admin，requireManageRole
+ * 由调用方保证——本函数不做角色校验以复用 create/update 的事务上下文）。
+ * **只写 project_tags，绝不触碰 projects 行**；tagIds 必须全部属于该团队
+ * 标签池且为 project 类型，越界/错配抛 DomainError（tags ns）。
+ */
+export async function applyProjectTags(
+  input: {
+    teamId: string;
+    projectId: string;
+    actorId: string;
+    tagIds: string[];
+  },
+  client: DbClient = db,
+): Promise<void> {
+  const tagIds = Array.from(new Set(input.tagIds));
+  const pool = await getTagsByIds(tagIds, client);
+  if (pool.length !== tagIds.length) {
+    throw new DomainError("标签不存在或无权访问", "tags", { key: "tagInvalidForSpace" });
+  }
+  assertTagsBelongToSpace(pool, { teamId: input.teamId });
+  assertTagsAreProjectTags(pool);
+
+  await client.transaction(async (tx) => {
+    await tx.delete(projectTags).where(
+      tagIds.length === 0
+        ? eq(projectTags.projectId, input.projectId)
+        : and(eq(projectTags.projectId, input.projectId), notInArray(projectTags.tagId, tagIds)),
+    );
+    if (tagIds.length > 0) {
+      await tx
+        .insert(projectTags)
+        .values(tagIds.map((tagId) => ({ projectId: input.projectId, tagId })))
+        .onConflictDoNothing();
+    }
+  });
 }

@@ -133,6 +133,8 @@ export interface Project {
   startDate?: string;
   /** 结束日期（`YYYY-MM-DD`，可选扩展） */
   endDate?: string;
+  /** 项目标签（可选扩展；读路径按需组装，type='project'） */
+  tags?: Tag[];
   createdAt: string;
 }
 

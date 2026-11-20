@@ -4,7 +4,7 @@ import { and, asc, count, eq, inArray, isNotNull, isNull, sql } from "drizzle-or
 import { DomainError } from "@/lib/domain-error";
 import type { DbClient } from "@/server/db/client";
 import { db } from "@/server/db/client";
-import { tags, taskTags } from "@/server/db/schema";
+import { projectTags, tags, taskTags } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 
 import { TAG_DESCRIPTION_MAX_LENGTH, TAG_NAME_MAX_LENGTH, TAGS_PER_SPACE_LIMIT } from "./constants";
@@ -391,6 +391,20 @@ export function assertTagsBelongToSpace(
  * 断言标签全部为任务类型（任务打标专用）：混入 project 类型即类型错配。
  * 纯函数，供团队 / 个人任务打标服务复用。
  */
+/**
+ * 断言标签全部为项目类型（项目打标专用）：混入 task 类型即类型错配。
+ * 纯函数，与 assertTagsAreTaskTags 对偶。
+ */
+export function assertTagsAreProjectTags(found: Tag[]): void {
+  for (const tag of found) {
+    if (tag.type !== "project") {
+      throw new DomainError("标签类型与打标对象不匹配", "tags", {
+        key: "tagTypeMismatch",
+      });
+    }
+  }
+}
+
 export function assertTagsAreTaskTags(found: Tag[]): void {
   for (const tag of found) {
     if (tag.type !== "task") {
@@ -425,6 +439,32 @@ export async function tagsByTaskId(
     const list = map.get(row.taskId) ?? [];
     list.push(toTag(row.tag));
     map.set(row.taskId, list);
+  }
+  return map;
+}
+
+/**
+ * 批量取项目 → 标签映射（项目卡片展示用，语义同 tagsByTaskId）。
+ * 一次 JOIN 按 projectId 分组防 N+1；空集合返回空 Map。
+ */
+export async function tagsByProjectId(
+  projectIds: string[],
+  client: DbClient = db,
+): Promise<Map<string, Tag[]>> {
+  const map = new Map<string, Tag[]>();
+  if (projectIds.length === 0) return map;
+
+  const rows = await client
+    .select({ projectId: projectTags.projectId, tag: tags })
+    .from(projectTags)
+    .innerJoin(tags, eq(projectTags.tagId, tags.id))
+    .where(inArray(projectTags.projectId, projectIds))
+    .orderBy(asc(tags.createdAt));
+
+  for (const row of rows) {
+    const list = map.get(row.projectId) ?? [];
+    list.push(toTag(row.tag));
+    map.set(row.projectId, list);
   }
   return map;
 }

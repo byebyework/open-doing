@@ -10,7 +10,7 @@ import { NewPersonalProjectButton } from "@/features/personal/projects/component
 import { getPersonalProjectListWithStats } from "@/features/personal/projects/service";
 import { ProjectStatsCard } from "@/features/projects/components/ProjectStatsCard";
 import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
-import { listTags } from "@/features/tags/service";
+import { listTags, tagsByProjectId } from "@/features/tags/service";
 import { personalProjectHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
@@ -36,6 +36,7 @@ export default async function PersonalProjectsPage() {
     getPersonalProjectListWithStats(user.id, today),
     listTags({ ownerId: user.id }),
   ]);
+  const projectTagsMap = await tagsByProjectId(list.map((item) => item.project.id));
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]" data-testid="projects-list-page">
@@ -72,6 +73,7 @@ export default async function PersonalProjectsPage() {
               description={item.project.description}
               startDate={item.project.startDate}
               endDate={item.project.endDate}
+              tags={projectTagsMap.get(item.project.id)}
               href={personalProjectHref(item.project.slug)}
               stats={item.stats}
               health={getProjectHealthKind(item.stats) as ProjectHealthKind}

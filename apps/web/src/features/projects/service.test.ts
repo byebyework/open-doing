@@ -9,6 +9,7 @@ import type { DbClient } from "@/server/db/client";
 import {
   comments,
   notifications,
+  projectTags,
   projects,
   subtasks,
   tasks,
@@ -17,6 +18,8 @@ import {
 } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 import { TeamPermissionError } from "@/features/teams/permissions";
+import { createTag } from "@/features/tags/service";
+import { applyProjectTags } from "./service";
 import { createTeam } from "@/features/teams/service";
 
 import {
@@ -524,5 +527,98 @@ describe.skipIf(!hasTestDatabase)("项目起止时间修复（终审）", () => 
       db,
     );
     expect(updated).toMatchObject({ startDate: "2026-03-01", endDate: undefined });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("项目打标（T4）", () => {
+  let db: DbClient;
+  let seq = 0;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    seq = 0;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("项目打标全量覆写；只写 project_tags 不动 projects.updated_at", async () => {
+    seq += 1;
+    const owner = await createUser(db, `t4-owner-${seq}`);
+    const team = await createTeam({ name: `T4Team${seq}` }, owner.id, db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: `T4Proj${seq}` },
+      db,
+    );
+    const pTagA = await createTag(
+      { teamId: team.id, actorId: owner.id, name: `A${seq}`, color: "mint", type: "project" },
+      db,
+    );
+    const pTagB = await createTag(
+      { teamId: team.id, actorId: owner.id, name: `B${seq}`, color: "sky", type: "project" },
+      db,
+    );
+
+    const before = await db.select().from(projects).where(eq(projects.id, project.id)).limit(1);
+    const updatedBefore = before[0]!.createdAt;
+
+    await applyProjectTags(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, tagIds: [pTagA.id] },
+      db,
+    );
+    let rows = await db.select().from(projectTags).where(eq(projectTags.projectId, project.id));
+    expect(rows.map((r) => r.tagId)).toEqual([pTagA.id]);
+
+    await applyProjectTags(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, tagIds: [pTagB.id, pTagA.id] },
+      db,
+    );
+    rows = await db.select().from(projectTags).where(eq(projectTags.projectId, project.id));
+    expect(new Set(rows.map((r) => r.tagId))).toEqual(new Set([pTagA.id, pTagB.id]));
+
+    const after = await db.select().from(projects).where(eq(projects.id, project.id)).limit(1);
+    expect(after[0]!.createdAt.getTime()).toBe(updatedBefore.getTime());
+  });
+
+  it("task 类型标签提交给项目 → tagTypeMismatch", async () => {
+    seq += 1;
+    const owner = await createUser(db, `t4-mix-${seq}`);
+    const team = await createTeam({ name: `T4Mix${seq}` }, owner.id, db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: `T4MixProj${seq}` },
+      db,
+    );
+    const tTag = await createTag(
+      { teamId: team.id, actorId: owner.id, name: `TT${seq}`, color: "purple", type: "task" },
+      db,
+    );
+
+    await expect(
+      applyProjectTags(
+        { teamId: team.id, projectId: project.id, actorId: owner.id, tagIds: [tTag.id] },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "tagTypeMismatch" }, field: "tags" });
+  });
+
+  it("member 给团队项目打标被拒", async () => {
+    seq += 1;
+    const owner = await createUser(db, `t4-mem-${seq}`);
+    const member = await createUser(db, `t4-memm-${seq}`);
+    const team = await createTeam({ name: `T4Mem${seq}` }, owner.id, db);
+    await db.insert(teamMemberships).values({ teamId: team.id, userId: member.id, role: "member" });
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: `T4MemProj${seq}` },
+      db,
+    );
+
+    // 公开路径：updateTeamProject 内含 requireManageRole（member 被拒）。
+    await expect(
+      updateTeamProject(
+        { teamId: team.id, projectId: project.id, actorId: member.id, tagIds: [] },
+        db,
+      ),
+    ).rejects.toBeInstanceOf(TeamPermissionError);
   });
 });

@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
 import { ProjectStatsCard } from "@/features/projects/components/ProjectStatsCard";
 import { getTeamProjectListWithStats } from "@/features/projects/service";
-import { listTags } from "@/features/tags/service";
+import { listTags, tagsByProjectId } from "@/features/tags/service";
 import { TagManagerButton } from "@/features/tags/components/TagManagerButton";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
@@ -62,6 +62,7 @@ export default async function TeamProjectsPage(
     getTeamProjectListWithStats(team.id, today),
     listTags({ teamId: team.id }),
   ]);
+  const projectTagsMap = await tagsByProjectId(list.map((item) => item.project.id));
   const overallPercent = Math.round(
     averageProjectProgress(list.map((item) => item.stats.progress)) * 100,
   );
@@ -110,6 +111,7 @@ export default async function TeamProjectsPage(
               description={item.project.description}
               startDate={item.project.startDate}
               endDate={item.project.endDate}
+              tags={projectTagsMap.get(item.project.id)}
               href={teamProjectHref(team.slug, item.project.slug)}
               stats={item.stats}
               health={getProjectHealthKind(item.stats) as ProjectHealthKind}
