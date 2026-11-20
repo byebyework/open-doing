@@ -10,6 +10,7 @@ export type SpaceModule =
   | "calendar"
   | "moments"
   | "analysis"
+  | "tags"
   | "settings";
 
 export function spaceDashboardHref(spaceRef: SpaceRef): string {

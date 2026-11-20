@@ -230,7 +230,8 @@
     "openNavAria": "Open navigation",
     "collapseSidebar": "Collapse sidebar",
     "expandSidebar": "Expand sidebar",
-    "aboutSystem": "About system"
+    "aboutSystem": "About system",
+    "tags": "Tags"
   },
   "tasks": {
     "title": "Title",
@@ -630,6 +631,33 @@
     "typeInvalid": "Invalid tag type",
     "descriptionTooLong": "Tag description cannot exceed {max} characters",
     "tagTypeMismatch": "Tag type does not match the tagging target"
+  },
+  "labels": {
+    "title": "Tag management",
+    "subtitle": "Organize your work with project and task tags for faster retrieval and stats.",
+    "newTag": "New tag",
+    "tabAll": "All",
+    "tabProject": "Project tags",
+    "tabTask": "Task tags",
+    "searchPlaceholder": "Search tag name or description...",
+    "colPreview": "Preview",
+    "colType": "Type",
+    "colDescription": "Description",
+    "colRelated": "Linked",
+    "colUpdated": "Updated",
+    "colOps": "Actions",
+    "typeProject": "Project tag",
+    "typeTask": "Task tag",
+    "relatedProjects": "{count, plural, one {# project} other {# projects}}",
+    "relatedTasks": "{count, plural, one {# task} other {# tasks}}",
+    "typeLabel": "Tag type",
+    "nameLabel": "Tag name",
+    "descriptionLabel": "Description (optional)",
+    "descriptionPlaceholder": "Briefly describe when to use this tag...",
+    "previewFallback": "Preview",
+    "randomColorAria": "Pick a random color",
+    "editTitle": "Edit tag",
+    "createTitle": "New tag"
   },
   "personal": {
     "space": "Personal space",

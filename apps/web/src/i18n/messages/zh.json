@@ -230,7 +230,8 @@
     "openNavAria": "打开导航",
     "collapseSidebar": "收起侧栏",
     "expandSidebar": "展开侧栏",
-    "aboutSystem": "关于系统"
+    "aboutSystem": "关于系统",
+    "tags": "标签"
   },
   "tasks": {
     "title": "标题",
@@ -630,6 +631,33 @@
     "typeInvalid": "标签类型无效",
     "descriptionTooLong": "标签描述不能超过 {max} 个字符",
     "tagTypeMismatch": "标签类型与打标对象不匹配"
+  },
+  "labels": {
+    "title": "标签管理",
+    "subtitle": "用项目标签与任务标签归类你的工作，让检索与统计更高效。",
+    "newTag": "新建标签",
+    "tabAll": "全部",
+    "tabProject": "项目标签",
+    "tabTask": "任务标签",
+    "searchPlaceholder": "搜索标签名称或描述...",
+    "colPreview": "标签预览",
+    "colType": "类型",
+    "colDescription": "描述",
+    "colRelated": "关联数量",
+    "colUpdated": "最近更新",
+    "colOps": "操作",
+    "typeProject": "项目标签",
+    "typeTask": "任务标签",
+    "relatedProjects": "{count, plural, other {# 个项目}}",
+    "relatedTasks": "{count, plural, other {# 个任务}}",
+    "typeLabel": "标签类型",
+    "nameLabel": "标签名称",
+    "descriptionLabel": "描述（可选）",
+    "descriptionPlaceholder": "简要说明该标签的适用场景...",
+    "previewFallback": "标签预览",
+    "randomColorAria": "随机选择颜色",
+    "editTitle": "编辑标签",
+    "createTitle": "新建标签"
   },
   "personal": {
     "space": "个人空间",

@@ -246,6 +246,7 @@ interface SpaceNavModule {
     | "calendar"
     | "moments"
     | "analysis"
+    | "tags"
     | "teamManagement";
   Icon: ComponentType;
 }
@@ -273,6 +274,25 @@ function ProjectsIcon() {
  * 排在 Calendar 与 Analysis 之间（时间语义相邻）；
  * 个人设置已上移为系统级 `/settings`，不再出现在空间导航。
  */
+/** 标签模块图标（对齐原型 tag icon）。 */
+function TagsIcon() {
+  return (
+    <svg
+      className={ICON_CLASS}
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.9"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M3 10V5a2 2 0 0 1 2-2h5l11 11-7 7L3 10z" />
+      <circle cx="8" cy="8" r="1.4" />
+    </svg>
+  );
+}
+
 const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
   { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
@@ -280,6 +300,7 @@ const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
   { module: "moments", labelKey: "moments", Icon: MomentsIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
+  { module: "tags", labelKey: "tags", Icon: TagsIcon },
 ];
 
 /**
@@ -293,6 +314,7 @@ const TEAM_MODULES: SpaceNavModule[] = [
   { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
+  { module: "tags", labelKey: "tags", Icon: TagsIcon },
   { module: "settings", labelKey: "teamManagement", Icon: SettingsIcon },
 ];
 

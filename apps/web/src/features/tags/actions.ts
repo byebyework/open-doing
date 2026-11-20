@@ -1,6 +1,6 @@
 "use server";
 
-import type { Tag, TagColor, Task } from "@open-doing/types";
+import type { Tag, TagColor, TagType, Task } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 
 import type { ActionResult } from "@/features/auth/actions";
@@ -58,6 +58,10 @@ export async function createTagAction(input: {
   teamId?: string;
   name: string;
   color: TagColor;
+  /** 标签类型；缺省 'task'。 */
+  type?: TagType;
+  /** 可选描述；`null` = 未填写。 */
+  description?: string | null;
 }): Promise<ActionResult<Tag>> {
   const user = await getCurrentUser();
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
@@ -76,6 +80,8 @@ export async function updateTagAction(input: {
   tagId: string;
   name?: string;
   color?: TagColor;
+  /** 可选描述；`null` 清空。类型不可改（刻意不接受 type）。 */
+  description?: string | null;
 }): Promise<ActionResult<Tag>> {
   const user = await getCurrentUser();
   if (!user) return (await standardFailuresForRequest()).notLoggedIn();
