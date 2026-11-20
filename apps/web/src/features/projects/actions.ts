@@ -48,6 +48,8 @@ async function toFailure(error: unknown): Promise<Failure> {
 export async function createTeamProjectAction(input: {
   teamId: string;
   name: string;
+  /** 一句话简述（≤100 字符）。 */
+  summary?: string;
   description?: string;
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
@@ -77,6 +79,8 @@ export async function updateTeamProjectAction(input: {
   teamId: string;
   projectId: string;
   name?: string;
+  /** 一句话简述；`null`/空串清空。 */
+  summary?: string;
   description?: string;
   /** 起止日期；`null` 清空。 */
   startDate?: string | null;

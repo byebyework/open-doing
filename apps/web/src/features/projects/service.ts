@@ -23,6 +23,7 @@ import {
   MILESTONE_NAME_MAX_LENGTH,
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
+  PROJECT_SUMMARY_MAX_LENGTH,
 } from "./constants";
 
 export {
@@ -30,6 +31,7 @@ export {
   MILESTONE_NAME_MAX_LENGTH,
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
+  PROJECT_SUMMARY_MAX_LENGTH,
 } from "./constants";
 
 type ProjectRow = typeof projects.$inferSelect;
@@ -43,6 +45,7 @@ function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
     ownerId: row.ownerId,
     name: row.name,
     slug: row.slug,
+    summary: row.summary ?? undefined,
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
     endDate: row.endDate ?? undefined,
@@ -156,6 +159,23 @@ function validateDescription(value: unknown): string | null {
   return description;
 }
 
+/** 一句话简述清空统一存 null；≤100 字符（Linear 式标题下一行）。 */
+function validateSummary(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+
+  const summary = value.trim();
+  if (!summary) return null;
+  if (summary.length > PROJECT_SUMMARY_MAX_LENGTH) {
+    throw new DomainError(
+      `简述不能超过 ${PROJECT_SUMMARY_MAX_LENGTH} 个字符`,
+      "summary",
+      { key: "summaryTooLong", params: { max: PROJECT_SUMMARY_MAX_LENGTH } },
+    );
+  }
+
+  return summary;
+}
+
 /**
  * 断言操作者可在该团队管理项目（owner/admin），返回其角色。
  *
@@ -247,6 +267,8 @@ export async function createTeamProject(
     teamId: string;
     actorId: string;
     name: string;
+    /** 一句话简述（≤100 字符）。 */
+    summary?: string;
     description?: string;
     /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
     startDate?: string | null;
@@ -261,6 +283,7 @@ export async function createTeamProject(
   client: DbClient = db,
 ): Promise<Project> {
   const name = validateName(input?.name);
+  const summary = validateSummary(input?.summary);
   const description = validateDescription(input?.description);
   const startDate = input?.startDate ?? null;
   const endDate = input?.endDate ?? null;
@@ -291,7 +314,7 @@ export async function createTeamProject(
   const row = await client.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(projects)
-      .values({ teamId: input.teamId, name, slug, description, startDate, endDate, priority })
+      .values({ teamId: input.teamId, name, slug, summary, description, startDate, endDate, priority })
       .returning();
 
     if (milestones.length > 0) {
@@ -345,6 +368,8 @@ export async function updateTeamProject(
     projectId: string;
     actorId: string;
     name?: string;
+    /** 一句话简述；`null`/空串清空，未传保持不变。 */
+    summary?: string;
     description?: string;
     /** 起止日期；`null` 清空，未传保持不变。 */
     startDate?: string | null;
@@ -364,11 +389,14 @@ export async function updateTeamProject(
   }
 
   const changes: Partial<
-    Pick<ProjectRow, "name" | "description" | "startDate" | "endDate" | "priority">
+    Pick<ProjectRow, "name" | "summary" | "description" | "startDate" | "endDate" | "priority">
   > = {};
 
   if (input?.name !== undefined) {
     changes.name = validateName(input.name);
+  }
+  if (input?.summary !== undefined) {
+    changes.summary = validateSummary(input.summary);
   }
   if (input?.description !== undefined) {
     changes.description = validateDescription(input.description);

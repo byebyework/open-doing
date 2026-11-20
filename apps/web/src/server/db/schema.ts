@@ -290,6 +290,8 @@ export const projects = pgTable(
     ownerId: uuidRef("owner_id").references(() => users.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     slug: text("slug").notNull(),
+    // 一句话简述（标题下一行，Linear 式）；≤100 字符由服务层校验。
+    summary: text("summary"),
     description: text("description"),
     // 起止时间（可选，按天粒度，与 due_date 同口径）：end >= start 由服务层校验。
     startDate: date("start_date", { mode: "string" }),

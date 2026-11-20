@@ -6,6 +6,9 @@ export const PROJECT_NAME_MAX_LENGTH = 50;
 /** 项目描述长度上限（与表单校验一致）。 */
 export const PROJECT_DESCRIPTION_MAX_LENGTH = 500;
 
+/** 项目一句话简述长度上限（与表单校验一致）。 */
+export const PROJECT_SUMMARY_MAX_LENGTH = 100;
+
 /** 里程碑名称长度上限（与表单校验一致）。 */
 export const MILESTONE_NAME_MAX_LENGTH = 50;
 

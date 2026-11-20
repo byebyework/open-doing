@@ -681,7 +681,8 @@
     "milestoneNameTooLong": "Milestone name must be at most {max} characters",
     "milestoneDescriptionTooLong": "Milestone description must be at most {max} characters",
     "milestoneNotFound": "Milestone not found or inaccessible",
-    "priorityInvalid": "Invalid priority value"
+    "priorityInvalid": "Invalid priority value",
+    "summaryTooLong": "Summary must be at most {max} characters"
   },
   "projects": {
     "project": "Project",
@@ -770,7 +771,10 @@
     "drawerDoneLabel": "Done",
     "drawerOverdueLabel": "Overdue",
     "notSet": "Not set",
-    "createMilestoneTitle": "Create milestone"
+    "createMilestoneTitle": "Create milestone",
+    "summaryPlaceholder": "Add a short summary...",
+    "summaryLabel": "Summary",
+    "summaryTooLong": "Summary must be at most {max} characters"
   },
   "dashboard": {
     "title": "Dashboard",

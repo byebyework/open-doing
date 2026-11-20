@@ -52,6 +52,8 @@ async function toFailure(error: unknown): Promise<Failure> {
  */
 export async function createPersonalProjectAction(input: {
   name: string;
+  /** 一句话简述（≤100 字符）。 */
+  summary?: string;
   description?: string;
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
@@ -78,6 +80,8 @@ export async function updatePersonalProjectAction(
   projectId: string,
   input: {
     name?: string;
+    /** 一句话简述；`null`/空串清空。 */
+    summary?: string;
     description?: string;
     /** 起止日期；`null` 清空。 */
     startDate?: string | null;

@@ -41,6 +41,7 @@ export default async function PersonalProjectsPage() {
   const rows: ProjectListRow[] = list.map((item) => ({
     id: item.project.id,
     name: item.project.name,
+    summary: item.project.summary,
     description: item.project.description,
     href: personalProjectHref(item.project.slug),
     priority: item.project.priority,

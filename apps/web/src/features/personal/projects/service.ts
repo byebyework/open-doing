@@ -23,6 +23,9 @@ export const PROJECT_NAME_MAX_LENGTH = 50;
 /** 项目描述长度上限（与表单校验一致）。 */
 export const PROJECT_DESCRIPTION_MAX_LENGTH = 500;
 
+/** 项目一句话简述长度上限（与表单校验一致）。 */
+export const PROJECT_SUMMARY_MAX_LENGTH = 100;
+
 type ProjectRow = typeof projects.$inferSelect;
 
 /** 数据库行 -> 可跨边界传递的领域 Project（时间统一为 ISO 字符串）。 */
@@ -33,6 +36,7 @@ function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
     ownerId: row.ownerId,
     name: row.name,
     slug: row.slug,
+    summary: row.summary ?? undefined,
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
     endDate: row.endDate ?? undefined,
@@ -68,6 +72,21 @@ function validateName(value: unknown): string {
   }
 
   return name;
+}
+
+/** 一句话简述清空统一存 undefined；≤100 字符。 */
+function validateSummary(value: unknown): string | undefined {
+  if (typeof value !== "string") return undefined;
+  const summary = value.trim();
+  if (!summary) return undefined;
+  if (summary.length > PROJECT_SUMMARY_MAX_LENGTH) {
+    throw new DomainError(
+      `简述不能超过 ${PROJECT_SUMMARY_MAX_LENGTH} 个字符`,
+      "summary",
+      { key: "summaryTooLong", params: { max: PROJECT_SUMMARY_MAX_LENGTH } },
+    );
+  }
+  return summary;
 }
 
 function validateDescription(value: unknown): string | undefined {
@@ -178,6 +197,8 @@ export async function createPersonalProject(
   userId: string,
   input: {
     name: string;
+    /** 一句话简述（≤100 字符）。 */
+    summary?: string;
     description?: string;
     /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
     startDate?: string | null;
@@ -192,6 +213,7 @@ export async function createPersonalProject(
   client: DbClient = db,
 ): Promise<Project> {
   const name = validateName(input?.name);
+  const summary = validateSummary(input?.summary);
   const description = validateDescription(input?.description);
   const startDate = input?.startDate ?? null;
   const endDate = input?.endDate ?? null;
@@ -226,6 +248,7 @@ export async function createPersonalProject(
         ownerId: userId,
         name,
         slug,
+        summary: summary ?? null,
         description: description ?? null,
         startDate,
         endDate,
@@ -370,6 +393,8 @@ export async function updatePersonalProject(
   projectId: string,
   input: {
     name?: string;
+    /** 一句话简述；`null`/空串清空，未传保持不变。 */
+    summary?: string;
     description?: string;
     /** 起止日期；`null` 清空，未传保持不变。 */
     startDate?: string | null;
@@ -387,11 +412,14 @@ export async function updatePersonalProject(
   }
 
   const changes: Partial<
-    Pick<ProjectRow, "name" | "description" | "startDate" | "endDate" | "priority">
+    Pick<ProjectRow, "name" | "summary" | "description" | "startDate" | "endDate" | "priority">
   > = {};
 
   if (input?.name !== undefined) {
     changes.name = validateName(input.name);
+  }
+  if (input?.summary !== undefined) {
+    changes.summary = validateSummary(input.summary) ?? null;
   }
   if (input?.description !== undefined) {
     changes.description = validateDescription(input.description) ?? null;

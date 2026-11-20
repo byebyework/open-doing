@@ -110,9 +110,9 @@ export function ProjectDetailDrawer({
               {statusLabel}
             </span>
           </div>
-          {project.description ? (
+          {(project.summary ?? project.description) ? (
             <p className="text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
-              {project.description}
+              {project.summary ?? project.description}
             </p>
           ) : null}
         </SheetHeader>

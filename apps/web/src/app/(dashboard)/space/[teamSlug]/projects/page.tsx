@@ -71,6 +71,7 @@ export default async function TeamProjectsPage(
   const rows: ProjectListRow[] = list.map((item) => ({
     id: item.project.id,
     name: item.project.name,
+    summary: item.project.summary,
     description: item.project.description,
     href: teamProjectHref(team.slug, item.project.slug),
     priority: item.project.priority,

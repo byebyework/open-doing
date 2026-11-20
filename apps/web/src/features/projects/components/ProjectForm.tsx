@@ -36,6 +36,7 @@ import {
 import {
   PROJECT_DESCRIPTION_MAX_LENGTH,
   PROJECT_NAME_MAX_LENGTH,
+  PROJECT_SUMMARY_MAX_LENGTH,
 } from "../constants";
 import { ProjectMilestoneEditor, type MilestoneDraftInput } from "./ProjectMilestoneEditor";
 
@@ -46,6 +47,8 @@ export type ProjectFormSpace = { kind: "team"; teamId: string } | { kind: "perso
 export interface ProjectFormProject {
   id: string;
   name: string;
+  /** 一句话简述（≤100 字符）。 */
+  summary?: string;
   description?: string;
   startDate?: string | null;
   endDate?: string | null;
@@ -175,6 +178,7 @@ export function ProjectForm({
       .trim()
       .min(1, t("nameRequired"))
       .max(50, t("nameTooLong", { max: 50 })),
+    summary: z.string().max(100, t("summaryTooLong", { max: 100 })),
     description: z.string().max(500, t("descriptionTooLong", { max: 500 })),
     startDate: z.string(),
     endDate: z.string(),
@@ -192,6 +196,7 @@ export function ProjectForm({
     resolver: zodResolver(schema),
     defaultValues: {
       name: project?.name ?? "",
+      summary: project?.summary ?? "",
       description: project?.description ?? "",
       startDate: project?.startDate ?? "",
       endDate: project?.endDate ?? "",
@@ -221,6 +226,7 @@ export function ProjectForm({
 
     const base = {
       name: values.name,
+      summary: values.summary ?? "",
       description: values.description ?? "",
       startDate: values.startDate.trim() ? values.startDate : null,
       endDate: values.endDate.trim() ? values.endDate : null,
@@ -244,6 +250,7 @@ export function ProjectForm({
               teamId: space.teamId,
               projectId: project!.id,
               name: base.name,
+              summary: base.summary,
               description: base.description,
               startDate: base.startDate,
               endDate: base.endDate,
@@ -253,6 +260,7 @@ export function ProjectForm({
           : await createTeamProjectAction({
               teamId: space.teamId,
               name: base.name,
+              summary: base.summary,
               description: base.description,
               startDate: base.startDate,
               endDate: base.endDate,
@@ -263,6 +271,7 @@ export function ProjectForm({
         : isEdit
           ? await updatePersonalProjectAction(project!.id, {
               name: base.name,
+              summary: base.summary,
               description: base.description,
               startDate: base.startDate,
               endDate: base.endDate,
@@ -271,6 +280,7 @@ export function ProjectForm({
             })
           : await createPersonalProjectAction({
               name: base.name,
+              summary: base.summary,
               description: base.description,
               startDate: base.startDate,
               endDate: base.endDate,
@@ -375,6 +385,25 @@ export function ProjectForm({
             {errors.name ? (
               <p id={`${testIdPrefix}-name-error`} className="text-[12.5px] text-[var(--error)]">
                 {errors.name.message}
+              </p>
+            ) : null}
+          </div>
+
+          <div className="mb-3 flex flex-col gap-2">
+            <Label htmlFor={`${testIdPrefix}-summary`}>{t("summaryLabel")}</Label>
+            <Input
+              id={`${testIdPrefix}-summary`}
+              type="text"
+              data-testid={`${testIdPrefix}-summary-input`}
+              placeholder={t("summaryPlaceholder")}
+              maxLength={100}
+              aria-invalid={errors.summary ? true : undefined}
+              disabled={submitting}
+              {...register("summary")}
+            />
+            {errors.summary ? (
+              <p className="text-[12.5px] text-[var(--error)]">
+                {errors.summary.message}
               </p>
             ) : null}
           </div>
@@ -496,20 +525,20 @@ export function ProjectForm({
             </p>
           ) : null}
 
-          {/* 简述行 = 项目描述（占位即标签）。 */}
+          {/* 简述行（Linear「Add a short summary」；一句话简介，独立于详细描述）。 */}
           <Input
             type="text"
-            data-testid={`${testIdPrefix}-description-input`}
-            placeholder={t("descriptionPlaceholder")}
-            maxLength={500}
-            aria-invalid={errors.description ? true : undefined}
+            data-testid={`${testIdPrefix}-summary-input`}
+            placeholder={t("summaryPlaceholder")}
+            maxLength={100}
+            aria-invalid={errors.summary ? true : undefined}
             disabled={submitting}
             className="h-auto border-none bg-transparent px-0 text-[14px] text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0 dark:bg-transparent"
-            {...register("description")}
+            {...register("summary")}
           />
-          {errors.description ? (
+          {errors.summary ? (
             <p className="mb-2 text-[12.5px] text-[var(--error)]">
-              {errors.description.message}
+              {errors.summary.message}
             </p>
           ) : null}
 
@@ -617,6 +646,25 @@ export function ProjectForm({
               </AttrPill>
             ) : null}
           </div>
+
+          <div className="my-3 border-t border-[var(--border)]" />
+
+          {/* 详细描述大区域（对照 Linear「Write a description, a project brief...」）。 */}
+          <Textarea
+            rows={4}
+            data-testid={`${testIdPrefix}-description-input`}
+            placeholder={t("descriptionPlaceholder")}
+            maxLength={500}
+            aria-invalid={errors.description ? true : undefined}
+            disabled={submitting}
+            className="min-h-[120px] border-none bg-transparent px-0 text-[14px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
+            {...register("description")}
+          />
+          {errors.description ? (
+            <p className="mb-2 text-[12.5px] text-[var(--error)]">
+              {errors.description.message}
+            </p>
+          ) : null}
 
           <div className="my-3 border-t border-[var(--border)]" />
 

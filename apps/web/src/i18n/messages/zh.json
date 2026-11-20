@@ -681,7 +681,8 @@
     "milestoneNameTooLong": "里程碑名称不能超过 {max} 个字符",
     "milestoneDescriptionTooLong": "里程碑描述不能超过 {max} 个字符",
     "milestoneNotFound": "里程碑不存在或无权访问",
-    "priorityInvalid": "优先级取值非法"
+    "priorityInvalid": "优先级取值非法",
+    "summaryTooLong": "简述不能超过 {max} 个字符"
   },
   "projects": {
     "project": "项目",
@@ -770,7 +771,10 @@
     "drawerDoneLabel": "已完成",
     "drawerOverdueLabel": "逾期",
     "notSet": "未设置",
-    "createMilestoneTitle": "创建里程碑"
+    "createMilestoneTitle": "创建里程碑",
+    "summaryPlaceholder": "添加一句话简介...",
+    "summaryLabel": "简述",
+    "summaryTooLong": "简述不能超过 {max} 个字符"
   },
   "dashboard": {
     "title": "仪表盘",

@@ -28,6 +28,8 @@ const PAGE_SIZE = 10;
 export interface ProjectListRow {
   id: string;
   name: string;
+  /** 一句话简述（行内第二行；缺省回落 description）。 */
+  summary?: string;
   description?: string;
   href: string;
   priority: TaskPriority;
@@ -283,9 +285,9 @@ export function ProjectListTable({
                       <span className="block truncate font-semibold text-[var(--color-text)] hover:text-[var(--color-primary)]">
                         {row.name}
                       </span>
-                      {row.description ? (
+                      {(row.summary ?? row.description) ? (
                         <span className="mt-0.5 block truncate text-[12.5px] font-normal text-[var(--color-text-muted)]">
-                          {row.description}
+                          {row.summary ?? row.description}
                         </span>
                       ) : null}
                     </button>

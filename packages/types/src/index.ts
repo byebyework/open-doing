@@ -128,6 +128,9 @@ export interface Project {
   ownerId: string | null;
   name: string;
   slug: string;
+  /** 一句话简述（标题下一行；≤100 字符，服务层校验） */
+  summary?: string;
+  /** 详细描述（可长文；≤500 字符，服务层校验） */
   description?: string;
   /** 开始日期（`YYYY-MM-DD`，可选扩展；end >= start 由服务层校验） */
   startDate?: string;
