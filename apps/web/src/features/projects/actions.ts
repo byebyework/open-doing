@@ -1,15 +1,18 @@
 "use server";
 
-import type { Project } from "@open-doing/types";
+import type { Project, ProjectMilestone, TaskPriority } from "@open-doing/types";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
 import { DomainError } from "@/lib/domain-error";
 
+import type { ProjectMilestoneInput } from "./service";
 import {
+  addTeamProjectMilestone,
   createTeamProject,
   deleteTeamProject,
+  deleteTeamProjectMilestone,
   updateTeamProject,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
@@ -48,8 +51,12 @@ export async function createTeamProjectAction(input: {
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
   endDate?: string | null;
+  /** 项目优先级；缺省 medium。 */
+  priority?: TaskPriority;
   /** 初始项目标签（全量覆写）。 */
   tagIds?: string[];
+  /** 初始里程碑（随表单一次性提交）。 */
+  milestones?: ProjectMilestoneInput[];
 }): Promise<ActionResult<Project>> {
   const user = await getCurrentUser();
   if (!user) {
@@ -73,6 +80,8 @@ export async function updateTeamProjectAction(input: {
   /** 起止日期；`null` 清空。 */
   startDate?: string | null;
   endDate?: string | null;
+  /** 项目优先级；未传保持不变。 */
+  priority?: TaskPriority;
   /** 项目标签全量覆写；仅写 project_tags。 */
   tagIds?: string[];
 }): Promise<ActionResult<Project>> {
@@ -84,6 +93,47 @@ export async function updateTeamProjectAction(input: {
   try {
     const project = await updateTeamProject({ ...input, actorId: user.id });
     return { ok: true, data: project };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 新增团队项目里程碑（仅 owner/admin，服务层再次校验）。 */
+export async function addTeamProjectMilestoneAction(input: {
+  teamId: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  /** 时间节点（`YYYY-MM-DD`，可空）。 */
+  dueDate?: string | null;
+}): Promise<ActionResult<ProjectMilestone>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    const milestone = await addTeamProjectMilestone({ ...input, actorId: user.id });
+    return { ok: true, data: milestone };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 删除团队项目里程碑（仅 owner/admin，服务层再次校验）。 */
+export async function deleteTeamProjectMilestoneAction(input: {
+  teamId: string;
+  projectId: string;
+  milestoneId: string;
+}): Promise<ActionResult<true>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    await deleteTeamProjectMilestone({ ...input, actorId: user.id });
+    return { ok: true, data: true };
   } catch (error) {
     return toFailure(error);
   }

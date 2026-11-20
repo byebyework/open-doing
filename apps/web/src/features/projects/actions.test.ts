@@ -6,13 +6,17 @@ import { TeamPermissionError } from "@/features/teams/permissions";
 import { DomainError } from "@/lib/domain-error";
 
 import {
+  addTeamProjectMilestoneAction,
   createTeamProjectAction,
   deleteTeamProjectAction,
+  deleteTeamProjectMilestoneAction,
   updateTeamProjectAction,
 } from "./actions";
 import {
+  addTeamProjectMilestone,
   createTeamProject,
   deleteTeamProject,
+  deleteTeamProjectMilestone,
   updateTeamProject,
 } from "./service";
 
@@ -32,6 +36,8 @@ vi.mock("./service", async (importOriginal) => {
     createTeamProject: vi.fn(),
     updateTeamProject: vi.fn(),
     deleteTeamProject: vi.fn(),
+    addTeamProjectMilestone: vi.fn(),
+    deleteTeamProjectMilestone: vi.fn(),
   };
 });
 
@@ -39,6 +45,8 @@ const mockGetCurrentUser = vi.mocked(getCurrentUser);
 const mockCreate = vi.mocked(createTeamProject);
 const mockUpdate = vi.mocked(updateTeamProject);
 const mockDelete = vi.mocked(deleteTeamProject);
+const mockAddMilestone = vi.mocked(addTeamProjectMilestone);
+const mockDeleteMilestone = vi.mocked(deleteTeamProjectMilestone);
 
 const TEAM_ID = "00000000-0000-0000-0000-000000000002";
 
@@ -49,7 +57,17 @@ const fakeProject: Project = {
   name: "Website Revamp",
   slug: "website-revamp",
   description: undefined,
+  priority: "medium",
   createdAt: "2026-10-23T00:00:00.000Z",
+};
+
+const fakeMilestone = {
+  id: "00000000-0000-0000-0000-000000000003",
+  projectId: fakeProject.id,
+  name: "上线",
+  description: undefined,
+  dueDate: "2026-12-20",
+  createdAt: "2026-11-20T00:00:00.000Z",
 };
 
 describe("团队项目 actions", () => {
@@ -170,5 +188,105 @@ describe("团队项目 actions", () => {
       projectId: fakeProject.id,
       actorId: "u1",
     });
+  });
+});
+
+describe("团队项目 actions：优先级与里程碑透传", () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  it("创建/更新把 priority 与 milestones 透传给 service", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockCreate.mockResolvedValue(fakeProject);
+    mockUpdate.mockResolvedValue(fakeProject);
+
+    await createTeamProjectAction({
+      teamId: TEAM_ID,
+      name: "X",
+      priority: "high",
+      milestones: [{ name: "上线", dueDate: "2026-12-20" }],
+    });
+    expect(mockCreate).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      actorId: "u1",
+      name: "X",
+      priority: "high",
+      milestones: [{ name: "上线", dueDate: "2026-12-20" }],
+    });
+
+    await updateTeamProjectAction({
+      teamId: TEAM_ID,
+      projectId: fakeProject.id,
+      priority: "low",
+    });
+    expect(mockUpdate).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      projectId: fakeProject.id,
+      actorId: "u1",
+      priority: "low",
+    });
+  });
+
+  it("addTeamProjectMilestoneAction：透传 + 未登录 + 权限错误", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockAddMilestone.mockResolvedValue(fakeMilestone);
+
+    await expect(
+      addTeamProjectMilestoneAction({
+        teamId: TEAM_ID,
+        projectId: fakeProject.id,
+        name: "上线",
+        description: "发布",
+        dueDate: "2026-12-20",
+      }),
+    ).resolves.toEqual({ ok: true, data: fakeMilestone });
+    expect(mockAddMilestone).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      projectId: fakeProject.id,
+      actorId: "u1",
+      name: "上线",
+      description: "发布",
+      dueDate: "2026-12-20",
+    });
+
+    mockGetCurrentUser.mockResolvedValue(null);
+    await expect(
+      addTeamProjectMilestoneAction({ teamId: TEAM_ID, projectId: fakeProject.id, name: "X" }),
+    ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
+
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockAddMilestone.mockRejectedValue(new TeamPermissionError("team:manage_projects"));
+    await expect(
+      addTeamProjectMilestoneAction({ teamId: TEAM_ID, projectId: fakeProject.id, name: "X" }),
+    ).resolves.toEqual({ ok: false, errors: { form: "没有权限执行该操作" } });
+  });
+
+  it("deleteTeamProjectMilestoneAction：透传 + 未登录", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockDeleteMilestone.mockResolvedValue(undefined);
+
+    await expect(
+      deleteTeamProjectMilestoneAction({
+        teamId: TEAM_ID,
+        projectId: fakeProject.id,
+        milestoneId: fakeMilestone.id,
+      }),
+    ).resolves.toEqual({ ok: true, data: true });
+    expect(mockDeleteMilestone).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      projectId: fakeProject.id,
+      milestoneId: fakeMilestone.id,
+      actorId: "u1",
+    });
+
+    mockGetCurrentUser.mockResolvedValue(null);
+    await expect(
+      deleteTeamProjectMilestoneAction({
+        teamId: TEAM_ID,
+        projectId: fakeProject.id,
+        milestoneId: fakeMilestone.id,
+      }),
+    ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
   });
 });

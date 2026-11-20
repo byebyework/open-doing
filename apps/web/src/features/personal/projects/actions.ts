@@ -1,14 +1,17 @@
 "use server";
 
-import type { Project } from "@open-doing/types";
+import type { Project, ProjectMilestone, TaskPriority } from "@open-doing/types";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { requireUser } from "@/features/auth/session";
 import { DomainError } from "@/lib/domain-error";
 
+import type { ProjectMilestoneInput } from "@/features/projects/service";
 import {
+  addPersonalProjectMilestone,
   createPersonalProject,
   deletePersonalProject,
+  deletePersonalProjectMilestone,
   updatePersonalProject,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
@@ -52,8 +55,12 @@ export async function createPersonalProjectAction(input: {
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
   endDate?: string | null;
+  /** 项目优先级；缺省 medium。 */
+  priority?: TaskPriority;
   /** 初始项目标签（全量覆写）。 */
   tagIds?: string[];
+  /** 初始里程碑（随表单一次性提交）。 */
+  milestones?: ProjectMilestoneInput[];
 }): Promise<ActionResult<Project>> {
   const user = await requireUser();
 
@@ -74,6 +81,8 @@ export async function updatePersonalProjectAction(
     /** 起止日期；`null` 清空。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目优先级；未传保持不变。 */
+    priority?: TaskPriority;
     /** 项目标签全量覆写；仅写 project_tags。 */
     tagIds?: string[];
   },
@@ -96,6 +105,41 @@ export async function deletePersonalProjectAction(
 
   try {
     await deletePersonalProject(user.id, projectId);
+    return { ok: true, data: true };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 新增个人项目里程碑（owner-only，服务层断言归属）。 */
+export async function addPersonalProjectMilestoneAction(
+  projectId: string,
+  input: {
+    name: string;
+    description?: string;
+    /** 时间节点（`YYYY-MM-DD`，可空）。 */
+    dueDate?: string | null;
+  },
+): Promise<ActionResult<ProjectMilestone>> {
+  const user = await requireUser();
+
+  try {
+    const milestone = await addPersonalProjectMilestone(user.id, projectId, input);
+    return { ok: true, data: milestone };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 删除个人项目里程碑（owner-only，服务层断言归属）。 */
+export async function deletePersonalProjectMilestoneAction(
+  projectId: string,
+  milestoneId: string,
+): Promise<ActionResult<true>> {
+  const user = await requireUser();
+
+  try {
+    await deletePersonalProjectMilestone(user.id, projectId, milestoneId);
     return { ok: true, data: true };
   } catch (error) {
     return toFailure(error);
