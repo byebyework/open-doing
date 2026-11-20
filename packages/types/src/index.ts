@@ -133,8 +133,21 @@ export interface Project {
   startDate?: string;
   /** 结束日期（`YYYY-MM-DD`，可选扩展） */
   endDate?: string;
+  /** 项目优先级：三档，默认 medium（列表/详情展示与筛选用） */
+  priority: TaskPriority;
   /** 项目标签（可选扩展；读路径按需组装，type='project'） */
   tags?: Tag[];
+  createdAt: string;
+}
+
+/** 项目里程碑：名称 + 描述（可空）+ 时间节点（可空）；项目删除级联。 */
+export interface ProjectMilestone {
+  id: string;
+  projectId: string;
+  name: string;
+  description?: string;
+  /** 时间节点，`YYYY-MM-DD`，可空 */
+  dueDate?: string;
   createdAt: string;
 }
 
@@ -199,6 +212,7 @@ export interface Notification {
 }
 
 export * from "./progress";
+export * from "./project-status";
 export * from "./project-health";
 export * from "./date";
 export * from "./tags";
