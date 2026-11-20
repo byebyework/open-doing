@@ -294,6 +294,8 @@ export const projects = pgTable(
     // 起止时间（可选，按天粒度，与 due_date 同口径）：end >= start 由服务层校验。
     startDate: date("start_date", { mode: "string" }),
     endDate: date("end_date", { mode: "string" }),
+    // 项目优先级三档（与 tasks.priority 同口径）；存量行由 DEFAULT 回填为 medium。
+    priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -369,6 +371,22 @@ export const projectTags = pgTable(
     primaryKey({ name: "project_tags_project_id_tag_id_pk", columns: [t.projectId, t.tagId] }),
     index("project_tags_tag_id_idx").on(t.tagId),
   ],
+);
+
+/** 项目里程碑：名称 + 描述（可空）+ 时间节点（date，可空）；项目删除级联。 */
+export const projectMilestones = pgTable(
+  "project_milestones",
+  {
+    id: uuidPk(),
+    projectId: uuidRef("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    dueDate: date("due_date", { mode: "string" }),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index("project_milestones_project_id_idx").on(t.projectId)],
 );
 
 /** 任务：project_id 可空（零散个人任务）；assignee_id 可空（成员退出后未指派）。 */
