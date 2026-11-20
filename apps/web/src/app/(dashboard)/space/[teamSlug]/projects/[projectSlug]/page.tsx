@@ -8,6 +8,8 @@ import {
   getTeamProjectBySlug,
   listTeamProjects,
 } from "@/features/projects/service";
+import { ProjectMilestonesSection } from "@/features/projects/components/ProjectMilestonesSection";
+import { listTeamProjectMilestones } from "@/features/projects/service";
 import {
   TeamProjectHeader,
   type TeamProjectView,
@@ -63,6 +65,7 @@ export default async function TeamProjectPage({
     listTags({ teamId: team.id }),
   ]);
   // 类型分流：任务打标入口只列 task 标签，项目编辑弹层只列 project 标签。
+  const milestones = await listTeamProjectMilestones(team.id, project.id);
   const taskTagPool = tagPool.filter((tag) => tag.type === "task");
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
@@ -120,6 +123,15 @@ export default async function TeamProjectPage({
           />
         }
       />
+
+      <div className="mt-5">
+        <ProjectMilestonesSection
+          space={{ kind: "team", teamId: team.id }}
+          projectId={project.id}
+          milestones={milestones}
+          canManage={can(membership.role, "team:manage_projects")}
+        />
+      </div>
 
       <div className="mt-5">
         {view === "board" ? (

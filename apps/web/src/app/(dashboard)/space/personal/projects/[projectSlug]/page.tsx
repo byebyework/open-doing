@@ -7,6 +7,8 @@ import {
   getPersonalProjectBySlug,
   listPersonalProjects,
 } from "@/features/personal/projects/service";
+import { ProjectMilestonesSection } from "@/features/projects/components/ProjectMilestonesSection";
+import { listPersonalProjectMilestones } from "@/features/personal/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
 import { listTags } from "@/features/tags/service";
 import { PersonalKanban } from "@/features/personal/tasks/components/PersonalKanban";
@@ -55,6 +57,7 @@ export default async function PersonalProjectPage({
     listTags({ ownerId: user.id }),
   ]);
   const taskTagPool = tagPool.filter((tag) => tag.type === "task");
+  const milestones = await listPersonalProjectMilestones(user.id, project.id);
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
@@ -98,6 +101,15 @@ export default async function PersonalProjectPage({
           />
         }
       />
+
+      <div className="mt-5">
+        <ProjectMilestonesSection
+          space={{ kind: "personal" }}
+          projectId={project.id}
+          milestones={milestones}
+          canManage
+        />
+      </div>
 
       <div className="mt-5">
         {view === "board" ? (
