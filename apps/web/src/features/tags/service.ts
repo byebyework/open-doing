@@ -322,7 +322,8 @@ export async function updateTag(
 
   const [row] = await client
     .update(tags)
-    .set(changes)
+    // 数据库时钟保证单调（insert 的 defaultNow 与本次 now() 同源）。
+    .set({ ...changes, updatedAt: sql`now()` })
     .where(eq(tags.id, existing.id))
     .returning();
 

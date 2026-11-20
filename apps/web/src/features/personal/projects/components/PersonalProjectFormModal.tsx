@@ -79,6 +79,17 @@ export function PersonalProjectFormModal({
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
   const [tagIds, setTagIds] = useState<string[]>(mode === "edit" ? (project?.tags?.map((tag) => tag.id) ?? []) : []);
+  // 弹层组件常驻：每次打开按 project.tags 重置 tagIds（渲染期同步），
+  // 否则上次编辑的残留 tagIds 会在全量覆写下静默清掉已保存标签。
+  const [syncedOpen, setSyncedOpen] = useState(open);
+  const [syncedProject, setSyncedProject] = useState(project);
+  if (open !== syncedOpen || project !== syncedProject) {
+    setSyncedOpen(open);
+    setSyncedProject(project);
+    if (open) {
+      setTagIds(project?.tags?.map((tag) => tag.id) ?? []);
+    }
+  }
   const [formError, setFormError] = useState<string | null>(null);
 
   // zod schema 在组件内构建:必填文案取自 next-intl。

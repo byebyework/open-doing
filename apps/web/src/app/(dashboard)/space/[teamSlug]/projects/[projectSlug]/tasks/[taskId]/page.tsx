@@ -68,7 +68,10 @@ export default async function TeamTaskDetailPage({
     assigneeId: task.assigneeId,
   };
 
-  const tagPool = await listTags({ teamId: team.id });
+  // 任务打标只接受 task 类型标签；project 类型不入任务 picker。
+  const taskTagPool = (await listTags({ teamId: team.id })).filter(
+    (tag) => tag.type === "task",
+  );
 
   return (
     <TeamTaskDetailClient
@@ -82,7 +85,7 @@ export default async function TeamTaskDetailPage({
         canAssign: canAssignTask(permissionInput),
       }}
       assigneeOptions={assigneeOptions}
-      tagPool={tagPool}
+      tagPool={taskTagPool}
     />
   );
 }

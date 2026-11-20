@@ -321,3 +321,29 @@ describe.skipIf(!hasTestDatabase)("标签类型与描述（T2）", () => {
     expect(pp).toMatchObject({ usageCount: 1 });
   });
 });
+
+describe.skipIf(!hasTestDatabase)("编辑推进 updatedAt（终审）", () => {
+  let db: DbClient;
+  let seq = 0;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+    seq = 0;
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("改名后 updatedAt 晚于 createdAt", async () => {
+    const owner = await createUser(db, `t-edit-${(seq += 1)}`);
+    const tag = await createTag({ ownerId: owner.id, name: "EditMe", color: "purple" }, db);
+    const updated = await updateTag(
+      { ownerId: owner.id, tagId: tag.id, name: "Edited", color: "mint" },
+      db,
+    );
+    expect(new Date(updated.updatedAt).getTime()).toBeGreaterThan(
+      new Date(updated.createdAt).getTime(),
+    );
+  });
+});

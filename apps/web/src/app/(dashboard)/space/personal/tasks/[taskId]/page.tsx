@@ -41,7 +41,10 @@ export default async function PersonalTaskDetailPage({
     }
   }
 
-  const tagPool = await listTags({ ownerId: user.id });
+  // 任务打标只接受 task 类型标签。
+  const taskTagPool = (await listTags({ ownerId: user.id })).filter(
+    (tag) => tag.type === "task",
+  );
 
   return (
     <TaskDetailClient
@@ -49,7 +52,7 @@ export default async function PersonalTaskDetailPage({
       backHref={backHref}
       backLabel={task.projectId ? t("backToProject") : t("backToMyTasks")}
       currentUserId={user.id}
-      tagPool={tagPool}
+      tagPool={taskTagPool}
     />
   );
 }
