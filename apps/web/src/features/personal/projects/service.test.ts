@@ -5,16 +5,19 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { comments, projects, subtasks, tasks, users } from "@/server/db/schema";
+import { comments, projectMilestones, projects, subtasks, tasks, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import { getProjectHealthKind } from "@open-doing/types";
 
 import {
+  addPersonalProjectMilestone,
   createPersonalProject,
   deletePersonalProject,
+  deletePersonalProjectMilestone,
   getPersonalProjectBySlug,
   getPersonalProjectListWithStats,
+  listPersonalProjectMilestones,
   listPersonalProjects,
   updatePersonalProject,
 } from "./service";
@@ -464,5 +467,138 @@ describe.skipIf(!hasTestDatabase)("个人项目起止时间", () => {
       endDate: null,
     }, db);
     expect(cleared).toMatchObject({ startDate: undefined, endDate: undefined });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("个人项目优先级与里程碑（表格模式）", () => {
+  let db: DbClient;
+  let userSeq = 100;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  async function createUser(username = `milestone_user_${(userSeq += 1)}`) {
+    const id = crypto.randomUUID();
+    await db
+      .insert(users)
+      .values({ id, uid: generateUid(), username, name: username, email: `${id}@test.local`, displayUsername: username });
+    return id;
+  }
+
+  it("创建项目：priority 缺省 medium、显式 high；更新走显式字段赋值", async () => {
+    const userId = await createUser();
+    const project = await createPersonalProject(userId, { name: "Prio" }, db);
+    expect(project.priority).toBe("medium");
+
+    const high = await createPersonalProject(
+      userId,
+      { name: "Prio High", priority: "high" },
+      db,
+    );
+    expect(high.priority).toBe("high");
+
+    const updated = await updatePersonalProject(userId, high.id, { priority: "low" }, db);
+    expect(updated.priority).toBe("low");
+    expect(updated.name).toBe("Prio High");
+  });
+
+  it("创建项目携带里程碑一次入库；项目删除级联清理里程碑", async () => {
+    const userId = await createUser();
+    const project = await createPersonalProject(
+      userId,
+      {
+        name: "Milestoned",
+        milestones: [
+          { name: "里程碑 A", dueDate: "2026-12-05" },
+          { name: "里程碑 B", description: "首个交付", dueDate: "2026-12-01" },
+        ],
+      },
+      db,
+    );
+    expect(
+      await db.select().from(projectMilestones).where(eq(projectMilestones.projectId, project.id)),
+    ).toHaveLength(2);
+
+    await deletePersonalProject(userId, project.id, db);
+    expect(
+      await db.select().from(projectMilestones).where(eq(projectMilestones.projectId, project.id)),
+    ).toHaveLength(0);
+  });
+
+  it("里程碑列表按 dueDate 升序（PG ASC NULLS LAST）", async () => {
+    const userId = await createUser();
+    const project = await createPersonalProject(
+      userId,
+      {
+        name: "Sorted",
+        milestones: [
+          { name: "里程碑 A", dueDate: "2026-12-05" },
+          { name: "里程碑 B", dueDate: "2026-12-01" },
+          { name: "无日期" },
+        ],
+      },
+      db,
+    );
+    const list = await listPersonalProjectMilestones(userId, project.id, db);
+    expect(list.map((m) => m.name)).toEqual(["里程碑 B", "里程碑 A", "无日期"]);
+  });
+
+  it("addPersonalProjectMilestone 追加；他人项目 → projectNotFound；跨项目 milestoneId → milestoneNotFound", async () => {
+    const owner = await createUser();
+    const stranger = await createUser();
+    const project = await createPersonalProject(owner, { name: "Owned" }, db);
+    const other = await createPersonalProject(owner, { name: "Other" }, db);
+
+    const added = await addPersonalProjectMilestone(
+      owner,
+      project.id,
+      { name: "上线", dueDate: "2026-12-20" },
+      db,
+    );
+    expect(added).toMatchObject({ projectId: project.id, name: "上线", dueDate: "2026-12-20" });
+
+    await expect(
+      addPersonalProjectMilestone(stranger, project.id, { name: "越权" }, db),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+
+    await expect(
+      deletePersonalProjectMilestone(stranger, project.id, added.id, db),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+
+    await expect(
+      deletePersonalProjectMilestone(owner, project.id, other.id, db),
+    ).rejects.toMatchObject({ i18n: { key: "milestoneNotFound" } });
+
+    await deletePersonalProjectMilestone(owner, project.id, added.id, db);
+    expect(
+      await db.select().from(projectMilestones).where(eq(projectMilestones.projectId, project.id)),
+    ).toHaveLength(0);
+  });
+
+  it("getPersonalProjectListWithStats 附 milestoneCount（空项目为 0）", async () => {
+    const owner = await createUser();
+    const withMilestones = await createPersonalProject(
+      owner,
+      {
+        name: "Counted",
+        milestones: [
+          { name: "M1", dueDate: "2026-12-01" },
+          { name: "M2", dueDate: "2026-12-02" },
+        ],
+      },
+      db,
+    );
+    const empty = await createPersonalProject(owner, { name: "EmptyCount" }, db);
+
+    const list = await getPersonalProjectListWithStats(owner, "2026-11-20", db);
+    const counted = list.find((item) => item.project.id === withMilestones.id);
+    const emptyItem = list.find((item) => item.project.id === empty.id);
+    expect(counted?.milestoneCount).toBe(2);
+    expect(emptyItem?.milestoneCount).toBe(0);
   });
 });

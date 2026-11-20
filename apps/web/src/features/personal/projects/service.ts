@@ -1,17 +1,21 @@
-import type { Project } from "@open-doing/types";
+import type { Project, ProjectMilestone, TaskPriority } from "@open-doing/types";
 import { and, asc, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
 import {
   buildProjectStats,
   listProjectTaskStatRows,
+  milestoneCountsByProjectId,
+  normalizeMilestoneInputs,
+  normalizePriority,
   type ProjectListItem,
+  type ProjectMilestoneInput,
   type ProjectTaskStatRow,
 } from "@/features/projects/service";
 import { generateUniqueSlug } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
-import { projectTags, projects, tasks } from "@/server/db/schema";
+import { projectMilestones, projectTags, projects, tasks } from "@/server/db/schema";
 
 /** 项目名称长度上限（与表单校验一致）。 */
 export const PROJECT_NAME_MAX_LENGTH = 50;
@@ -32,6 +36,7 @@ function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
     endDate: row.endDate ?? undefined,
+    priority: row.priority,
     tags,
     createdAt: row.createdAt.toISOString(),
   };
@@ -177,8 +182,12 @@ export async function createPersonalProject(
     /** 起止日期（`YYYY-MM-DD`，可空）；end >= start 由服务层校验。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目优先级；缺省 medium。 */
+    priority?: TaskPriority;
     /** 初始项目标签（全量覆写）。 */
     tagIds?: string[];
+    /** 初始里程碑（创建弹窗随表单一次性提交）。 */
+    milestones?: ProjectMilestoneInput[];
   },
   client: DbClient = db,
 ): Promise<Project> {
@@ -187,6 +196,8 @@ export async function createPersonalProject(
   const startDate = input?.startDate ?? null;
   const endDate = input?.endDate ?? null;
   assertProjectDateRange(startDate, endDate);
+  const priority = normalizePriority(input?.priority);
+  const milestones = normalizeMilestoneInputs(input?.milestones);
 
   // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
   // 构造越界入参，故该不变量用普通 Error 兜底，不分配 i18n key。
@@ -207,16 +218,130 @@ export async function createPersonalProject(
     return Boolean(existing);
   });
 
+  // 项目行、初始里程碑、初始标签收进同一事务：任一失败整体回滚。
+  const row = await client.transaction(async (tx) => {
+    const [inserted] = await tx
+      .insert(projects)
+      .values({
+        ownerId: userId,
+        name,
+        slug,
+        description: description ?? null,
+        startDate,
+        endDate,
+        priority,
+      })
+      .returning();
+
+    if (milestones.length > 0) {
+      await tx.insert(projectMilestones).values(
+        milestones.map((milestone) => ({
+          projectId: inserted!.id,
+          name: milestone.name,
+          description: milestone.description,
+          dueDate: milestone.dueDate,
+        })),
+      );
+    }
+
+    if (input.tagIds?.length) {
+      await applyOwnedProjectTags(inserted!.id, Array.from(new Set(input.tagIds)), userId, tx);
+    }
+
+    return inserted!;
+  });
+
+  const tagsMap = await tagsByProjectId([row.id], client);
+  return toProject(row, tagsMap.get(row.id) ?? []);
+}
+
+/** 里程碑数据库行 -> 领域 ProjectMilestone（时间统一为 ISO 字符串）。 */
+function toMilestone(row: typeof projectMilestones.$inferSelect): ProjectMilestone {
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    name: row.name,
+    description: row.description ?? undefined,
+    dueDate: row.dueDate ?? undefined,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** 归属断言 + 返回本人项目行；失败抛 projectNotFound。 */
+async function requireOwnedProjectRow(
+  userId: string,
+  projectId: string,
+  client: DbClient,
+): Promise<NonNullable<Awaited<ReturnType<typeof findOwnedProjectRow>>>> {
+  const row = await findOwnedProjectRow(userId, projectId, client);
+  if (!row) {
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+  }
+  return row;
+}
+
+/** 新增个人项目里程碑（owner-only；校验复用共享 normalizeMilestoneInputs）。 */
+export async function addPersonalProjectMilestone(
+  userId: string,
+  projectId: string,
+  input: { name: string; description?: string; dueDate?: string | null },
+  client: DbClient = db,
+): Promise<ProjectMilestone> {
+  const project = await requireOwnedProjectRow(userId, projectId, client);
+  const [milestone] = normalizeMilestoneInputs([input]);
+
   const [row] = await client
-    .insert(projects)
-    .values({ ownerId: userId, name, slug, description: description ?? null, startDate, endDate })
+    .insert(projectMilestones)
+    .values({
+      projectId: project.id,
+      name: milestone!.name,
+      description: milestone!.description,
+      dueDate: milestone!.dueDate,
+    })
     .returning();
 
-  if (input.tagIds?.length) {
-    await applyOwnedProjectTags(row!.id, Array.from(new Set(input.tagIds)), userId, client);
+  return toMilestone(row!);
+}
+
+/** 删除个人项目里程碑（owner-only）；milestoneId 不属于该项目 → milestoneNotFound。 */
+export async function deletePersonalProjectMilestone(
+  userId: string,
+  projectId: string,
+  milestoneId: string,
+  client: DbClient = db,
+): Promise<void> {
+  await requireOwnedProjectRow(userId, projectId, client);
+
+  const [row] = await client
+    .delete(projectMilestones)
+    .where(
+      and(
+        eq(projectMilestones.id, milestoneId),
+        eq(projectMilestones.projectId, projectId),
+      ),
+    )
+    .returning({ id: projectMilestones.id });
+
+  if (!row) {
+    throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
   }
-  const tagsMap = await tagsByProjectId([row!.id], client);
-  return toProject(row!, tagsMap.get(row!.id) ?? []);
+}
+
+/** 列出个人项目的里程碑：dueDate 升序（PG ASC 默认 NULLS LAST），同日按创建序。 */
+export async function listPersonalProjectMilestones(
+  userId: string,
+  projectId: string,
+  client: DbClient = db,
+): Promise<ProjectMilestone[]> {
+  await requireOwnedProjectRow(userId, projectId, client);
+
+  const rows = await client
+    .select()
+    .from(projectMilestones)
+    .where(eq(projectMilestones.projectId, projectId))
+    .orderBy(asc(projectMilestones.dueDate), asc(projectMilestones.createdAt));
+
+  return rows.map(toMilestone);
 }
 
 /** 读取本人项目行（内部使用）；不存在 / 非本人返回 undefined。 */
@@ -249,6 +374,8 @@ export async function updatePersonalProject(
     /** 起止日期；`null` 清空，未传保持不变。 */
     startDate?: string | null;
     endDate?: string | null;
+    /** 项目优先级；未传保持不变。 */
+    priority?: TaskPriority;
     /** 项目标签全量覆写；仅写 project_tags。 */
     tagIds?: string[];
   },
@@ -259,7 +386,9 @@ export async function updatePersonalProject(
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
-  const changes: Partial<Pick<ProjectRow, "name" | "description" | "startDate" | "endDate">> = {};
+  const changes: Partial<
+    Pick<ProjectRow, "name" | "description" | "startDate" | "endDate" | "priority">
+  > = {};
 
   if (input?.name !== undefined) {
     changes.name = validateName(input.name);
@@ -272,6 +401,10 @@ export async function updatePersonalProject(
   }
   if (input?.endDate !== undefined) {
     changes.endDate = input.endDate;
+  }
+  // 显式字段赋值（禁止整对象 spread 装载走私）：未传的 priority 不进 changes。
+  if (input?.priority !== undefined) {
+    changes.priority = normalizePriority(input.priority);
   }
   // 与新值组合出最终日期对再校验（允许先改一端；显式 null 是"清空"，
   // 必须按新值参与校验，否则清空一端会被旧值误判为区间倒挂）。
@@ -364,8 +497,13 @@ export async function getPersonalProjectListWithStats(
     projectRows.map((row) => row.id),
     client,
   );
+  const milestoneCounts = await milestoneCountsByProjectId(
+    projectRows.map((row) => row.id),
+    client,
+  );
   return projectRows.map((row) => ({
     project: toProject(row, projectTagsMap.get(row.id) ?? []),
     stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
+    milestoneCount: milestoneCounts.get(row.id) ?? 0,
   }));
 }
