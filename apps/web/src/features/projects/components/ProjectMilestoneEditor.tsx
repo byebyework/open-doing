@@ -1,13 +1,11 @@
 "use client";
 
-import { Loader2Icon } from "lucide-react";
+import { FlagIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
-import { DatePicker } from "@/components/ui/date-picker";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
-import { Label } from "@/components/ui/shadcn/label";
 import { MILESTONE_DESCRIPTION_MAX_LENGTH, MILESTONE_NAME_MAX_LENGTH } from "../constants";
 
 /** 里程碑编辑卡片提交值（时间节点为空串时不可提交）。 */
@@ -60,11 +58,11 @@ export function ProjectMilestoneEditor({
   };
 
   return (
-    <div className="flex flex-col gap-3 rounded-[var(--radius-lg)] border border-[var(--border)] p-3">
-      <div className="flex flex-col gap-2">
-        <Label htmlFor={`${testIdPrefix}-milestone-name-input`}>
-          {t("milestoneLabel")}
-        </Label>
+    /* 内联式编辑器（对照 Linear Create milestone）：无边框输入 + 小号日期
+     * pill + 小号按钮，弱化卡片感；不再重复「里程碑」标题（外层行已有）。 */
+    <div className="mt-2 flex flex-col gap-1 rounded-[var(--radius-lg)] bg-[var(--color-surface-inset)] px-3 py-2.5">
+      <div className="flex items-center gap-2">
+        <FlagIcon className="size-3.5 shrink-0 text-[var(--color-text-muted)]" aria-hidden="true" />
         <Input
           id={`${testIdPrefix}-milestone-name-input`}
           type="text"
@@ -74,34 +72,35 @@ export function ProjectMilestoneEditor({
           value={name}
           onChange={(event) => setName(event.target.value)}
           disabled={submitting}
+          className="h-auto border-none bg-transparent px-0 text-[14px] font-medium shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
         <Input
-          type="text"
-          data-testid={`${testIdPrefix}-milestone-description-input`}
-          placeholder={t("milestoneDescriptionPlaceholder")}
-          maxLength={MILESTONE_DESCRIPTION_MAX_LENGTH}
-          value={description}
-          onChange={(event) => setDescription(event.target.value)}
+          id={`${testIdPrefix}-milestone-due-date`}
+          type="date"
+          data-testid={`${testIdPrefix}-milestone-due-date`}
+          aria-label={t("milestoneDueDateLabel")}
+          value={dueDate}
+          onChange={(event) => setDueDate(event.target.value)}
           disabled={submitting}
+          className="h-7 w-[150px] shrink-0 rounded-full border-[var(--border)] bg-[var(--card)] px-3 text-[12.5px] tabular-nums"
         />
-        <div className="flex flex-col gap-2">
-          <Label htmlFor={`${testIdPrefix}-milestone-due-date`}>
-            {t("milestoneDueDateLabel")}
-          </Label>
-          <DatePicker
-            id={`${testIdPrefix}-milestone-due-date`}
-            testid={`${testIdPrefix}-milestone-due-date`}
-            value={dueDate}
-            onChange={setDueDate}
-            disabled={submitting}
-          />
-        </div>
       </div>
-      <div className="flex justify-end gap-2">
+      <Input
+        type="text"
+        data-testid={`${testIdPrefix}-milestone-description-input`}
+        placeholder={t("milestoneDescriptionPlaceholder")}
+        maxLength={MILESTONE_DESCRIPTION_MAX_LENGTH}
+        value={description}
+        onChange={(event) => setDescription(event.target.value)}
+        disabled={submitting}
+        className="h-auto border-none bg-transparent px-0 pl-6 text-[13px] text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0 dark:bg-transparent"
+      />
+      <div className="mt-1.5 flex justify-end gap-2">
         {onCancel ? (
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
+            size="sm"
             disabled={submitting}
             onClick={onCancel}
           >
@@ -110,6 +109,7 @@ export function ProjectMilestoneEditor({
         ) : null}
         <Button
           type="button"
+          size="sm"
           disabled={!canAdd}
           data-testid={`${testIdPrefix}-milestone-add-button`}
           onClick={handleAdd}
