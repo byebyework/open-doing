@@ -14,6 +14,8 @@ Authoritative docs (read the relevant section before changing code):
 
 Frozen contracts (e.g. `AppShell`, the import relationships in `(dashboard)/layout.tsx`) must not be modified.
 
+- **UI Copy & Minimalism**: Strictly follow the copy in `docs/prototypes/`. Do NOT add unsolicited helper text, explanatory banners/alerts, tooltips, or metric-definition captions unless explicitly specified in the prototypes or requested by the user. Keep forms and cards minimal—render only core labels, inputs, titles, and data.
+
 `apps/web/AGENTS.md`: Next.js has breaking changes relative to typical training data. Before writing Next-related code, read the relevant guides in `apps/web/node_modules/next/dist/docs/` and watch for deprecation notices.
 
 ## Build and Test Commands (repo root)
