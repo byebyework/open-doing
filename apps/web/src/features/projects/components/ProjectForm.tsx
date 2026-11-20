@@ -664,21 +664,25 @@ export function ProjectForm({
               <button
                 type="button"
                 data-testid={`${testIdPrefix}-milestone-toggle`}
-                aria-expanded={milestonesOpen}
-                disabled={milestones.length === 0 && !milestoneAdding}
+                aria-expanded={milestones.length > 0 ? milestonesOpen : undefined}
+                disabled={milestones.length === 0}
                 onClick={() => setMilestonesOpen((current) => !current)}
-                className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[var(--color-text)]"
+                className={`flex items-center gap-2 text-[14px] font-medium text-[var(--color-text)] ${
+                  milestones.length > 0 ? "cursor-pointer" : "cursor-default"
+                }`}
               >
                 {t("milestoneLabel")}
                 {milestones.length > 0 ? (
-                  <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
-                    {milestones.length}
-                  </span>
+                  <>
+                    <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
+                      {milestones.length}
+                    </span>
+                    <ChevronRightIcon
+                      className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${milestonesOpen ? "rotate-90" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </>
                 ) : null}
-                <ChevronRightIcon
-                  className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${milestonesOpen ? "rotate-90" : ""}`}
-                  aria-hidden="true"
-                />
               </button>
               {!milestoneAdding ? (
                 <Button
