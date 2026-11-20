@@ -307,6 +307,43 @@ describe("ProjectForm", () => {
     expect(mockTeamCreate).not.toHaveBeenCalled();
   });
 
+  it("里程碑列表折叠切换：展开见已加节点，收起只剩行；添加自动展开", async () => {
+    mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
+    renderForm();
+
+    click("test-project-milestone-add-trigger");
+    setInput("test-project-name-input", "Toggle Project");
+    setInput("test-project-milestone-name-input", "节点一");
+    const dateInput = document.body.querySelector<HTMLInputElement>(
+      '[data-testid="test-project-milestone-due-date"]',
+    )!;
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      setter.call(dateInput, "2026-12-01");
+      dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    click("test-project-milestone-add-button");
+    expect(
+      document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
+    ).toHaveLength(1);
+
+    // 收起：列表隐藏，仅剩行；计数徽标保留
+    click("test-project-milestone-toggle");
+    expect(
+      document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
+    ).toHaveLength(0);
+    expect(
+      document.body.querySelector('[data-testid="test-project-milestone-toggle"]')!.textContent,
+    ).toContain("1");
+
+    // 再展开
+    click("test-project-milestone-toggle");
+    expect(
+      document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
+    ).toHaveLength(1);
+  });
+
   it("编辑态标签池存在但未选任何标签：payload 带 tagIds: []（清空语义，不静默保留）", async () => {
     mockTeamUpdate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm({

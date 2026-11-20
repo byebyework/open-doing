@@ -8,6 +8,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/
 import { TaskTagPicker, TagOptionList } from "@/features/tags/components/TaskTagPicker";
 import {
   CalendarPlusIcon,
+  ChevronRightIcon,
   FlagIcon,
   Loader2Icon,
   PlusIcon,
@@ -161,6 +162,8 @@ export function ProjectForm({
   const [tagIds, setTagIds] = useState<string[]>(project?.tags?.map((tag) => tag.id) ?? []);
   const [milestones, setMilestones] = useState<MilestoneDraft[]>([]);
   const [milestoneAdding, setMilestoneAdding] = useState(false);
+  // 里程碑列表折叠态（对照 Linear：行内 ▶/▼ 切换；添加时自动展开）。
+  const [milestonesOpen, setMilestonesOpen] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEdit = Boolean(project);
@@ -203,6 +206,7 @@ export function ProjectForm({
       ...current,
       { ...draft, key: `${Date.now()}-${current.length}` },
     ]);
+    setMilestonesOpen(true);
   };
 
   const removeMilestone = (key: string) => {
@@ -616,28 +620,44 @@ export function ProjectForm({
 
           <div className="my-3 border-t border-[var(--border)]" />
 
-          {/* 里程碑折叠行（对照 Linear「Milestones · + Add」）。 */}
+          {/* 里程碑折叠行（对照 Linear「Milestones 1 ▶ · + Add」）：行内切换列表展开。 */}
           <div className="rounded-[var(--radius-lg)] border border-[var(--border)] px-4 py-3">
             <div className="flex items-center gap-2">
-              <span className="text-[14px] font-medium">{t("milestoneLabel")}</span>
-              {milestones.length > 0 ? (
-                <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
-                  {milestones.length}
-                </span>
-              ) : null}
+              <button
+                type="button"
+                data-testid={`${testIdPrefix}-milestone-toggle`}
+                aria-expanded={milestonesOpen}
+                disabled={milestones.length === 0 && !milestoneAdding}
+                onClick={() => setMilestonesOpen((current) => !current)}
+                className="flex cursor-pointer items-center gap-2 text-[14px] font-medium text-[var(--color-text)]"
+              >
+                {t("milestoneLabel")}
+                {milestones.length > 0 ? (
+                  <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
+                    {milestones.length}
+                  </span>
+                ) : null}
+                <ChevronRightIcon
+                  className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${milestonesOpen ? "rotate-90" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
               <Button
                 type="button"
                 variant="ghost"
                 className="ml-auto"
                 data-testid={`${testIdPrefix}-milestone-add-trigger`}
                 disabled={submitting || milestoneAdding}
-                onClick={() => setMilestoneAdding(true)}
+                onClick={() => {
+                  setMilestoneAdding(true);
+                  setMilestonesOpen(true);
+                }}
               >
                 <PlusIcon className="size-4" aria-hidden="true" />
                 {t("milestoneAdd")}
               </Button>
             </div>
-            {milestoneList}
+            {milestonesOpen ? milestoneList : null}
           </div>
         </>
       )}
