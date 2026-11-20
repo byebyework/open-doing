@@ -768,7 +768,9 @@
     "pageInfo": "Page {page} / {total} · {count} projects",
     "drawerTasksLabel": "Tasks",
     "drawerDoneLabel": "Done",
-    "drawerOverdueLabel": "Overdue"
+    "drawerOverdueLabel": "Overdue",
+    "notSet": "Not set",
+    "createMilestoneTitle": "Create milestone"
   },
   "dashboard": {
     "title": "Dashboard",

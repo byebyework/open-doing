@@ -768,7 +768,9 @@
     "pageInfo": "第 {page} / {total} 页 · 共 {count} 个",
     "drawerTasksLabel": "任务",
     "drawerDoneLabel": "已完成",
-    "drawerOverdueLabel": "逾期"
+    "drawerOverdueLabel": "逾期",
+    "notSet": "未设置",
+    "createMilestoneTitle": "创建里程碑"
   },
   "dashboard": {
     "title": "仪表盘",

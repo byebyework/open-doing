@@ -41,6 +41,14 @@ vi.mock("@/features/personal/projects/actions", async (importOriginal) => {
   };
 });
 
+/** Radix Popper 在 layout 阶段无条件 new ResizeObserver（jsdom 未实现）。 */
+class ResizeObserverStub {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+}
+globalThis.ResizeObserver = globalThis.ResizeObserver ?? (ResizeObserverStub as never);
+
 const mockTeamCreate = vi.mocked(createTeamProjectAction);
 const mockTeamUpdate = vi.mocked(updateTeamProjectAction);
 const mockPersonalCreate = vi.mocked(createPersonalProjectAction);
@@ -121,17 +129,17 @@ describe("ProjectForm", () => {
     click("test-project-submit-button");
   }
 
-  it("优先级 segmented 默认「中」，点击「高」后随 payload 提交", async () => {
+  it("默认优先级「中」；属性行 pill 选「高」后随 payload 提交", async () => {
     mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm();
 
-    const medium = document.body.querySelector<HTMLButtonElement>(
-      '[data-testid="test-project-priority-medium"]',
-    )!;
-    expect(medium.getAttribute("aria-pressed")).toBe("true");
+    const pill = () =>
+      document.body.querySelector<HTMLButtonElement>('[data-testid="test-project-priority-pill"]')!;
+    expect(pill().textContent).toContain("中优先级");
 
     setInput("test-project-name-input", "Prio Project");
-    click("test-project-priority-high");
+    click("test-project-priority-pill");
+    click("test-project-priority-option-high");
     submit();
     await act(async () => {});
     await act(async () => {});
@@ -144,9 +152,37 @@ describe("ProjectForm", () => {
     });
   });
 
-  it("里程碑编辑器：名称或日期为空时「添加」禁用；添加后随表单一次性提交", async () => {
+  it("日期 pill 缺省显示「未设置」；payload 携带空起止", async () => {
     mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm();
+
+    expect(
+      document.body.querySelector('[data-testid="test-project-start-pill"]')!.textContent,
+    ).toContain("未设置");
+    expect(
+      document.body.querySelector('[data-testid="test-project-end-pill"]')!.textContent,
+    ).toContain("未设置");
+
+    setInput("test-project-name-input", "Dates Project");
+    submit();
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(mockTeamCreate.mock.calls[0]![0]).toMatchObject({
+      startDate: null,
+      endDate: null,
+    });
+  });
+
+  it("里程碑折叠行：展开编辑器，名称或日期为空时「添加」禁用；添加后随表单一次性提交", async () => {
+    mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
+    renderForm();
+
+    // 折叠态无编辑器；点「添加」展开。
+    expect(
+      document.body.querySelector('[data-testid="test-project-milestone-add-button"]'),
+    ).toBeNull();
+    click("test-project-milestone-add-trigger");
 
     const add = () =>
       document.body.querySelector<HTMLButtonElement>(
@@ -191,6 +227,7 @@ describe("ProjectForm", () => {
     mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm();
 
+    click("test-project-milestone-add-trigger");
     setInput("test-project-name-input", "Remove Project");
     setInput("test-project-milestone-name-input", "节点");
     setInput("test-project-milestone-description-input", "首个交付");
