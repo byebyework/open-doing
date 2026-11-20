@@ -54,7 +54,7 @@ Environment variable gotchas:
 
 ### Feature domain modules (`apps/web/src/features/`)
 
-Self-contained by domain: auth / users / teams / projects / tasks / kanban / calendar / moments / analysis / notifications / personal / dashboard / landing. Each domain has:
+Self-contained by domain: auth / users / teams / projects / tasks / tags / kanban / calendar / moments / analysis / notifications / personal / dashboard / landing. Each domain has:
 
 - `actions.ts` — Server Actions: validate input → check permissions → call service → return `ActionResult<T>` (`{ ok: true, data }` or `{ ok: false, errors: { form?, <field>?: string } }`). Field errors are mapped back to the corresponding form fields by client forms.
 - `service.ts` — data access and business rules (e.g. "a member cannot edit others' tasks"); never scattered inside pages.
