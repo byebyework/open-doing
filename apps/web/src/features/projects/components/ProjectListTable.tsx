@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { FlagIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 
 import { Input } from "@/components/ui/shadcn/input";
@@ -100,6 +101,7 @@ const progressFillVar: Record<ProjectStatusKind, string> = {
 /** 项目列表表格（对照原型 projects-list.png）：筛选栏 + 七列表格。 */
 export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
   const t = useTranslations("projects");
+  const router = useRouter();
   const [filters, setFilters] = useState<ProjectListFilters>({
     status: "all",
     priority: "all",
@@ -233,7 +235,13 @@ export function ProjectListTable({ rows }: { rows: ProjectListRow[] }) {
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ duration: 0.2 }}
-                  className="border-b border-[var(--border)] transition-colors last:border-b-0 hover:bg-[var(--color-surface-hover)]"
+                  onClick={(event) => {
+                    // 整行可点（对照原型文案）；名称 Link 已承担导航，避免重复 push。
+                    const target = event.target as HTMLElement;
+                    if (target.closest("a")) return;
+                    router.push(row.href);
+                  }}
+                  className="cursor-pointer border-b border-[var(--border)] transition-colors last:border-b-0 hover:bg-[var(--color-surface-hover)]"
                 >
                   <td className="px-4 py-3" data-testid={`project-row-${index}`}>
                     <Link href={row.href} className="group block min-w-0">

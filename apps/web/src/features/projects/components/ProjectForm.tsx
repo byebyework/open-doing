@@ -154,8 +154,8 @@ export function ProjectForm({
       startDate: values.startDate.trim() ? values.startDate : null,
       endDate: values.endDate.trim() ? values.endDate : null,
       priority,
-      tagIds:
-        projectTagPool.length > 0 && tagIds.length > 0 ? tagIds : undefined,
+      // 标签池存在即全量覆写（[] = 清空已选；undefined = 无池不触碰 project_tags）。
+      tagIds: projectTagPool.length > 0 ? tagIds : undefined,
       milestones:
         !isEdit && milestones.length > 0
           ? milestones.map(({ name, description, dueDate }) => ({

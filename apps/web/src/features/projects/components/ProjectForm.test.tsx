@@ -270,6 +270,23 @@ describe("ProjectForm", () => {
     expect(mockTeamCreate).not.toHaveBeenCalled();
   });
 
+  it("编辑态标签池存在但未选任何标签：payload 带 tagIds: []（清空语义，不静默保留）", async () => {
+    mockTeamUpdate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
+    renderForm({
+      project: { id: "33333333-3333-3333-3333-333333333333", name: "NoTags" },
+      projectTagPool: [
+        { id: "t1", teamId: TEAM_ID, ownerId: null, name: "核心目标", color: "purple", type: "project", updatedAt: "", createdAt: "" },
+      ],
+    });
+
+    setInput("test-project-name-input", "NoTags");
+    submit();
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(mockTeamUpdate.mock.calls[0]![0]).toMatchObject({ tagIds: [] });
+  });
+
   it("退出保持窗口幂等闸：成功提交后 open=false 再提交不重复调用", async () => {
     mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     const onSuccess = vi.fn();

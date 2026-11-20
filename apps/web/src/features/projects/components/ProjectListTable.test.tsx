@@ -10,7 +10,15 @@ import type { Tag } from "@open-doing/types";
 import type { AppLocale } from "@/i18n/config";
 import zh from "@/i18n/messages/zh.json";
 
+import { vi } from "vitest";
 import { filterProjectRows, ProjectListTable, type ProjectListRow } from "./ProjectListTable";
+
+vi.mock("next/navigation", () => {
+  const push = vi.fn();
+  return { useRouter: () => ({ push }) };
+});
+
+import { useRouter } from "next/navigation";
 
 /**
  * 仓库 vitest 是 node 环境的 jsdom 探针写法（同 ProjectStatsCard.test.tsx）。
@@ -180,6 +188,19 @@ describe("ProjectListTable（DOM 探针）", () => {
     });
     expect(queryAll("project-row")).toHaveLength(0);
     expect(document.body.querySelector('[data-testid="project-filter-empty"]')).not.toBeNull();
+  });
+
+  it("整行可点：点击行内非链接单元格导航到项目详情", async () => {
+    renderTable(rows);
+    const push = vi.mocked(useRouter().push);
+    // 点状态 pill 所在单元格（非名称链接区）。
+    const row = document.body.querySelectorAll('[data-testid="project-row"]')[0];
+    const cell = row?.querySelector<HTMLTableCellElement>("td:nth-child(4)");
+    if (!cell) throw new Error("missing status cell");
+    act(() => {
+      cell.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(push).toHaveBeenCalledWith("/space/growth/projects/alpha");
   });
 
   it("里程碑 0 显示「-」，非 0 显示 N 个节点", () => {
