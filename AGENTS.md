@@ -155,4 +155,8 @@ Commit messages follow Conventional Commits:
 - The app is a single Next.js deployment (`apps/web`); PostgreSQL 16 is the only external service.
 - Database schema changes are applied via Drizzle migrations (`pnpm db:generate` then `pnpm db:migrate`); migrations are replayable on an empty database.
 - Env vars are resolved from `apps/web` (Next.js), not the repo root — configure production env accordingly.
+
+## Documentation Maintenance
+- **Keep docs in sync**: Whenever your changes alter the directory structure, database schema, build/test commands, environment variables, or core architectural patterns, you MUST update `AGENTS.md` / `apps/web/AGENTS.md` (or `docs/ARCHITECTURE.md`) in the same task before finishing.
+
 - Sample/seed data (`pnpm db:seed`) is for development only; never run it against production.
