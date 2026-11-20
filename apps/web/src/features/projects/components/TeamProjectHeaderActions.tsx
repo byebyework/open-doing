@@ -15,13 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/shadcn/dialog";
 
+import type { ProjectFormProject } from "./ProjectForm";
 import { deleteTeamProjectAction } from "../actions";
 import { TeamProjectForm } from "./TeamProjectForm";
 
 /** 项目页页头操作区入参（页头已按角色决定是否渲染本组件）。 */
 export interface TeamProjectHeaderActionsProps {
   teamId: string;
-  project: { id: string; name: string; description?: string };
+  /** 须含起止时间与优先级（共享表单编辑保存防误清空）。 */
+  project: ProjectFormProject;
   /** 删除成功后跳转地址（项目页已不存在）。 */
   redirectTo: string;
   /** 项目类型标签池（编辑弹层打标用）。 */

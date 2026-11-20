@@ -86,6 +86,10 @@ export default async function PersonalProjectPage({
               id: project.id,
               name: project.name,
               description: project.description,
+              startDate: project.startDate,
+              endDate: project.endDate,
+              priority: project.priority,
+              tags: project.tags,
             }}
             projectPath={projectPath}
             view={view}

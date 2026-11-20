@@ -8,22 +8,29 @@ import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/shadcn/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/shadcn/dialog";
+import { ProjectForm, type ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import { spaceDashboardHref } from "@/lib/routes";
 
 import { deletePersonalProjectAction } from "../actions";
-import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
 
 export interface PersonalProjectHeaderActionsProps {
-  project: { id: string; name: string; description?: string };
+  /** 当前项目（编辑复用共享 ProjectForm；须含起止时间与优先级防误清空）。 */
+  project: ProjectFormProject;
   /** 项目类型标签池（编辑弹层打标用）。 */
   projectTagPool?: Tag[];
 }
 
 /**
- * 项目占位页的「编辑 / 删除」操作区（P-3 会替换为完整项目页操作区）。
+ * 个人项目页的「编辑 / 删除」操作区。
  *
- * 编辑复用 PersonalProjectFormModal；删除走 ConfirmModal 二次确认，
- * 成功后回到「我的任务」。
+ * 编辑弹窗包共享 `ProjectForm`（open 作 exit-hold 幂等闸）；删除走
+ * ConfirmModal 二次确认，成功后回到「我的任务」。
  */
 export function PersonalProjectHeaderActions({
   project,
@@ -68,17 +75,31 @@ export function PersonalProjectHeaderActions({
         {tCommon("delete")}
       </Button>
 
-      <PersonalProjectFormModal
+      <Dialog
         open={editOpen}
-        mode="edit"
-        project={project}
-        projectTagPool={projectTagPool}
-        onSuccess={() => {
-          setEditOpen(false);
-          router.refresh();
+        onOpenChange={(next) => {
+          if (!next) setEditOpen(false);
         }}
-        onCancel={() => setEditOpen(false)}
-      />
+      >
+        <DialogContent className="sm:max-w-[480px]">
+          <DialogHeader>
+            <DialogTitle>{t("modalTitleEdit")}</DialogTitle>
+          </DialogHeader>
+
+          <ProjectForm
+            space={{ kind: "personal" }}
+            project={project}
+            projectTagPool={projectTagPool ?? []}
+            onSuccess={() => {
+              setEditOpen(false);
+              router.refresh();
+            }}
+            onCancel={() => setEditOpen(false)}
+            testIdPrefix="personal-project"
+            open={editOpen}
+          />
+        </DialogContent>
+      </Dialog>
 
       <ConfirmModal
         open={deleteOpen}

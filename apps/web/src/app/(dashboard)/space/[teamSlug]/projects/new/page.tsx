@@ -7,6 +7,7 @@ import { requireUser } from "@/features/auth/session";
 import { TeamProjectCreatePanel } from "@/features/projects/components/TeamProjectForm";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
+import { listTags } from "@/features/tags/service";
 
 interface NewTeamProjectPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
@@ -36,6 +37,10 @@ export default async function NewTeamProjectPage({
     notFound();
   }
 
+  const projectTagPool = (await listTags({ teamId: team.id })).filter(
+    (tag) => tag.type === "project",
+  );
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-[680px]">
       <nav
@@ -54,7 +59,11 @@ export default async function NewTeamProjectPage({
       />
 
       <section className={`mt-5 ${CARD_SHELL} p-5`}>
-        <TeamProjectCreatePanel teamId={team.id} teamSlug={team.slug} />
+        <TeamProjectCreatePanel
+          teamId={team.id}
+          teamSlug={team.slug}
+          projectTagPool={projectTagPool}
+        />
       </section>
     </div>
   );

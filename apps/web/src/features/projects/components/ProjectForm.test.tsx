@@ -14,7 +14,7 @@ import {
   createPersonalProjectAction,
   updatePersonalProjectAction,
 } from "@/features/personal/projects/actions";
-import { ProjectForm } from "./ProjectForm";
+import { ProjectForm, type ProjectFormProps } from "./ProjectForm";
 
 /**
  * 沿用 ProjectStatsCard.test.tsx 的 jsdom + act 最小探针写法。
@@ -76,7 +76,7 @@ describe("ProjectForm", () => {
     vi.resetAllMocks();
   });
 
-  function renderForm(props: Partial<Parameters<typeof ProjectForm>[0]> = {}) {
+  function renderForm(props: Partial<Omit<ProjectFormProps, "onSuccess">> & { onSuccess?: ProjectFormProps["onSuccess"] } = {}) {
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
@@ -85,6 +85,7 @@ describe("ProjectForm", () => {
             projectTagPool={[]}
             testIdPrefix="test-project"
             {...props}
+            onSuccess={props.onSuccess ?? (() => {})}
           />
         </NextIntlClientProvider>,
       );
@@ -225,12 +226,8 @@ describe("ProjectForm", () => {
     renderForm({
       project: {
         id: "33333333-3333-3333-3333-333333333333",
-        teamId: TEAM_ID,
-        ownerId: null,
         name: "Old",
-        slug: "old",
         priority: "low",
-        createdAt: "2026-11-01T00:00:00.000Z",
       },
     });
 

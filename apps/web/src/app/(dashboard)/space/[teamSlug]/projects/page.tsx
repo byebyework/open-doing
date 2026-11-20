@@ -2,19 +2,18 @@ import type { ProjectHealthKind } from "@open-doing/types";
 import { averageProjectProgress, getProjectHealthKind } from "@open-doing/types";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
+import { ProjectCreateDialog } from "@/features/projects/components/ProjectCreateDialog";
 import { ProjectStatsCard } from "@/features/projects/components/ProjectStatsCard";
 import { getTeamProjectListWithStats } from "@/features/projects/service";
-import { tagsByProjectId } from "@/features/tags/service";
+import { listTags, tagsByProjectId } from "@/features/tags/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug } from "@/features/teams/service";
-import { teamProjectHref, teamProjectNewHref } from "@/lib/routes";
+import { teamProjectHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
 export async function generateMetadata(
@@ -63,6 +62,9 @@ export default async function TeamProjectsPage(
     averageProjectProgress(list.map((item) => item.stats.progress)) * 100,
   );
   const canManageProjects = can(membership.role, "team:manage_projects");
+  const projectTagPool = canManageProjects
+    ? (await listTags({ teamId: team.id })).filter((tag) => tag.type === "project")
+    : [];
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]" data-testid="projects-list-page">
@@ -71,9 +73,12 @@ export default async function TeamProjectsPage(
         subtitle={t("listSubtitleTeam")}
         actions={
           canManageProjects ? (
-            <Link href={teamProjectNewHref(team.slug)} data-testid="projects-new-team-button">
-              <Button variant="outline">{t("newProjectButton")}</Button>
-            </Link>
+            <ProjectCreateDialog
+              space={{ kind: "team", teamId: team.id }}
+              projectTagPool={projectTagPool}
+              testIdPrefix="team-project"
+              triggerTestId="projects-new-team-button"
+            />
           ) : null
         }
       />

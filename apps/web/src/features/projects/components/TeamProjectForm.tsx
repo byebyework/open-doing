@@ -58,9 +58,12 @@ export function TeamProjectForm({
 export function TeamProjectCreatePanel({
   teamId,
   teamSlug,
+  projectTagPool = [],
 }: {
   teamId: string;
   teamSlug: string;
+  /** 项目类型标签池（RSC 注入；空池不渲染标签区）。 */
+  projectTagPool?: Tag[];
 }) {
   const router = useRouter();
   const t = useTranslations("projects");
@@ -68,7 +71,7 @@ export function TeamProjectCreatePanel({
   return (
     <ProjectForm
       space={{ kind: "team", teamId }}
-      projectTagPool={[]}
+      projectTagPool={projectTagPool}
       onSuccess={(project) => {
         toast.success(t("projectCreated"));
         router.push(teamProjectHref(teamSlug, project.slug));

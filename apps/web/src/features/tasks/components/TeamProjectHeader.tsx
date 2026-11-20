@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/shadcn/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
+import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import { TeamProjectHeaderActions } from "@/features/projects/components/TeamProjectHeaderActions";
 
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
@@ -17,7 +18,7 @@ export type TeamProjectView = "list" | "board";
 /** 页头操作区入参。 */
 export interface TeamProjectHeaderProps {
   teamId: string;
-  project: { id: string; name: string; description?: string };
+  project: ProjectFormProject;
   /** 项目页路径（写 `?view=` 用）。 */
   projectPath: string;
   /** 当前视图。 */

@@ -1,12 +1,8 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 
-import { Button } from "@/components/ui/shadcn/button";
-
-import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
+import { ProjectCreateDialog } from "@/features/projects/components/ProjectCreateDialog";
 
 /**
  * 「我的任务」页头部的新建个人项目入口（P-5 / D-1）。
@@ -14,26 +10,19 @@ import { PersonalProjectFormModal } from "./PersonalProjectFormModal";
  * 设计文档 9.4 要求个人项目创建入口同时出现在个人空间侧栏与「我的任务」
  * 页头部；v1.1 M2 统一空间导航（`SpaceNavMenu`）不再提供侧栏项目列表，
  * 页头入口成为唯一入口，按钮文案保留「个人」以区分团队项目入口。
- * 成功后 `router.refresh()` 同时刷新列表数据与侧栏项目分组。
+ * 成功后 `router.refresh()`（ProjectCreateDialog 内部处理）同时刷新
+ * 列表数据与侧栏项目分组。
  */
 export function NewPersonalProjectButton() {
-  const router = useRouter();
   const t = useTranslations("personal");
-  const [open, setOpen] = useState(false);
 
   return (
-    <>
-      <Button data-testid="new-personal-project-button" onClick={() => setOpen(true)}>{t("newProjectButton")}</Button>
-
-      <PersonalProjectFormModal
-        open={open}
-        mode="create"
-        onSuccess={() => {
-          setOpen(false);
-          router.refresh();
-        }}
-        onCancel={() => setOpen(false)}
-      />
-    </>
+    <ProjectCreateDialog
+      space={{ kind: "personal" }}
+      projectTagPool={[]}
+      triggerLabel={t("newProjectButton")}
+      testIdPrefix="personal-project"
+      triggerTestId="new-personal-project-button"
+    />
   );
 }

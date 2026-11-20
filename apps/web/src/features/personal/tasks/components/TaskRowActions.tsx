@@ -18,6 +18,7 @@ import {
 } from "@/components/ui/shadcn/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { PersonalProjectHeaderActions } from "@/features/personal/projects/components/PersonalProjectHeaderActions";
+import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import { personalTaskHref } from "@/lib/routes";
 
 import {
@@ -284,8 +285,8 @@ export function TaskStatusButtons({
 
 /** 项目页页头操作区入参。 */
 export interface PersonalProjectPageActionsProps {
-  /** 当前项目（编辑 / 删除复用 Task 1 的操作区）。 */
-  project: { id: string; name: string; description?: string };
+  /** 当前项目（编辑 / 删除复用操作区；须含起止时间与优先级防误清空）。 */
+  project: ProjectFormProject;
   /** 项目页路径，用于写 `?view=`。 */
   projectPath: string;
   /** 项目类型标签池（编辑弹层打标用）。 */
