@@ -41,12 +41,12 @@ test.describe("flow 13: 项目模块", () => {
     await expect(page).toHaveURL(/\/space\/personal\/projects$/, {
       timeout: 30_000,
     });
-    const cards = page.getByTestId(TEST_IDS.projects.projectsListCard);
-    await expect(cards.filter({ hasText: projectA })).toBeVisible();
-    await expect(cards.filter({ hasText: projectB })).toBeVisible();
+    const projectRows = page.getByTestId(TEST_IDS.projects.projectsListRow);
+    await expect(projectRows.filter({ hasText: projectA })).toBeVisible();
+    await expect(projectRows.filter({ hasText: projectB })).toBeVisible();
 
-    // 点卡片进详情页。
-    await cards.filter({ hasText: projectA }).click();
+    // 点项目行（名称链接）进详情页。
+    await projectRows.filter({ hasText: projectA }).locator("a").first().click();
     await expect(page).toHaveURL(
       new RegExp(
         `/space/personal/projects/${projectA
@@ -75,29 +75,22 @@ test.describe("flow 13: 项目模块", () => {
     );
     expect(teamSlug).not.toBe("");
 
-    // owner 可见「新建项目」,点击进表单页。
+    // owner 可见「新建项目」,点击打开弹窗（对照原型 projects-create-dialog）。
     await page.goto(`/space/${teamSlug}/projects`);
     await expect(page.getByTestId(TEST_IDS.projects.projectsListPage)).toBeVisible();
     await page.getByTestId(TEST_IDS.projects.projectsNewTeamButton).click();
-    await expect(page).toHaveURL(
-      new RegExp(`/space/${teamSlug}/projects/new$`),
-      { timeout: 30_000 },
-    );
+    const createDialog = page.getByTestId(TEST_IDS.projects.projectsCreateDialog);
+    await expect(createDialog).toBeVisible();
 
-    // 建项目后落到详情页,再回列表验证卡片。
-    await page.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
-    await page.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
-    await expect(page).toHaveURL(
-      /\/space\/[^/]+\/projects\/[^/]+$/,
-      { timeout: 30_000 },
-    );
-
-    await page.goto(`/space/${teamSlug}/projects`);
+    // 弹窗内建项目,成功后留在列表页,新项目行即时出现。
+    await createDialog.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
+    await createDialog.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
+    await expect(createDialog).toBeHidden();
     await expect(
       page
-        .getByTestId(TEST_IDS.projects.projectsListCard)
+        .getByTestId(TEST_IDS.projects.projectsListRow)
         .filter({ hasText: projectName }),
-    ).toBeVisible();
+    ).toBeVisible({ timeout: 30_000 });
   });
 
   test("非成员 404;member 无新建入口、卡片可见", async ({ page, browser }) => {
@@ -162,7 +155,7 @@ test.describe("flow 13: 项目模块", () => {
       await guestPage.goto(`/space/${teamSlug}/projects`);
       await expect(
         guestPage
-          .getByTestId(TEST_IDS.projects.projectsListCard)
+          .getByTestId(TEST_IDS.projects.projectsListRow)
           .filter({ hasText: projectName }),
       ).toBeVisible();
       await expect(

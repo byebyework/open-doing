@@ -66,12 +66,14 @@ test.describe("flow 18: 标签模块", () => {
     await dialog.getByTestId("task-tag-picker-trigger").click();
     await expect(dialog.getByRole("checkbox", { name: projTagName })).toBeVisible();
     await dialog.getByRole("checkbox", { name: projTagName }).click();
+    // 多选 Popover 选中后保持展开（可连续勾选）；再点触发器收起，避免遮挡提交按钮。
+    await dialog.getByTestId("task-tag-picker-trigger").click();
     await dialog.getByTestId("personal-project-submit-button").click();
     await expect(page.getByText("没有待处理的邀请。")).toHaveCount(0); // 弹层收起后页面稳定
 
-    // 5. 项目列表卡：项目标签 pill 可见
+    // 5. 项目列表行：项目标签 pill 可见
     await page.goto("/space/personal/projects");
-    const card = page.getByTestId(TEST_IDS.projects.projectsListCard).filter({ hasText: projectName });
-    await expect(card.getByTestId("tag-pill")).toHaveText(projTagName);
+    const row = page.getByTestId(TEST_IDS.projects.projectsListRow).filter({ hasText: projectName });
+    await expect(row.getByTestId("tag-pill")).toHaveText(projTagName);
   });
 });

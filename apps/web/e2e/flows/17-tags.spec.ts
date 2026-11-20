@@ -29,10 +29,13 @@ async function createTeamProject(
 ): Promise<void> {
   await page.goto(`/space/${teamSlug}/projects`);
   await page.getByTestId(TEST_IDS.projects.projectsNewTeamButton).click();
-  await expect(page).toHaveURL(new RegExp(`/space/${teamSlug}/projects/new$`), { timeout: 30_000 });
-  await page.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
-  await page.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
-  await expect(page).toHaveURL(/\/space\/[^/]+\/projects\/[^/]+$/, { timeout: 30_000 });
+  const dialog = page.getByTestId(TEST_IDS.projects.projectsCreateDialog);
+  await expect(dialog).toBeVisible();
+  await dialog.getByTestId(TEST_IDS.projects.teamProjectNameInput).fill(projectName);
+  await dialog.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
+  await expect(
+    page.getByTestId(TEST_IDS.projects.projectsListRow).filter({ hasText: projectName }),
+  ).toBeVisible({ timeout: 30_000 });
 }
 
 function projectSlug(projectName: string): string {

@@ -285,8 +285,15 @@ projects
   id, name, slug, description, created_at
   team_id -> teams.id (nullable: personal projects)
   owner_id -> users.id (owner of personal projects; null for team projects)
+  priority      low | medium | high (default medium; display/filter only, no workflow semantics)
   CHECK((team_id IS NOT NULL) <> (owner_id IS NOT NULL))  -- exactly one
   -- slug uniqueness scope: team projects UNIQUE(team_id, slug); personal projects UNIQUE(owner_id, slug)
+
+project_milestones
+  id, project_id -> projects.id (cascade delete)
+  name          NOT NULL (<= 50 chars, service-validated)
+  description   nullable (<= 200 chars)
+  due_date      date, nullable (list/detail sort: due_date ASC NULLS LAST, then created_at)
 
 tasks
   id, project_id -> projects.id (nullable: personal tasks not in any project)

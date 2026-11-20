@@ -24,7 +24,8 @@ export const TEST_IDS = {
     teamProjectSubmitButton: "team-project-submit-button",
     projectsListPage: "projects-list-page",
     projectsNewTeamButton: "projects-new-team-button",
-    projectsListCard: "projects-list-card",
+    projectsListRow: "project-row",
+    projectsCreateDialog: "team-project-create-dialog",
   },
   tasks: {
     newTaskButton: "new-task-button",
