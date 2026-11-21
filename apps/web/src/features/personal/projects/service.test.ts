@@ -21,6 +21,7 @@ import {
   listPersonalProjects,
   updatePersonalProject,
   updatePersonalProjectMilestone,
+  updatePersonalProjectStatus,
 } from "./service";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
@@ -603,6 +604,35 @@ describe.skipIf(!hasTestDatabase)("个人项目优先级与里程碑（表格模
       db,
     );
     expect(updated).toMatchObject({ name: "新名", description: "已更新", dueDate: undefined });
+  });
+
+  it("个人项目状态：create 默认 backlog、显式 planned；update 可改", async () => {
+    const userId = await createUser();
+    const project = await createPersonalProject(userId, { name: "Stated" }, db);
+    expect(project.status).toBe("backlog");
+
+    const planned = await createPersonalProject(
+      userId,
+      { name: "Planned", status: "planned" },
+      db,
+    );
+    expect(planned.status).toBe("planned");
+
+    const updated = await updatePersonalProject(userId, planned.id, { status: "canceled" }, db);
+    expect(updated.status).toBe("canceled");
+  });
+
+  it("updatePersonalProjectStatus：改状态；他人项目 → projectNotFound", async () => {
+    const owner = await createUser();
+    const stranger = await createUser();
+    const project = await createPersonalProject(owner, { name: "Owned" }, db);
+
+    const updated = await updatePersonalProjectStatus(owner, project.id, "in_progress", db);
+    expect(updated.status).toBe("in_progress");
+
+    await expect(
+      updatePersonalProjectStatus(stranger, project.id, "planned", db),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
   });
 
   it("getPersonalProjectListWithStats 附 milestoneCount（空项目为 0）", async () => {

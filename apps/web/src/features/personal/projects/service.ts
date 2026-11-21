@@ -1,4 +1,4 @@
-import type { Project, ProjectMilestone, TaskPriority } from "@open-doing/types";
+import type { Project, ProjectMilestone, ProjectStatus, TaskPriority } from "@open-doing/types";
 import { and, asc, desc, eq, inArray, isNull, notInArray, sql } from "drizzle-orm";
 
 import { DomainError } from "@/lib/domain-error";
@@ -8,6 +8,7 @@ import {
   milestoneCountsByProjectId,
   normalizeMilestoneInputs,
   normalizePriority,
+  normalizeProjectStatus,
   validateMilestoneFields,
   type ProjectListItem,
   type ProjectMilestoneInput,
@@ -208,6 +209,8 @@ export async function createPersonalProject(
     endDate?: string | null;
     /** 项目优先级；缺省 medium。 */
     priority?: TaskPriority;
+    /** 项目状态；缺省 backlog。 */
+    status?: ProjectStatus;
     /** 初始项目标签（全量覆写）。 */
     tagIds?: string[];
     /** 初始里程碑（创建弹窗随表单一次性提交）。 */
@@ -222,6 +225,7 @@ export async function createPersonalProject(
   const endDate = input?.endDate ?? null;
   assertProjectDateRange(startDate, endDate);
   const priority = normalizePriority(input?.priority);
+  const status = normalizeProjectStatus(input?.status);
   const milestones = normalizeMilestoneInputs(input?.milestones);
 
   // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
@@ -256,6 +260,7 @@ export async function createPersonalProject(
         startDate,
         endDate,
         priority,
+        status,
       })
       .returning();
 
@@ -430,6 +435,8 @@ export async function updatePersonalProject(
     endDate?: string | null;
     /** 项目优先级；未传保持不变。 */
     priority?: TaskPriority;
+    /** 项目状态；未传保持不变。 */
+    status?: ProjectStatus;
     /** 项目标签全量覆写；仅写 project_tags。 */
     tagIds?: string[];
   },
@@ -462,6 +469,9 @@ export async function updatePersonalProject(
   // 显式字段赋值（禁止整对象 spread 装载走私）：未传的 priority 不进 changes。
   if (input?.priority !== undefined) {
     changes.priority = normalizePriority(input.priority);
+  }
+  if (input?.status !== undefined) {
+    changes.status = normalizeProjectStatus(input.status);
   }
   // 与新值组合出最终日期对再校验（允许先改一端；显式 null 是"清空"，
   // 必须按新值参与校验，否则清空一端会被旧值误判为区间倒挂）。
@@ -515,6 +525,25 @@ export async function deletePersonalProject(
   if (!row) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
+}
+
+/** 更新个人项目状态（owner-only）：状态专用写路径（就地改）。 */
+export async function updatePersonalProjectStatus(
+  userId: string,
+  projectId: string,
+  status: ProjectStatus,
+  client: DbClient = db,
+): Promise<Project> {
+  await requireOwnedProjectRow(userId, projectId, client);
+  const normalized = normalizeProjectStatus(status);
+
+  const [row] = await client
+    .update(projects)
+    .set({ status: normalized })
+    .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)))
+    .returning();
+
+  return toProject(row!);
 }
 
 /**
