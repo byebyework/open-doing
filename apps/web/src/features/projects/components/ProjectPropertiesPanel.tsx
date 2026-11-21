@@ -13,6 +13,7 @@ import { TagPill } from "@/features/tags/components/TagPill";
 import { updatePersonalProjectAction } from "@/features/personal/projects/actions";
 import { updateTeamProjectAction } from "../actions";
 import { AttrPill } from "./AttrPill";
+import { CollapseReveal } from "./CollapseReveal";
 import { ProjectStatusPill } from "./ProjectStatusPill";
 import { type ProjectFormSpace } from "./ProjectForm";
 
@@ -120,8 +121,8 @@ export function ProjectPropertiesPanel({
           aria-hidden="true"
         />
       </button>
-      {!collapsed ? (
-      <div className="flex flex-col divide-y divide-[var(--border)]">
+      <CollapseReveal open={!collapsed}>
+        <div className="flex flex-col divide-y divide-[var(--border)]">
         {row(
           t("colStatus"),
           <ProjectStatusPill
@@ -342,8 +343,8 @@ export function ProjectPropertiesPanel({
           </AttrPill>,
         )}
         {projectTagPoolRow()}
-      </div>
-      ) : null}
+        </div>
+      </CollapseReveal>
     </section>
   );
 

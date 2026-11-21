@@ -6,6 +6,7 @@ import { useTranslations } from "next-intl";
 import { useState } from "react";
 
 import { ProjectMilestonesSection } from "./ProjectMilestonesSection";
+import { CollapseReveal } from "./CollapseReveal";
 import type { ProjectMilestone } from "@open-doing/types";
 import { type ProjectFormSpace } from "./ProjectForm";
 
@@ -72,18 +73,18 @@ export function ProjectMilestonesPanel({
           </button>
         ) : null}
       </div>
-      {!collapsed ? (
-      <ProjectMilestonesSection
-        space={space}
-        projectId={projectId}
-        milestones={milestones}
-        canManage={canManage}
-        compact
-        progress={progress}
-        adding={adding}
-        onAddingChange={setAdding}
-      />
-      ) : null}
+      <CollapseReveal open={!collapsed}>
+        <ProjectMilestonesSection
+          space={space}
+          projectId={projectId}
+          milestones={milestones}
+          canManage={canManage}
+          compact
+          progress={progress}
+          adding={adding}
+          onAddingChange={setAdding}
+        />
+      </CollapseReveal>
     </section>
   );
 }

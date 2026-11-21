@@ -3,7 +3,8 @@
 import { ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
+
+import { CollapseReveal } from "./CollapseReveal";
 
 export interface ProjectProgressPanelProps {
   /** 项目整体进度 0–100 整数。 */
@@ -13,7 +14,6 @@ export interface ProjectProgressPanelProps {
 /** 右侧 Progress 卡（对照 Linear，默认折叠）：整体进度条。 */
 export function ProjectProgressPanel({ percent }: ProjectProgressPanelProps) {
   const t = useTranslations("projects");
-  const prefersReducedMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(true);
 
   return (
@@ -37,31 +37,16 @@ export function ProjectProgressPanel({ percent }: ProjectProgressPanelProps) {
           {percent}%
         </span>
       </button>
-      <AnimatePresence initial={false}>
-        {!collapsed ? (
-          <motion.div
-            key="progress-body"
-            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={
-              prefersReducedMotion
-                ? { duration: 0 }
-                : { height: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }, opacity: { duration: 0.16 } }
-            }
-            className="overflow-hidden"
-          >
-            <div className="mt-3 flex flex-col gap-1.5">
-              <span className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-progress-bg)]">
-                <span
-                  className="block h-full rounded-full bg-[var(--color-progress)] transition-[width] duration-200"
-                  style={{ width: `${percent}%` }}
-                />
-              </span>
-            </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      <CollapseReveal open={!collapsed}>
+        <div className="mt-3 flex flex-col gap-1.5">
+          <span className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--color-progress-bg)]">
+            <span
+              className="block h-full rounded-full bg-[var(--color-progress)] transition-[width] duration-200"
+              style={{ width: `${percent}%` }}
+            />
+          </span>
+        </div>
+      </CollapseReveal>
     </section>
   );
 }
