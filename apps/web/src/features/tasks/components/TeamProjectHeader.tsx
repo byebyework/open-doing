@@ -29,10 +29,8 @@ export interface TeamProjectHeaderProps {
   members: { id: string; name: string }[];
   /** 当前用户（新建任务默认责任人）。 */
   actorId: string;
-  /** owner / admin 才渲染项目编辑与删除入口。 */
+  /** owner / admin 才渲染项目编辑入口（删除入口只在项目列表）。 */
   canManage: boolean;
-  /** 删除项目成功后的跳转地址。 */
-  redirectTo: string;
   /** 本团队任务标签池（type='task'；新建任务弹窗用）。 */
   tagPool?: Tag[];
   /** 项目类型标签池（type='project'；编辑弹层打标用）。 */
@@ -58,7 +56,6 @@ export function TeamProjectHeader({
   members,
   actorId,
   canManage,
-  redirectTo,
   tagPool,
   projectTagPool,
   memberPool,

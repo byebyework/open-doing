@@ -121,6 +121,7 @@ export function ProjectListTable({
   canManage: boolean;
 }) {
   const t = useTranslations("projects");
+  const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const [filters, setFilters] = useState<ProjectListFilters>({
@@ -467,6 +468,18 @@ export function ProjectListTable({
         </div>
       ) : null}
 
+      {/* 删除二次确认（此前弹层缺失，行内删除点击无反馈）。ConfirmModal
+          不自动关闭：成功分支里清 pendingDelete，失败保持弹层与 loading。 */}
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title={t("deleteProject")}
+        content={t("deleteConfirm")}
+        confirmText={tCommon("delete")}
+        danger
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onCancel={() => setPendingDelete(null)}
+      />
     </div>
   );
 }

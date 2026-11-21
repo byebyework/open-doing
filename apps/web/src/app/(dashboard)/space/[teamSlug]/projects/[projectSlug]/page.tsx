@@ -28,7 +28,7 @@ import { listTags } from "@/features/tags/service";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
-import { teamProjectHref, teamSettingsHref } from "@/lib/routes";
+import { teamProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 interface TeamProjectPageProps {
@@ -139,7 +139,6 @@ export default async function TeamProjectPage({
             members={members}
             actorId={user.id}
             canManage={can(membership.role, "team:manage_projects")}
-            redirectTo={teamSettingsHref(team.slug)}
             tagPool={taskTagPool}
             projectTagPool={projectTagPool}
             memberPool={memberRoster}

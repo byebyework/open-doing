@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/shadcn/button";
 import {
   Dialog,
@@ -16,7 +15,6 @@ import {
 } from "@/components/ui/shadcn/dialog";
 
 import type { ProjectFormProject } from "./ProjectForm";
-import { deleteTeamProjectAction } from "../actions";
 import { TeamProjectForm } from "./TeamProjectForm";
 
 /** 项目页页头操作区入参（页头已按角色决定是否渲染本组件）。 */
@@ -24,8 +22,6 @@ export interface TeamProjectHeaderActionsProps {
   teamId: string;
   /** 须含起止时间与优先级（共享表单编辑保存防误清空）。 */
   project: ProjectFormProject;
-  /** 删除成功后跳转地址（项目页已不存在）。 */
-  redirectTo: string;
   /** 项目类型标签池（编辑弹层打标用）。 */
   projectTagPool?: Tag[];
   /** 团队成员池（负责人/成员 pill 数据源）。 */
@@ -33,14 +29,12 @@ export interface TeamProjectHeaderActionsProps {
 }
 
 /**
- * 团队项目的「编辑 / 删除」入口（仅 owner/admin 渲染）。
- *
- * 删除走二次确认；成功后离开已删除的项目页。
+ * 团队项目页头的「编辑」入口（仅 owner/admin 渲染）。
+ * 删除入口只在项目列表（行内删除 + 二次确认）。
  */
 export function TeamProjectHeaderActions({
   teamId,
   project,
-  redirectTo,
   projectTagPool,
   memberPool,
 }: TeamProjectHeaderActionsProps) {
@@ -48,33 +42,6 @@ export function TeamProjectHeaderActions({
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
   const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-
-  async function handleDelete() {
-    setDeleting(true);
-
-    try {
-      const result = await deleteTeamProjectAction({
-        teamId,
-        projectId: project.id,
-      });
-
-      if (!result.ok) {
-        toast.error(result.errors.form ?? t("deleteFailed"));
-        return;
-      }
-
-      toast.success(t("projectDeleted"));
-      setDeleteOpen(false);
-      router.push(redirectTo);
-      router.refresh();
-    } catch {
-      toast.error(tCommon("networkError"));
-    } finally {
-      setDeleting(false);
-    }
-  }
 
   return (
     <div className="flex shrink-0 items-center gap-2">
@@ -84,13 +51,6 @@ export function TeamProjectHeaderActions({
         onClick={() => setEditOpen(true)}
       >
         {tCommon("edit")}
-      </Button>
-      <Button
-        variant="outline"
-        className="text-destructive hover:text-destructive"
-        onClick={() => setDeleteOpen(true)}
-      >
-        {tCommon("delete")}
       </Button>
 
       {/* Radix Dialog 在退出保持窗口（OD_MS.modalOut）结束后才卸载内容，
@@ -114,17 +74,6 @@ export function TeamProjectHeaderActions({
           />
         </DialogContent>
       </Dialog>
-
-      <ConfirmModal
-        open={deleteOpen}
-        title={t("deleteProject")}
-        content={t("deleteConfirm")}
-        confirmText={tCommon("delete")}
-        danger
-        loading={deleting}
-        onConfirm={handleDelete}
-        onCancel={() => setDeleteOpen(false)}
-      />
     </div>
   );
 }

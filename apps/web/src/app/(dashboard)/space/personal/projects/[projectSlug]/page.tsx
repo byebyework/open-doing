@@ -102,7 +102,6 @@ export default async function PersonalProjectPage({
             projectPath={projectPath}
             view={view}
             projects={projectOptions}
-            projectTagPool={projectTagPool}
           />
         }
       />

@@ -17,7 +17,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/shadcn/dropdown-menu";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
-import { PersonalProjectHeaderActions } from "@/features/personal/projects/components/PersonalProjectHeaderActions";
 import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import { personalTaskHref } from "@/lib/routes";
 
@@ -287,12 +286,10 @@ export function TaskStatusButtons({
 
 /** 项目页页头操作区入参。 */
 export interface PersonalProjectPageActionsProps {
-  /** 当前项目（编辑 / 删除复用操作区；须含起止时间与优先级防误清空）。 */
+  /** 当前项目（新建任务弹窗默认选中项）。 */
   project: ProjectFormProject;
   /** 项目页路径，用于写 `?view=`。 */
   projectPath: string;
-  /** 项目类型标签池（编辑弹层打标用）。 */
-  projectTagPool?: Tag[];
   /** 当前视图：列表 / 看板。 */
   view: "overview" | "list" | "board";
   /** 新建任务弹窗可选的个人项目。 */
@@ -301,7 +298,7 @@ export interface PersonalProjectPageActionsProps {
 
 /**
  * 项目页页头操作区（从左到右）：
- * 「编辑」「删除」→ 视图切换「列表 / 看板」→ 主按钮「＋ 新建任务」。
+ * 视图切换「概览 / 列表 / 看板」→ 主按钮「＋ 新建任务」。（删除入口只在项目列表）
  *
  * 新建任务弹窗默认选中当前项目；视图切换写 `?view=list|board`。
  */
@@ -310,7 +307,6 @@ export function PersonalProjectPageActions({
   projectPath,
   view,
   projects,
-  projectTagPool,
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -319,8 +315,6 @@ export function PersonalProjectPageActions({
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
-      <PersonalProjectHeaderActions project={project} projectTagPool={projectTagPool} />
-
       <Tabs value={view} onValueChange={(nextView) => {
         if (nextView === "overview" || nextView === "list" || nextView === "board") {
           router.push(`${projectPath}?view=${nextView}`);
