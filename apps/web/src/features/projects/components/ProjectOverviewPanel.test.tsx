@@ -66,7 +66,6 @@ describe("ProjectOverviewPanel", () => {
           <ProjectOverviewPanel
             project={project}
             projectTagPool={projectTagPool}
-            actorId="u1"
             milestones={[
               {
                 milestone: {

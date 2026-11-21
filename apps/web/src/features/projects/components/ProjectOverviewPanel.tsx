@@ -12,12 +12,13 @@ import { Input } from "@/components/ui/shadcn/input";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { Calendar } from "@/components/ui/shadcn/calendar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { addPersonalProjectMilestone } from "@/features/personal/projects/service";
-import { addTeamProjectMilestone } from "../service";
+import { addPersonalProjectMilestoneAction } from "@/features/personal/projects/actions";
+import { addTeamProjectMilestoneAction } from "../actions";
 import { updatePersonalProjectAction } from "@/features/personal/projects/actions";
 import { updateTeamProjectAction } from "../actions";
+import type { MilestoneProgress } from "../service";
 import { PROJECT_STATUS_COLORS } from "../constants";
-import { MilestoneProgress } from "../service";
+
 import { MilestoneDatePopover } from "./MilestoneDatePopover";
 import { ProjectStatusPill } from "./ProjectStatusPill";
 import { TagPill } from "@/features/tags/components/TagPill";
@@ -26,8 +27,6 @@ import { type ProjectFormSpace } from "./ProjectForm";
 
 export interface ProjectOverviewPanelProps {
   project: Project;
-  /** 当前用户 ID（里程碑创建 actor）。 */
-  actorId: string;
   /** 概览里程碑行（进度口径见 service） */
   milestones: import("../service").MilestoneProgress[];
   memberPool: ProjectMemberRef[];
@@ -58,7 +57,6 @@ function toISODate(date: Date): string {
  */
 export function ProjectOverviewPanel({
   project,
-  actorId,
   milestones,
   memberPool,
   projectTagPool = [],
@@ -125,23 +123,18 @@ export function ProjectOverviewPanel({
     try {
       const result =
         space.kind === "team"
-          ? await addTeamProjectMilestone({
+          ? await addTeamProjectMilestoneAction({
               teamId: space.teamId,
               projectId,
-              actorId,
               name: newMilestoneName.trim(),
               description: undefined,
               dueDate: newMilestoneDue || null,
             })
-          : await addPersonalProjectMilestone(
-              actorId,
-              projectId,
-              {
-                name: newMilestoneName.trim(),
-                description: undefined,
-                dueDate: newMilestoneDue || null,
-              },
-            );
+          : await addPersonalProjectMilestoneAction(projectId, {
+              name: newMilestoneName.trim(),
+              description: undefined,
+              dueDate: newMilestoneDue || null,
+            });
       if (!result) {
         toast.error(tErrors("operationFailed"));
         return;
