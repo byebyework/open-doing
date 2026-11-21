@@ -102,7 +102,6 @@ describe("ProjectOverviewPanel", () => {
               },
             ]}
             displayLead={space === "team" ? { id: "u1", name: "甲", image: null } : null}
-            displayMembers={space === "team" ? [{ id: "u1", name: "甲", image: null }] : []}
             canManage
             space={space === "team" ? { kind: "team", teamId: "team-1" } : { kind: "personal" }}
           />
@@ -193,6 +192,13 @@ describe("ProjectOverviewPanel", () => {
     expect(document.body.textContent).toContain("上线");
     expect(document.body.textContent).toContain("3 任务 · 67%");
     expect(document.body.textContent).toContain("甲");
+  });
+
+  it("属性行只展示负责人头像，不展示成员头像栈", () => {
+    render(projectFixture());
+    const avatars = document.body.querySelectorAll('[role="img"]');
+    expect(avatars).toHaveLength(1);
+    expect(avatars[0]?.getAttribute("aria-label")).toBe("甲");
   });
 
   it("个人空间不渲染负责人", () => {

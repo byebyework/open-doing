@@ -54,7 +54,6 @@ export interface ProjectOverviewPanelProps {
   /** 项目类型标签池（标签行编辑用）。 */
   projectTagPool?: import("@open-doing/types").Tag[];
   displayLead: ProjectMemberRef | null;
-  displayMembers: ProjectMemberRef[];
   canManage: boolean;
   space: ProjectFormSpace;
 }
@@ -81,7 +80,6 @@ export function ProjectOverviewPanel({
   milestones,
   projectTagPool = [],
   displayLead,
-  displayMembers,
   canManage,
   space,
 }: ProjectOverviewPanelProps) {
@@ -374,13 +372,6 @@ export function ProjectOverviewPanel({
           <span className="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)]">
             <UserAvatar userId={displayLead.id} name={displayLead.name} size={22} />
             {displayLead.name}
-          </span>
-        ) : null}
-        {space.kind === "team" && displayMembers.length > 0 ? (
-          <span className="inline-flex items-center gap-1 text-[var(--color-text-secondary)]">
-            {displayMembers.map((member) => (
-              <UserAvatar key={member.id} userId={member.id} name={member.name} size={22} />
-            ))}
           </span>
         ) : null}
       </div>

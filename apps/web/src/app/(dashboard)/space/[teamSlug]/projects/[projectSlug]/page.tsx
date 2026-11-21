@@ -187,7 +187,6 @@ export default async function TeamProjectPage({
               milestones={milestoneProgress}
               projectTagPool={projectTagPool}
               displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
-              displayMembers={projectMembers}
               canManage={can(membership.role, "team:manage_projects")}
               space={{ kind: "team", teamId: team.id }}
             />

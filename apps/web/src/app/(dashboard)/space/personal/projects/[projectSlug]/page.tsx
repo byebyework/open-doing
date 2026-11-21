@@ -145,7 +145,6 @@ export default async function PersonalProjectPage({
               milestones={milestoneProgress}
               projectTagPool={projectTagPool}
               displayLead={null}
-              displayMembers={[]}
               canManage
               space={{ kind: "personal" }}
             />
