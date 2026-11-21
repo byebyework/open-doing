@@ -5,8 +5,8 @@ import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { Calendar } from "@/components/ui/shadcn/calendar";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/popover";
 import { TaskTagPicker, TagOptionList } from "@/features/tags/components/TaskTagPicker";
+import { AttrPill } from "./AttrPill";
 import {
   CalendarPlusIcon,
   ChevronRightIcon,
@@ -100,50 +100,6 @@ function parseISODate(value: string): Date | undefined {
 function toISODate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-}
-
-/** 属性行 pill（Linear 式）：图标 + 标签 + 当前值，点击弹出轻量编辑层。 */
-function AttrPill({
-  testid,
-  icon,
-  label,
-  value,
-  valueActive,
-  children,
-  disabled,
-}: {
-  testid: string;
-  icon: React.ReactNode;
-  label: string;
-  value?: string;
-  valueActive?: boolean;
-  children: (close: () => void) => React.ReactNode;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <button
-          type="button"
-          data-testid={testid}
-          disabled={disabled}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
-        >
-          <span className="text-[var(--color-text-muted)]">{icon}</span>
-          <span>{label}</span>
-          {value ? (
-            <span className={valueActive ? "font-medium text-[var(--color-primary)]" : "text-[var(--color-text-secondary)]"}>
-              {value}
-            </span>
-          ) : null}
-        </button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-auto min-w-[180px] p-2">
-        {children(() => setOpen(false))}
-      </PopoverContent>
-    </Popover>
-  );
 }
 
 /**
