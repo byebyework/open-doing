@@ -67,6 +67,12 @@ export default async function TeamProjectPage({
   // 类型分流：任务打标入口只列 task 标签，项目编辑弹层只列 project 标签。
   const milestones = await listTeamProjectMilestones(team.id, project.id);
   const projectMembers = await listTeamProjectMembers(team.id, project.id);
+  // 编辑弹层的成员池 = 团队名册（可添加未入项目的成员）；meta 行展示用项目当前成员
+  const memberRoster = (await listMembers(team.id)).map((view) => ({
+    id: view.user.id,
+    name: displayName(view.user),
+    image: null,
+  }));
   const taskTagPool = tagPool.filter((tag) => tag.type === "task");
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
@@ -124,7 +130,9 @@ export default async function TeamProjectPage({
             redirectTo={teamSettingsHref(team.slug)}
             tagPool={taskTagPool}
             projectTagPool={projectTagPool}
-            memberPool={projectMembers}
+            memberPool={memberRoster}
+            displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
+            displayMembers={projectMembers}
           />
         }
       />

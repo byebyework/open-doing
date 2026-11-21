@@ -1,4 +1,4 @@
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import { getProjectHealthKind } from "@open-doing/types";
@@ -40,8 +40,7 @@ import {
   updateTeamProjectMilestone,
   updateTeamProjectStatus,
 } from "./service";
-import { projectMembers } from "@/server/db/schema";
-import { projectMilestones } from "@/server/db/schema";
+import { projectMembers, projectMilestones } from "@/server/db/schema";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -1029,6 +1028,51 @@ describe.skipIf(!hasTestDatabase)("项目优先级与里程碑（表格模式）
         db,
       ),
     ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+  });
+
+  it("迁移 0011 回填口径：全部完成→completed；有进行中→in_progress；其余→backlog", async () => {
+    const { owner, team } = await setupTeam(db);
+
+    const seed = async (name: string, statuses: Array<"todo" | "in_progress" | "done">) => {
+      const project = await createTeamProject({ teamId: team.id, actorId: owner.id, name }, db);
+      for (const status of statuses) {
+        await db.insert(tasks).values({
+          id: crypto.randomUUID(),
+          projectId: project.id,
+          spaceType: "team",
+          title: "任务",
+          status,
+          createdById: owner.id,
+        });
+      }
+      // 模拟迁移前的存量行：全部重置为默认 backlog
+      await db.execute(sql`UPDATE projects SET status = 'backlog' WHERE id = ${project.id}`);
+      return project.id;
+    };
+
+    const allDone = await seed("AllDone", ["done", "done"]);
+    const withInProgress = await seed("WithInProgress", ["done", "in_progress"]);
+    const onlyTodo = await seed("OnlyTodo", ["todo"]);
+    const noTasks = await seed("NoTasks", []);
+
+    // 与 drizzle/0011_square_spot.sql 追加的两条回填语句逐字一致
+    await db.execute(sql`
+      UPDATE "projects" SET "status" = 'completed'
+      WHERE EXISTS (SELECT 1 FROM "tasks" "t" WHERE "t"."project_id" = "projects"."id" AND "t"."status" = 'done')
+        AND NOT EXISTS (SELECT 1 FROM "tasks" "t" WHERE "t"."project_id" = "projects"."id" AND "t"."status" <> 'done')
+    `);
+    await db.execute(sql`
+      UPDATE "projects" SET "status" = 'in_progress'
+      WHERE "status" = 'backlog'
+        AND EXISTS (SELECT 1 FROM "tasks" "t" WHERE "t"."project_id" = "projects"."id" AND "t"."status" = 'in_progress')
+    `);
+
+    const rows = await db.select({ id: projects.id, status: projects.status }).from(projects);
+    const byId = new Map(rows.map((row) => [row.id, row.status]));
+    expect(byId.get(allDone)).toBe("completed");
+    expect(byId.get(withInProgress)).toBe("in_progress");
+    expect(byId.get(onlyTodo)).toBe("backlog");
+    expect(byId.get(noTasks)).toBe("backlog");
   });
 
   it("getTeamProjectListWithStats 组装 status/lead/members", async () => {

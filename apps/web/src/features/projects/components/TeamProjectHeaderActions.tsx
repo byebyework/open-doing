@@ -78,7 +78,11 @@ export function TeamProjectHeaderActions({
 
   return (
     <div className="flex shrink-0 items-center gap-2">
-      <Button variant="outline" onClick={() => setEditOpen(true)}>
+      <Button
+        variant="outline"
+        data-testid="team-project-edit-trigger"
+        onClick={() => setEditOpen(true)}
+      >
         {tCommon("edit")}
       </Button>
       <Button
@@ -100,6 +104,7 @@ export function TeamProjectHeaderActions({
             teamId={teamId}
             project={project}
             projectTagPool={projectTagPool}
+            memberPool={memberPool}
             onCancel={() => setEditOpen(false)}
             onSuccess={() => {
               toast.success(t("saved"));

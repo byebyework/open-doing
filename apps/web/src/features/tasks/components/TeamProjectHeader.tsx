@@ -40,8 +40,12 @@ export interface TeamProjectHeaderProps {
   tagPool?: Tag[];
   /** 项目类型标签池（type='project'；编辑弹层打标用）。 */
   projectTagPool?: Tag[];
-  /** 团队成员池（负责人/成员编辑弹层）。 */
+  /** 团队名册（负责人/成员编辑弹层数据源；可含未入项目的成员）。 */
   memberPool?: ProjectMemberRef[];
+  /** 项目当前负责人（meta 行展示）。 */
+  displayLead?: ProjectMemberRef | null;
+  /** 项目当前成员（meta 行展示）。 */
+  displayMembers?: ProjectMemberRef[];
 }
 
 /**
@@ -61,13 +65,17 @@ export function TeamProjectHeader({
   tagPool,
   projectTagPool,
   memberPool,
+  displayLead,
+  displayMembers,
 }: TeamProjectHeaderProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
   const tProjects = useTranslations("projects");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
-  const lead = memberPool?.find((m) => m.id === project.leadId) ?? null;
+  // meta 行展示项目当前成员（与编辑弹层的名册池关注点分离）
+  const lead = displayLead ?? null;
+  const displayMemberList = displayMembers ?? [];
 
   async function changeStatus(status: Parameters<typeof ProjectStatusPill>[0]["status"]) {
     if (!canManage) return;
@@ -98,10 +106,10 @@ export function TeamProjectHeader({
           {lead.name}
         </span>
       ) : null}
-      {memberPool && memberPool.length > 0 ? (
+      {displayMemberList.length > 0 ? (
         <span className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-secondary)]">
           <span className="text-[12px] text-[var(--color-text-muted)]">{tProjects("membersLabel")}</span>
-          {memberPool.map((m) => m.name).join("、")}
+          {displayMemberList.map((m) => m.name).join("、")}
         </span>
       ) : null}
       {canManage ? (
