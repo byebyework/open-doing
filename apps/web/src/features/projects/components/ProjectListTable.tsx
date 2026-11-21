@@ -310,7 +310,7 @@ export function ProjectListTable({
               ) : null}
               <th className="px-3 py-2.5 text-left font-medium">{t("colDueDate")}</th>
               <th className="px-3 py-2.5 text-left font-medium">{t("colTaskCount")}</th>
-              <th className="px-4 py-2.5 text-right font-medium">{t("colStatus")}</th>
+              <th className="px-4 py-2.5 text-left font-medium">{t("colStatus")}</th>
               <th className="px-4 py-2.5 text-right font-medium">{t("colActions")}</th>
             </tr>
           </thead>
@@ -393,7 +393,7 @@ export function ProjectListTable({
                   <td className="px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">
                     {row.taskCount}
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-4 py-3 text-left">
                     <ProjectStatusPill
                       status={row.status}
                       disabled={!canManage}
