@@ -21,10 +21,12 @@ import { TeamPermissionError } from "@/features/teams/permissions";
 import { createTag } from "@/features/tags/service";
 import { applyProjectTags } from "./service";
 import { createTeam } from "@/features/teams/service";
+import { addPersonalProjectMilestone, createPersonalProject, listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 
 import {
   addTeamProjectMilestone,
   createTeamProject,
+  listProjectMilestonesWithProgress,
   deleteTeamProject,
   deleteTeamProjectMilestone,
   getTeamProjectBySlug,
@@ -1136,5 +1138,86 @@ describe.skipIf(!hasTestDatabase)("项目优先级与里程碑（表格模式）
     expect(emptyItem?.milestoneCount).toBe(0);
     expect(counts.get("nonexistent")).toBeUndefined();
     expect(await milestoneCountsByProjectId([], db)).toEqual(new Map());
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("里程碑进度查询", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("进度 = 关联任务 done 数 / 总数；空里程碑 0 任务 0%；排序保持", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject({ teamId: team.id, actorId: owner.id, name: "Progress" }, db);
+    const m1 = await addTeamProjectMilestone(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, name: "M1", dueDate: "2026-12-01" },
+      db,
+    );
+    const m2 = await addTeamProjectMilestone(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, name: "M2", dueDate: "2026-12-02" },
+      db,
+    );
+
+    const seedTask = async (milestoneId: string | null, status: "todo" | "in_progress" | "done") => {
+      await db.insert(tasks).values({
+        id: crypto.randomUUID(),
+        projectId: project.id,
+        spaceType: "team",
+        title: "任务",
+        status,
+        milestoneId,
+        createdById: owner.id,
+      });
+    };
+    await seedTask(m1.id, "done");
+    await seedTask(m1.id, "todo");
+    await seedTask(m1.id, "done");
+    await seedTask(m2.id, "todo");
+
+    const progress = await listProjectMilestonesWithProgress(team.id, project.id, db);
+    expect(progress).toHaveLength(2);
+    expect(progress[0]!.milestone.id).toBe(m1.id);
+    expect(progress[0]!.taskCount).toBe(3);
+    expect(progress[0]!.doneCount).toBe(2);
+    expect(progress[0]!.percent).toBe(67);
+    expect(progress[1]!.taskCount).toBe(1);
+    expect(progress[1]!.percent).toBe(0);
+
+    // 无关联任务的里程碑也是 0 任务 0%
+    const bare = await createTeamProject({ teamId: team.id, actorId: owner.id, name: "Bare" }, db);
+    const bareProgress = await listProjectMilestonesWithProgress(team.id, bare.id, db);
+    expect(bareProgress).toEqual([]);
+  });
+
+  it("个人空间进度同构", async () => {
+    const { id: userId } = await createUser(db, "progress-personal");
+    const project = await createPersonalProject(userId, { name: "个人进度" }, db);
+    const milestone = await addPersonalProjectMilestone(
+      userId,
+      project.id,
+      { name: "节点", dueDate: "2026-12-20" },
+      db,
+    );
+    await db.insert(tasks).values({
+      id: crypto.randomUUID(),
+      projectId: project.id,
+      spaceType: "personal",
+      title: "任务",
+      status: "done",
+      milestoneId: milestone.id,
+      assigneeId: userId,
+      createdById: userId,
+    });
+
+    const progress = await listPersonalProjectMilestonesWithProgress(userId, project.id, db);
+    expect(progress).toHaveLength(1);
+    expect(progress[0]!.doneCount).toBe(1);
+    expect(progress[0]!.percent).toBe(100);
   });
 });

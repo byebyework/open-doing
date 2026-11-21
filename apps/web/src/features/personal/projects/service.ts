@@ -6,6 +6,8 @@ import {
   buildProjectStats,
   listProjectTaskStatRows,
   milestoneCountsByProjectId,
+  milestoneProgressRows,
+  type MilestoneProgress,
   normalizeMilestoneInputs,
   normalizePriority,
   normalizeProjectStatus,
@@ -591,5 +593,28 @@ export async function getPersonalProjectListWithStats(
     project: toProject(row, projectTagsMap.get(row.id) ?? []),
     stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
     milestoneCount: milestoneCounts.get(row.id) ?? 0,
+  }));
+}
+
+/** 个人空间里程碑进度（概览/侧栏展示；归属校验在 listPersonalProjectMilestones 内）。 */
+export async function listPersonalProjectMilestonesWithProgress(
+  userId: string,
+  projectId: string,
+  client: DbClient = db,
+): Promise<MilestoneProgress[]> {
+  const milestones = await listPersonalProjectMilestones(userId, projectId, client);
+  const counts = await milestoneProgressRows(projectId, client);
+  return milestones.map((milestone) => ({
+    milestone,
+    taskCount: counts.get(milestone.id)?.taskCount ?? 0,
+    doneCount: counts.get(milestone.id)?.doneCount ?? 0,
+    percent:
+      (counts.get(milestone.id)?.taskCount ?? 0) === 0
+        ? 0
+        : Math.round(
+            ((counts.get(milestone.id)?.doneCount ?? 0) /
+              (counts.get(milestone.id)?.taskCount ?? 1)) *
+              100,
+          ),
   }));
 }

@@ -813,6 +813,64 @@ export async function listTeamProjectMembers(
   return rows.map((row) => ({ id: row.userId, name: row.name, image: row.image }));
 }
 
+export interface MilestoneProgress {
+  milestone: ProjectMilestone;
+  /** 关联任务总数 */
+  taskCount: number;
+  /** 关联任务 status='done' 数 */
+  doneCount: number;
+  /** taskCount === 0 ? 0 : round(done/task*100) */
+  percent: number;
+}
+
+/** 单空间里程碑进度聚合（tasks join 一次查询）；排序同里程碑列表。个人服务复用。 */
+export async function milestoneProgressRows(
+  projectId: string,
+  client: DbClient,
+): Promise<Map<string, { taskCount: number; doneCount: number }>> {
+  const rows = await client
+    .select({
+      milestoneId: tasks.milestoneId,
+      taskCount: sql<number>`count(*)::int`.as("task_count"),
+      doneCount: sql<number>`(count(*) filter (where ${tasks.status} = 'done'))::int`.as("done_count"),
+    })
+    .from(tasks)
+    .where(eq(tasks.projectId, projectId))
+    .groupBy(tasks.milestoneId);
+  const map = new Map<string, { taskCount: number; doneCount: number }>();
+  for (const row of rows) {
+    if (row.milestoneId) {
+      map.set(row.milestoneId, { taskCount: row.taskCount, doneCount: row.doneCount });
+    }
+  }
+  return map;
+}
+
+function toMilestoneProgress(
+  milestone: ProjectMilestone,
+  counts: { taskCount: number; doneCount: number } | undefined,
+): MilestoneProgress {
+  const taskCount = counts?.taskCount ?? 0;
+  const doneCount = counts?.doneCount ?? 0;
+  return {
+    milestone,
+    taskCount,
+    doneCount,
+    percent: taskCount === 0 ? 0 : Math.round((doneCount / taskCount) * 100),
+  };
+}
+
+/** 团队空间里程碑进度（概览/侧栏展示）。 */
+export async function listProjectMilestonesWithProgress(
+  teamId: string,
+  projectId: string,
+  client: DbClient = db,
+): Promise<MilestoneProgress[]> {
+  const milestones = await listTeamProjectMilestones(teamId, projectId, client);
+  const counts = await milestoneProgressRows(projectId, client);
+  return milestones.map((milestone) => toMilestoneProgress(milestone, counts.get(milestone.id)));
+}
+
 /** 批量统计项目里程碑数（group by 一次查询，防 N+1）；空集合返回空 Map。 */
 export async function milestoneCountsByProjectId(
   projectIds: string[],
