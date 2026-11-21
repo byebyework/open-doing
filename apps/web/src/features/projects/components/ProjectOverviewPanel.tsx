@@ -1,12 +1,26 @@
 "use client";
 
 import type { Project, ProjectMemberRef, Tag, TaskPriority } from "@open-doing/types";
-import { CalendarPlusIcon, CheckIcon, PencilIcon, PlusIcon, XIcon } from "lucide-react";
+import {
+  CalendarPlusIcon,
+  CheckIcon,
+  MoreHorizontalIcon,
+  PencilIcon,
+  PlusIcon,
+  XIcon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/shadcn/dropdown-menu";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Textarea } from "@/components/ui/shadcn/textarea";
@@ -14,8 +28,16 @@ import { Calendar } from "@/components/ui/shadcn/calendar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { addPersonalProjectMilestoneAction } from "@/features/personal/projects/actions";
 import { addTeamProjectMilestoneAction } from "../actions";
-import { updatePersonalProjectAction } from "@/features/personal/projects/actions";
-import { updateTeamProjectAction } from "../actions";
+import {
+  deletePersonalProjectMilestoneAction,
+  updatePersonalProjectMilestoneAction,
+  updatePersonalProjectAction,
+} from "@/features/personal/projects/actions";
+import {
+  deleteTeamProjectMilestoneAction,
+  updateTeamProjectMilestoneAction,
+  updateTeamProjectAction,
+} from "../actions";
 import type { MilestoneProgress } from "../service";
 import { PROJECT_STATUS_COLORS } from "../constants";
 
@@ -72,7 +94,14 @@ export function ProjectOverviewPanel({
   const router = useRouter();
   const [milestoneCreating, setMilestoneCreating] = useState(false);
   const [newMilestoneName, setNewMilestoneName] = useState("");
+  const [newMilestoneDescription, setNewMilestoneDescription] = useState("");
   const [newMilestoneDue, setNewMilestoneDue] = useState("");
+  /** 主列行内重命名的里程碑 id（编辑态）。 */
+  const [milestoneEditingId, setMilestoneEditingId] = useState<string | null>(null);
+  const [milestoneEditName, setMilestoneEditName] = useState("");
+  /** 待删除里程碑（ConfirmModal）。 */
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  const draftNameRef = useRef<HTMLInputElement | null>(null);
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -127,12 +156,12 @@ export function ProjectOverviewPanel({
               teamId: space.teamId,
               projectId,
               name: newMilestoneName.trim(),
-              description: undefined,
+              description: newMilestoneDescription.trim() || undefined,
               dueDate: newMilestoneDue || null,
             })
           : await addPersonalProjectMilestoneAction(projectId, {
               name: newMilestoneName.trim(),
-              description: undefined,
+              description: newMilestoneDescription.trim() || undefined,
               dueDate: newMilestoneDue || null,
             });
       if (!result) {
@@ -141,6 +170,7 @@ export function ProjectOverviewPanel({
       }
       setMilestoneCreating(false);
       setNewMilestoneName("");
+      setNewMilestoneDescription("");
       setNewMilestoneDue("");
       router.refresh();
     } catch {
@@ -153,7 +183,52 @@ export function ProjectOverviewPanel({
   const cancelMilestone = () => {
     setMilestoneCreating(false);
     setNewMilestoneName("");
+    setNewMilestoneDescription("");
     setNewMilestoneDue("");
+  };
+
+  /** 主列行内重命名保存。 */
+  const saveMilestoneRename = async (milestoneId: string) => {
+    if (milestoneEditName.trim().length === 0) return;
+    try {
+      const result =
+        space.kind === "team"
+          ? await updateTeamProjectMilestoneAction({
+              teamId: space.teamId,
+              projectId,
+              milestoneId,
+              name: milestoneEditName.trim(),
+            })
+          : await updatePersonalProjectMilestoneAction(projectId, milestoneId, {
+              name: milestoneEditName.trim(),
+            });
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return;
+      }
+      setMilestoneEditingId(null);
+      router.refresh();
+    } catch {
+      toast.error(tErrors("operationFailed"));
+    }
+  };
+
+  /** 主列行删除。 */
+  const removeMilestoneById = async (milestoneId: string) => {
+    try {
+      const result =
+        space.kind === "team"
+          ? await deleteTeamProjectMilestoneAction({ teamId: space.teamId, projectId, milestoneId })
+          : await deletePersonalProjectMilestoneAction(projectId, milestoneId);
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return;
+      }
+      setPendingDelete(null);
+      router.refresh();
+    } catch {
+      toast.error(tErrors("operationFailed"));
+    }
   };
 
   const startEdit = (field: Exclude<EditableField, null>, current: string) => {
@@ -428,14 +503,16 @@ export function ProjectOverviewPanel({
         {milestoneCreating && canManage ? (
           <div
             data-testid="overview-milestone-creating"
-            className="mt-1 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface-inset)] px-3 py-2"
+            className="mt-1 flex flex-col gap-1 rounded-[var(--radius-md)] bg-[var(--color-surface-inset)] px-3 py-2"
           >
+            <div className="flex items-center gap-2">
             <span
               className="inline-block size-2.5 shrink-0 rotate-45 rounded-[2px] border border-[var(--color-text-muted)]"
               aria-hidden="true"
             />
             <Input
               autoFocus
+              ref={draftNameRef}
               value={newMilestoneName}
               maxLength={50}
               placeholder={t("milestoneNameLabel")}
@@ -457,6 +534,34 @@ export function ProjectOverviewPanel({
             >
               {newMilestoneDue || t("notSet")}
             </MilestoneDatePopover>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button
+                  type="button"
+                  aria-label={tCommon("edit")}
+                  data-testid="overview-milestone-draft-menu"
+                  disabled={saving}
+                  className="inline-flex size-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                >
+                  <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  data-testid="overview-milestone-draft-edit"
+                  onSelect={() => draftNameRef.current?.focus()}
+                >
+                  {tCommon("edit")}
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  data-testid="overview-milestone-draft-delete"
+                  className="text-[var(--color-error)]"
+                  onSelect={() => cancelMilestone()}
+                >
+                  {tCommon("delete")}
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
             <button
               type="button"
               aria-label={tCommon("cancel")}
@@ -477,6 +582,17 @@ export function ProjectOverviewPanel({
             >
               <CheckIcon className="size-4" aria-hidden="true" />
             </button>
+          </div>
+          <Input
+            type="text"
+            value={newMilestoneDescription}
+            maxLength={200}
+            placeholder={t("milestoneDescriptionPlaceholder")}
+            data-testid="overview-milestone-description-input"
+            onChange={(event) => setNewMilestoneDescription(event.target.value)}
+            disabled={saving}
+            className="h-auto border-none bg-transparent px-0 pl-6 text-[13px] text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0 dark:bg-transparent"
+          />
           </div>
         ) : (
           canManage ? (
