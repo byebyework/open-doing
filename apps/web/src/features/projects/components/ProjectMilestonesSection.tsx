@@ -43,6 +43,9 @@ export interface ProjectMilestonesSectionProps {
   compact?: boolean;
   /** 里程碑进度（compact 行右侧「n 任务 · x%」；可缺省）。 */
   progress?: Record<string, { taskCount: number; doneCount: number; percent: number }>;
+  /** 受控添加态（面板标题行的 + 按钮传入）。 */
+  adding?: boolean;
+  onAddingChange?: (open: boolean) => void;
 }
 
 /**
@@ -60,12 +63,25 @@ export function ProjectMilestonesSection({
   onChanged,
   compact = false,
   progress,
+  adding: addingProp,
+  onAddingChange,
 }: ProjectMilestonesSectionProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const router = useRouter();
-  const [adding, setAdding] = useState(false);
+  const [addingInternal, setAddingInternal] = useState(false);
+  const [syncedAdding, setSyncedAdding] = useState<boolean | undefined>(undefined);
+  // 受控/非受控混合：面板传入 adding 时同步，内部修改经 onAddingChange 上报
+  const adding = addingProp ?? addingInternal;
+  if (addingProp !== undefined && addingProp !== syncedAdding) {
+    setSyncedAdding(addingProp);
+    if (addingProp !== addingInternal) setAddingInternal(addingProp);
+  }
+  const setAdding = (open: boolean) => {
+    setAddingInternal(open);
+    onAddingChange?.(open);
+  };
   const [inlineName, setInlineName] = useState("");
   const [inlineDue, setInlineDue] = useState("");
   /** 行点击编辑的里程碑 id（编辑组件 = 新建组件 + 预填数据）。 */
@@ -194,22 +210,7 @@ export function ProjectMilestonesSection({
             </Button>
           ) : null}
         </div>
-      ) : (
-        <div className="flex items-center justify-end">
-          {canManage && !adding ? (
-            <button
-              type="button"
-              aria-label={t("milestoneAdd")}
-              data-testid="project-milestone-add-trigger"
-              disabled={submitting}
-              onClick={() => setAdding(true)}
-              className="inline-flex size-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-            >
-              <PlusIcon className="size-4" aria-hidden="true" />
-            </button>
-          ) : null}
-        </div>
-      )}
+      ) : null}
 
       {adding && canManage ? (
         compact ? (

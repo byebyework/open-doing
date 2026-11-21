@@ -1,5 +1,6 @@
 "use client";
 
+import { PlusIcon } from "lucide-react";
 import { ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
@@ -27,30 +28,50 @@ export function ProjectMilestonesPanel({
 }: ProjectMilestonesPanelProps) {
   const t = useTranslations("projects");
   const [collapsed, setCollapsed] = useState(false);
+  const [adding, setAdding] = useState(false);
 
   return (
     <section
       data-testid="project-milestones-panel"
       className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4"
     >
-      <button
-        type="button"
-        data-testid="milestones-collapse"
-        aria-expanded={!collapsed}
-        onClick={() => setCollapsed((current) => !current)}
-        className="mb-2 flex w-full cursor-pointer items-center gap-2 text-[13px] font-semibold text-[var(--ink-900)]"
-      >
-        {t("milestoneSectionTitle")}
-        {milestones.length > 0 ? (
-          <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
-            {milestones.length}
-          </span>
+      <div className="mb-2 flex w-full items-center gap-2">
+        <button
+          type="button"
+          data-testid="milestones-collapse"
+          aria-expanded={!collapsed}
+          onClick={() => setCollapsed((current) => !current)}
+          className={`flex items-center gap-2 text-[13px] font-semibold text-[var(--ink-900)] ${
+            milestones.length > 0 || canManage ? "cursor-pointer" : "cursor-default"
+          }`}
+        >
+          {t("milestoneSectionTitle")}
+          {milestones.length > 0 ? (
+            <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
+              {milestones.length}
+            </span>
+          ) : null}
+          <ChevronRightIcon
+            className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${collapsed ? "" : "rotate-90"}`}
+            aria-hidden="true"
+          />
+        </button>
+        {canManage ? (
+          <button
+            type="button"
+            aria-label={t("milestoneAdd")}
+            data-testid="project-milestone-add-trigger"
+            disabled={adding}
+            onClick={() => {
+              setAdding(true);
+              setCollapsed(false);
+            }}
+            className="ml-auto inline-flex size-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+          >
+            <PlusIcon className="size-4" aria-hidden="true" />
+          </button>
         ) : null}
-        <ChevronRightIcon
-          className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${collapsed ? "" : "rotate-90"}`}
-          aria-hidden="true"
-        />
-      </button>
+      </div>
       {!collapsed ? (
       <ProjectMilestonesSection
         space={space}
@@ -59,6 +80,8 @@ export function ProjectMilestonesPanel({
         canManage={canManage}
         compact
         progress={progress}
+        adding={adding}
+        onAddingChange={setAdding}
       />
       ) : null}
     </section>
