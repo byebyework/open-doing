@@ -5,6 +5,7 @@ import { PROJECT_STATUSES } from "@open-doing/types";
 import { motion } from "motion/react";
 import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
@@ -23,7 +24,6 @@ import { TagPill } from "@/features/tags/components/TagPill";
 import { updatePersonalProjectStatusAction } from "@/features/personal/projects/actions";
 import { updateTeamProjectStatusAction } from "../actions";
 import { PROJECT_STATUS_COLORS } from "../constants";
-import { ProjectDetailDrawer } from "./ProjectDetailDrawer";
 import type { ProjectFormSpace } from "./ProjectForm";
 import { ProjectStatusPill } from "./ProjectStatusPill";
 
@@ -123,7 +123,6 @@ export function ProjectListTable({
     keyword: "",
   });
   const [page, setPage] = useState(1);
-  const [selected, setSelected] = useState<ProjectListRow | null>(null);
   // 任一筛选变化重置回第 1 页：React 推荐的渲染期调整状态模式（不用 effect）。
   const [prevFilters, setPrevFilters] = useState(filters);
   if (filters !== prevFilters) {
@@ -304,21 +303,19 @@ export function ProjectListTable({
                   onClick={(event) => {
                     const target = event.target as HTMLElement;
                     if (target.closest("a,button")) return;
-                    setSelected(row);
+                    router.push(row.href);
                   }}
                   className="cursor-pointer border-b border-[var(--border)] transition-colors last:border-b-0 hover:bg-[var(--color-surface-hover)]"
                 >
                   <td className="px-4 py-3" data-testid={`project-row-${index}`}>
-                    <button
-                      type="button"
+                    <Link
+                      href={row.href}
                       className="block min-w-0 max-w-full cursor-pointer text-left"
-                      onClick={() => setSelected(row)}
                     >
                       <span className="block truncate font-semibold text-[var(--color-text)] hover:text-[var(--color-primary)]">
                         {row.name}
                       </span>
-
-                    </button>
+                    </Link>
                   </td>
                   <td className="px-3 py-3">
                     <span className="flex items-center gap-2">
@@ -412,15 +409,6 @@ export function ProjectListTable({
         </div>
       ) : null}
 
-      <ProjectDetailDrawer
-        open={selected !== null}
-        onOpenChange={(next) => {
-          if (!next) setSelected(null);
-        }}
-        space={space}
-        project={selected}
-        canManage={canManage}
-      />
     </div>
   );
 }

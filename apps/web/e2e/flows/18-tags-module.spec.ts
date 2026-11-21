@@ -58,29 +58,31 @@ test.describe("flow 18: 标签模块", () => {
     await expect(page.getByTestId("tags-module-row").filter({ hasText: taskTagName })).toHaveCount(0);
     await page.getByTestId("tags-search-input").fill("");
 
-    // 4. 项目编辑弹层打标（只列项目标签）
+    // 4. 项目编辑弹层打标（pill 行布局：标签在「标签」pill 的 Popover 内）
     await openPersonalProject(page, projectName);
     await page.getByRole("button", { name: "编辑" }).first().click();
     const dialog = page.getByRole("dialog");
     await expect(dialog).toBeVisible();
-    await dialog.getByTestId("task-tag-picker-trigger").click();
+    await dialog.getByTestId("personal-project-labels-pill").click();
     await expect(dialog.getByRole("checkbox", { name: projTagName })).toBeVisible();
     await dialog.getByRole("checkbox", { name: projTagName }).click();
     // 多选 Popover 选中后保持展开（可连续勾选）；再点触发器收起，避免遮挡提交按钮。
-    await dialog.getByTestId("task-tag-picker-trigger").click();
+    await dialog.getByTestId("personal-project-labels-pill").click();
     await dialog.getByTestId("personal-project-submit-button").click();
     await expect(page.getByText("没有待处理的邀请。")).toHaveCount(0); // 弹层收起后页面稳定
 
-    // 5. 项目标签在 Drawer 概览可见（列表已不展示标签列）
+    // 5. 项目标签关联保留：详情页编辑弹窗的标签 pill 计数为 1
     await page.goto("/space/personal/projects");
     await page
       .getByTestId(TEST_IDS.projects.projectsListRow)
       .filter({ hasText: projectName })
-      .locator("button")
+      .locator("a")
       .first()
       .click();
-    const drawer = page.getByTestId("project-detail-drawer");
-    await expect(drawer).toBeVisible();
-    await expect(drawer.getByTestId("tag-pill").filter({ hasText: projTagName })).toBeVisible();
+    await expect(page).toHaveURL(/\/space\/personal\/projects\/[^/]+$/, { timeout: 30_000 });
+    await page.getByRole("button", { name: "编辑" }).first().click();
+    const editDialog = page.getByRole("dialog");
+    await expect(editDialog).toBeVisible();
+    await expect(editDialog.getByTestId("team-project-labels-pill").or(editDialog.getByTestId("personal-project-labels-pill")).locator("text=1")).toBeVisible();
   });
 });
