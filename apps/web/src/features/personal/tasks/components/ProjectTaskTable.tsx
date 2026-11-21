@@ -190,22 +190,22 @@ export function ProjectTaskTable({
                   <th className="border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("colTask")}
                   </th>
-                  <th className="w-[130px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                  <th className="min-w-[130px] whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {tTags("tagNameLabel")}
                   </th>
-                  <th className="w-[72px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                  <th className="min-w-[72px] whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("priority")}
                   </th>
-                  <th className="w-24 border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                  <th className="min-w-24 whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("statusLabel")}
                   </th>
-                  <th className="w-[170px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                  <th className="min-w-[170px] whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("colProgress")}
                   </th>
-                  <th className="w-[130px] border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                  <th className="min-w-[130px] whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("dueDateLabel")}
                   </th>
-                  <th className="w-[88px] border-b border-[var(--border-default)] px-3 pb-3 text-center text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
+                  <th className="min-w-[88px] whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-center text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)]">
                     {t("opsColumn")}
                   </th>
                 </tr>
@@ -264,7 +264,7 @@ export function ProjectTaskTable({
                         />
                       </td>
 
-                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {done ? (
                           <span className="text-[12.5px] text-[var(--ink-400)]">
                             —
@@ -289,7 +289,7 @@ export function ProjectTaskTable({
                         )}
                       </td>
 
-                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {task.dueDate ? (
                           <DueText
                             dueDate={task.dueDate}

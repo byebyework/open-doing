@@ -288,18 +288,18 @@ export function TeamProjectTaskTable({
                 <tr>
                   {[
                     { label: t("colTask"), className: "" },
-                    { label: tTags("tagNameLabel"), className: "w-[130px]" },
-                    { label: t("priority"), className: "w-[72px]" },
-                    { label: t("statusLabel"), className: "w-24" },
-                    { label: t("assigneeLabel"), className: "w-[120px]" },
-                    { label: t("colProgress"), className: "w-[170px]" },
-                    { label: t("dueDateLabel"), className: "w-[130px]" },
-                    { label: t("opsColumn"), className: "w-[88px] text-center" },
+                    { label: tTags("tagNameLabel"), className: "min-w-[130px]" },
+                    { label: t("priority"), className: "min-w-[72px]" },
+                    { label: t("statusLabel"), className: "min-w-24" },
+                    { label: t("assigneeLabel"), className: "min-w-[120px]" },
+                    { label: t("colProgress"), className: "min-w-[170px]" },
+                    { label: t("dueDateLabel"), className: "min-w-[130px]" },
+                    { label: t("opsColumn"), className: "min-w-[88px] text-center" },
                   ].map(
                     ({ label, className }) => (
                       <th
                         key={label}
-                        className={`border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)] ${className}`}
+                        className={`whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)] ${className}`}
                       >
                         {label}
                       </th>
@@ -371,7 +371,7 @@ export function TeamProjectTaskTable({
                         />
                       </td>
 
-                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {assigneeName ? (
                           <span className="flex items-center gap-2 text-[13px] text-[var(--ink-900)]">
                             {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
@@ -389,7 +389,7 @@ export function TeamProjectTaskTable({
                         )}
                       </td>
 
-                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {done ? (
                           <span className="text-[12.5px] text-[var(--ink-400)]">
                             —
@@ -414,7 +414,7 @@ export function TeamProjectTaskTable({
                         )}
                       </td>
 
-                      <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
                         {task.dueDate ? (
                           <DueText
                             dueDate={task.dueDate}
