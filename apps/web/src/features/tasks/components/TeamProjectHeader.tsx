@@ -16,7 +16,7 @@ import { TeamProjectHeaderActions } from "@/features/projects/components/TeamPro
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
 
 /** 团队项目页视图。 */
-export type TeamProjectView = "list" | "board";
+export type TeamProjectView = "overview" | "list" | "board";
 
 /** 页头操作区入参。 */
 export interface TeamProjectHeaderProps {

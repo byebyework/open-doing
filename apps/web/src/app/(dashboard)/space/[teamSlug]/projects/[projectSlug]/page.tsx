@@ -8,8 +8,14 @@ import {
   getTeamProjectBySlug,
   listTeamProjects,
 } from "@/features/projects/service";
-import { ProjectMilestonesSection } from "@/features/projects/components/ProjectMilestonesSection";
-import { listTeamProjectMembers, listTeamProjectMilestones } from "@/features/projects/service";
+import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
+import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
+import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
+import {
+  listTeamProjectMembers,
+  listTeamProjectMilestones,
+  listProjectMilestonesWithProgress,
+} from "@/features/projects/service";
 import {
   TeamProjectHeader,
   type TeamProjectView,
@@ -46,7 +52,8 @@ export default async function TeamProjectPage({
   const t = await getTranslations("projects");
   const tCommon = await getTranslations("common");
   const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-  const view: TeamProjectView = requestedView === "board" ? "board" : "list";
+  const view: TeamProjectView =
+    requestedView === "board" || requestedView === "list" ? requestedView : "overview";
 
   const user = await requireUser();
   const team = await getTeamBySlug(teamSlug);
@@ -65,7 +72,7 @@ export default async function TeamProjectPage({
     listTags({ teamId: team.id }),
   ]);
   // 类型分流：任务打标入口只列 task 标签，项目编辑弹层只列 project 标签。
-  const milestones = await listTeamProjectMilestones(team.id, project.id);
+  const milestoneProgress = await listProjectMilestonesWithProgress(team.id, project.id);
   const projectMembers = await listTeamProjectMembers(team.id, project.id);
   // 编辑弹层的成员池 = 团队名册（可添加未入项目的成员）；meta 行展示用项目当前成员
   const memberRoster = (await listMembers(team.id)).map((view) => ({
@@ -137,17 +144,35 @@ export default async function TeamProjectPage({
         }
       />
 
-      <div className="mt-5">
-        <ProjectMilestonesSection
-          space={{ kind: "team", teamId: team.id }}
-          projectId={project.id}
-          milestones={milestones}
-          canManage={can(membership.role, "team:manage_projects")}
-        />
-      </div>
-
-      <div className="mt-5">
-        {view === "board" ? (
+      {view === "overview" ? (
+        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <ProjectOverviewPanel
+            project={project}
+            milestones={milestoneProgress}
+            memberPool={memberRoster}
+            displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
+            displayMembers={projectMembers}
+            canManage={can(membership.role, "team:manage_projects")}
+            space={{ kind: "team", teamId: team.id }}
+          />
+          <div className="flex flex-col gap-4 lg:sticky lg:top-[76px] lg:self-start">
+            <ProjectPropertiesPanel
+              project={project}
+              memberPool={memberRoster}
+              canManage={can(membership.role, "team:manage_projects")}
+              space={{ kind: "team", teamId: team.id }}
+            />
+            <ProjectMilestonesPanel
+              space={{ kind: "team", teamId: team.id }}
+              projectId={project.id}
+              milestones={milestoneProgress.map((item) => item.milestone)}
+              canManage={can(membership.role, "team:manage_projects")}
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5">
+          {view === "board" ? (
           <TeamKanban
             teamId={team.id}
             teamSlug={team.slug}
@@ -175,7 +200,8 @@ export default async function TeamProjectPage({
             projectSlug={project.slug}
           />
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }

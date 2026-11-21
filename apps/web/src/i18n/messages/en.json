@@ -344,7 +344,8 @@
     "deleteTaskAria": "Delete task: {title}",
     "dueSoonFull": "Due {date}",
     "tagsLabel": "Tags",
-    "milestoneInvalid": "Milestone does not belong to this project"
+    "milestoneInvalid": "Milestone does not belong to this project",
+    "viewOverview": "Overview"
   },
   "moments": {
     "titleRequired": "Title is required",
@@ -792,7 +793,9 @@
     "changeStatus": "Change status...",
     "leadNotMember": "Lead must be a team member",
     "memberNotInTeam": "Members must be team members",
-    "statusFilterAll": "All statuses"
+    "statusFilterAll": "All statuses",
+    "milestoneProgressMeta": "{count} tasks · {percent}%",
+    "propertiesTitle": "Properties"
   },
   "dashboard": {
     "title": "Dashboard",

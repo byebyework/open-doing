@@ -344,7 +344,8 @@
     "deleteTaskAria": "删除任务：{title}",
     "dueSoonFull": "{date} 到期",
     "tagsLabel": "标签",
-    "milestoneInvalid": "里程碑不属于该项目"
+    "milestoneInvalid": "里程碑不属于该项目",
+    "viewOverview": "概览"
   },
   "moments": {
     "titleRequired": "请填写名称",
@@ -792,7 +793,9 @@
     "changeStatus": "更改状态...",
     "leadNotMember": "负责人必须是团队成员",
     "memberNotInTeam": "成员必须是团队成员",
-    "statusFilterAll": "全部状态"
+    "statusFilterAll": "全部状态",
+    "milestoneProgressMeta": "{count} 任务 · {percent}%",
+    "propertiesTitle": "属性"
   },
   "dashboard": {
     "title": "仪表盘",

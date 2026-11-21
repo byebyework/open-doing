@@ -1,0 +1,232 @@
+"use client";
+
+import type { Project, ProjectMemberRef, ProjectStatus, TaskPriority } from "@open-doing/types";
+import { CalendarPlusIcon } from "lucide-react";
+import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+
+import { Calendar } from "@/components/ui/shadcn/calendar";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import { TagPill } from "@/features/tags/components/TagPill";
+import { updatePersonalProjectAction } from "@/features/personal/projects/actions";
+import { updateTeamProjectAction } from "../actions";
+import { AttrPill } from "./AttrPill";
+import { ProjectStatusPill } from "./ProjectStatusPill";
+import { type ProjectFormSpace } from "./ProjectForm";
+
+export interface ProjectPropertiesPanelProps {
+  project: Project;
+  memberPool: ProjectMemberRef[];
+  canManage: boolean;
+  space: ProjectFormSpace;
+}
+
+/** `YYYY-MM-DD` -> Date / Date -> `YYYY-MM-DD`（同 ProjectForm 口径）。 */
+function parseISODate(value: string): Date | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+function toISODate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
+
+/**
+ * 右侧 Properties 编辑卡：label 左 / 可编辑值右的行式布局。
+ * 与概览属性行复用同一批 pill 组件；单字段更新走既有 update action。
+ */
+export function ProjectPropertiesPanel({
+  project,
+  memberPool,
+  canManage,
+  space,
+}: ProjectPropertiesPanelProps) {
+  const t = useTranslations("projects");
+  const tTags = useTranslations("tags");
+  const tCommon = useTranslations("common");
+  const tErrors = useTranslations("errors");
+  const router = useRouter();
+  const [tagIds, setTagIds] = useState<string[]>(project.tags?.map((tag) => tag.id) ?? []);
+
+  const saveField = async (payload: Record<string, unknown>): Promise<boolean> => {
+    try {
+      const result =
+        space.kind === "team"
+          ? await updateTeamProjectAction({ teamId: space.teamId, projectId: project.id, ...payload })
+          : await updatePersonalProjectAction(project.id, payload);
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return false;
+      }
+      router.refresh();
+      return true;
+    } catch {
+      toast.error(tCommon("networkError"));
+      return false;
+    }
+  };
+
+  const priorityLabel = (value: TaskPriority) =>
+    t(value === "high" ? "priorityHigh" : value === "medium" ? "priorityMedium" : "priorityLow");
+
+  const row = (label: string, value: React.ReactNode, testid?: string) => (
+    <div className="flex items-center justify-between gap-2 py-1.5" data-testid={testid}>
+      <span className="text-[12.5px] text-[var(--color-text-muted)]">{label}</span>
+      <span className="flex min-w-0 items-center justify-end">{value}</span>
+    </div>
+  );
+
+  return (
+    <section
+      data-testid="project-properties-panel"
+      className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4"
+    >
+      <p className="mb-2 text-[13px] font-semibold text-[var(--ink-900)]">{t("propertiesTitle")}</p>
+      <div className="flex flex-col divide-y divide-[var(--border)]">
+        {row(
+          t("colStatus"),
+          <ProjectStatusPill
+            status={project.status}
+            disabled={!canManage}
+            onChange={async (status: ProjectStatus) => {
+              await saveField({ status });
+            }}
+            onError={(message) => toast.error(message)}
+            testid="properties-status-pill"
+          />,
+        )}
+        {row(
+          t("colPriority"),
+          <AttrPill
+            testid="properties-priority-pill"
+            icon={null}
+            label={priorityLabel(project.priority)}
+            valueActive
+            disabled={!canManage}
+          >
+            {(close) => (
+              <div className="flex flex-col">
+                {(["high", "medium", "low"] as const).map((value) => (
+                  <button
+                    key={value}
+                    type="button"
+                    data-testid={`properties-priority-option-${value}`}
+                    className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                    onClick={() => {
+                      void saveField({ priority: value });
+                      close();
+                    }}
+                  >
+                    {priorityLabel(value)}
+                  </button>
+                ))}
+              </div>
+            )}
+          </AttrPill>,
+        )}
+        {space.kind === "team" && memberPool.length > 0
+          ? row(
+              t("leadLabel"),
+              <AttrPill
+                testid="properties-lead-pill"
+                icon={null}
+                label={
+                  memberPool.find((m) => m.id === project.leadId)?.name ?? t("notSet")
+                }
+                valueActive
+                disabled={!canManage}
+              >
+                {(close) => (
+                  <div className="flex flex-col">
+                    {memberPool.map((member) => (
+                      <button
+                        key={member.id}
+                        type="button"
+                        data-testid={`properties-lead-option-${member.id}`}
+                        className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                        onClick={() => {
+                          void saveField({ leadId: member.id });
+                          close();
+                        }}
+                      >
+                        <UserAvatar userId={member.id} name={member.name} size={22} />
+                        {member.name}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </AttrPill>,
+            )
+          : null}
+        {space.kind === "team" && memberPool.length > 0
+          ? row(
+              t("membersLabel"),
+              <span className="flex flex-wrap items-center justify-end gap-1">
+                {(project.members ?? []).map((member) => (
+                  <UserAvatar key={member.id} userId={member.id} name={member.name} size={22} />
+                ))}
+              </span>,
+            )
+          : null}
+        {row(
+          t("startDate"),
+          <AttrPill
+            testid="properties-start-pill"
+            icon={<CalendarPlusIcon className="size-3.5" aria-hidden="true" />}
+            label={project.startDate ?? t("notSet")}
+            disabled={!canManage}
+          >
+            {(close) => (
+              <Calendar
+                mode="single"
+                selected={parseISODate(project.startDate ?? "")}
+                onSelect={(day) => {
+                  void saveField({ startDate: day ? toISODate(day) : null });
+                  close();
+                }}
+                disabled={!canManage}
+              />
+            )}
+          </AttrPill>,
+        )}
+        {row(
+          t("endDate"),
+          <AttrPill
+            testid="properties-end-pill"
+            icon={<CalendarPlusIcon className="size-3.5" aria-hidden="true" />}
+            label={project.endDate ?? t("notSet")}
+            disabled={!canManage}
+          >
+            {(close) => (
+              <Calendar
+                mode="single"
+                selected={parseISODate(project.endDate ?? "")}
+                onSelect={(day) => {
+                  void saveField({ endDate: day ? toISODate(day) : null });
+                  close();
+                }}
+                disabled={!canManage}
+              />
+            )}
+          </AttrPill>,
+        )}
+        {projectTagPoolRow()}
+      </div>
+    </section>
+  );
+
+  function projectTagPoolRow() {
+    if (!project.tags || project.tags.length === 0) return null;
+    return row(
+      tTags("tagNameLabel"),
+      <span className="flex flex-wrap items-center justify-end gap-1">
+        {project.tags.map((tag) => (
+          <TagPill key={tag.id} name={tag.name} color={tag.color} />
+        ))}
+      </span>,
+    );
+  }
+}
