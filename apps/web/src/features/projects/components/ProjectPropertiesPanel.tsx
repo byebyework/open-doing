@@ -50,13 +50,15 @@ export function ProjectPropertiesPanel({
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const [tagIds, setTagIds] = useState<string[]>(project.tags?.map((tag) => tag.id) ?? []);
-  // 项目成员本地态（Properties 行可编辑；渲染期同步 RSC 快照）
-  const [syncedMembers, setSyncedMembers] = useState(project);
+  // 项目负责人/成员本地态（Properties 行可编辑；渲染期同步 RSC 快照）
+  const [syncedProject, setSyncedProject] = useState(project);
+  const [leadId, setLeadId] = useState<string | null>(project.leadId);
   const [memberIds, setMemberIds] = useState<string[]>(
     project.members?.map((member) => member.id) ?? [],
   );
-  if (project !== syncedMembers) {
-    setSyncedMembers(project);
+  if (project !== syncedProject) {
+    setSyncedProject(project);
+    setLeadId(project.leadId);
     setMemberIds(project.members?.map((member) => member.id) ?? []);
   }
 
@@ -143,13 +145,30 @@ export function ProjectPropertiesPanel({
                 testid="properties-lead-pill"
                 icon={null}
                 label={
-                  memberPool.find((m) => m.id === project.leadId)?.name ?? t("notSet")
+                  memberPool.find((m) => m.id === leadId)?.name ?? t("notSet")
                 }
                 valueActive
                 disabled={!canManage}
               >
                 {(close) => (
                   <div className="flex flex-col">
+                    {leadId ? (
+                      <button
+                        type="button"
+                        data-testid="properties-lead-clear"
+                        className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-[13px] text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)]"
+                        onClick={() => {
+                          // 负责人取消：同步移出成员（双向一致）
+                          const next = memberIds.filter((id) => id !== leadId);
+                          setMemberIds(next);
+                          setLeadId(null);
+                          void saveField({ leadId: null, memberIds: next });
+                          close();
+                        }}
+                      >
+                        {t("notSet")}
+                      </button>
+                    ) : null}
                     {memberPool.map((member) => (
                       <button
                         key={member.id}
@@ -157,6 +176,7 @@ export function ProjectPropertiesPanel({
                         data-testid={`properties-lead-option-${member.id}`}
                         className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
                         onClick={() => {
+                          setLeadId(member.id);
                           void saveField({ leadId: member.id });
                           close();
                         }}
@@ -198,11 +218,15 @@ export function ProjectPropertiesPanel({
                               ? memberIds.filter((id) => id !== member.id)
                               : [...memberIds, member.id];
                             setMemberIds(next);
-                            // lead 由服务层不变式自动并入成员（leadId 透传保留）
+                            // 双向一致：移除的成员若是负责人，leadId 一并清空；
+                            // 否则透传 leadId，服务层不变式会把负责人自动并回成员。
+                            // 移除成员时（checked 为 true）若他是负责人 → 清空 leadId
+                            const clearLead = checked && member.id === leadId;
                             void saveField({
                               memberIds: next,
-                              leadId: project.leadId,
+                              leadId: clearLead ? null : leadId,
                             });
+                            if (clearLead) setLeadId(null);
                           }}
                         >
                           <UserAvatar userId={member.id} name={member.name} size={22} />

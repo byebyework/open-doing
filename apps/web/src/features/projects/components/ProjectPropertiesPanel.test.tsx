@@ -75,6 +75,64 @@ describe("ProjectPropertiesPanel 成员行", () => {
     });
   }
 
+  it("移除作为负责人的成员：leadId 同步清空", async () => {
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
+          <ProjectPropertiesPanel
+            project={project}
+            memberPool={roster}
+            canManage
+            space={{ kind: "team", teamId: "team-1" }}
+          />
+        </NextIntlClientProvider>,
+      );
+    });
+
+    click('[data-testid="properties-members-pill"]');
+    // 取消勾选 u1（他是负责人）
+    click('[data-testid="properties-member-option-u1"]');
+    click('[data-testid="properties-members-pill"]');
+
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        memberIds: [],
+        leadId: null,
+      }),
+    );
+  });
+
+  it("负责人 pill 选「未设置」：leadId 清空且成员移除旧负责人", async () => {
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
+          <ProjectPropertiesPanel
+            project={project}
+            memberPool={roster}
+            canManage
+            space={{ kind: "team", teamId: "team-1" }}
+          />
+        </NextIntlClientProvider>,
+      );
+    });
+
+    click('[data-testid="properties-lead-pill"]');
+    click('[data-testid="properties-lead-clear"]');
+
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        leadId: null,
+        memberIds: [],
+      }),
+    );
+  });
+
   it("成员 Popover 勾选名册成员后保存：memberIds 含 lead 自动并入", async () => {
     act(() => {
       root.render(
