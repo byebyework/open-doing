@@ -317,11 +317,7 @@ export function ProjectListTable({
                       <span className="block truncate font-semibold text-[var(--color-text)] hover:text-[var(--color-primary)]">
                         {row.name}
                       </span>
-                      {(row.summary ?? row.description) ? (
-                        <span className="mt-0.5 block truncate text-[12.5px] font-normal text-[var(--color-text-muted)]">
-                          {row.summary ?? row.description}
-                        </span>
-                      ) : null}
+
                     </button>
                   </td>
                   <td className="px-3 py-3">
