@@ -14,6 +14,7 @@ import { ProjectProgressPanel } from "@/features/projects/components/ProjectProg
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
 import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
 import {
+  buildProjectProgressPercent,
   listTeamProjectMembers,
   listTeamProjectMilestones,
   listProjectMilestonesWithProgress,
@@ -171,11 +172,7 @@ export default async function TeamProjectPage({
               canManage={can(membership.role, "team:manage_projects")}
             />
             <ProjectProgressPanel
-              percent={Math.round(
-                (tasks.filter((task) => task.status === "done").length /
-                  Math.max(tasks.length, 1)) *
-                  100,
-              )}
+              percent={buildProjectProgressPercent(tasks, today)}
             />
           </>
         }

@@ -950,6 +950,32 @@ export function buildProjectStats(
 }
 
 /**
+ * 详情页进度卡口径（0–100 整数）：与列表/分析共用 buildProjectStats
+ * 的子任务感知任务进度均值。此前详情页手写 done/total，与列表口径漂移
+ * （列表 43% vs 详情 22%），统一后所有表面的项目进度一致。
+ */
+export function buildProjectProgressPercent(
+  tasks: {
+    status: TaskStatus;
+    dueDate?: string | null;
+    subtasks: { completed: boolean }[];
+  }[],
+  today: string,
+): number {
+  const stats = buildProjectStats(
+    tasks.map((task) => ({
+      projectId: "",
+      status: task.status,
+      dueDate: task.dueDate ?? null,
+      subtaskCount: task.subtasks.length,
+      completedSubtaskCount: task.subtasks.filter((subtask) => subtask.completed).length,
+    })),
+    today,
+  );
+  return Math.round(stats.progress * 100);
+}
+
+/**
  * 查询给定项目集合的任务统计行(子任务计数用派生表一次 group by,防 N+1;
  * 与 team-overview 的任务快照同一模式)。空集合直接返回空,避免无谓 `IN ()`。
  */

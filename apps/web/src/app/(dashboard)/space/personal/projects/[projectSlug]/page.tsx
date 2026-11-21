@@ -13,6 +13,7 @@ import { ProjectProgressPanel } from "@/features/projects/components/ProjectProg
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
 import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
 import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
+import { buildProjectProgressPercent } from "@/features/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
 import { listTags } from "@/features/tags/service";
 import { PersonalKanban } from "@/features/personal/tasks/components/PersonalKanban";
@@ -129,11 +130,7 @@ export default async function PersonalProjectPage({
               canManage
             />
             <ProjectProgressPanel
-              percent={Math.round(
-                (tasks.filter((task) => task.status === "done").length /
-                  Math.max(tasks.length, 1)) *
-                  100,
-              )}
+              percent={buildProjectProgressPercent(tasks, today)}
             />
           </>
         }

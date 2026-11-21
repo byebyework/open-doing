@@ -19,7 +19,7 @@ import {
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 import { TeamPermissionError } from "@/features/teams/permissions";
 import { createTag } from "@/features/tags/service";
-import { applyProjectTags } from "./service";
+import { applyProjectTags, buildProjectProgressPercent } from "./service";
 import { createTeam } from "@/features/teams/service";
 import { addPersonalProjectMilestone, createPersonalProject, listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 
@@ -1240,5 +1240,34 @@ describe.skipIf(!hasTestDatabase)("里程碑进度查询", () => {
     expect(progress).toHaveLength(1);
     expect(progress[0]!.doneCount).toBe(1);
     expect(progress[0]!.percent).toBe(100);
+  });
+});
+
+describe("buildProjectProgressPercent（详情页进度卡口径）", () => {
+  it("与列表共用子任务感知口径：进行中计 0.5、子任务按完成比", () => {
+    // 无子任务：done=1 / in_progress=0.5 → (1+0.5)/2 = 75%
+    const percent = buildProjectProgressPercent(
+      [
+        { status: "done", subtasks: [] },
+        { status: "in_progress", subtasks: [] },
+      ],
+      "2026-11-22",
+    );
+    expect(percent).toBe(75);
+
+    // 子任务感知：todo 任务完成 1/2 子任务 → 0.5；(1 + 0.5 + 0.5)/3 ≈ 67%
+    const withSubtasks = buildProjectProgressPercent(
+      [
+        { status: "done", subtasks: [] },
+        { status: "in_progress", subtasks: [] },
+        { status: "todo", subtasks: [{ completed: true }, { completed: false }] },
+      ],
+      "2026-11-22",
+    );
+    expect(withSubtasks).toBe(67);
+  });
+
+  it("空项目返回 0%", () => {
+    expect(buildProjectProgressPercent([], "2026-11-22")).toBe(0);
   });
 });
