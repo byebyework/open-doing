@@ -1,6 +1,6 @@
 "use client";
 
-import type { Project, ProjectMemberRef, Tag, TaskPriority } from "@open-doing/types";
+import type { Project, ProjectMemberRef, TaskPriority } from "@open-doing/types";
 import {
   CalendarPlusIcon,
   CheckIcon,
@@ -40,7 +40,6 @@ import {
   updateTeamProjectAction,
 } from "../actions";
 import type { MilestoneProgress } from "../service";
-import { PROJECT_STATUS_COLORS } from "../constants";
 
 import { MilestoneDatePopover } from "./MilestoneDatePopover";
 import { ProjectStatusPill } from "./ProjectStatusPill";
@@ -51,8 +50,7 @@ import { type ProjectFormSpace } from "./ProjectForm";
 export interface ProjectOverviewPanelProps {
   project: Project;
   /** 概览里程碑行（进度口径见 service） */
-  milestones: import("../service").MilestoneProgress[];
-  memberPool: ProjectMemberRef[];
+  milestones: MilestoneProgress[];
   /** 项目类型标签池（标签行编辑用）。 */
   projectTagPool?: import("@open-doing/types").Tag[];
   displayLead: ProjectMemberRef | null;
@@ -81,7 +79,6 @@ function toISODate(date: Date): string {
 export function ProjectOverviewPanel({
   project,
   milestones,
-  memberPool,
   projectTagPool = [],
   displayLead,
   displayMembers,
@@ -403,7 +400,7 @@ export function ProjectOverviewPanel({
             disabled={!canManage || saving}
             quiet
           >
-            {(close) => (
+            {() => (
               <div className="flex max-h-56 w-[220px] flex-col overflow-y-auto">
                 {projectTagPool.map((tag) => {
                   const checked = tagIds.includes(tag.id);
@@ -524,18 +521,7 @@ export function ProjectOverviewPanel({
                     onChange={(event) => setMilestoneEditName(event.target.value)}
                     onKeyDown={(event) => {
                       if (event.key === "Enter") {
-                        void (space.kind === "team"
-                          ? updateTeamProjectMilestoneAction({
-                              teamId: space.teamId,
-                              projectId,
-                              milestoneId: item.milestone.id,
-                              name: milestoneEditName.trim(),
-                            })
-                          : updatePersonalProjectMilestoneAction(projectId, item.milestone.id, {
-                              name: milestoneEditName.trim(),
-                            }));
-                        setMilestoneEditingId(null);
-                        router.refresh();
+                        void saveMilestoneRename(item.milestone.id);
                       }
                       if (event.key === "Escape") setMilestoneEditingId(null);
                     }}
@@ -617,7 +603,7 @@ export function ProjectOverviewPanel({
                     }))
                   }
                   onBlur={() => {
-                    const next = milestoneDescDrafts[item.milestone.id] ?? "";
+                    const next = milestoneDescDrafts[item.milestone.id] ?? item.milestone.description ?? "";
                     if (!canManage || next === (item.milestone.description ?? "")) return;
                     void (space.kind === "team"
                       ? updateTeamProjectMilestoneAction({
@@ -731,16 +717,7 @@ export function ProjectOverviewPanel({
         danger
         onConfirm={async () => {
           if (!pendingDelete) return;
-          const result =
-            space.kind === "team"
-              ? await deleteTeamProjectMilestoneAction({ teamId: space.teamId, projectId, milestoneId: pendingDelete })
-              : await deletePersonalProjectMilestoneAction(projectId, pendingDelete);
-          if (!result.ok) {
-            toast.error(result.errors.form ?? tErrors("operationFailed"));
-            return;
-          }
-          setPendingDelete(null);
-          router.refresh();
+          await removeMilestoneById(pendingDelete);
         }}
         onCancel={() => setPendingDelete(null)}
         okButtonProps={{ "data-testid": "overview-milestone-delete-confirm" }}

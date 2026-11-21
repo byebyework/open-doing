@@ -144,7 +144,6 @@ export default async function PersonalProjectPage({
               project={project}
               milestones={milestoneProgress}
               projectTagPool={projectTagPool}
-              memberPool={[]}
               displayLead={null}
               displayMembers={[]}
               canManage

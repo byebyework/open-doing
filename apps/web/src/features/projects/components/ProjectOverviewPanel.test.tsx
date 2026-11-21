@@ -10,7 +10,7 @@ import type { Project } from "@open-doing/types";
 import type { AppLocale } from "@/i18n/config";
 import zh from "@/i18n/messages/zh.json";
 
-import { updateTeamProjectAction } from "../actions";
+import { updateTeamProjectAction, updateTeamProjectMilestoneAction } from "../actions";
 import { ProjectOverviewPanel } from "./ProjectOverviewPanel";
 
 /** jsdom 探针：概览主列结构、内联编辑 action 调用、里程碑行进度、个人空间无 lead/members。 */
@@ -20,10 +20,15 @@ vi.mock("next/navigation", () => ({
 
 vi.mock("../actions", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../actions")>();
-  return { ...actual, updateTeamProjectAction: vi.fn() };
+  return {
+    ...actual,
+    updateTeamProjectAction: vi.fn(),
+    updateTeamProjectMilestoneAction: vi.fn(),
+  };
 });
 
 const mockUpdate = vi.mocked(updateTeamProjectAction);
+const mockUpdateMilestone = vi.mocked(updateTeamProjectMilestoneAction);
 
 function projectFixture(overrides: Partial<Project> = {}): Project {
   return {
@@ -51,6 +56,16 @@ describe("ProjectOverviewPanel", () => {
     document.body.appendChild(container);
     root = createRoot(container);
     mockUpdate.mockResolvedValue({ ok: true, data: projectFixture() });
+    mockUpdateMilestone.mockResolvedValue({
+      ok: true,
+      data: {
+        id: "m1",
+        projectId: "p1",
+        name: "上线",
+        dueDate: "2026-12-20",
+        createdAt: "2026-11-20T00:00:00.000Z",
+      },
+    });
   });
 
   afterEach(() => {
@@ -59,7 +74,12 @@ describe("ProjectOverviewPanel", () => {
     vi.resetAllMocks();
   });
 
-  function render(project: Project, space: "team" | "personal" = "team", projectTagPool: Project["tags"] = []) {
+  function render(
+    project: Project,
+    space: "team" | "personal" = "team",
+    projectTagPool: Project["tags"] = [],
+    milestoneOverrides: { description?: string } = {},
+  ) {
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
@@ -74,20 +94,13 @@ describe("ProjectOverviewPanel", () => {
                   name: "上线",
                   dueDate: "2026-12-20",
                   createdAt: "2026-11-20T00:00:00.000Z",
+                  ...milestoneOverrides,
                 },
                 taskCount: 3,
                 doneCount: 2,
                 percent: 67,
               },
             ]}
-            memberPool={
-              space === "team"
-                ? [
-                    { id: "u1", name: "甲", image: null },
-                    { id: "u2", name: "乙", image: null },
-                  ]
-                : []
-            }
             displayLead={space === "team" ? { id: "u1", name: "甲", image: null } : null}
             displayMembers={space === "team" ? [{ id: "u1", name: "甲", image: null }] : []}
             canManage
@@ -118,6 +131,60 @@ describe("ProjectOverviewPanel", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
   }
+
+  function setTextarea(selector: string, value: string) {
+    const area = document.body.querySelector<HTMLTextAreaElement>(selector);
+    if (!area) throw new Error(`missing textarea ${selector}`);
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value",
+      )!.set!;
+      setter.call(area, value);
+      area.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+  }
+
+  it("展开里程碑描述未修改时失焦不覆盖原描述", async () => {
+    render(projectFixture(), "team", [], { description: "原有描述" });
+    click('[data-testid="overview-milestone-toggle-m1"]');
+    const area = document.body.querySelector<HTMLTextAreaElement>(
+      '[data-testid="overview-milestone-description-m1"]',
+    )!;
+    expect(area.value).toBe("原有描述");
+
+    act(() => {
+      area.focus();
+      area.blur();
+    });
+    await act(async () => {});
+
+    expect(mockUpdateMilestone).not.toHaveBeenCalled();
+  });
+
+  it("展开里程碑描述修改后失焦保存", async () => {
+    render(projectFixture(), "team", [], { description: "原有描述" });
+    click('[data-testid="overview-milestone-toggle-m1"]');
+    setTextarea('[data-testid="overview-milestone-description-m1"]', "更新后的描述");
+    const area = document.body.querySelector<HTMLTextAreaElement>(
+      '[data-testid="overview-milestone-description-m1"]',
+    )!;
+
+    act(() => {
+      area.focus();
+      area.blur();
+    });
+    await act(async () => {});
+
+    expect(mockUpdateMilestone).toHaveBeenCalledWith(
+      expect.objectContaining({
+        teamId: "team-1",
+        projectId: "p1",
+        milestoneId: "m1",
+        description: "更新后的描述",
+      }),
+    );
+  });
 
   it("渲染标题/简述/里程碑进度行；团队空间展示负责人", () => {
     render(projectFixture());

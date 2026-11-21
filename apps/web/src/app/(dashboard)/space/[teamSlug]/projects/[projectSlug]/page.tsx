@@ -183,7 +183,6 @@ export default async function TeamProjectPage({
               project={project}
               milestones={milestoneProgress}
               projectTagPool={projectTagPool}
-              memberPool={memberRoster}
               displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
               displayMembers={projectMembers}
               canManage={can(membership.role, "team:manage_projects")}
