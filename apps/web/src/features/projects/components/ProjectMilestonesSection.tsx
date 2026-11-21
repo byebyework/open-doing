@@ -185,7 +185,7 @@ export function ProjectMilestonesSection({
   return (
     <section
       data-testid="project-milestones-section"
-      className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4"
+      className={compact ? "flex flex-col" : "rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4"}
     >
       {!compact ? (
         <div className="flex items-center gap-2">
@@ -280,7 +280,7 @@ export function ProjectMilestonesSection({
         )
       ) : null}
 
-      <ul className="mt-3 flex flex-col">
+      <ul className={compact ? "flex flex-col" : "mt-3 flex flex-col"}>
         {milestones.map((item, index) =>
           canManage && editingId === item.id ? (
             <li key={item.id} className="border-b border-[var(--border)] py-2 last:border-b-0">
@@ -298,7 +298,7 @@ export function ProjectMilestonesSection({
           ) : (
             <li
               key={item.id}
-              className="flex items-start gap-2.5 border-b border-[var(--border)] py-2.5 last:border-b-0"
+              className={`flex items-center gap-2.5 py-2 ${compact ? "" : "border-b border-[var(--border)] last:border-b-0"}`}
             >
               <FlagIcon className="mt-0.5 size-3.5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
               <div className="min-w-0 flex-1">
