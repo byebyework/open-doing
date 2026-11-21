@@ -682,7 +682,10 @@
     "milestoneDescriptionTooLong": "里程碑描述不能超过 {max} 个字符",
     "milestoneNotFound": "里程碑不存在或无权访问",
     "priorityInvalid": "优先级取值非法",
-    "summaryTooLong": "简述不能超过 {max} 个字符"
+    "summaryTooLong": "简述不能超过 {max} 个字符",
+    "statusInvalid": "状态取值非法",
+    "leadNotMember": "负责人必须是团队成员",
+    "memberNotInTeam": "成员必须是团队成员"
   },
   "projects": {
     "project": "项目",
@@ -776,7 +779,20 @@
     "summaryLabel": "简述",
     "summaryTooLong": "简述不能超过 {max} 个字符",
     "milestoneNameLabel": "里程碑名称",
-    "descriptionHint": "写下项目描述、项目简报，或记录一些想法..."
+    "descriptionHint": "写下项目描述、项目简报，或记录一些想法...",
+    "statusBacklog": "待办",
+    "statusPlanned": "规划中",
+    "statusCanceled": "已取消",
+    "statusInvalid": "状态取值非法",
+    "leadLabel": "负责人",
+    "membersLabel": "成员",
+    "colLead": "负责人",
+    "colDueDate": "截止时间",
+    "colTaskCount": "任务数",
+    "changeStatus": "更改状态...",
+    "leadNotMember": "负责人必须是团队成员",
+    "memberNotInTeam": "成员必须是团队成员",
+    "statusFilterAll": "全部状态"
   },
   "dashboard": {
     "title": "仪表盘",

@@ -682,7 +682,10 @@
     "milestoneDescriptionTooLong": "Milestone description must be at most {max} characters",
     "milestoneNotFound": "Milestone not found or inaccessible",
     "priorityInvalid": "Invalid priority value",
-    "summaryTooLong": "Summary must be at most {max} characters"
+    "summaryTooLong": "Summary must be at most {max} characters",
+    "statusInvalid": "Invalid status value",
+    "leadNotMember": "Lead must be a team member",
+    "memberNotInTeam": "Members must be team members"
   },
   "projects": {
     "project": "Project",
@@ -726,7 +729,7 @@
     "dateRange": "Timeline",
     "headerBadge": "{count} projects · {percent}% overall",
     "statusNotStarted": "Not started",
-    "statusInProgress": "In progress",
+    "statusInProgress": "In Progress",
     "statusCompleted": "Completed",
     "filterAll": "All",
     "filterAllPriorities": "All priorities",
@@ -776,7 +779,20 @@
     "summaryLabel": "Summary",
     "summaryTooLong": "Summary must be at most {max} characters",
     "milestoneNameLabel": "Milestone name",
-    "descriptionHint": "Write a description, a project brief, or collect ideas..."
+    "descriptionHint": "Write a description, a project brief, or collect ideas...",
+    "statusBacklog": "Backlog",
+    "statusPlanned": "Planned",
+    "statusCanceled": "Canceled",
+    "statusInvalid": "Invalid status value",
+    "leadLabel": "Lead",
+    "membersLabel": "Members",
+    "colLead": "Lead",
+    "colDueDate": "Due date",
+    "colTaskCount": "Tasks",
+    "changeStatus": "Change status...",
+    "leadNotMember": "Lead must be a team member",
+    "memberNotInTeam": "Members must be team members",
+    "statusFilterAll": "All statuses"
   },
   "dashboard": {
     "title": "Dashboard",
