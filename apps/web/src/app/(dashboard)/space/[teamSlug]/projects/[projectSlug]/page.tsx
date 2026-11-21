@@ -150,6 +150,7 @@ export default async function TeamProjectPage({
       />
 
       <ProjectDetailLayout
+        view={view}
         sidebar={
           <>
             <ProjectPropertiesPanel

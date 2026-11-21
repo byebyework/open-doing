@@ -108,6 +108,7 @@ export default async function PersonalProjectPage({
       />
 
       <ProjectDetailLayout
+        view={view}
         sidebar={
           <>
             <ProjectPropertiesPanel

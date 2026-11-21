@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "motion/react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -70,6 +71,13 @@ function toISODate(date: Date): string {
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
 }
+
+/** 内联编辑器入场（进入编辑态）：快速 fade-rise；退出编辑态保持即时（enter > exit）。 */
+const EDITOR_ENTRANCE = {
+  initial: { opacity: 0, y: -2 },
+  animate: { opacity: 1, y: 0 },
+  transition: { duration: 0.15, ease: "easeOut" as const },
+};
 
 /**
  * 概览主列（Linear 布局）：大标题 → 简述 → 属性行（可内联编辑 pills）→
@@ -263,7 +271,7 @@ export function ProjectOverviewPanel({
       {/* 简述（内联编辑） */}
       <div>
         {editingField === "summary" ? (
-          <div className="flex items-center gap-2">
+          <motion.div {...EDITOR_ENTRANCE} className="flex items-center gap-2">
             <Input
               value={draft}
               maxLength={100}
@@ -291,7 +299,7 @@ export function ProjectOverviewPanel({
             >
               <XIcon className="size-4" aria-hidden="true" />
             </Button>
-          </div>
+          </motion.div>
         ) : (
           <button
             type="button"
@@ -427,7 +435,7 @@ export function ProjectOverviewPanel({
       <div className="flex flex-col gap-2">
         <p className="text-[13px] font-medium text-[var(--color-text)]">{t("descriptionLabel")}</p>
         {editingField === "description" ? (
-          <div className="flex flex-col gap-2">
+          <motion.div {...EDITOR_ENTRANCE} className="flex flex-col gap-2">
             <Textarea
               rows={4}
               value={draft}
@@ -457,7 +465,7 @@ export function ProjectOverviewPanel({
                 {tCommon("save")}
               </Button>
             </div>
-          </div>
+          </motion.div>
         ) : (
           <button
             type="button"
@@ -580,9 +588,18 @@ export function ProjectOverviewPanel({
                   </DropdownMenu>
                 ) : null}
               </div>
-              {/* 展开体：描述内联编辑（对照 Linear——空态即「添加描述...」输入，失焦保存） */}
-              {expanded ? (
-                <Textarea
+              {/* 展开体：描述内联编辑（对照 Linear——空态即「添加描述...」输入，失焦保存）；高度展开动效 */}
+              <AnimatePresence initial={false}>
+                {expanded ? (
+                  <motion.div
+                    key="expanded"
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.18, ease: "easeOut" }}
+                    className="overflow-hidden"
+                  >
+                    <Textarea
                   rows={2}
                   value={milestoneDescDrafts[item.milestone.id] ?? item.milestone.description ?? ""}
                   placeholder={t("milestoneDescriptionPlaceholder")}
@@ -610,8 +627,10 @@ export function ProjectOverviewPanel({
                   }}
                   disabled={!canManage || saving}
                   className="mt-1 ml-6 resize-none rounded-[var(--radius-md)] border-none bg-transparent px-2 py-1 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0 hover:bg-[var(--color-surface-hover)] dark:bg-transparent"
-                />
-              ) : null}
+                  />
+                  </motion.div>
+                ) : null}
+              </AnimatePresence>
             </li>
               );
             })}

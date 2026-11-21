@@ -1,8 +1,9 @@
 "use client";
 
 import { PanelRightIcon } from "lucide-react";
+import { motion } from "motion/react";
 import { useTranslations } from "next-intl";
-import { useEffect, useState, type ReactNode } from "react";
+import { Children, useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/shadcn/button";
 
@@ -11,16 +12,30 @@ export interface ProjectDetailLayoutProps {
   sidebar: ReactNode;
   /** 主列内容（概览面板或任务表格/看板）。 */
   children: ReactNode;
+  /**
+   * 当前视图（`overview`/`list`/`board`）：作为主列动效的 key，
+   * 切换 tab 时新内容以 fade-rise 入场（无退场动画，不拖慢 RSC 导航）。
+   */
+  view?: string;
 }
 
 const SIDEBAR_HIDDEN_KEY = "project-detail-sidebar-hidden";
+
+/** 主列视图切换入场：与站内动效语言一致（快、克制、无过冲）。 */
+const VIEW_TRANSITION = { duration: 0.2, ease: "easeOut" as const };
+
+/** 侧栏卡片级联间隔：Properties → Milestones → Progress 依次入场。 */
+const SIDEBAR_STAGGER = 0.04;
 
 /**
  * 详情页布局（对照 Linear 实测口径）：右上角切换按钮瞬时收起/展开右侧栏，
  * 状态持久化到 localStorage。布局级切换不做动画（Linear 同款哲学：
  * 动效只留给轻交互），reduced-motion 用户无差异成本。
+ *
+ * 动效范围：主列视图切换入场 + 侧栏卡片首次挂载级联入场；
+ * 收起/展开本身保持瞬时。
  */
-export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutProps) {
+export function ProjectDetailLayout({ sidebar, children, view }: ProjectDetailLayoutProps) {
   const t = useTranslations("projects");
   const [hidden, setHidden] = useState<boolean>(() => {
     try {
@@ -38,6 +53,18 @@ export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutPr
     }
   }, [hidden]);
 
+  const main = (
+    <motion.div
+      key={view}
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={VIEW_TRANSITION}
+      className="min-w-0"
+    >
+      {children}
+    </motion.div>
+  );
+
   return (
     <div>
       <div className="flex justify-end">
@@ -54,11 +81,27 @@ export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutPr
         </Button>
       </div>
       {hidden ? (
-        <div className="min-w-0">{children}</div>
+        <div className="min-w-0">{main}</div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <div className="min-w-0">{children}</div>
-          <div className="flex flex-col gap-4 self-start lg:sticky lg:top-[76px]">{sidebar}</div>
+          {main}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...VIEW_TRANSITION, delay: SIDEBAR_STAGGER }}
+            className="flex flex-col gap-4 self-start lg:sticky lg:top-[76px]"
+          >
+            {Children.map(sidebar, (card, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, ease: "easeOut", delay: SIDEBAR_STAGGER * (index + 1) }}
+              >
+                {card}
+              </motion.div>
+            ))}
+          </motion.div>
         </div>
       )}
     </div>
