@@ -318,21 +318,13 @@ export function ProjectMilestonesSection({
                   ) : (
                     <span className="text-[13px] font-medium text-[var(--color-text)]">{item.name}</span>
                   )}
-                  {item.dueDate ? (
-                    <span className="rounded-full bg-[var(--color-todo-bg)] px-2 py-0.5 text-[11.5px] tabular-nums text-[var(--color-todo)]">
-                      {item.dueDate}
-                    </span>
-                  ) : null}
                 </div>
                 <p className="mt-0.5 truncate text-[12.5px] text-[var(--color-text-muted)]">
                   {item.description ?? "-"}
                 </p>
                 {progress?.[item.id] ? (
                   <p className="mt-0.5 text-[12px] tabular-nums text-[var(--color-text-muted)]">
-                    {t("milestoneProgressMeta", {
-                      count: progress[item.id]!.taskCount,
-                      percent: progress[item.id]!.percent,
-                    })}
+                    {progress[item.id]!.percent}% of {progress[item.id]!.taskCount}
                   </p>
                 ) : null}
               </div>
@@ -344,7 +336,9 @@ export function ProjectMilestonesSection({
                     onChange={(dueDate) => void updateMilestone(item.id, { dueDate })}
                     disabled={submitting}
                     testid={`project-milestone-date-${index}`}
-                  />
+                  >
+                    {item.dueDate}
+                  </MilestoneDatePopover>
                   <button
                     type="button"
                     aria-label={t("milestoneDelete")}
