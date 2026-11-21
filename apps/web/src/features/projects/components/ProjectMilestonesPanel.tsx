@@ -69,6 +69,7 @@ export function ProjectMilestonesPanel({
         projectId={projectId}
         milestones={milestones}
         canManage={canManage}
+        compact
       />
           </motion.div>
         ) : null}

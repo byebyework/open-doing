@@ -1,7 +1,7 @@
 "use client";
 
 import type { ProjectMilestone } from "@open-doing/types";
-import { FlagIcon, PlusIcon, XIcon } from "lucide-react";
+import { CheckIcon, FlagIcon, PlusIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +9,7 @@ import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/shadcn/button";
+import { Input } from "@/components/ui/shadcn/input";
 import {
   addPersonalProjectMilestoneAction,
   deletePersonalProjectMilestoneAction,
@@ -35,6 +36,11 @@ export interface ProjectMilestonesSectionProps {
   canManage: boolean;
   /** 增删成功后的附加回调（嵌入 Drawer 等自有数据面时重取列表）。 */
   onChanged?: () => void;
+  /**
+   * 紧凑模式（右侧栏卡内）：隐藏内部标题行，加号即用的行内创建
+   * （名称必填、日期可选），不使用完整编辑卡。
+   */
+  compact?: boolean;
 }
 
 /**
@@ -50,12 +56,15 @@ export function ProjectMilestonesSection({
   milestones,
   canManage,
   onChanged,
+  compact = false,
 }: ProjectMilestonesSectionProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  const [inlineName, setInlineName] = useState("");
+  const [inlineDue, setInlineDue] = useState("");
   /** 行点击编辑的里程碑 id（编辑组件 = 新建组件 + 预填数据）。 */
   const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
@@ -159,38 +168,115 @@ export function ProjectMilestonesSection({
       data-testid="project-milestones-section"
       className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] p-4"
     >
-      <div className="flex items-center gap-2">
-        <h2 className="text-[15px] font-semibold text-[var(--ink-900)]">
-          {t("milestoneSectionTitle")}
-        </h2>
-        {milestones.length > 0 ? (
-          <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
-            {t("milestoneCount", { count: milestones.length })}
-          </span>
-        ) : null}
-        {canManage && !adding ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="ml-auto"
-            data-testid="project-milestone-add-trigger"
-            onClick={() => setAdding(true)}
-          >
-            <PlusIcon className="size-4" aria-hidden="true" />
-            {t("milestoneAdd")}
-          </Button>
-        ) : null}
-      </div>
+      {!compact ? (
+        <div className="flex items-center gap-2">
+          <h2 className="text-[15px] font-semibold text-[var(--ink-900)]">
+            {t("milestoneSectionTitle")}
+          </h2>
+          {milestones.length > 0 ? (
+            <span className="rounded-full bg-[var(--color-primary-bg)] px-2 py-0.5 text-[12px] font-medium text-[var(--color-primary)]">
+              {t("milestoneCount", { count: milestones.length })}
+            </span>
+          ) : null}
+          {canManage && !adding ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="ml-auto"
+              data-testid="project-milestone-add-trigger"
+              onClick={() => setAdding(true)}
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+              {t("milestoneAdd")}
+            </Button>
+          ) : null}
+        </div>
+      ) : (
+        <div className="flex items-center justify-end">
+          {canManage && !adding ? (
+            <button
+              type="button"
+              aria-label={t("milestoneAdd")}
+              data-testid="project-milestone-add-trigger"
+              disabled={submitting}
+              onClick={() => setAdding(true)}
+              className="inline-flex size-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+            >
+              <PlusIcon className="size-4" aria-hidden="true" />
+            </button>
+          ) : null}
+        </div>
+      )}
 
       {adding && canManage ? (
-        <div className="mt-3">
-          <ProjectMilestoneEditor
-            onSubmit={addMilestone}
-            onCancel={() => setAdding(false)}
-            submitting={submitting}
-            testIdPrefix="project"
-          />
-        </div>
+        compact ? (
+          <div className="mt-2 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface-inset)] px-3 py-2">
+            <span
+              className="inline-block size-2.5 shrink-0 rotate-45 rounded-[2px] border border-[var(--color-text-muted)]"
+              aria-hidden="true"
+            />
+            <Input
+              autoFocus
+              value={inlineName}
+              maxLength={50}
+              placeholder={t("milestoneNameLabel")}
+              data-testid="project-milestone-inline-name"
+              onChange={(event) => setInlineName(event.target.value)}
+              disabled={submitting}
+              className="h-8 min-w-0 flex-1 border-none bg-transparent px-1 text-[13px] font-medium shadow-none focus-visible:ring-0"
+            />
+            <Input
+              type="date"
+              value={inlineDue}
+              aria-label={t("milestoneDueDateLabel")}
+              data-testid="project-milestone-inline-due"
+              onChange={(event) => setInlineDue(event.target.value)}
+              disabled={submitting}
+              className="h-7 w-[140px] shrink-0 rounded-full border-[var(--border)] bg-[var(--card)] px-3 text-[12.5px] tabular-nums"
+            />
+            <button
+              type="button"
+              aria-label={tCommon("cancel")}
+              disabled={submitting}
+              onClick={() => {
+                setAdding(false);
+                setInlineName("");
+                setInlineDue("");
+              }}
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            >
+              <XIcon className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label={tCommon("save")}
+              data-testid="project-milestone-inline-confirm"
+              disabled={submitting || inlineName.trim().length === 0}
+              onClick={async () => {
+                await addMilestone({
+                  name: inlineName.trim(),
+                  description: undefined,
+                  dueDate: inlineDue,
+                });
+                setAdding(false);
+                setInlineName("");
+                setInlineDue("");
+              }}
+              className="text-[var(--color-primary)] disabled:opacity-50"
+            >
+              <CheckIcon className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          <div className="mt-3">
+            <ProjectMilestoneEditor
+              onSubmit={addMilestone}
+              onCancel={() => setAdding(false)}
+              submitting={submitting}
+              testIdPrefix="project"
+            />
+          </div>
+        )
       ) : null}
 
       <ul className="mt-3 flex flex-col">

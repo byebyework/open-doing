@@ -799,7 +799,8 @@
     "milestoneProgressMeta": "{count} tasks · {percent}%",
     "propertiesTitle": "Properties",
     "sidebarToggle": "Toggle sidebar",
-    "milestoneEmpty": "No milestones yet — add one from the Milestones card"
+    "milestoneEmpty": "No milestones yet — add one from the Milestones card",
+    "colActions": "Actions"
   },
   "dashboard": {
     "title": "Dashboard",

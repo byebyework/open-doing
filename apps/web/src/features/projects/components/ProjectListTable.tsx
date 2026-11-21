@@ -3,13 +3,19 @@
 import type { ProjectMemberRef, ProjectStatus, Tag, TaskPriority } from "@open-doing/types";
 import { PROJECT_STATUSES } from "@open-doing/types";
 import { motion } from "motion/react";
-import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
+import {
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ExternalLinkIcon,
+  Trash2Icon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import {
@@ -22,7 +28,8 @@ import {
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { TagPill } from "@/features/tags/components/TagPill";
 import { updatePersonalProjectStatusAction } from "@/features/personal/projects/actions";
-import { updateTeamProjectStatusAction } from "../actions";
+import { deleteTeamProjectAction, updateTeamProjectStatusAction } from "../actions";
+import { deletePersonalProjectAction } from "@/features/personal/projects/actions";
 import { PROJECT_STATUS_COLORS } from "../constants";
 import type { ProjectFormSpace } from "./ProjectForm";
 import { ProjectStatusPill } from "./ProjectStatusPill";
@@ -123,6 +130,9 @@ export function ProjectListTable({
     keyword: "",
   });
   const [page, setPage] = useState(1);
+  /** 待删除项目（操作列删除按钮 → ConfirmModal）。 */
+  const [pendingDelete, setPendingDelete] = useState<ProjectListRow | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // 任一筛选变化重置回第 1 页：React 推荐的渲染期调整状态模式（不用 effect）。
   const [prevFilters, setPrevFilters] = useState(filters);
   if (filters !== prevFilters) {
@@ -160,6 +170,27 @@ export function ProjectListTable({
     }
   };
 
+  const confirmDelete = async () => {
+    if (!pendingDelete || deleting) return;
+    setDeleting(true);
+    try {
+      const result =
+        space.kind === "team"
+          ? await deleteTeamProjectAction({ teamId: space.teamId, projectId: pendingDelete.id })
+          : await deletePersonalProjectAction(pendingDelete.id);
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return;
+      }
+      setPendingDelete(null);
+      router.refresh();
+    } catch {
+      toast.error(tErrors("operationFailed"));
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   // 标签筛选项从行内标签去重派生（保持首次出现顺序）。
   const tagOptions = useMemo(() => {
     const seen = new Map<string, Tag>();
@@ -183,7 +214,7 @@ export function ProjectListTable({
 
   // 团队 7 列（含负责人）；个人 6 列（负责人恒为自己，不展示）。
   const showLeadColumn = space.kind === "team";
-  const columnCount = showLeadColumn ? 7 : 6;
+  const columnCount = showLeadColumn ? 8 : 7;
 
   return (
     <div className="flex flex-col gap-4">
@@ -279,6 +310,7 @@ export function ProjectListTable({
               <th className="px-3 py-2.5 text-left font-medium">{t("colDueDate")}</th>
               <th className="px-3 py-2.5 text-left font-medium">{t("colTaskCount")}</th>
               <th className="px-4 py-2.5 text-right font-medium">{t("colStatus")}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t("colActions")}</th>
             </tr>
           </thead>
           <tbody>
@@ -368,6 +400,32 @@ export function ProjectListTable({
                       onError={(message) => toast.error(message)}
                       testid={`project-status-pill-${row.id}`}
                     />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <span className="inline-flex items-center justify-end gap-1">
+                      <a
+                        href={row.href}
+                        aria-label={t("openFullPage")}
+                        data-testid={`project-row-detail-${index}`}
+                        className="inline-flex size-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                      >
+                        <ExternalLinkIcon className="size-3.5" aria-hidden="true" />
+                      </a>
+                      {canManage ? (
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          aria-label={t("deleteProject")}
+                          data-testid={`project-row-delete-${index}`}
+                          disabled={deleting}
+                          onClick={() => setPendingDelete(row)}
+                          className="size-7 text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
+                        >
+                          <Trash2Icon className="size-3.5" aria-hidden="true" />
+                        </Button>
+                      ) : null}
+                    </span>
                   </td>
                 </motion.tr>
               ))

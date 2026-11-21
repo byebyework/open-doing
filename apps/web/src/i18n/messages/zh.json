@@ -799,7 +799,8 @@
     "milestoneProgressMeta": "{count} 任务 · {percent}%",
     "propertiesTitle": "属性",
     "sidebarToggle": "显示/隐藏侧栏",
-    "milestoneEmpty": "暂无里程碑，可在右侧「里程碑」卡添加"
+    "milestoneEmpty": "暂无里程碑，可在右侧「里程碑」卡添加",
+    "colActions": "操作"
   },
   "dashboard": {
     "title": "仪表盘",
