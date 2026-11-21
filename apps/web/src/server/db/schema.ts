@@ -427,6 +427,8 @@ export const tasks = pgTable(
     priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
     // 成员被移除/退出时置空，不删除任务。
     assigneeId: uuidRef("assignee_id").references(() => users.id, { onDelete: "set null" }),
+    // 所属里程碑（项目内节点）；里程碑删除时任务脱钩保留。
+    milestoneId: uuidRef("milestone_id").references(() => projectMilestones.id, { onDelete: "set null" }),
     dueDate: date("due_date", { mode: "string" }),
     // 开始日期（按天，与 due_date 同粒度）；可空，晚于 due_date 在服务层校验拦截。
     startDate: date("start_date", { mode: "string" }),
@@ -439,6 +441,7 @@ export const tasks = pgTable(
   (t) => [
     index("tasks_assignee_id_idx").on(t.assigneeId),
     index("tasks_status_due_date_idx").on(t.status, t.dueDate),
+    index("tasks_milestone_id_idx").on(t.milestoneId),
     index("tasks_space_type_idx").on(t.spaceType),
   ],
 );

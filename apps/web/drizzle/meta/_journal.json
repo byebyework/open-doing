@@ -85,6 +85,13 @@
       "when": 1795228751677,
       "tag": "0011_square_spot",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795236271484,
+      "tag": "0012_tan_karen_page",
+      "breakpoints": true
     }
   ]
 }
