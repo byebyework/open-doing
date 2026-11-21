@@ -119,6 +119,24 @@ export interface TeamJoinRequest {
   respondedById?: string;
 }
 
+/** 项目状态：Linear 五态（存储口径，2026-11-21 起替换进度推导）。 */
+export type ProjectStatus = "backlog" | "planned" | "in_progress" | "completed" | "canceled";
+
+export const PROJECT_STATUSES: readonly ProjectStatus[] = [
+  "backlog",
+  "planned",
+  "in_progress",
+  "completed",
+  "canceled",
+];
+
+/** 负责人/成员视图（读路径按需组装；展示名由服务层解析好）。 */
+export interface ProjectMemberRef {
+  id: string;
+  name: string;
+  image: string | null;
+}
+
 /** 项目：团队项目归团队，个人项目归用户，二者必居其一 */
 export interface Project {
   id: string;
@@ -128,6 +146,14 @@ export interface Project {
   ownerId: string | null;
   name: string;
   slug: string;
+  /** Linear 五态存储状态（2026-11-21 起替换进度推导口径） */
+  status: ProjectStatus;
+  /** 团队项目负责人；个人项目恒 null */
+  leadId: string | null;
+  /** 负责人视图（读路径按需组装） */
+  lead?: ProjectMemberRef | null;
+  /** 项目成员视图（读路径按需组装；不含顺序语义） */
+  members?: ProjectMemberRef[];
   /** 一句话简述（标题下一行；≤100 字符，服务层校验） */
   summary?: string;
   /** 详细描述（可长文；≤500 字符，服务层校验） */

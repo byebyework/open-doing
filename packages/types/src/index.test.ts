@@ -7,6 +7,7 @@ import {
   isDueSoon,
   isOverdue,
   TASK_PRIORITIES,
+  PROJECT_STATUSES,
 } from "./index";
 
 describe("TASK_PRIORITIES", () => {
@@ -110,5 +111,12 @@ describe("displayName", () => {
 
   it("昵称为空时回退到用户名", () => {
     expect(displayName({ nickname: null, username: "u1" })).toBe("u1");
+  });
+});
+
+describe("ProjectStatus（Linear 五态）", () => {
+  it("PROJECT_STATUSES 顺序与长度锁定", () => {
+    expect(PROJECT_STATUSES).toEqual(["backlog", "planned", "in_progress", "completed", "canceled"]);
+    expect(PROJECT_STATUSES).toHaveLength(5);
   });
 });

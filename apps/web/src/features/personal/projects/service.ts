@@ -37,6 +37,8 @@ function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
     ownerId: row.ownerId,
     name: row.name,
     slug: row.slug,
+    status: row.status,
+    leadId: row.leadId,
     summary: row.summary ?? undefined,
     description: row.description ?? undefined,
     startDate: row.startDate ?? undefined,
