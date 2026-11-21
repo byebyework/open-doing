@@ -33,6 +33,7 @@ import { applyActionErrors } from "@/lib/action-form";
 import { TASK_PRIORITIES, type Tag, type TaskPriority } from "@open-doing/types";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 
+import { listPersonalProjectMilestonesAction } from "@/features/personal/projects/actions";
 import { createPersonalTaskAction } from "../actions";
 import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 import {
@@ -79,6 +80,7 @@ export function NewTaskModal({
   tagPool = [],
 }: NewTaskModalProps) {
   const t = useTranslations("tasks");
+  const tTasks = t;
   const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
@@ -99,6 +101,7 @@ export function NewTaskModal({
       .min(1, t("titleRequired"))
       .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string(),
+    milestoneId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
     startDate: z.string(),
@@ -127,6 +130,7 @@ export function NewTaskModal({
     defaultValues: {
       title: "",
       projectId: defaultProject,
+      milestoneId: "",
       priority: "medium",
       dueDate: dueDateDefault,
       startDate: "",
@@ -140,6 +144,7 @@ export function NewTaskModal({
       reset({
         title: "",
         projectId: defaultProject,
+      milestoneId: "",
         priority: "medium",
         dueDate: dueDateDefault,
         startDate: "",
@@ -149,6 +154,30 @@ export function NewTaskModal({
       setTagIds([]);
     }
   }, [open, reset, defaultProject, dueDateDefault]);
+
+  const watchProjectId = watch("projectId");
+  const watchMilestoneId = watch("milestoneId");
+  const [milestoneOptions, setMilestoneOptions] = useState<
+    { id: string; name: string; dueDate?: string }[]
+  >([]);
+  useEffect(() => {
+    if (!open || !watchProjectId) {
+      setMilestoneOptions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void listPersonalProjectMilestonesAction(watchProjectId).then(
+        (result: Awaited<ReturnType<typeof listPersonalProjectMilestonesAction>>) => {
+          if (!cancelled && result.ok) setMilestoneOptions(result.data);
+        },
+      );
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, watchProjectId]);
 
   const titleValue = watch("title");
   const descriptionValue = watch("description");
@@ -168,6 +197,8 @@ export function NewTaskModal({
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
         projectId: values.projectId === NO_PROJECT ? null : values.projectId,
+        milestoneId:
+          values.projectId !== NO_PROJECT && values.milestoneId.trim() ? values.milestoneId : null,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
       });
 
@@ -249,6 +280,28 @@ export function NewTaskModal({
               </SelectContent>
             </Select>
           </div>
+
+          {watchProjectId && milestoneOptions.length > 0 ? (
+            <div className="mb-4 flex flex-col gap-2">
+              <Label>{tTasks("milestoneLabel")}</Label>
+              <Select
+                value={watchMilestoneId}
+                onValueChange={(value) => setValue("milestoneId", value)}
+              >
+                <SelectTrigger className="w-full" data-testid="task-milestone-select">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">{tTasks("milestoneNone")}</SelectItem>
+                  {milestoneOptions.map((milestone) => (
+                    <SelectItem key={milestone.id} value={milestone.id}>
+                      {milestone.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="mb-4 flex flex-col gap-2">
             <Label>{t("priority")}</Label>

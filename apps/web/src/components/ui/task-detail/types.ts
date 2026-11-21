@@ -26,6 +26,8 @@ export interface TaskDetailModel {
   title: string;
   description?: string;
   status: TaskStatus;
+  /** 所属里程碑（可空）；页面组装选项列表后供详情内联选择 */
+  milestoneId?: string;
   /** 优先级三档（与领域 Task 同源，恒有值） */
   priority: TaskPriority;
   assigneeId: string | null;
@@ -73,6 +75,7 @@ export interface TaskDetailViewActions {
   updateTask: (input: {
     title?: string;
     description?: string;
+    milestoneId?: string | null;
     priority?: TaskPriority;
     dueDate?: string | null;
     startDate?: string | null;
@@ -87,6 +90,8 @@ export interface TaskDetailViewActions {
 /** TaskDetailView 入参。 */
 export interface TaskDetailViewProps {
   task: TaskDetailModel;
+  /** 项目里程碑选项（页面注入；非空才渲染里程碑行）。 */
+  milestoneOptions?: { id: string; name: string }[];
   /** personal 时隐藏责任人选择器与管理员类控件。 */
   space: "personal" | "team";
   permissions: TaskDetailPermissions;

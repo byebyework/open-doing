@@ -345,7 +345,9 @@
     "dueSoonFull": "{date} 到期",
     "tagsLabel": "标签",
     "milestoneInvalid": "里程碑不属于该项目",
-    "viewOverview": "概览"
+    "viewOverview": "概览",
+    "milestoneLabel": "里程碑",
+    "milestoneNone": "无里程碑"
   },
   "moments": {
     "titleRequired": "请填写名称",

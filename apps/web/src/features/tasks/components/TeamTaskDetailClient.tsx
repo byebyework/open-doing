@@ -58,6 +58,8 @@ export interface TeamTaskDetailClientProps {
   assigneeOptions: { id: string; name: string; email?: string | null }[];
   /** 本团队标签池（RSC 注入；详情页标签编辑区用）。 */
   tagPool?: Tag[];
+  /** 项目里程碑选项（详情内联选择）。 */
+  milestoneOptions?: { id: string; name: string }[];
 }
 
 /**
@@ -75,7 +77,7 @@ export function TeamTaskDetailClient({
   permissions,
   assigneeOptions,
   tagPool,
-}: TeamTaskDetailClientProps) {
+    milestoneOptions,}: TeamTaskDetailClientProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -162,6 +164,7 @@ export function TeamTaskDetailClient({
     <TaskDetailView
       task={task}
       space="team"
+      milestoneOptions={milestoneOptions}
       permissions={permissions}
       onAction={onAction}
       backHref={backHref}

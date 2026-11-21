@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { requireUser } from "@/features/auth/session";
 import { getTeamProjectBySlug } from "@/features/projects/service";
 import { TeamTaskDetailClient } from "@/features/tasks/components/TeamTaskDetailClient";
+import { listProjectMilestonesWithProgress } from "@/features/projects/service";
 import {
   canAssignTask,
   canDeleteTask,
@@ -72,10 +73,14 @@ export default async function TeamTaskDetailPage({
   const taskTagPool = (await listTags({ teamId: team.id })).filter(
     (tag) => tag.type === "task",
   );
+  const milestoneOptions = (await listProjectMilestonesWithProgress(team.id, project.id)).map(
+    (item) => ({ id: item.milestone.id, name: item.milestone.name }),
+  );
 
   return (
     <TeamTaskDetailClient
       task={task}
+      milestoneOptions={milestoneOptions}
       teamId={team.id}
       backHref={teamProjectHref(team.slug, project.slug)}
       currentUserId={user.id}

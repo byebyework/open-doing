@@ -72,6 +72,8 @@ export async function createTeamTaskAction(input: {
   dueDate?: string | null;
   startDate?: string | null;
   assigneeId?: string | null;
+  /** 所属里程碑（须属于项目）。 */
+  milestoneId?: string | null;
   tagIds?: string[];
 }): Promise<ActionResult<Task>> {
   const user = await getCurrentUser();
@@ -97,6 +99,8 @@ export async function updateTeamTaskAction(
     startDate?: string | null;
     status?: TaskStatus;
     assigneeId?: string;
+    /** 所属里程碑（须属于项目）；`null` 清空。 */
+    milestoneId?: string | null;
     tagIds?: string[];
   },
 ): Promise<ActionResult<Task>> {

@@ -345,7 +345,9 @@
     "dueSoonFull": "Due {date}",
     "tagsLabel": "Tags",
     "milestoneInvalid": "Milestone does not belong to this project",
-    "viewOverview": "Overview"
+    "viewOverview": "Overview",
+    "milestoneLabel": "Milestone",
+    "milestoneNone": "No milestone"
   },
   "moments": {
     "titleRequired": "Title is required",

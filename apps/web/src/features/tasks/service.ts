@@ -866,6 +866,7 @@ export async function getTeamTaskDetail(
     title: task.title,
     description: task.description ?? undefined,
     status: task.status,
+    milestoneId: task.milestoneId ?? undefined,
     priority: task.priority,
     assigneeId: task.assigneeId,
     // 展示名：昵称优先；未填写（或被移除成员）回退到用户名。

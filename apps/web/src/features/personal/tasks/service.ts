@@ -510,6 +510,7 @@ export async function getPersonalTaskDetail(
     title: task.title,
     description: task.description ?? undefined,
     status: task.status,
+    milestoneId: task.milestoneId ?? undefined,
     priority: task.priority,
     assigneeId: task.assigneeId,
     // 展示名：昵称优先，未填写回退到用户名。

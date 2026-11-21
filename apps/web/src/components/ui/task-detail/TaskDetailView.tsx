@@ -356,6 +356,7 @@ export function TaskDetailView({
   assigneeOptions,
   onAssign,
   metaExtra,
+  milestoneOptions,
 }: TaskDetailViewProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -701,6 +702,39 @@ export function TaskDetailView({
                 <PriorityChip priority={priority} />
               )}
             </MetaRow>
+
+            {milestoneOptions && milestoneOptions.length > 0 ? (
+              <MetaRow label={t("milestoneLabel")}>
+                {permissions.canEdit ? (
+                  <Select
+                    value={task.milestoneId ?? ""}
+                    onValueChange={(value) => {
+                      void onAction.updateTask({ milestoneId: value || null });
+                    }}
+                    data-testid="detail-milestone-select"
+                  >
+                    <SelectTrigger
+                      className="h-8 w-[150px]"
+                      aria-label={t("milestoneLabel")}
+                    >
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">{t("milestoneNone")}</SelectItem>
+                      {milestoneOptions.map((option) => (
+                        <SelectItem key={option.id} value={option.id}>
+                          {option.name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                ) : (
+                  <span className="text-[13px] text-[var(--color-text-secondary)]">
+                    {milestoneOptions.find((o) => o.id === task.milestoneId)?.name ?? "-"}
+                  </span>
+                )}
+              </MetaRow>
+            ) : null}
 
             {metaExtra ? (
               <MetaRow label={t("tagsLabel")}>{metaExtra}</MetaRow>

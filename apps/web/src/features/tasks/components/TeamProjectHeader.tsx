@@ -124,6 +124,7 @@ export function TeamProjectHeader({
 
       <Tabs value={view} onValueChange={(nextView) => router.push(`${projectPath}?view=${nextView}`)}>
         <TabsList>
+          <TabsTrigger value="overview">{t("viewOverview")}</TabsTrigger>
           <TabsTrigger value="list">{t("viewList")}</TabsTrigger>
           <TabsTrigger value="board">{t("viewBoard")}</TabsTrigger>
         </TabsList>

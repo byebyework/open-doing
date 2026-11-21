@@ -37,6 +37,7 @@ import {
   TASK_TITLE_MAX_LENGTH,
 } from "@/lib/task-fields";
 
+import { listTeamProjectMilestonesAction } from "@/features/projects/actions";
 import { createTeamTaskAction } from "../actions";
 import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 
@@ -112,6 +113,7 @@ export function NewTeamTaskModal({
       .min(1, t("titleRequired"))
       .max(TASK_TITLE_MAX_LENGTH, t("titleTooLong", { max: TASK_TITLE_MAX_LENGTH })),
     projectId: z.string().min(1, t("projectRequired")),
+    milestoneId: z.string(),
     assigneeId: z.string(),
     priority: z.string(),
     dueDate: z.string(),
@@ -139,6 +141,7 @@ export function NewTeamTaskModal({
     defaultValues: {
       title: "",
       projectId: defaultProject,
+      milestoneId: "",
       assigneeId: defaultAssignee,
       priority: "medium",
       dueDate: dueDateDefault,
@@ -153,6 +156,7 @@ export function NewTeamTaskModal({
       reset({
         title: "",
         projectId: defaultProject,
+        milestoneId: "",
         assigneeId: defaultAssignee,
         priority: "medium",
         dueDate: dueDateDefault,
@@ -163,6 +167,31 @@ export function NewTeamTaskModal({
       setTagIds([]);
     }
   }, [open, reset, defaultProject, defaultAssignee, dueDateDefault]);
+
+  // 所选项目的里程碑选项（弹窗打开且选定项目后拉取）
+  const watchProjectId = watch("projectId");
+  const watchMilestoneId = watch("milestoneId");
+  const [milestoneOptions, setMilestoneOptions] = useState<
+    { id: string; name: string; dueDate?: string }[]
+  >([]);
+  useEffect(() => {
+    if (!open || !watchProjectId) {
+      setMilestoneOptions([]);
+      return;
+    }
+    let cancelled = false;
+    const timer = window.setTimeout(() => {
+      void listTeamProjectMilestonesAction({ teamId, projectId: watchProjectId }).then(
+        (result: Awaited<ReturnType<typeof listTeamProjectMilestonesAction>>) => {
+          if (!cancelled && result.ok) setMilestoneOptions(result.data);
+        },
+      );
+    }, 0);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [open, watchProjectId, teamId]);
 
   const titleValue = watch("title");
   const descriptionValue = watch("description");
@@ -184,6 +213,7 @@ export function NewTeamTaskModal({
         dueDate: values.dueDate.trim() ? values.dueDate : null,
         startDate: values.startDate.trim() ? values.startDate : null,
         assigneeId: values.assigneeId || null,
+        milestoneId: values.milestoneId.trim() ? values.milestoneId : null,
         tagIds: tagIds.length > 0 ? tagIds : undefined,
       });
 
@@ -275,6 +305,28 @@ export function NewTeamTaskModal({
               </p>
             ) : null}
           </div>
+
+          {milestoneOptions.length > 0 ? (
+            <div className="mb-4 flex flex-col gap-2">
+              <Label htmlFor="team-task-milestone">{t("milestoneLabel")}</Label>
+              <Select
+                value={watchMilestoneId}
+                onValueChange={(value) => setValue("milestoneId", value)}
+              >
+                <SelectTrigger id="team-task-milestone" className="w-full" disabled={submitting}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">{t("milestoneNone")}</SelectItem>
+                  {milestoneOptions.map((milestone) => (
+                    <SelectItem key={milestone.id} value={milestone.id}>
+                      {milestone.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          ) : null}
 
           <div className="mb-4 flex flex-col gap-2">
             <Label htmlFor="team-task-assignee">{t("assigneeLabel")}</Label>

@@ -7,6 +7,7 @@ import { listTags } from "@/features/tags/service";
 import { personalProjectHref, spaceDashboardHref } from "@/lib/routes";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { TaskDetailClient } from "@/features/personal/tasks/components/TaskDetailClient";
+import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 import { getPersonalTaskDetail } from "@/features/personal/tasks/service";
 
 interface PersonalTaskDetailPageProps {
@@ -46,9 +47,18 @@ export default async function PersonalTaskDetailPage({
     (tag) => tag.type === "task",
   );
 
+  // 任务所填个人项目的里程碑选项（无项目任务为空）。
+  let milestoneOptions: { id: string; name: string }[] = [];
+  if (task.projectId) {
+    milestoneOptions = (
+      await listPersonalProjectMilestonesWithProgress(user.id, task.projectId)
+    ).map((item) => ({ id: item.milestone.id, name: item.milestone.name }));
+  }
+
   return (
     <TaskDetailClient
       task={{ ...task, creatorName: displayName(user) }}
+      milestoneOptions={milestoneOptions}
       backHref={backHref}
       backLabel={task.projectId ? t("backToProject") : t("backToMyTasks")}
       currentUserId={user.id}
