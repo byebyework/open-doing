@@ -77,7 +77,8 @@ test.describe("flow 17: 任务标签", () => {
     await taskDialog.getByTestId("task-create-submit-button").click();
     await expect(page.getByText("任务已创建")).toBeVisible();
 
-    // 3. 表格标签列可见 pill
+    // 3. 表格标签列可见 pill（任务列表在 ?view=list）
+    await page.goto(`${projectPath}?view=list`);
     await expect(
       page.getByRole("row").filter({ hasText: taskTitle }).getByTestId("tag-pill"),
     ).toHaveText(tagName);

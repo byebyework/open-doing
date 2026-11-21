@@ -121,7 +121,7 @@ export async function openPersonalProject(
     `/space/personal/projects/${personalProjectSlug(projectName)}`,
   );
   await expect(
-    page.getByRole("heading", { name: projectName, level: 1 }),
+    page.getByRole("heading", { name: projectName, level: 1 }).first(),
   ).toBeVisible();
 }
 

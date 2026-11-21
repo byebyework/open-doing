@@ -307,6 +307,8 @@ tasks
   status         todo | in_progress | done
   assignee_id -> users.id (nullable: unassigned after member leaves/is removed)
   due_date       date (date only, Asia/Shanghai semantics)
+  milestone_id   -> project_milestones.id, nullable (set null on milestone delete; cleared when
+                    the task moves to a different project)
   created_by_id -> users.id
   created_at, updated_at
 
