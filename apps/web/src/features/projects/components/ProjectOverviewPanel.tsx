@@ -118,6 +118,51 @@ export function ProjectOverviewPanel({
     }
   };
 
+  /** 草稿行确认：调里程碑创建 action。 */
+  const confirmMilestone = async () => {
+    if (saving || newMilestoneName.trim().length === 0) return;
+    setSaving(true);
+    try {
+      const result =
+        space.kind === "team"
+          ? await addTeamProjectMilestone({
+              teamId: space.teamId,
+              projectId,
+              actorId,
+              name: newMilestoneName.trim(),
+              description: undefined,
+              dueDate: newMilestoneDue || null,
+            })
+          : await addPersonalProjectMilestone(
+              actorId,
+              projectId,
+              {
+                name: newMilestoneName.trim(),
+                description: undefined,
+                dueDate: newMilestoneDue || null,
+              },
+            );
+      if (!result) {
+        toast.error(tErrors("operationFailed"));
+        return;
+      }
+      setMilestoneCreating(false);
+      setNewMilestoneName("");
+      setNewMilestoneDue("");
+      router.refresh();
+    } catch {
+      toast.error(tErrors("operationFailed"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const cancelMilestone = () => {
+    setMilestoneCreating(false);
+    setNewMilestoneName("");
+    setNewMilestoneDue("");
+  };
+
   const startEdit = (field: Exclude<EditableField, null>, current: string) => {
     if (!canManage) return;
     setDraft(current);
@@ -384,6 +429,74 @@ export function ProjectOverviewPanel({
               </li>
             ))}
           </ul>
+        )}
+
+        {/* Linear 式草稿行：+ 里程碑 → 占位行（名称必填，Enter/✓ 提交，日期可选） */}
+        {milestoneCreating && canManage ? (
+          <div
+            data-testid="overview-milestone-creating"
+            className="mt-1 flex items-center gap-2 rounded-[var(--radius-md)] bg-[var(--color-surface-inset)] px-3 py-2"
+          >
+            <span
+              className="inline-block size-2.5 shrink-0 rotate-45 rounded-[2px] border border-[var(--color-text-muted)]"
+              aria-hidden="true"
+            />
+            <Input
+              autoFocus
+              value={newMilestoneName}
+              maxLength={50}
+              placeholder={t("milestoneNameLabel")}
+              data-testid="overview-milestone-name-input"
+              onChange={(event) => setNewMilestoneName(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void confirmMilestone();
+                if (event.key === "Escape") cancelMilestone();
+              }}
+              disabled={saving}
+              className="h-auto min-w-0 flex-1 border-none bg-transparent px-0 text-[13px] font-medium shadow-none focus-visible:ring-0 dark:bg-transparent"
+            />
+            <MilestoneDatePopover
+              value={newMilestoneDue}
+              onChange={setNewMilestoneDue}
+              disabled={saving}
+              testid="overview-milestone-due"
+              inputTestid="overview-milestone-due-input"
+            >
+              {newMilestoneDue || t("notSet")}
+            </MilestoneDatePopover>
+            <button
+              type="button"
+              aria-label={tCommon("cancel")}
+              data-testid="overview-milestone-cancel"
+              disabled={saving}
+              onClick={cancelMilestone}
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-text)]"
+            >
+              <XIcon className="size-4" aria-hidden="true" />
+            </button>
+            <button
+              type="button"
+              aria-label={tCommon("save")}
+              data-testid="overview-milestone-confirm"
+              disabled={saving || newMilestoneName.trim().length === 0}
+              onClick={() => void confirmMilestone()}
+              className="text-[var(--color-primary)] disabled:opacity-50"
+            >
+              <CheckIcon className="size-4" aria-hidden="true" />
+            </button>
+          </div>
+        ) : (
+          canManage ? (
+            <button
+              type="button"
+              data-testid="overview-milestone-create"
+              className="mt-1 flex cursor-pointer items-center gap-1.5 text-[13px] text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
+              onClick={() => setMilestoneCreating(true)}
+            >
+              <PlusIcon className="size-3.5" aria-hidden="true" />
+              {t("milestoneAdd")}
+            </button>
+          ) : null
         )}
       </div>
     </div>
