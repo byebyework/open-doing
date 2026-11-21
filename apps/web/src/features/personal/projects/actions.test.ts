@@ -12,6 +12,7 @@ import {
   listPersonalProjectMilestonesAction,
   updatePersonalProjectAction,
   updatePersonalProjectMilestoneAction,
+  updatePersonalProjectStatusAction,
 } from "./actions";
 import {
   addPersonalProjectMilestone,
@@ -21,6 +22,7 @@ import {
   listPersonalProjectMilestones,
   updatePersonalProject,
   updatePersonalProjectMilestone,
+  updatePersonalProjectStatus,
 } from "./service";
 
 /**
@@ -43,6 +45,7 @@ vi.mock("./service", async (importOriginal) => {
     deletePersonalProjectMilestone: vi.fn(),
     listPersonalProjectMilestones: vi.fn(),
     updatePersonalProjectMilestone: vi.fn(),
+    updatePersonalProjectStatus: vi.fn(),
   };
 });
 
@@ -54,6 +57,7 @@ const mockAddMilestone = vi.mocked(addPersonalProjectMilestone);
 const mockDeleteMilestone = vi.mocked(deletePersonalProjectMilestone);
 const mockListMilestones = vi.mocked(listPersonalProjectMilestones);
 const mockUpdateMilestone = vi.mocked(updatePersonalProjectMilestone);
+const mockUpdateStatus = vi.mocked(updatePersonalProjectStatus);
 
 const PROJECT_ID = "00000000-0000-0000-0000-000000000001";
 
@@ -90,16 +94,24 @@ describe("个人项目 actions", () => {
     await createPersonalProjectAction({
       name: "X",
       priority: "high",
+      status: "planned",
       milestones: [{ name: "上线", dueDate: "2026-12-20" }],
     });
     expect(mockCreate).toHaveBeenCalledWith("u1", {
       name: "X",
       priority: "high",
+      status: "planned",
       milestones: [{ name: "上线", dueDate: "2026-12-20" }],
     });
 
-    await updatePersonalProjectAction(PROJECT_ID, { priority: "low" });
-    expect(mockUpdate).toHaveBeenCalledWith("u1", PROJECT_ID, { priority: "low" });
+    await updatePersonalProjectAction(PROJECT_ID, { priority: "low", status: "completed" });
+    expect(mockUpdate).toHaveBeenCalledWith("u1", PROJECT_ID, {
+      priority: "low",
+      status: "completed",
+    });
+
+    await updatePersonalProjectStatusAction(PROJECT_ID, "canceled");
+    expect(mockUpdateStatus).toHaveBeenCalledWith("u1", PROJECT_ID, "canceled");
   });
 
   it("addPersonalProjectMilestoneAction：透传 + 权限外泄兜底", async () => {

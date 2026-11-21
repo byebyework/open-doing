@@ -13,6 +13,7 @@ import {
   listTeamProjectMilestonesAction,
   updateTeamProjectAction,
   updateTeamProjectMilestoneAction,
+  updateTeamProjectStatusAction,
 } from "./actions";
 import {
   addTeamProjectMilestone,
@@ -22,6 +23,7 @@ import {
   listTeamProjectMilestones,
   updateTeamProject,
   updateTeamProjectMilestone,
+  updateTeamProjectStatus,
 } from "./service";
 
 /**
@@ -44,6 +46,7 @@ vi.mock("./service", async (importOriginal) => {
     deleteTeamProjectMilestone: vi.fn(),
     listTeamProjectMilestones: vi.fn(),
     updateTeamProjectMilestone: vi.fn(),
+    updateTeamProjectStatus: vi.fn(),
   };
 });
 
@@ -55,6 +58,7 @@ const mockAddMilestone = vi.mocked(addTeamProjectMilestone);
 const mockDeleteMilestone = vi.mocked(deleteTeamProjectMilestone);
 const mockListMilestones = vi.mocked(listTeamProjectMilestones);
 const mockUpdateMilestone = vi.mocked(updateTeamProjectMilestone);
+const mockUpdateStatus = vi.mocked(updateTeamProjectStatus);
 
 const TEAM_ID = "00000000-0000-0000-0000-000000000002";
 
@@ -215,6 +219,9 @@ describe("团队项目 actions：优先级与里程碑透传", () => {
       teamId: TEAM_ID,
       name: "X",
       priority: "high",
+      status: "planned",
+      leadId: "lead-1",
+      memberIds: ["m1"],
       milestones: [{ name: "上线", dueDate: "2026-12-20" }],
     });
     expect(mockCreate).toHaveBeenCalledWith({
@@ -222,6 +229,9 @@ describe("团队项目 actions：优先级与里程碑透传", () => {
       actorId: "u1",
       name: "X",
       priority: "high",
+      status: "planned",
+      leadId: "lead-1",
+      memberIds: ["m1"],
       milestones: [{ name: "上线", dueDate: "2026-12-20" }],
     });
 
@@ -229,12 +239,16 @@ describe("团队项目 actions：优先级与里程碑透传", () => {
       teamId: TEAM_ID,
       projectId: fakeProject.id,
       priority: "low",
+      status: "completed",
+      memberIds: ["m1", "m2"],
     });
     expect(mockUpdate).toHaveBeenCalledWith({
       teamId: TEAM_ID,
       projectId: fakeProject.id,
       actorId: "u1",
       priority: "low",
+      status: "completed",
+      memberIds: ["m1", "m2"],
     });
   });
 
@@ -284,6 +298,26 @@ describe("团队项目 actions：优先级与里程碑透传", () => {
     mockGetCurrentUser.mockResolvedValue(null);
     await expect(
       listTeamProjectMilestonesAction({ teamId: TEAM_ID, projectId: fakeProject.id }),
+    ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
+  });
+
+  it("updateTeamProjectStatusAction：透传 + 未登录", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockUpdateStatus.mockResolvedValue({ ...fakeProject, status: "canceled" });
+
+    await expect(
+      updateTeamProjectStatusAction({ teamId: TEAM_ID, projectId: fakeProject.id, status: "canceled" }),
+    ).resolves.toEqual({ ok: true, data: { ...fakeProject, status: "canceled" } });
+    expect(mockUpdateStatus).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      projectId: fakeProject.id,
+      actorId: "u1",
+      status: "canceled",
+    });
+
+    mockGetCurrentUser.mockResolvedValue(null);
+    await expect(
+      updateTeamProjectStatusAction({ teamId: TEAM_ID, projectId: fakeProject.id, status: "planned" }),
     ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
   });
 

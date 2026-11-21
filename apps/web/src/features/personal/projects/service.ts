@@ -448,7 +448,7 @@ export async function updatePersonalProject(
   }
 
   const changes: Partial<
-    Pick<ProjectRow, "name" | "summary" | "description" | "startDate" | "endDate" | "priority">
+    Pick<ProjectRow, "name" | "summary" | "description" | "startDate" | "endDate" | "priority" | "status">
   > = {};
 
   if (input?.name !== undefined) {

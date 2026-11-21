@@ -1,6 +1,6 @@
 "use server";
 
-import type { Project, ProjectMilestone, TaskPriority } from "@open-doing/types";
+import type { Project, ProjectMilestone, ProjectStatus, TaskPriority } from "@open-doing/types";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { requireUser } from "@/features/auth/session";
@@ -15,6 +15,7 @@ import {
   listPersonalProjectMilestones,
   updatePersonalProject,
   updatePersonalProjectMilestone,
+  updatePersonalProjectStatus,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
@@ -56,6 +57,8 @@ export async function createPersonalProjectAction(input: {
   /** 一句话简述（≤100 字符）。 */
   summary?: string;
   description?: string;
+  /** 项目状态；缺省 backlog。 */
+  status?: ProjectStatus;
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
   endDate?: string | null;
@@ -89,6 +92,8 @@ export async function updatePersonalProjectAction(
     endDate?: string | null;
     /** 项目优先级；未传保持不变。 */
     priority?: TaskPriority;
+    /** 项目状态；未传保持不变。 */
+    status?: ProjectStatus;
     /** 项目标签全量覆写；仅写 project_tags。 */
     tagIds?: string[];
   },
@@ -177,6 +182,21 @@ export async function updatePersonalProjectMilestoneAction(
   try {
     const milestone = await updatePersonalProjectMilestone(user.id, projectId, milestoneId, input);
     return { ok: true, data: milestone };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 更新个人项目状态（owner-only）：就地改状态的专用写路径。 */
+export async function updatePersonalProjectStatusAction(
+  projectId: string,
+  status: ProjectStatus,
+): Promise<ActionResult<Project>> {
+  const user = await requireUser();
+
+  try {
+    const project = await updatePersonalProjectStatus(user.id, projectId, status);
+    return { ok: true, data: project };
   } catch (error) {
     return toFailure(error);
   }

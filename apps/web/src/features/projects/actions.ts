@@ -1,6 +1,6 @@
 "use server";
 
-import type { Project, ProjectMilestone, TaskPriority } from "@open-doing/types";
+import type { Project, ProjectMilestone, ProjectStatus, TaskPriority } from "@open-doing/types";
 
 import type { ActionResult } from "@/features/auth/actions";
 import { getCurrentUser } from "@/features/auth/session";
@@ -16,6 +16,7 @@ import {
   listTeamProjectMilestones,
   updateTeamProject,
   updateTeamProjectMilestone,
+  updateTeamProjectStatus,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
@@ -52,6 +53,12 @@ export async function createTeamProjectAction(input: {
   /** 一句话简述（≤100 字符）。 */
   summary?: string;
   description?: string;
+  /** 项目状态；缺省 backlog。 */
+  status?: ProjectStatus;
+  /** 负责人（团队成员）；缺省 null。 */
+  leadId?: string | null;
+  /** 初始成员（团队成员）。 */
+  memberIds?: string[];
   /** 起止日期（`YYYY-MM-DD`，可空）。 */
   startDate?: string | null;
   endDate?: string | null;
@@ -83,6 +90,12 @@ export async function updateTeamProjectAction(input: {
   /** 一句话简述；`null`/空串清空。 */
   summary?: string;
   description?: string;
+  /** 项目状态；未传保持不变。 */
+  status?: ProjectStatus;
+  /** 负责人；`null` 清空。 */
+  leadId?: string | null;
+  /** 项目成员全量覆写。 */
+  memberIds?: string[];
   /** 起止日期；`null` 清空。 */
   startDate?: string | null;
   endDate?: string | null;
@@ -199,6 +212,25 @@ export async function updateTeamProjectMilestoneAction(input: {
   try {
     const milestone = await updateTeamProjectMilestone({ ...input, actorId: user.id });
     return { ok: true, data: milestone };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 更新团队项目状态（owner/admin）：就地改状态的专用写路径。 */
+export async function updateTeamProjectStatusAction(input: {
+  teamId: string;
+  projectId: string;
+  status: ProjectStatus;
+}): Promise<ActionResult<Project>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    const project = await updateTeamProjectStatus({ ...input, actorId: user.id });
+    return { ok: true, data: project };
   } catch (error) {
     return toFailure(error);
   }
