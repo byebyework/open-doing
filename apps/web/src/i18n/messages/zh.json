@@ -798,7 +798,8 @@
     "statusFilterAll": "全部状态",
     "milestoneProgressMeta": "{count} 任务 · {percent}%",
     "propertiesTitle": "属性",
-    "sidebarToggle": "显示/隐藏侧栏"
+    "sidebarToggle": "显示/隐藏侧栏",
+    "milestoneEmpty": "暂无里程碑，可在右侧「里程碑」卡添加"
   },
   "dashboard": {
     "title": "仪表盘",

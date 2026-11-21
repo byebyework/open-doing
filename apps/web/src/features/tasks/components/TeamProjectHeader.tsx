@@ -9,9 +9,6 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import type { ProjectMemberRef } from "@open-doing/types";
 import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
-import { ProjectStatusPill } from "@/features/projects/components/ProjectStatusPill";
-import { updateTeamProjectStatusAction } from "@/features/projects/actions";
-import { TeamProjectHeaderActions } from "@/features/projects/components/TeamProjectHeaderActions";
 
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
 
@@ -74,54 +71,10 @@ export function TeamProjectHeader({
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   // meta 行展示项目当前成员（与编辑弹层的名册池关注点分离）
-  const lead = displayLead ?? null;
-  const displayMemberList = displayMembers ?? [];
-
-  async function changeStatus(status: Parameters<typeof ProjectStatusPill>[0]["status"]) {
-    if (!canManage) return;
-    try {
-      const result = await updateTeamProjectStatusAction({
-        teamId,
-        projectId: project.id,
-        status,
-      });
-      if (!result.ok) return;
-      router.refresh();
-    } catch {
-      /* 静默：toast 由调用方场景决定 */
-    }
-  }
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
-      <ProjectStatusPill
-        status={project.status ?? "backlog"}
-        disabled={!canManage}
-        onChange={changeStatus}
-        testid="project-detail-status-pill"
-      />
-      {lead ? (
-        <span className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)]">
-          <span className="text-[12px] text-[var(--color-text-muted)]">{tProjects("leadLabel")}</span>
-          {lead.name}
-        </span>
-      ) : null}
-      {displayMemberList.length > 0 ? (
-        <span className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-secondary)]">
-          <span className="text-[12px] text-[var(--color-text-muted)]">{tProjects("membersLabel")}</span>
-          {displayMemberList.map((m) => m.name).join("、")}
-        </span>
-      ) : null}
-      {canManage ? (
-        <TeamProjectHeaderActions
-          teamId={teamId}
-          project={project}
-          redirectTo={redirectTo}
-          projectTagPool={projectTagPool}
-          memberPool={memberPool}
-        />
-      ) : null}
-
+      {/* tabs 靠左（概览/任务/看板）；编辑/删除/状态/协作字段已移至内联编辑与列表操作列 */}
       <Tabs value={view} onValueChange={(nextView) => router.push(`${projectPath}?view=${nextView}`)}>
         <TabsList>
           <TabsTrigger value="overview">{t("viewOverview")}</TabsTrigger>

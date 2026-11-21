@@ -798,7 +798,8 @@
     "statusFilterAll": "All statuses",
     "milestoneProgressMeta": "{count} tasks · {percent}%",
     "propertiesTitle": "Properties",
-    "sidebarToggle": "Toggle sidebar"
+    "sidebarToggle": "Toggle sidebar",
+    "milestoneEmpty": "No milestones yet — add one from the Milestones card"
   },
   "dashboard": {
     "title": "Dashboard",

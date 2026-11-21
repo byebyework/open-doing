@@ -167,6 +167,7 @@ export default async function TeamProjectPage({
           <div className="mt-5">
             <ProjectOverviewPanel
               project={project}
+              actorId={user.id}
               milestones={milestoneProgress}
               memberPool={memberRoster}
               displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}

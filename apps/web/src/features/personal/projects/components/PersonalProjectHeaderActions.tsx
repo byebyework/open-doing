@@ -1,5 +1,6 @@
 "use client";
 
+import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import type { Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -8,15 +9,6 @@ import { toast } from "sonner";
 
 import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/shadcn/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/shadcn/dialog";
-import { updatePersonalProjectStatusAction } from "../actions";
-import { ProjectForm, type ProjectFormProject } from "@/features/projects/components/ProjectForm";
-import { ProjectStatusPill } from "@/features/projects/components/ProjectStatusPill";
 import { spaceDashboardHref } from "@/lib/routes";
 
 import { deletePersonalProjectAction } from "../actions";
@@ -42,7 +34,6 @@ export function PersonalProjectHeaderActions({
   const t = useTranslations("personal");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
-  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -68,58 +59,11 @@ export function PersonalProjectHeaderActions({
     }
   }
 
-  async function handleStatusChange(status: Parameters<typeof ProjectStatusPill>[0]["status"]) {
-    try {
-      const result = await updatePersonalProjectStatusAction(project.id, status);
-      if (!result.ok) {
-        toast.error(result.errors.form ?? tErrors("operationFailed"));
-        return;
-      }
-      router.refresh();
-    } catch {
-      toast.error(tCommon("networkError"));
-    }
-  }
-
   return (
     <div className="flex shrink-0 items-center gap-1">
-      <ProjectStatusPill
-        status={project.status ?? "backlog"}
-        onChange={handleStatusChange}
-        testid="project-detail-status-pill"
-      />
-      <Button variant="ghost" onClick={() => setEditOpen(true)}>
-        {tCommon("edit")}
-      </Button>
       <Button variant="ghost" className="text-destructive" onClick={() => setDeleteOpen(true)}>
         {tCommon("delete")}
       </Button>
-
-      <Dialog
-        open={editOpen}
-        onOpenChange={(next) => {
-          if (!next) setEditOpen(false);
-        }}
-      >
-        <DialogContent className="max-h-[calc(100dvh-4rem)] gap-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-[480px]">
-          <DialogHeader>
-            <DialogTitle>{t("modalTitleEdit")}</DialogTitle>
-          </DialogHeader>
-
-          <ProjectForm
-            space={{ kind: "personal" }}
-            project={project}
-            projectTagPool={projectTagPool ?? []}
-            onSuccess={() => {
-              setEditOpen(false);
-              router.refresh();
-            }}
-            onCancel={() => setEditOpen(false)}
-            testIdPrefix="personal-project"
-            open={editOpen}
-          />
-        </DialogContent>
-      </Dialog>
 
       <ConfirmModal
         open={deleteOpen}

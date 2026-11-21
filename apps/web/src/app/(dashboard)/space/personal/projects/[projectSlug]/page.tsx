@@ -128,6 +128,7 @@ export default async function PersonalProjectPage({
           <div className="mt-5">
             <ProjectOverviewPanel
               project={project}
+              actorId={user.id}
               milestones={milestoneProgress}
               memberPool={[]}
               displayLead={null}

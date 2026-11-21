@@ -12,6 +12,8 @@ import { Input } from "@/components/ui/shadcn/input";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { Calendar } from "@/components/ui/shadcn/calendar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { addPersonalProjectMilestone } from "@/features/personal/projects/service";
+import { addTeamProjectMilestone } from "../service";
 import { updatePersonalProjectAction } from "@/features/personal/projects/actions";
 import { updateTeamProjectAction } from "../actions";
 import { PROJECT_STATUS_COLORS } from "../constants";
@@ -23,6 +25,8 @@ import { type ProjectFormSpace } from "./ProjectForm";
 
 export interface ProjectOverviewPanelProps {
   project: Project;
+  /** 当前用户 ID（里程碑创建 actor）。 */
+  actorId: string;
   /** 概览里程碑行（进度口径见 service） */
   milestones: import("../service").MilestoneProgress[];
   memberPool: ProjectMemberRef[];
@@ -51,6 +55,7 @@ function toISODate(date: Date): string {
  */
 export function ProjectOverviewPanel({
   project,
+  actorId,
   milestones,
   memberPool,
   displayLead,
@@ -62,6 +67,9 @@ export function ProjectOverviewPanel({
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const router = useRouter();
+  const [milestoneCreating, setMilestoneCreating] = useState(false);
+  const [newMilestoneName, setNewMilestoneName] = useState("");
+  const [newMilestoneDue, setNewMilestoneDue] = useState("");
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -302,7 +310,7 @@ export function ProjectOverviewPanel({
       {/* 里程碑区恒显（对照 Linear）：空态提示，添加入口在右侧 Milestones 卡。 */}
       <div className="flex flex-col gap-2">
         <p className="text-[13px] font-medium text-[var(--color-text)]">{t("milestoneLabel")}</p>
-        {milestones.length === 0 ? (
+        {milestones.length === 0 && !milestoneCreating ? (
           <p className="py-2 text-[13px] text-[var(--color-text-muted)]">{t("milestoneEmpty")}</p>
         ) : (
           <ul className="flex flex-col">

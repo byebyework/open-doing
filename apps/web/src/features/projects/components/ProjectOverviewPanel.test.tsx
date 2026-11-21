@@ -65,6 +65,7 @@ describe("ProjectOverviewPanel", () => {
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
           <ProjectOverviewPanel
             project={project}
+            actorId="u1"
             milestones={[
               {
                 milestone: {
