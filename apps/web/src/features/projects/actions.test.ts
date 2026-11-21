@@ -66,6 +66,8 @@ const fakeProject: Project = {
   slug: "website-revamp",
   description: undefined,
   priority: "medium",
+  status: "backlog",
+  leadId: null,
   createdAt: "2026-10-23T00:00:00.000Z",
 };
 

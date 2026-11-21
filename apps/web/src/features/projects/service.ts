@@ -1,18 +1,28 @@
-import type { Project, ProjectMilestone, ProjectStats, TaskPriority, TaskStatus } from "@open-doing/types";
+import type {
+  Project,
+  ProjectMemberRef,
+  ProjectMilestone,
+  ProjectStats,
+  ProjectStatus,
+  TaskPriority,
+  TaskStatus,
+} from "@open-doing/types";
 import {
   averageProjectProgress,
   getTaskProgress,
   isDueSoon,
   isOverdue,
+  PROJECT_STATUSES,
   TASK_PRIORITIES,
 } from "@open-doing/types";
 import { and, asc, eq, inArray, notInArray, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { DomainError } from "@/lib/domain-error";
 import { generateUniqueSlug } from "@/lib/slug";
 import type { DbClient } from "@/server/db/client";
 import { db } from "@/server/db/client";
-import { projectMilestones, projectTags, projects, subtasks, tasks } from "@/server/db/schema";
+import { projectMembers, projectMilestones, projectTags, projects, subtasks, tasks, users } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
 
@@ -67,6 +77,57 @@ function toMilestone(row: MilestoneRow): ProjectMilestone {
     dueDate: row.dueDate ?? undefined,
     createdAt: row.createdAt.toISOString(),
   };
+}
+
+/**
+ * 状态归一：undefined 回落 "backlog"；非法值抛 DomainError
+ * （field "status"，key "statusInvalid"）。团队/个人服务共用。
+ */
+export function normalizeProjectStatus(value?: ProjectStatus): ProjectStatus {
+  if (value === undefined) return "backlog";
+  if (!PROJECT_STATUSES.includes(value)) {
+    throw new DomainError("状态取值非法", "status", { key: "statusInvalid" });
+  }
+  return value;
+}
+
+/** 批量断言 user 均为团队成员；首个非成员抛 DomainError(field "members")。 */
+async function assertTeamMembers(
+  teamId: string,
+  userIds: readonly string[],
+  client: DbClient,
+): Promise<void> {
+  for (const userId of userIds) {
+    const membership = await getMembership(teamId, userId, client);
+    if (!membership) {
+      throw new DomainError("成员必须是团队成员", "members", { key: "memberNotInTeam" });
+    }
+  }
+}
+
+/** 断言单个负责人为团队成员；非成员抛 DomainError(field "leadId")。 */
+async function assertTeamLead(teamId: string, leadId: string, client: DbClient): Promise<void> {
+  const membership = await getMembership(teamId, leadId, client);
+  if (!membership) {
+    throw new DomainError("负责人必须是团队成员", "leadId", { key: "leadNotMember" });
+  }
+}
+
+/** 项目成员全量覆写（事务；空数组清空）。 */
+async function applyProjectMembers(
+  projectId: string,
+  memberIds: string[],
+  client: DbClient,
+): Promise<void> {
+  await client.transaction(async (tx) => {
+    await tx.delete(projectMembers).where(eq(projectMembers.projectId, projectId));
+    if (memberIds.length > 0) {
+      await tx
+        .insert(projectMembers)
+        .values(memberIds.map((userId) => ({ projectId, userId })))
+        .onConflictDoNothing();
+    }
+  });
 }
 
 /**
@@ -277,6 +338,12 @@ export async function createTeamProject(
     endDate?: string | null;
     /** 项目优先级；缺省 medium。 */
     priority?: TaskPriority;
+    /** 项目状态；缺省 backlog。 */
+    status?: ProjectStatus;
+    /** 负责人（团队成员）；缺省 null。设负责人自动并入成员。 */
+    leadId?: string | null;
+    /** 初始成员（团队成员，全量覆写语义）。 */
+    memberIds?: string[];
     /** 初始项目标签（全量覆写语义；仅写 project_tags）。 */
     tagIds?: string[];
     /** 初始里程碑（创建弹窗随表单一次性提交）。 */
@@ -291,7 +358,16 @@ export async function createTeamProject(
   const endDate = input?.endDate ?? null;
   assertProjectDateRange(startDate, endDate);
   const priority = normalizePriority(input?.priority);
+  const status = normalizeProjectStatus(input?.status);
   const milestones = normalizeMilestoneInputs(input?.milestones);
+
+  const leadId = input?.leadId ?? null;
+  if (leadId) await assertTeamLead(input.teamId, leadId, client);
+  // lead 自动并入成员
+  const memberIds = leadId
+    ? Array.from(new Set([leadId, ...(input?.memberIds ?? [])]))
+    : (input?.memberIds ?? []);
+  await assertTeamMembers(input.teamId, memberIds, client);
 
   // spec decision 7：项目必须且只能归属团队或个人之一。UI / action 层不会
   // 构造越界入参，故该不变量用普通 Error 兜底，不分配 i18n key。
@@ -316,7 +392,7 @@ export async function createTeamProject(
   const row = await client.transaction(async (tx) => {
     const [inserted] = await tx
       .insert(projects)
-      .values({ teamId: input.teamId, name, slug, summary, description, startDate, endDate, priority })
+      .values({ teamId: input.teamId, name, slug, summary, description, startDate, endDate, priority, status, leadId })
       .returning();
 
     if (milestones.length > 0) {
@@ -335,6 +411,13 @@ export async function createTeamProject(
         { teamId: input.teamId, projectId: inserted!.id, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
         tx,
       );
+    }
+
+    if (memberIds.length > 0) {
+      await tx
+        .insert(projectMembers)
+        .values(memberIds.map((userId) => ({ projectId: inserted!.id, userId })))
+        .onConflictDoNothing();
     }
 
     return inserted!;
@@ -378,6 +461,12 @@ export async function updateTeamProject(
     endDate?: string | null;
     /** 项目优先级；未传保持不变。 */
     priority?: TaskPriority;
+    /** 项目状态；未传保持不变。 */
+    status?: ProjectStatus;
+    /** 负责人；`null` 显式清空，未传保持不变。 */
+    leadId?: string | null;
+    /** 项目成员全量覆写；未传保持不变。 */
+    memberIds?: string[];
     /** 项目标签全量覆写；仅写 project_tags，不动 projects 行。 */
     tagIds?: string[];
   },
@@ -391,7 +480,17 @@ export async function updateTeamProject(
   }
 
   const changes: Partial<
-    Pick<ProjectRow, "name" | "summary" | "description" | "startDate" | "endDate" | "priority">
+    Pick<
+      ProjectRow,
+      | "name"
+      | "summary"
+      | "description"
+      | "startDate"
+      | "endDate"
+      | "priority"
+      | "status"
+      | "leadId"
+    >
   > = {};
 
   if (input?.name !== undefined) {
@@ -413,12 +512,45 @@ export async function updateTeamProject(
   if (input?.priority !== undefined) {
     changes.priority = normalizePriority(input.priority);
   }
+  if (input?.status !== undefined) {
+    changes.status = normalizeProjectStatus(input.status);
+  }
   // 与新值组合出最终日期对再校验（允许先改一端；显式 null 是"清空"，
   // 必须按新值参与校验，否则清空一端会被旧值误判为区间倒挂）。
   assertProjectDateRange(
     changes.startDate !== undefined ? changes.startDate : (existing.startDate ?? null),
     changes.endDate !== undefined ? changes.endDate : (existing.endDate ?? null),
   );
+
+  // lead / members 校验与计算（Review Focus #1/#2）
+  if (input?.leadId !== undefined && input.leadId !== null) {
+    await assertTeamLead(input.teamId, input.leadId, client);
+  }
+  if (input?.memberIds !== undefined) {
+    await assertTeamMembers(input.teamId, input.memberIds, client);
+  }
+  // members 全量覆写（lead 自动并入）；随后覆写不含现 lead → leadId 置 null
+  if (input?.memberIds !== undefined) {
+    const finalMembers = input.leadId
+      ? Array.from(new Set([input.leadId, ...input.memberIds]))
+      : Array.from(new Set(input.memberIds));
+    await applyProjectMembers(input.projectId, finalMembers, client);
+    const effectiveLead = input.leadId !== undefined ? input.leadId : existing.leadId;
+    if (effectiveLead && !finalMembers.includes(effectiveLead)) {
+      changes.leadId = null;
+    }
+  } else if (input?.leadId !== undefined) {
+    if (input.leadId === null) {
+      changes.leadId = null;
+    } else {
+      changes.leadId = input.leadId;
+      const current = await client
+        .select({ userId: projectMembers.userId })
+        .from(projectMembers)
+        .where(eq(projectMembers.projectId, input.projectId));
+      await applyProjectMembers(input.projectId, Array.from(new Set([input.leadId, ...current.map((r) => r.userId)])), client);
+    }
+  }
 
   if (Object.keys(changes).length === 0) {
     // 仅打标（无其他字段变更）：只写 project_tags，不触碰 projects 行。
@@ -471,6 +603,27 @@ export async function deleteTeamProject(
   if (!row) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
+}
+
+/**
+ * 更新团队项目状态（仅 owner/admin）：状态专用写路径（就地改），
+ * 不经过完整 update，避免字段走私；只写 status 列。
+ */
+export async function updateTeamProjectStatus(
+  input: { teamId: string; projectId: string; actorId: string; status: ProjectStatus },
+  client: DbClient = db,
+): Promise<Project> {
+  await requireManageRole(input.teamId, input.actorId, client);
+  const project = await requireTeamProjectRow(input.teamId, input.projectId, client);
+  const status = normalizeProjectStatus(input.status);
+
+  const [row] = await client
+    .update(projects)
+    .set({ status })
+    .where(and(eq(projects.id, project.id), eq(projects.teamId, input.teamId)))
+    .returning();
+
+  return toProject(row!);
 }
 
 /** 项目列表项:项目 + 聚合统计 + 里程碑计数(空间级「项目」列表页)。 */
@@ -779,38 +932,71 @@ export async function getTeamProjectListWithStats(
   today: string,
   client: DbClient = db,
 ): Promise<ProjectListItem[]> {
+  const leadUser = alias(users, "lead_user");
   const projectRows = await client
-    .select()
+    .select({
+      row: projects,
+      leadId: projects.leadId,
+      leadName: leadUser.name,
+      leadImage: leadUser.image,
+    })
     .from(projects)
+    .leftJoin(leadUser, eq(projects.leadId, leadUser.id))
     .where(eq(projects.teamId, teamId))
     .orderBy(asc(projects.createdAt));
 
   if (projectRows.length === 0) return [];
 
-  const statRows = await listProjectTaskStatRows(
-    projectRows.map((row) => row.id),
-    client,
-  );
+  const projectIds = projectRows.map((item) => item.row.id);
+  const statRows = await listProjectTaskStatRows(projectIds, client);
   const rowsByProject = new Map<string, ProjectTaskStatRow[]>(
-    projectRows.map((row) => [row.id, []]),
+    projectIds.map((id) => [id, []]),
   );
   for (const row of statRows) {
     rowsByProject.get(row.projectId)?.push(row);
   }
 
-  const projectTagsMap = await tagsByProjectId(
-    projectRows.map((row) => row.id),
-    client,
+  const projectTagsMap = await tagsByProjectId(projectIds, client);
+  const milestoneCounts = await milestoneCountsByProjectId(projectIds, client);
+
+  // 成员组装：project_members join users 一次查询（防 N+1）。
+  const memberRows = await client
+    .select({
+      projectId: projectMembers.projectId,
+      userId: projectMembers.userId,
+      name: users.name,
+      image: users.image,
+    })
+    .from(projectMembers)
+    .innerJoin(users, eq(projectMembers.userId, users.id))
+    .where(inArray(projectMembers.projectId, projectIds))
+    .orderBy(asc(projectMembers.userId));
+  const membersByProject = new Map<string, ProjectMemberRef[]>(
+    projectIds.map((id) => [id, []]),
   );
-  const milestoneCounts = await milestoneCountsByProjectId(
-    projectRows.map((row) => row.id),
-    client,
-  );
-  return projectRows.map((row) => ({
-    project: toProject(row, projectTagsMap.get(row.id) ?? []),
-    stats: buildProjectStats(rowsByProject.get(row.id) ?? [], today),
-    milestoneCount: milestoneCounts.get(row.id) ?? 0,
-  }));
+  for (const row of memberRows) {
+    membersByProject.get(row.projectId)?.push({
+      id: row.userId,
+      // users.name 即展示名（better-auth user 模型口径）
+      name: row.name,
+      image: row.image,
+    });
+  }
+
+  return projectRows.map((item) => {
+    const lead = item.leadId
+      ? { id: item.leadId, name: item.leadName ?? "", image: item.leadImage }
+      : null;
+    return {
+      project: {
+        ...toProject(item.row, projectTagsMap.get(item.row.id) ?? []),
+        lead,
+        members: membersByProject.get(item.row.id) ?? [],
+      },
+      stats: buildProjectStats(rowsByProject.get(item.row.id) ?? [], today),
+      milestoneCount: milestoneCounts.get(item.row.id) ?? 0,
+    };
+  });
 }
 
 /**

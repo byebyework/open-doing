@@ -64,6 +64,8 @@ const fakeProject: Project = {
   name: "Learning",
   slug: "learning",
   priority: "medium",
+  status: "backlog",
+  leadId: null,
   createdAt: "2026-11-20T00:00:00.000Z",
 };
 

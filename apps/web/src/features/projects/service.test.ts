@@ -35,9 +35,12 @@ import {
   milestoneCountsByProjectId,
   normalizeMilestoneInputs,
   normalizePriority,
+  normalizeProjectStatus,
   updateTeamProject,
   updateTeamProjectMilestone,
+  updateTeamProjectStatus,
 } from "./service";
+import { projectMembers } from "@/server/db/schema";
 import { projectMilestones } from "@/server/db/schema";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
@@ -895,6 +898,167 @@ describe.skipIf(!hasTestDatabase)("项目优先级与里程碑（表格模式）
         db,
       ),
     ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+  });
+
+  it("normalizeProjectStatus：undefined 回落 backlog，非法值抛 statusInvalid", () => {
+    expect(normalizeProjectStatus(undefined)).toBe("backlog");
+    expect(normalizeProjectStatus("planned")).toBe("planned");
+    expect(normalizeProjectStatus("canceled")).toBe("canceled");
+    // @ts-expect-error 故意传非法值验证运行时防线
+    expect(() => normalizeProjectStatus("archived")).toThrow();
+  });
+
+  it("create：leadId/memberIds 校验成员池，lead 自动并入 members", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member1 = await createUser(db, "lead-candidate");
+    await addMember(db, team.id, member1.id, "member");
+
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Staffed",
+        leadId: member1.id,
+        memberIds: [owner.id],
+      },
+      db,
+    );
+    expect(project.leadId).toBe(member1.id);
+    const rows = await db
+      .select()
+      .from(projectMembers)
+      .where(eq(projectMembers.projectId, project.id));
+    // lead 自动并入成员：owner + member1
+    expect(new Set(rows.map((r) => r.userId))).toEqual(new Set([owner.id, member1.id]));
+
+    // 非成员任 lead → leadNotMember
+    const outsider = await createUser(db, "lead-outsider");
+    await expect(
+      createTeamProject(
+        { teamId: team.id, actorId: owner.id, name: "Bad Lead", leadId: outsider.id },
+        db,
+      ),
+    ).rejects.toMatchObject({ field: "leadId", i18n: { key: "leadNotMember" } });
+
+    // memberIds 含非成员 → memberNotInTeam
+    await expect(
+      createTeamProject(
+        { teamId: team.id, actorId: owner.id, name: "Bad Members", memberIds: [outsider.id] },
+        db,
+      ),
+    ).rejects.toMatchObject({ field: "members", i18n: { key: "memberNotInTeam" } });
+  });
+
+  it("update：members 全量覆写不含 lead → leadId 置 null；[] 清空成员", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member1 = await createUser(db, "will-drop");
+    await addMember(db, team.id, member1.id, "member");
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Overwrite",
+        leadId: member1.id,
+        memberIds: [member1.id],
+      },
+      db,
+    );
+
+    // 覆写后不含 lead → leadId 置 null（Review Focus #2）
+    const updated = await updateTeamProject(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, memberIds: [owner.id] },
+      db,
+    );
+    expect(updated.leadId).toBeNull();
+    let rows = await db.select().from(projectMembers).where(eq(projectMembers.projectId, project.id));
+    expect(rows.map((r) => r.userId)).toEqual([owner.id]);
+
+    // [] 清空成员
+    const cleared = await updateTeamProject(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, memberIds: [] },
+      db,
+    );
+    expect(cleared.leadId).toBeNull();
+    rows = await db.select().from(projectMembers).where(eq(projectMembers.projectId, project.id));
+    expect(rows).toHaveLength(0);
+
+    // 未传字段保持不变（Review Focus #1）：仅改 status，成员/负责人不动
+    const staffed = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Keep Members",
+        leadId: member1.id,
+        memberIds: [member1.id],
+      },
+      db,
+    );
+    const touched = await updateTeamProject(
+      { teamId: team.id, projectId: staffed.id, actorId: owner.id, status: "planned" },
+      db,
+    );
+    expect(touched.status).toBe("planned");
+    expect(touched.leadId).toBe(member1.id);
+    rows = await db.select().from(projectMembers).where(eq(projectMembers.projectId, staffed.id));
+    expect(rows.map((r) => r.userId)).toEqual([member1.id]);
+  });
+
+  it("updateTeamProjectStatus：改状态；member 被拒；错归属 projectNotFound", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member = await createUser(db, "status-member");
+    await addMember(db, team.id, member.id, "member");
+    const project = await createTeamProject({ teamId: team.id, actorId: owner.id, name: "Stated" }, db);
+    const other = await setupTeam(db);
+
+    const updated = await updateTeamProjectStatus(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, status: "canceled" },
+      db,
+    );
+    expect(updated.status).toBe("canceled");
+
+    await expect(
+      updateTeamProjectStatus(
+        { teamId: team.id, projectId: project.id, actorId: member.id, status: "planned" },
+        db,
+      ),
+    ).rejects.toBeInstanceOf(TeamPermissionError);
+
+    await expect(
+      updateTeamProjectStatus(
+        { teamId: team.id, projectId: other.team.id, actorId: owner.id, status: "planned" },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+  });
+
+  it("getTeamProjectListWithStats 组装 status/lead/members", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member1 = await createUser(db, "assembled-lead");
+    await addMember(db, team.id, member1.id, "member");
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Assembled",
+        status: "in_progress",
+        leadId: member1.id,
+        memberIds: [owner.id],
+      },
+      db,
+    );
+    const empty = await createTeamProject({ teamId: team.id, actorId: owner.id, name: "Bare" }, db);
+
+    const list = await getTeamProjectListWithStats(team.id, "2026-11-21", db);
+    const assembled = list.find((item) => item.project.id === project.id)!;
+    expect(assembled.project.status).toBe("in_progress");
+    expect(assembled.project.lead).toMatchObject({ id: member1.id, image: null });
+    expect(assembled.project.lead?.name.length).toBeGreaterThan(0);
+    expect(new Set(assembled.project.members?.map((m) => m.id))).toEqual(
+      new Set([owner.id, member1.id]),
+    );
+    const bare = list.find((item) => item.project.id === empty.id)!;
+    expect(bare.project.lead).toBeNull();
+    expect(bare.project.members).toEqual([]);
   });
 
   it("getTeamProjectListWithStats 附 milestoneCount（空项目为 0）", async () => {

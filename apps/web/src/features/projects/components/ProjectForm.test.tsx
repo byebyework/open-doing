@@ -64,6 +64,8 @@ function fakeProjectResult() {
     name: "X",
     slug: "x",
     priority: "high" as const,
+    status: "backlog" as const,
+    leadId: null,
     createdAt: "2026-11-20T00:00:00.000Z",
   };
 }
@@ -270,6 +272,8 @@ describe("ProjectForm", () => {
         id: "33333333-3333-3333-3333-333333333333",
         name: "Old",
         priority: "low",
+        status: "backlog",
+        leadId: null,
       },
     });
 

@@ -1,6 +1,6 @@
 "use client";
 
-import type { Project, Tag, TaskPriority } from "@open-doing/types";
+import type { Project, ProjectStatus, Tag, TaskPriority } from "@open-doing/types";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
@@ -55,6 +55,10 @@ export interface ProjectFormProject {
   startDate?: string | null;
   endDate?: string | null;
   priority?: TaskPriority;
+  /** Linear 五态存储状态 */
+  status?: ProjectStatus;
+  leadId?: string | null;
+  memberIds?: string[];
   tags?: Tag[];
 }
 
