@@ -545,13 +545,30 @@ export function ProjectOverviewPanel({
                 ) : (
                 <span className="text-[13px] font-medium">{item.milestone.name}</span>
                 )}
-                {item.milestone.dueDate ? (
-                  <span className="text-[12px] tabular-nums text-[var(--color-text-muted)]">
-                    {item.milestone.dueDate}
+                <span className="ml-auto flex items-center gap-2.5">
+                  <MilestoneDatePopover
+                    value={item.milestone.dueDate ?? ""}
+                    onChange={(dueDate) => {
+                      void (space.kind === "team"
+                        ? updateTeamProjectMilestoneAction({
+                            teamId: space.teamId,
+                            projectId,
+                            milestoneId: item.milestone.id,
+                            dueDate,
+                          })
+                        : updatePersonalProjectMilestoneAction(projectId, item.milestone.id, {
+                            dueDate,
+                          }));
+                      router.refresh();
+                    }}
+                    disabled={!canManage || saving}
+                    testid={`overview-milestone-date-${item.milestone.id}`}
+                  >
+                    {item.milestone.dueDate ?? t("notSet")}
+                  </MilestoneDatePopover>
+                  <span className="tabular-nums text-[12.5px] text-[var(--color-text-muted)]">
+                    {t("milestoneProgressMeta", { count: item.taskCount, percent: item.percent })}
                   </span>
-                ) : null}
-                <span className="ml-auto tabular-nums text-[12.5px] text-[var(--color-text-muted)]">
-                  {t("milestoneProgressMeta", { count: item.taskCount, percent: item.percent })}
                 </span>
                 {canManage ? (
                   <DropdownMenu>
