@@ -797,7 +797,8 @@
     "memberNotInTeam": "成员必须是团队成员",
     "statusFilterAll": "全部状态",
     "milestoneProgressMeta": "{count} 任务 · {percent}%",
-    "propertiesTitle": "属性"
+    "propertiesTitle": "属性",
+    "sidebarToggle": "显示/隐藏侧栏"
   },
   "dashboard": {
     "title": "仪表盘",

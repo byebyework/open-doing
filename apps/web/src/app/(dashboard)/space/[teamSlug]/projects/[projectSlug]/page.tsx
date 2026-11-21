@@ -8,6 +8,7 @@ import {
   getTeamProjectBySlug,
   listTeamProjects,
 } from "@/features/projects/service";
+import { ProjectDetailLayout } from "@/features/projects/components/ProjectDetailLayout";
 import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
 import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
@@ -144,18 +145,9 @@ export default async function TeamProjectPage({
         }
       />
 
-      {view === "overview" ? (
-        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <ProjectOverviewPanel
-            project={project}
-            milestones={milestoneProgress}
-            memberPool={memberRoster}
-            displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
-            displayMembers={projectMembers}
-            canManage={can(membership.role, "team:manage_projects")}
-            space={{ kind: "team", teamId: team.id }}
-          />
-          <div className="flex flex-col gap-4 lg:sticky lg:top-[76px] lg:self-start">
+      <ProjectDetailLayout
+        sidebar={
+          <>
             <ProjectPropertiesPanel
               project={project}
               memberPool={memberRoster}
@@ -168,11 +160,24 @@ export default async function TeamProjectPage({
               milestones={milestoneProgress.map((item) => item.milestone)}
               canManage={can(membership.role, "team:manage_projects")}
             />
+          </>
+        }
+      >
+        {view === "overview" ? (
+          <div className="mt-5">
+            <ProjectOverviewPanel
+              project={project}
+              milestones={milestoneProgress}
+              memberPool={memberRoster}
+              displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
+              displayMembers={projectMembers}
+              canManage={can(membership.role, "team:manage_projects")}
+              space={{ kind: "team", teamId: team.id }}
+            />
           </div>
-        </div>
-      ) : (
-        <div className="mt-5">
-          {view === "board" ? (
+        ) : (
+          <div className="mt-5">
+            {view === "board" ? (
           <TeamKanban
             teamId={team.id}
             teamSlug={team.slug}
@@ -202,6 +207,7 @@ export default async function TeamProjectPage({
         )}
         </div>
       )}
+      </ProjectDetailLayout>
     </div>
   );
 }

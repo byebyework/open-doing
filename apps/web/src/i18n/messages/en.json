@@ -797,7 +797,8 @@
     "memberNotInTeam": "Members must be team members",
     "statusFilterAll": "All statuses",
     "milestoneProgressMeta": "{count} tasks · {percent}%",
-    "propertiesTitle": "Properties"
+    "propertiesTitle": "Properties",
+    "sidebarToggle": "Toggle sidebar"
   },
   "dashboard": {
     "title": "Dashboard",

@@ -1,7 +1,7 @@
 "use client";
 
-import type { Project, ProjectMemberRef } from "@open-doing/types";
-import { CheckIcon, PencilIcon, XIcon } from "lucide-react";
+import type { Project, ProjectMemberRef, TaskPriority } from "@open-doing/types";
+import { CalendarPlusIcon, CheckIcon, PencilIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Textarea } from "@/components/ui/shadcn/textarea";
+import { Calendar } from "@/components/ui/shadcn/calendar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
 import { updatePersonalProjectAction } from "@/features/personal/projects/actions";
 import { updateTeamProjectAction } from "../actions";
@@ -17,6 +18,7 @@ import { PROJECT_STATUS_COLORS } from "../constants";
 import { MilestoneProgress } from "../service";
 import { ProjectStatusPill } from "./ProjectStatusPill";
 import { TagPill } from "@/features/tags/components/TagPill";
+import { AttrPill } from "./AttrPill";
 import { type ProjectFormSpace } from "./ProjectForm";
 
 export interface ProjectOverviewPanelProps {
@@ -31,6 +33,17 @@ export interface ProjectOverviewPanelProps {
 }
 
 type EditableField = "summary" | "description" | null;
+
+/** `YYYY-MM-DD` -> Date（Calendar 受控值）。 */
+function parseISODate(value: string): Date | undefined {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return undefined;
+  const date = new Date(`${value}T00:00:00`);
+  return Number.isNaN(date.getTime()) ? undefined : date;
+}
+function toISODate(date: Date): string {
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+}
 
 /**
  * 概览主列（Linear 布局）：大标题 → 简述 → 属性行（可内联编辑 pills）→
@@ -52,6 +65,20 @@ export function ProjectOverviewPanel({
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
+  const [endDate, setEndDate] = useState(project.endDate ?? "");
+  const [syncedProject, setSyncedProject] = useState(project);
+  if (project !== syncedProject) {
+    setSyncedProject(project);
+    setEndDate(project.endDate ?? "");
+  }
+  const priorityLabel = (value: TaskPriority) =>
+    t(
+      value === "high"
+        ? "priorityHigh"
+        : value === "medium"
+          ? "priorityMedium"
+          : "priorityLow",
+    );
 
   const projectId = project.id;
 
@@ -150,11 +177,57 @@ export function ProjectOverviewPanel({
           status={project.status}
           disabled={!canManage}
           onChange={async (status) => {
-            if (await saveField({ status })) return;
+            await saveField({ status });
           }}
           onError={(message) => toast.error(message)}
           testid="overview-status-pill"
         />
+        <AttrPill
+          testid="overview-priority-pill"
+          icon={null}
+          label={priorityLabel(project.priority)}
+          valueActive
+          disabled={!canManage || saving}
+        >
+          {(close) => (
+            <div className="flex flex-col">
+              {(["high", "medium", "low"] as const).map((value) => (
+                <button
+                  key={value}
+                  type="button"
+                  data-testid={`overview-priority-option-${value}`}
+                  className="flex cursor-pointer items-center rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                  onClick={() => {
+                    void saveField({ priority: value });
+                    close();
+                  }}
+                >
+                  {priorityLabel(value)}
+                </button>
+              ))}
+            </div>
+          )}
+        </AttrPill>
+        <AttrPill
+          testid="overview-target-pill"
+          icon={<CalendarPlusIcon className="size-3.5" aria-hidden="true" />}
+          label={endDate ? endDate : t("notSet")}
+          disabled={!canManage || saving}
+        >
+          {(close) => (
+            <Calendar
+              mode="single"
+              selected={parseISODate(endDate)}
+              onSelect={(day) => {
+                const next = day ? toISODate(day) : "";
+                setEndDate(next);
+                void saveField({ endDate: next || null });
+                close();
+              }}
+              disabled={!canManage || saving}
+            />
+          )}
+        </AttrPill>
         {space.kind === "team" && displayLead ? (
           <span className="inline-flex items-center gap-1.5 text-[var(--color-text-secondary)]">
             <UserAvatar userId={displayLead.id} name={displayLead.name} size={22} />

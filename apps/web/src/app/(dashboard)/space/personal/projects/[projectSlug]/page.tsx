@@ -7,6 +7,7 @@ import {
   getPersonalProjectBySlug,
   listPersonalProjects,
 } from "@/features/personal/projects/service";
+import { ProjectDetailLayout } from "@/features/projects/components/ProjectDetailLayout";
 import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
 import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
@@ -105,18 +106,9 @@ export default async function PersonalProjectPage({
         }
       />
 
-      {view === "overview" ? (
-        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <ProjectOverviewPanel
-            project={project}
-            milestones={milestoneProgress}
-            memberPool={[]}
-            displayLead={null}
-            displayMembers={[]}
-            canManage
-            space={{ kind: "personal" }}
-          />
-          <div className="flex flex-col gap-4 lg:sticky lg:top-[76px] lg:self-start">
+      <ProjectDetailLayout
+        sidebar={
+          <>
             <ProjectPropertiesPanel
               project={project}
               memberPool={[]}
@@ -129,11 +121,24 @@ export default async function PersonalProjectPage({
               milestones={milestoneProgress.map((item) => item.milestone)}
               canManage
             />
+          </>
+        }
+      >
+        {view === "overview" ? (
+          <div className="mt-5">
+            <ProjectOverviewPanel
+              project={project}
+              milestones={milestoneProgress}
+              memberPool={[]}
+              displayLead={null}
+              displayMembers={[]}
+              canManage
+              space={{ kind: "personal" }}
+            />
           </div>
-        </div>
-      ) : (
-        <div className="mt-5">
-          {view === "board" ? (
+        ) : (
+          <div className="mt-5">
+            {view === "board" ? (
           <PersonalKanban
             tasks={tasks}
             today={today}
@@ -152,6 +157,7 @@ export default async function PersonalProjectPage({
         )}
         </div>
       )}
+      </ProjectDetailLayout>
     </div>
   );
 }
