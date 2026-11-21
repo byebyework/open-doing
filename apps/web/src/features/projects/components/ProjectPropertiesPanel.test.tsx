@@ -159,6 +159,45 @@ describe("ProjectPropertiesPanel 成员行", () => {
     expect(leadPill?.textContent).toContain("甲");
   });
 
+  it("成员很多时头像栈封顶 4 个并显示 +N（悬停可见全名单）", () => {
+    const manyRoster = [
+      { id: "u1", name: "甲", image: null },
+      { id: "u2", name: "乙", image: null },
+      { id: "u3", name: "丙", image: null },
+      { id: "u4", name: "丁", image: null },
+      { id: "u5", name: "戊", image: null },
+      { id: "u6", name: "己", image: null },
+      { id: "u7", name: "庚", image: null },
+    ];
+    const manyProject: Project = {
+      ...project,
+      leadId: "u1",
+      members: manyRoster,
+    };
+
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
+          <ProjectPropertiesPanel
+            project={manyProject}
+            memberPool={manyRoster}
+            canManage
+            space={{ kind: "team", teamId: "team-1" }}
+          />
+        </NextIntlClientProvider>,
+      );
+    });
+
+    const membersPill = document.body.querySelector('[data-testid="properties-members-pill"]');
+    expect(membersPill?.querySelectorAll('[role="img"]')).toHaveLength(4);
+    expect(membersPill?.textContent).toContain("+3");
+    // 溢出圆点悬停提示携带完整名单
+    const overflow = Array.from(membersPill?.querySelectorAll("[title]") ?? []).find((el) =>
+      el.textContent?.includes("+3"),
+    );
+    expect(overflow?.getAttribute("title")).toContain("庚");
+  });
+
   it("成员 Popover 勾选名册成员后保存：memberIds 含 lead 自动并入", async () => {
     act(() => {
       root.render(

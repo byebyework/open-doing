@@ -16,6 +16,9 @@ import { AttrPill } from "./AttrPill";
 import { ProjectStatusPill } from "./ProjectStatusPill";
 import { type ProjectFormSpace } from "./ProjectForm";
 
+/** 成员行头像栈封顶数；超出并入「+N」圆点（悬停显示全名单）。 */
+const MEMBER_AVATAR_LIMIT = 4;
+
 export interface ProjectPropertiesPanelProps {
   project: Project;
   memberPool: ProjectMemberRef[];
@@ -89,6 +92,8 @@ export function ProjectPropertiesPanel({
   const memberRefs = memberIds
     .map((id) => memberPool.find((member) => member.id === id))
     .filter((member): member is ProjectMemberRef => Boolean(member));
+  const visibleMembers = memberRefs.slice(0, MEMBER_AVATAR_LIMIT);
+  const memberOverflow = memberRefs.length - visibleMembers.length;
 
   const row = (label: string, value: React.ReactNode, testid?: string) => (
     <div className="flex items-center justify-between gap-2 py-1.5" data-testid={testid}>
@@ -180,7 +185,7 @@ export function ProjectPropertiesPanel({
                 disabled={!canManage}
               >
                 {(close) => (
-                  <div className="flex flex-col">
+                  <div className="flex max-h-56 flex-col overflow-y-auto">
                     {leadId ? (
                       <button
                         type="button"
@@ -229,7 +234,7 @@ export function ProjectPropertiesPanel({
                 label={
                   memberRefs.length > 0 ? (
                     <span className="flex items-center -space-x-1">
-                      {memberRefs.map((member) => (
+                      {visibleMembers.map((member) => (
                         <UserAvatar
                           key={member.id}
                           userId={member.id}
@@ -238,6 +243,14 @@ export function ProjectPropertiesPanel({
                           className="ring-2 ring-[var(--card)]"
                         />
                       ))}
+                      {memberOverflow > 0 ? (
+                        <span
+                          title={memberRefs.map((member) => member.name).join("、")}
+                          className="inline-flex h-5 items-center rounded-full bg-[var(--color-surface-hover)] px-1.5 text-[11px] font-medium text-[var(--color-text-secondary)] ring-2 ring-[var(--card)]"
+                        >
+                          +{memberOverflow}
+                        </span>
+                      ) : null}
                     </span>
                   ) : (
                     t("notSet")
@@ -246,7 +259,7 @@ export function ProjectPropertiesPanel({
                 disabled={!canManage}
               >
                 {(close) => (
-                  <div className="flex flex-col">
+                  <div className="flex max-h-56 flex-col overflow-y-auto">
                     {memberPool.map((member) => {
                       const checked = memberIds.includes(member.id);
                       return (
