@@ -39,6 +39,7 @@ import {
   PROJECT_NAME_MAX_LENGTH,
   PROJECT_SUMMARY_MAX_LENGTH,
 } from "../constants";
+import { MilestoneDatePopover } from "./MilestoneDatePopover";
 import { ProjectMilestoneEditor, type MilestoneDraftInput } from "./ProjectMilestoneEditor";
 
 /** 表单服务的空间：团队（带 teamId）或个人。 */
@@ -169,6 +170,8 @@ export function ProjectForm({
   const [milestoneAdding, setMilestoneAdding] = useState(false);
   // 里程碑列表折叠态（对照 Linear：行内 ▶/▼ 切换；添加时自动展开）。
   const [milestonesOpen, setMilestonesOpen] = useState(false);
+  /** 行点击编辑的草稿 key（编辑组件 = 新建组件 + 预填数据）。 */
+  const [editingKey, setEditingKey] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
 
   const isEdit = Boolean(project);
@@ -218,6 +221,14 @@ export function ProjectForm({
 
   const removeMilestone = (key: string) => {
     setMilestones((current) => current.filter((item) => item.key !== key));
+  };
+
+  const updateMilestone = (key: string, draft: MilestoneDraftInput) => {
+    setMilestones((current) =>
+      current.map((item) =>
+        item.key === key ? { ...item, name: draft.name, description: draft.description, dueDate: draft.dueDate } : item,
+      ),
+    );
   };
 
   const onSubmit = handleSubmit(async (values) => {
@@ -317,27 +328,56 @@ export function ProjectForm({
     t(value === "high" ? "priorityHighLabel" : value === "medium" ? "priorityMediumLabel" : "priorityLowLabel");
 
   const milestoneItems = !isEdit
-    ? milestones.map((item, index) => (
-        <div
-          key={item.key}
-          data-testid={`${testIdPrefix}-milestone-item`}
-          className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] px-3 py-2"
-        >
-          <FlagIcon className="size-3.5 text-[var(--color-primary)]" aria-hidden="true" />
-          <span className="text-[13px] font-medium">{item.name}</span>
-          <span className="text-[12.5px] text-[var(--color-text-muted)]">{item.dueDate}</span>
-          <button
-            type="button"
-            aria-label={t("milestoneRemove")}
-            data-testid={`${testIdPrefix}-milestone-remove-${index}`}
-            disabled={submitting}
-            onClick={() => removeMilestone(item.key)}
-            className="ml-auto text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
+    ? milestones.map((item, index) =>
+        editingKey === item.key ? (
+          <ProjectMilestoneEditor
+            key={item.key}
+            initial={{ name: item.name, description: item.description, dueDate: item.dueDate }}
+            onSubmit={(draft) => {
+              updateMilestone(item.key, draft);
+              setEditingKey(null);
+            }}
+            onCancel={() => setEditingKey(null)}
+            submitting={submitting}
+            testIdPrefix={testIdPrefix}
+            submitLabel={tCommon("save")}
+          />
+        ) : (
+          <div
+            key={item.key}
+            data-testid={`${testIdPrefix}-milestone-item`}
+            className="flex items-center gap-2 rounded-[var(--radius-md)] border border-[var(--border)] px-3 py-2"
           >
-            <XIcon className="size-3.5" aria-hidden="true" />
-          </button>
-        </div>
-      ))
+            <FlagIcon className="size-3.5 text-[var(--color-primary)]" aria-hidden="true" />
+            {/* 点击行进入编辑态（新建组件 + 预填数据）。 */}
+            <button
+              type="button"
+              data-testid={`${testIdPrefix}-milestone-edit-${index}`}
+              className="min-w-0 flex-1 cursor-pointer truncate text-left text-[13px] font-medium"
+              disabled={submitting}
+              onClick={() => setEditingKey(item.key)}
+            >
+              {item.name}
+            </button>
+            <MilestoneDatePopover
+              value={item.dueDate}
+              onChange={(dueDate) => updateMilestone(item.key, { name: item.name, description: item.description, dueDate })}
+              disabled={submitting}
+              testid={`${testIdPrefix}-milestone-date-${index}`}
+            />
+            <button
+              type="button"
+              aria-label={t("milestoneRemove")}
+              data-testid={`${testIdPrefix}-milestone-remove-${index}`}
+              disabled={submitting}
+              onClick={() => removeMilestone(item.key)}
+              className="text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
+            >
+              <XIcon className="size-3.5" aria-hidden="true" />
+            </button>
+          </div>
+        ),
+      )
     : null;
 
   return (
@@ -701,9 +741,25 @@ export function ProjectForm({
                 </Button>
               ) : null}
             </div>
-            {milestonesOpen && milestones.length > 0 ? (
-        <div className="mt-2 flex flex-col gap-2">{milestoneItems}</div>
-      ) : null}
+            {/* 列表展开/收起与编辑器同一套拉出动效。 */}
+      <AnimatePresence initial={false}>
+        {milestonesOpen && milestones.length > 0 ? (
+          <motion.div
+            key="milestone-list"
+            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              prefersReducedMotion
+                ? { duration: 0 }
+                : { height: { duration: 0.24, ease: [0.25, 0.1, 0.25, 1] }, opacity: { duration: 0.18 } }
+            }
+            className="overflow-hidden"
+          >
+            <div className="mt-2 flex flex-col gap-2">{milestoneItems}</div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       {/* 展开动效：自上而下拉出（收起比展开快 1/3）；reduced-motion 时直接挂载。 */}
       <AnimatePresence initial={false}>
         {milestoneAdding ? (

@@ -12,6 +12,7 @@ import {
   deleteTeamProjectMilestoneAction,
   listTeamProjectMilestonesAction,
   updateTeamProjectAction,
+  updateTeamProjectMilestoneAction,
 } from "./actions";
 import {
   addTeamProjectMilestone,
@@ -20,6 +21,7 @@ import {
   deleteTeamProjectMilestone,
   listTeamProjectMilestones,
   updateTeamProject,
+  updateTeamProjectMilestone,
 } from "./service";
 
 /**
@@ -41,6 +43,7 @@ vi.mock("./service", async (importOriginal) => {
     addTeamProjectMilestone: vi.fn(),
     deleteTeamProjectMilestone: vi.fn(),
     listTeamProjectMilestones: vi.fn(),
+    updateTeamProjectMilestone: vi.fn(),
   };
 });
 
@@ -51,6 +54,7 @@ const mockDelete = vi.mocked(deleteTeamProject);
 const mockAddMilestone = vi.mocked(addTeamProjectMilestone);
 const mockDeleteMilestone = vi.mocked(deleteTeamProjectMilestone);
 const mockListMilestones = vi.mocked(listTeamProjectMilestones);
+const mockUpdateMilestone = vi.mocked(updateTeamProjectMilestone);
 
 const TEAM_ID = "00000000-0000-0000-0000-000000000002";
 
@@ -279,6 +283,29 @@ describe("团队项目 actions：优先级与里程碑透传", () => {
     await expect(
       listTeamProjectMilestonesAction({ teamId: TEAM_ID, projectId: fakeProject.id }),
     ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
+  });
+
+  it("updateTeamProjectMilestoneAction：透传", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockUpdateMilestone.mockResolvedValue(fakeMilestone);
+
+    await expect(
+      updateTeamProjectMilestoneAction({
+        teamId: TEAM_ID,
+        projectId: fakeProject.id,
+        milestoneId: fakeMilestone.id,
+        name: "新名",
+        dueDate: null,
+      }),
+    ).resolves.toEqual({ ok: true, data: fakeMilestone });
+    expect(mockUpdateMilestone).toHaveBeenCalledWith({
+      teamId: TEAM_ID,
+      projectId: fakeProject.id,
+      milestoneId: fakeMilestone.id,
+      actorId: "u1",
+      name: "新名",
+      dueDate: null,
+    });
   });
 
   it("deleteTeamProjectMilestoneAction：透传 + 未登录", async () => {

@@ -10,7 +10,11 @@ import type { ProjectMilestone } from "@open-doing/types";
 import type { AppLocale } from "@/i18n/config";
 import zh from "@/i18n/messages/zh.json";
 
-import { addTeamProjectMilestoneAction, deleteTeamProjectMilestoneAction } from "../actions";
+import {
+  addTeamProjectMilestoneAction,
+  deleteTeamProjectMilestoneAction,
+  updateTeamProjectMilestoneAction,
+} from "../actions";
 import { ProjectMilestonesSection } from "./ProjectMilestonesSection";
 
 /**
@@ -25,6 +29,7 @@ vi.mock("../actions", async (importOriginal) => {
     ...actual,
     addTeamProjectMilestoneAction: vi.fn(),
     deleteTeamProjectMilestoneAction: vi.fn(),
+    updateTeamProjectMilestoneAction: vi.fn(),
   };
 });
 
@@ -34,6 +39,7 @@ vi.mock("next/navigation", () => ({
 
 const mockAdd = vi.mocked(addTeamProjectMilestoneAction);
 const mockDelete = vi.mocked(deleteTeamProjectMilestoneAction);
+const mockUpdate = vi.mocked(updateTeamProjectMilestoneAction);
 
 const PROJECT_ID = "44444444-4444-4444-4444-444444444444";
 
@@ -164,6 +170,49 @@ describe("ProjectMilestonesSection", () => {
         name: "评审",
         description: undefined,
         dueDate: "2026-12-25",
+      },
+    ]);
+  });
+
+  it("点击行进入编辑态：预填数据，保存走 update action", async () => {
+    mockUpdate.mockResolvedValue({ ok: true, data: milestone() });
+    renderSection({ milestones: [milestone()] });
+
+    const edit = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="project-milestone-edit-0"]',
+    )!;
+    act(() => {
+      edit.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+
+    const nameInput = document.body.querySelector<HTMLInputElement>(
+      '[data-testid="project-milestone-name-input"]',
+    )!;
+    expect(nameInput.value).toBe("里程碑 A");
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      setter.call(nameInput, "改名");
+      nameInput.dispatchEvent(new Event("input", { bubbles: true }));
+    });
+
+    const save = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="project-milestone-add-button"]',
+    )!;
+    act(() => {
+      save.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(mockUpdate).toHaveBeenCalledTimes(1);
+    expect(mockUpdate.mock.calls[0]).toEqual([
+      {
+        teamId: "66666666-6666-6666-6666-666666666666",
+        projectId: PROJECT_ID,
+        milestoneId: milestone().id,
+        name: "改名",
+        description: "首个交付",
+        dueDate: "2026-12-05",
       },
     ]);
   });

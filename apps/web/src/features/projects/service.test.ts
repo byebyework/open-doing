@@ -36,6 +36,7 @@ import {
   normalizeMilestoneInputs,
   normalizePriority,
   updateTeamProject,
+  updateTeamProjectMilestone,
 } from "./service";
 import { projectMilestones } from "@/server/db/schema";
 
@@ -825,6 +826,51 @@ describe.skipIf(!hasTestDatabase)("项目优先级与里程碑（表格模式）
     expect(
       await db.select().from(projectMilestones).where(eq(projectMilestones.projectId, project.id)),
     ).toHaveLength(0);
+  });
+
+  it("updateTeamProjectMilestone：改名字段、清空日期；member 被拒", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member = await createUser(db, "u-milestone-edit");
+    await addMember(db, team.id, member.id, "member");
+    const project = await createTeamProject(
+      {
+        teamId: team.id,
+        actorId: owner.id,
+        name: "Editable",
+        milestones: [{ name: "旧名", description: "旧描述", dueDate: "2026-12-05" }],
+      },
+      db,
+    );
+    const [milestone] = await listTeamProjectMilestones(team.id, project.id, db);
+
+    await expect(
+      updateTeamProjectMilestone(
+        { teamId: team.id, projectId: project.id, milestoneId: milestone!.id, actorId: member.id, name: "越权" },
+        db,
+      ),
+    ).rejects.toBeInstanceOf(TeamPermissionError);
+
+    const updated = await updateTeamProjectMilestone(
+      {
+        teamId: team.id,
+        projectId: project.id,
+        milestoneId: milestone!.id,
+        actorId: owner.id,
+        name: "  新名  ",
+        dueDate: "",
+      },
+      db,
+    );
+    expect(updated).toMatchObject({ name: "新名", dueDate: undefined, description: "旧描述" });
+
+    // 跨项目 milestoneId → milestoneNotFound
+    const other = await createTeamProject({ teamId: team.id, actorId: owner.id, name: "Other" }, db);
+    await expect(
+      updateTeamProjectMilestone(
+        { teamId: team.id, projectId: other.id, milestoneId: milestone!.id, actorId: owner.id, name: "X" },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "milestoneNotFound" } });
   });
 
   it("listTeamProjectMilestones / delete：错团队、跨归属 → projectNotFound", async () => {

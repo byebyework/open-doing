@@ -8,6 +8,7 @@ import {
   milestoneCountsByProjectId,
   normalizeMilestoneInputs,
   normalizePriority,
+  validateMilestoneFields,
   type ProjectListItem,
   type ProjectMilestoneInput,
   type ProjectTaskStatRow,
@@ -348,6 +349,32 @@ export async function deletePersonalProjectMilestone(
   if (!row) {
     throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
   }
+}
+
+/** 更新个人项目里程碑（owner-only）；仅写传入字段，空串日期归 null。 */
+export async function updatePersonalProjectMilestone(
+  userId: string,
+  projectId: string,
+  milestoneId: string,
+  input: { name?: string; description?: string; dueDate?: string | null },
+  client: DbClient = db,
+): Promise<ProjectMilestone> {
+  await requireOwnedProjectRow(userId, projectId, client);
+
+  const changes = validateMilestoneFields(input);
+
+  const [row] = await client
+    .update(projectMilestones)
+    .set(changes)
+    .where(
+      and(eq(projectMilestones.id, milestoneId), eq(projectMilestones.projectId, projectId)),
+    )
+    .returning();
+
+  if (!row) {
+    throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
+  }
+  return toMilestone(row);
 }
 
 /** 列出个人项目的里程碑：dueDate 升序（PG ASC 默认 NULLS LAST），同日按创建序。 */

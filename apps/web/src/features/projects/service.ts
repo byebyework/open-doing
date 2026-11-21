@@ -546,6 +546,83 @@ export async function deleteTeamProjectMilestone(
   }
 }
 
+/**
+ * 里程碑单字段校验（部分更新用：仅校验传入字段，name 不强制）。
+ * 团队/个人服务共用；返回值仅含传入字段。
+ */
+export function validateMilestoneFields(input: {
+  name?: string;
+  description?: string;
+  dueDate?: string | null;
+}): { name?: string; description?: string | null; dueDate?: string | null } {
+  const changes: { name?: string; description?: string | null; dueDate?: string | null } = {};
+
+  if (input?.name !== undefined) {
+    const name = typeof input.name === "string" ? input.name.trim() : "";
+    if (!name) {
+      throw new DomainError("请输入里程碑名称", "milestones", { key: "milestoneNameRequired" });
+    }
+    if (name.length > MILESTONE_NAME_MAX_LENGTH) {
+      throw new DomainError(
+        `里程碑名称不能超过 ${MILESTONE_NAME_MAX_LENGTH} 个字符`,
+        "milestones",
+        { key: "milestoneNameTooLong", params: { max: MILESTONE_NAME_MAX_LENGTH } },
+      );
+    }
+    changes.name = name;
+  }
+  if (input?.description !== undefined) {
+    const description = typeof input.description === "string" ? input.description.trim() : "";
+    if (description.length > MILESTONE_DESCRIPTION_MAX_LENGTH) {
+      throw new DomainError(
+        `里程碑描述不能超过 ${MILESTONE_DESCRIPTION_MAX_LENGTH} 个字符`,
+        "milestones",
+        { key: "milestoneDescriptionTooLong", params: { max: MILESTONE_DESCRIPTION_MAX_LENGTH } },
+      );
+    }
+    changes.description = description || null;
+  }
+  if (input?.dueDate !== undefined) {
+    changes.dueDate = input.dueDate ? input.dueDate : null;
+  }
+  return changes;
+}
+
+/** 更新团队项目里程碑（owner/admin）；仅写传入字段，空串日期归 null。 */
+export async function updateTeamProjectMilestone(
+  input: {
+    teamId: string;
+    projectId: string;
+    milestoneId: string;
+    actorId: string;
+    name?: string;
+    description?: string;
+    dueDate?: string | null;
+  },
+  client: DbClient = db,
+): Promise<ProjectMilestone> {
+  await requireManageRole(input.teamId, input.actorId, client);
+  await requireTeamProjectRow(input.teamId, input.projectId, client);
+
+  const changes = validateMilestoneFields(input);
+
+  const [row] = await client
+    .update(projectMilestones)
+    .set(changes)
+    .where(
+      and(
+        eq(projectMilestones.id, input.milestoneId),
+        eq(projectMilestones.projectId, input.projectId),
+      ),
+    )
+    .returning();
+
+  if (!row) {
+    throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
+  }
+  return toMilestone(row);
+}
+
 /** 列出团队项目的里程碑：dueDate 升序（PG ASC 默认 NULLS LAST），同日按创建序。 */
 export async function listTeamProjectMilestones(
   teamId: string,

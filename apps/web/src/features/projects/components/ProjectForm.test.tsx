@@ -247,6 +247,10 @@ describe("ProjectForm", () => {
     click("test-project-milestone-add-button");
 
     click("test-project-milestone-remove-0");
+    // 移除最后一项触发容器退出动画，等其卸载后再断言。
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
     expect(
       document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
     ).toHaveLength(0);
@@ -355,8 +359,11 @@ describe("ProjectForm", () => {
       document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
     ).toHaveLength(1);
 
-    // 收起：列表隐藏，仅剩行；计数徽标保留
+    // 收起：列表隐藏，仅剩行；计数徽标保留（退出动画 ~240ms 后卸载）。
     click("test-project-milestone-toggle");
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
     expect(
       document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
     ).toHaveLength(0);
@@ -369,6 +376,40 @@ describe("ProjectForm", () => {
     expect(
       document.body.querySelectorAll('[data-testid="test-project-milestone-item"]'),
     ).toHaveLength(1);
+  });
+
+  it("点击里程碑行进入编辑态：预填数据，保存后列表更新", async () => {
+    mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
+    renderForm();
+
+    click("test-project-milestone-add-trigger");
+    setInput("test-project-name-input", "Edit Draft Project");
+    setInput("test-project-milestone-name-input", "旧名");
+    const dateInput = document.body.querySelector<HTMLInputElement>(
+      '[data-testid="test-project-milestone-due-date"]',
+    )!;
+    act(() => {
+      const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
+      setter.call(dateInput, "2026-12-01");
+      dateInput.dispatchEvent(new Event("input", { bubbles: true }));
+      dateInput.dispatchEvent(new Event("change", { bubbles: true }));
+    });
+    click("test-project-milestone-add-button");
+
+    // 点击行 → 编辑器预填
+    click("test-project-milestone-edit-0");
+    const nameInput = document.body.querySelector<HTMLInputElement>(
+      '[data-testid="test-project-milestone-name-input"]',
+    )!;
+    expect(nameInput.value).toBe("旧名");
+    setInput("test-project-milestone-name-input", "新名");
+    click("test-project-milestone-add-button");
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+    });
+    const row = document.body.querySelector('[data-testid="test-project-milestone-item"]');
+    expect(row?.textContent).toContain("新名");
   });
 
   it("编辑态标签池存在但未选任何标签：payload 带 tagIds: []（清空语义，不静默保留）", async () => {

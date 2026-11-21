@@ -15,6 +15,7 @@ import {
   deleteTeamProjectMilestone,
   listTeamProjectMilestones,
   updateTeamProject,
+  updateTeamProjectMilestone,
 } from "./service";
 import { standardFailuresForRequest } from "@/lib/action-failure";
 
@@ -175,6 +176,29 @@ export async function listTeamProjectMilestonesAction(input: {
   try {
     const milestones = await listTeamProjectMilestones(input.teamId, input.projectId);
     return { ok: true, data: milestones };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 更新团队项目里程碑（仅 owner/admin，服务层再次校验）。 */
+export async function updateTeamProjectMilestoneAction(input: {
+  teamId: string;
+  projectId: string;
+  milestoneId: string;
+  name?: string;
+  description?: string;
+  /** 时间节点；空串清空。 */
+  dueDate?: string | null;
+}): Promise<ActionResult<ProjectMilestone>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    const milestone = await updateTeamProjectMilestone({ ...input, actorId: user.id });
+    return { ok: true, data: milestone };
   } catch (error) {
     return toFailure(error);
   }

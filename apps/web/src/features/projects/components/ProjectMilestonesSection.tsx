@@ -1,7 +1,7 @@
 "use client";
 
 import type { ProjectMilestone } from "@open-doing/types";
-import { FlagIcon, PlusIcon } from "lucide-react";
+import { FlagIcon, PlusIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -12,11 +12,14 @@ import { Button } from "@/components/ui/shadcn/button";
 import {
   addPersonalProjectMilestoneAction,
   deletePersonalProjectMilestoneAction,
+  updatePersonalProjectMilestoneAction,
 } from "@/features/personal/projects/actions";
 import {
   addTeamProjectMilestoneAction,
   deleteTeamProjectMilestoneAction,
+  updateTeamProjectMilestoneAction,
 } from "../actions";
+import { MilestoneDatePopover } from "./MilestoneDatePopover";
 import {
   ProjectMilestoneEditor,
   type MilestoneDraftInput,
@@ -53,6 +56,8 @@ export function ProjectMilestonesSection({
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const [adding, setAdding] = useState(false);
+  /** 行点击编辑的里程碑 id（编辑组件 = 新建组件 + 预填数据）。 */
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<ProjectMilestone | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -83,6 +88,34 @@ export function ProjectMilestonesSection({
       }
 
       setAdding(false);
+      onChanged?.();
+      router.refresh();
+    } catch {
+      toast.error(tCommon("networkError"));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const updateMilestone = async (
+    milestoneId: string,
+    input: { name?: string; description?: string; dueDate?: string | null },
+  ) => {
+    if (submitting) return;
+    setSubmitting(true);
+
+    try {
+      const result =
+        space.kind === "team"
+          ? await updateTeamProjectMilestoneAction({ teamId: space.teamId, projectId, milestoneId, ...input })
+          : await updatePersonalProjectMilestoneAction(projectId, milestoneId, input);
+
+      if (!result.ok) {
+        toast.error(result.errors.form ?? result.errors.milestones ?? tErrors("operationFailed"));
+        return;
+      }
+
+      setEditingId(null);
       onChanged?.();
       router.refresh();
     } catch {
@@ -161,39 +194,74 @@ export function ProjectMilestonesSection({
       ) : null}
 
       <ul className="mt-3 flex flex-col">
-        {milestones.map((item, index) => (
-          <li
-            key={item.id}
-            className="flex items-start gap-2.5 border-b border-[var(--border)] py-2.5 last:border-b-0"
-          >
-            <FlagIcon className="mt-0.5 size-3.5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
-                <span className="text-[13px] font-medium text-[var(--color-text)]">
-                  {item.name}
-                </span>
-                {item.dueDate ? (
-                  <span className="rounded-full bg-[var(--color-todo-bg)] px-2 py-0.5 text-[11.5px] tabular-nums text-[var(--color-todo)]">
-                    {item.dueDate}
-                  </span>
-                ) : null}
+        {milestones.map((item, index) =>
+          canManage && editingId === item.id ? (
+            <li key={item.id} className="border-b border-[var(--border)] py-2 last:border-b-0">
+              <ProjectMilestoneEditor
+                initial={{ name: item.name, description: item.description, dueDate: item.dueDate ?? "" }}
+                onSubmit={(draft) => {
+                  void updateMilestone(item.id, draft);
+                }}
+                onCancel={() => setEditingId(null)}
+                submitting={submitting}
+                testIdPrefix="project"
+                submitLabel={tCommon("save")}
+              />
+            </li>
+          ) : (
+            <li
+              key={item.id}
+              className="flex items-start gap-2.5 border-b border-[var(--border)] py-2.5 last:border-b-0"
+            >
+              <FlagIcon className="mt-0.5 size-3.5 shrink-0 text-[var(--color-primary)]" aria-hidden="true" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center gap-2">
+                  {canManage ? (
+                    <button
+                      type="button"
+                      data-testid={`project-milestone-edit-${index}`}
+                      className="cursor-pointer text-[13px] font-medium text-[var(--color-text)] hover:text-[var(--color-primary)]"
+                      disabled={submitting}
+                      onClick={() => setEditingId(item.id)}
+                    >
+                      {item.name}
+                    </button>
+                  ) : (
+                    <span className="text-[13px] font-medium text-[var(--color-text)]">{item.name}</span>
+                  )}
+                  {item.dueDate ? (
+                    <span className="rounded-full bg-[var(--color-todo-bg)] px-2 py-0.5 text-[11.5px] tabular-nums text-[var(--color-todo)]">
+                      {item.dueDate}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="mt-0.5 truncate text-[12.5px] text-[var(--color-text-muted)]">
+                  {item.description ?? "-"}
+                </p>
               </div>
-              <p className="mt-0.5 truncate text-[12.5px] text-[var(--color-text-muted)]">
-                {item.description ?? "-"}
-              </p>
-            </div>
-            {canManage ? (
-              <button
-                type="button"
-                data-testid={`project-milestone-delete-${index}`}
-                className="shrink-0 text-[12.5px] text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
-                onClick={() => setDeleteTarget(item)}
-              >
-                {t("milestoneDelete")}
-              </button>
-            ) : null}
-          </li>
-        ))}
+              {canManage ? (
+                <div className="flex shrink-0 items-center gap-1">
+                  {/* 行内日期：Popover 日历直接设/改，不必进编辑态。 */}
+                  <MilestoneDatePopover
+                    value={item.dueDate ?? ""}
+                    onChange={(dueDate) => void updateMilestone(item.id, { dueDate })}
+                    disabled={submitting}
+                    testid={`project-milestone-date-${index}`}
+                  />
+                  <button
+                    type="button"
+                    aria-label={t("milestoneDelete")}
+                    data-testid={`project-milestone-delete-${index}`}
+                    className="text-[var(--color-text-muted)] hover:text-[var(--color-error)]"
+                    onClick={() => setDeleteTarget(item)}
+                  >
+                    <XIcon className="size-3.5" aria-hidden="true" />
+                  </button>
+                </div>
+              ) : null}
+            </li>
+          ),
+        )}
         {milestones.length === 0 && !adding ? (
           <li className="py-2 text-[12.5px] text-[var(--color-text-muted)]">-</li>
         ) : null}

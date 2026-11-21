@@ -16,13 +16,17 @@ export interface MilestoneDraftInput {
 }
 
 export interface ProjectMilestoneEditorProps {
-  /** 添加回调：成功后编辑器自行清空输入。 */
+  /** 添加/保存回调：成功后编辑器自行清空输入。 */
   onSubmit: (input: MilestoneDraftInput) => void | Promise<void>;
   /** 收起编辑卡（传入才渲染取消按钮；创建表单内不收起故不传）。 */
   onCancel?: () => void;
   submitting?: boolean;
   /** testid 前缀（如 "team-project" → "team-project-milestone-name-input"）。 */
   testIdPrefix?: string;
+  /** 编辑态预填数据（行点击编辑 = 新建组件 + 既有数据）。 */
+  initial?: { name?: string; description?: string; dueDate?: string };
+  /** 提交按钮文案（编辑态传「保存」）。 */
+  submitLabel?: string;
 }
 
 /**
@@ -36,12 +40,14 @@ export function ProjectMilestoneEditor({
   onCancel,
   submitting = false,
   testIdPrefix = "project-milestone",
+  initial,
+  submitLabel,
 }: ProjectMilestoneEditorProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [dueDate, setDueDate] = useState("");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+  const [dueDate, setDueDate] = useState(initial?.dueDate ?? "");
 
   // 名称必填；描述与时间节点选填（dueDate 空串由服务层归 null）。
   const canAdd = name.trim().length > 0 && !submitting;
@@ -117,7 +123,7 @@ export function ProjectMilestoneEditor({
           onClick={handleAdd}
         >
           {submitting ? <Loader2Icon className="animate-spin" aria-hidden="true" /> : null}
-          {t("milestoneAdd")}
+          {submitLabel ?? t("milestoneAdd")}
         </Button>
       </div>
     </div>

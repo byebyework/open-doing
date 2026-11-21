@@ -20,6 +20,7 @@ import {
   listPersonalProjectMilestones,
   listPersonalProjects,
   updatePersonalProject,
+  updatePersonalProjectMilestone,
 } from "./service";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
@@ -578,6 +579,30 @@ describe.skipIf(!hasTestDatabase)("个人项目优先级与里程碑（表格模
     expect(
       await db.select().from(projectMilestones).where(eq(projectMilestones.projectId, project.id)),
     ).toHaveLength(0);
+  });
+
+  it("updatePersonalProjectMilestone：更新字段；他人项目 → projectNotFound", async () => {
+    const owner = await createUser();
+    const stranger = await createUser();
+    const project = await createPersonalProject(
+      owner,
+      { name: "Editable", milestones: [{ name: "旧名", dueDate: "2026-12-05" }] },
+      db,
+    );
+    const [milestone] = await listPersonalProjectMilestones(owner, project.id, db);
+
+    await expect(
+      updatePersonalProjectMilestone(stranger, project.id, milestone!.id, { name: "越权" }, db),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+
+    const updated = await updatePersonalProjectMilestone(
+      owner,
+      project.id,
+      milestone!.id,
+      { name: "新名", description: "已更新", dueDate: null },
+      db,
+    );
+    expect(updated).toMatchObject({ name: "新名", description: "已更新", dueDate: undefined });
   });
 
   it("getPersonalProjectListWithStats 附 milestoneCount（空项目为 0）", async () => {
