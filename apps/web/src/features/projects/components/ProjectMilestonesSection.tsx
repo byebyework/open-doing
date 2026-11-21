@@ -316,10 +316,12 @@ export function ProjectMilestonesSection({
                     <span className="text-[13px] font-medium text-[var(--color-text)]">{item.name}</span>
                   )}
                 </div>
-                <p className="mt-0.5 truncate text-[12.5px] text-[var(--color-text-muted)]">
-                  {item.description ?? "-"}
-                </p>
-                {progress?.[item.id] ? (
+                {item.description ? (
+                  <p className="mt-0.5 truncate text-[12.5px] text-[var(--color-text-muted)]">
+                    {item.description}
+                  </p>
+                ) : null}
+                {progress?.[item.id] && progress[item.id]!.taskCount > 0 ? (
                   <p className="mt-0.5 text-[12px] tabular-nums text-[var(--color-text-muted)]">
                     {progress[item.id]!.percent}% of {progress[item.id]!.taskCount}
                   </p>
