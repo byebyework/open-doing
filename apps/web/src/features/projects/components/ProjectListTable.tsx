@@ -367,7 +367,7 @@ export function ProjectListTable({
                   <td className="px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">
                     {row.taskCount}
                   </td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3 text-right">
                     <ProjectStatusPill
                       status={row.status}
                       disabled={!canManage}
