@@ -187,7 +187,8 @@ function KanbanColumn({
           : "bg-[#f4f5f7]"
       }`}
     >
-      <header className="flex items-center gap-2 px-2 pb-3 pt-1">
+      {/* 固定列头高度：＋按钮列与纯文字列的标题基线保持一致 */}
+      <header className="flex h-9 items-center gap-2 px-2">
         <span className="text-[13.5px] font-bold text-[var(--ink-900)]">
           {tStatus(TASK_STATUS_KEYS[status])}
         </span>
@@ -330,7 +331,8 @@ export function PersonalKanban({
           void handleDragEnd(event);
         }}
       >
-        <div className="grid min-w-0 grid-cols-1 items-start gap-4 min-[861px]:grid-cols-3">
+        {/* 列等高拉伸（默认 stretch）：空列与有卡列底边对齐 */}
+        <div className="grid min-w-0 grid-cols-1 gap-4 min-[861px]:grid-cols-3">
           {TASK_STATUS_ORDER.map((status) => (
             <KanbanColumn
               key={status}
