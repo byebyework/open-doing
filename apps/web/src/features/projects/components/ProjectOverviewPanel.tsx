@@ -478,12 +478,10 @@ export function ProjectOverviewPanel({
         )}
       </div>
 
-      {/* 里程碑区恒显（对照 Linear）：空态提示，添加入口在右侧 Milestones 卡。 */}
+      {/* 里程碑区恒显（对照 Linear）：空态仅保留添加入口。 */}
       <div className="flex flex-col gap-2">
         <p className="text-[13px] font-medium text-[var(--color-text)]">{t("milestoneLabel")}</p>
-        {milestones.length === 0 && !milestoneCreating ? (
-          <p className="py-2 text-[13px] text-[var(--color-text-muted)]">{t("milestoneEmpty")}</p>
-        ) : (
+        {milestones.length > 0 ? (
           <ul className="flex flex-col">
             {milestones.map((item) => {
               const expanded = expandedMilestones.has(item.milestone.id);
@@ -635,7 +633,7 @@ export function ProjectOverviewPanel({
               );
             })}
           </ul>
-        )}
+        ) : null}
 
         {/* Linear 式草稿行：+ 里程碑 → 占位行（名称必填，Enter/✓ 提交，日期可选） */}
         {milestoneCreating && canManage ? (

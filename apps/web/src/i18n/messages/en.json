@@ -758,7 +758,7 @@
     "milestoneNamePlaceholder": "Milestone name...",
     "milestoneDescriptionPlaceholder": "Add a description...",
     "milestoneDueDateLabel": "Target date",
-    "milestoneAdd": "Add",
+    "milestoneAdd": "Add milestone",
     "milestoneAddedTitle": "Added milestones",
     "milestoneRemove": "Remove",
     "milestoneDelete": "Delete",
@@ -799,7 +799,6 @@
     "milestoneProgressMeta": "{count} tasks · {percent}%",
     "propertiesTitle": "Properties",
     "sidebarToggle": "Toggle sidebar",
-    "milestoneEmpty": "No milestones yet — add one from the Milestones card",
     "colActions": "Actions",
     "progressTitle": "Progress"
   },

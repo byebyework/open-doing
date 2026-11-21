@@ -758,7 +758,7 @@
     "milestoneNamePlaceholder": "输入里程碑节点名称...",
     "milestoneDescriptionPlaceholder": "添加描述...",
     "milestoneDueDateLabel": "时间节点",
-    "milestoneAdd": "添加",
+    "milestoneAdd": "添加里程碑",
     "milestoneAddedTitle": "已添加的节点",
     "milestoneRemove": "移除",
     "milestoneDelete": "删除",
@@ -799,7 +799,6 @@
     "milestoneProgressMeta": "{count} 任务 · {percent}%",
     "propertiesTitle": "属性",
     "sidebarToggle": "显示/隐藏侧栏",
-    "milestoneEmpty": "暂无里程碑，可在右侧「里程碑」卡添加",
     "colActions": "操作",
     "progressTitle": "进度"
   },
