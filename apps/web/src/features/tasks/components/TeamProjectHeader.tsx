@@ -64,6 +64,7 @@ export function TeamProjectHeader({
 }: TeamProjectHeaderProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
+  const tProjects = useTranslations("projects");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   const lead = memberPool?.find((m) => m.id === project.leadId) ?? null;
@@ -93,13 +94,13 @@ export function TeamProjectHeader({
       />
       {lead ? (
         <span className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)]">
-          <span className="text-[12px] text-[var(--color-text-muted)]">负责人</span>
+          <span className="text-[12px] text-[var(--color-text-muted)]">{tProjects("leadLabel")}</span>
           {lead.name}
         </span>
       ) : null}
       {memberPool && memberPool.length > 0 ? (
         <span className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-secondary)]">
-          <span className="text-[12px] text-[var(--color-text-muted)]">成员</span>
+          <span className="text-[12px] text-[var(--color-text-muted)]">{tProjects("membersLabel")}</span>
           {memberPool.map((m) => m.name).join("、")}
         </span>
       ) : null}

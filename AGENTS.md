@@ -49,7 +49,7 @@ Environment variable gotchas:
 ### Monorepo (pnpm workspaces)
 
 - `apps/web` (`@open-doing/web`) — the only app: pages + Server Actions + Route Handlers + DB access.
-- `packages/types` (`@open-doing/types`) — **serializable types and pure functions** shared between frontend and backend (e.g. `getTaskProgress`, `isOverdue`, `getProjectStatusKind`). Rules: no React dependency, no database access, no IO. Drizzle row types stay inside the web package; when crossing the boundary, map them to domain models in the features layer.
+- `packages/types` (`@open-doing/types`) — **serializable types and pure functions** shared between frontend and backend (e.g. `getTaskProgress`, `isOverdue`, `PROJECT_STATUSES`). Rules: no React dependency, no database access, no IO. Drizzle row types stay inside the web package; when crossing the boundary, map them to domain models in the features layer.
 
 ### Feature domain modules (`apps/web/src/features/`)
 

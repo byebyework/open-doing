@@ -71,9 +71,16 @@ test.describe("flow 18: 标签模块", () => {
     await dialog.getByTestId("personal-project-submit-button").click();
     await expect(page.getByText("没有待处理的邀请。")).toHaveCount(0); // 弹层收起后页面稳定
 
-    // 5. 项目列表行：项目标签 pill 可见
+    // 5. 项目标签在 Drawer 概览可见（列表已不展示标签列）
     await page.goto("/space/personal/projects");
-    const row = page.getByTestId(TEST_IDS.projects.projectsListRow).filter({ hasText: projectName });
-    await expect(row.getByTestId("tag-pill")).toHaveText(projTagName);
+    await page
+      .getByTestId(TEST_IDS.projects.projectsListRow)
+      .filter({ hasText: projectName })
+      .locator("button")
+      .first()
+      .click();
+    const drawer = page.getByTestId("project-detail-drawer");
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByTestId("tag-pill").filter({ hasText: projTagName })).toBeVisible();
   });
 });

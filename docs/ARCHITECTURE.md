@@ -286,6 +286,11 @@ projects
   team_id -> teams.id (nullable: personal projects)
   owner_id -> users.id (owner of personal projects; null for team projects)
   priority      low | medium | high (default medium; display/filter only, no workflow semantics)
+  status        backlog | planned | in_progress | completed | canceled (default backlog; stored since
+                2026-11-21, replacing the old progress-derived status; progress stays a task metric)
+  lead_id       -> users.id, nullable (team lead; set null when the member leaves)
+  -- project_members: (project_id, user_id) composite PK, both FKs cascade; members come from the
+     team roster; member removal/leave clears rows and nulls lead_id
   CHECK((team_id IS NOT NULL) <> (owner_id IS NOT NULL))  -- exactly one
   -- slug uniqueness scope: team projects UNIQUE(team_id, slug); personal projects UNIQUE(owner_id, slug)
 
