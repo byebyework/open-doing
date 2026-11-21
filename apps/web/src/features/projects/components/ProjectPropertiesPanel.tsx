@@ -1,7 +1,7 @@
 "use client";
 
 import type { Project, ProjectMemberRef, ProjectStatus, TaskPriority } from "@open-doing/types";
-import { CalendarPlusIcon } from "lucide-react";
+import { CalendarPlusIcon, CheckIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -50,6 +50,15 @@ export function ProjectPropertiesPanel({
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const [tagIds, setTagIds] = useState<string[]>(project.tags?.map((tag) => tag.id) ?? []);
+  // 项目成员本地态（Properties 行可编辑；渲染期同步 RSC 快照）
+  const [syncedMembers, setSyncedMembers] = useState(project);
+  const [memberIds, setMemberIds] = useState<string[]>(
+    project.members?.map((member) => member.id) ?? [],
+  );
+  if (project !== syncedMembers) {
+    setSyncedMembers(project);
+    setMemberIds(project.members?.map((member) => member.id) ?? []);
+  }
 
   const saveField = async (payload: Record<string, unknown>): Promise<boolean> => {
     try {
@@ -164,11 +173,49 @@ export function ProjectPropertiesPanel({
         {space.kind === "team" && memberPool.length > 0
           ? row(
               t("membersLabel"),
-              <span className="flex flex-wrap items-center justify-end gap-1">
-                {(project.members ?? []).map((member) => (
-                  <UserAvatar key={member.id} userId={member.id} name={member.name} size={22} />
-                ))}
-              </span>,
+              <AttrPill
+                testid="properties-members-pill"
+                icon={null}
+                label={
+                  memberIds.length > 0
+                    ? `${memberIds.length}`
+                    : t("notSet")
+                }
+                disabled={!canManage}
+              >
+                {(close) => (
+                  <div className="flex flex-col">
+                    {memberPool.map((member) => {
+                      const checked = memberIds.includes(member.id);
+                      return (
+                        <button
+                          key={member.id}
+                          type="button"
+                          data-testid={`properties-member-option-${member.id}`}
+                          className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                          onClick={() => {
+                            const next = checked
+                              ? memberIds.filter((id) => id !== member.id)
+                              : [...memberIds, member.id];
+                            setMemberIds(next);
+                            // lead 由服务层不变式自动并入成员（leadId 透传保留）
+                            void saveField({
+                              memberIds: next,
+                              leadId: project.leadId,
+                            });
+                          }}
+                        >
+                          <UserAvatar userId={member.id} name={member.name} size={22} />
+                          <span className="flex-1">{member.name}</span>
+                          {checked ? (
+                            <CheckIcon className="size-3.5 text-[var(--color-text)]" aria-hidden="true" />
+                          ) : null}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </AttrPill>,
             )
           : null}
         {row(
