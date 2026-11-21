@@ -11,7 +11,7 @@ import {
 
 /**
  * 关键流 18：标签模块（个人空间）。
- * 双类型标签（项目/任务）创建、tabs 过滤、搜索、项目打标（编辑弹层）
+ * 双类型标签（项目/任务）创建、tabs 过滤、搜索、项目打标（概览标签行内联 Popover）
  * → 项目卡片 pill、类型互斥（任务打标列表不含项目标签）。
  */
 test.describe.configure({ timeout: 180_000 });
@@ -58,20 +58,19 @@ test.describe("flow 18: 标签模块", () => {
     await expect(page.getByTestId("tags-module-row").filter({ hasText: taskTagName })).toHaveCount(0);
     await page.getByTestId("tags-search-input").fill("");
 
-    // 4. 项目编辑弹层打标（pill 行布局：标签在「标签」pill 的 Popover 内）
+    // 4. 概览标签行打标（内联 Popover：勾选即保存，无编辑弹层）
     await openPersonalProject(page, projectName);
-    await page.getByRole("button", { name: "编辑" }).first().click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await dialog.getByTestId("personal-project-labels-pill").click();
-    await expect(dialog.getByRole("checkbox", { name: projTagName })).toBeVisible();
-    await dialog.getByRole("checkbox", { name: projTagName }).click();
-    // 多选 Popover 选中后保持展开（可连续勾选）；再点触发器收起，避免遮挡提交按钮。
-    await dialog.getByTestId("personal-project-labels-pill").click();
-    await dialog.getByTestId("personal-project-submit-button").click();
-    await expect(page.getByText("没有待处理的邀请。")).toHaveCount(0); // 弹层收起后页面稳定
+    const labelsTrigger = page.getByTestId("overview-labels-add");
+    await labelsTrigger.click();
+    await page
+      .locator('[data-testid^="overview-labels-option-"]')
+      .filter({ hasText: projTagName })
+      .click();
+    // 勾选即触发保存；等待保存完成（触发器保存期间禁用）再收起 Popover。
+    await expect(labelsTrigger).toBeEnabled({ timeout: 15_000 });
+    await labelsTrigger.click();
 
-    // 5. 项目标签关联保留：详情页编辑弹窗的标签 pill 计数为 1
+    // 5. 项目标签关联保留：重新打开详情页，概览标签行显示该项目标签
     await page.goto("/space/personal/projects");
     await page
       .getByTestId(TEST_IDS.projects.projectsListRow)
@@ -80,9 +79,11 @@ test.describe("flow 18: 标签模块", () => {
       .first()
       .click();
     await expect(page).toHaveURL(/\/space\/personal\/projects\/[^/]+$/, { timeout: 30_000 });
-    await page.getByRole("button", { name: "编辑" }).first().click();
-    const editDialog = page.getByRole("dialog");
-    await expect(editDialog).toBeVisible();
-    await expect(editDialog.getByTestId("team-project-labels-pill").or(editDialog.getByTestId("personal-project-labels-pill")).locator("text=1")).toBeVisible();
+    await expect(
+      page
+        .getByTestId("project-properties-panel")
+        .getByTestId("tag-pill")
+        .filter({ hasText: projTagName }),
+    ).toBeVisible();
   });
 });
