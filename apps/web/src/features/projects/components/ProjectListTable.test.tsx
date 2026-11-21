@@ -11,7 +11,7 @@ import type { AppLocale } from "@/i18n/config";
 import zh from "@/i18n/messages/zh.json";
 
 import { vi } from "vitest";
-import { listTeamProjectMilestonesAction } from "../actions";
+import { listTeamProjectMilestonesAction, updateTeamProjectStatusAction } from "../actions";
 import { filterProjectRows, ProjectListTable, type ProjectListRow } from "./ProjectListTable";
 
 vi.mock("next/navigation", () => ({
@@ -23,6 +23,7 @@ vi.mock("../actions", async (importOriginal) => {
   return {
     ...actual,
     listTeamProjectMilestonesAction: vi.fn(),
+    updateTeamProjectStatusAction: vi.fn(),
   };
 });
 
@@ -54,7 +55,9 @@ const rows: ProjectListRow[] = [
     href: "/space/growth/projects/alpha",
     priority: "high",
     tags: [tag("t1", "核心目标")],
-    statusKind: "in_progress",
+    status: "in_progress",
+    lead: { id: "m1", name: "负责人甲", image: null },
+    members: [{ id: "m1", name: "负责人甲", image: null }],
     progressPercent: 65,
     milestoneCount: 1,
     startDate: "2026-11-01",
@@ -69,7 +72,9 @@ const rows: ProjectListRow[] = [
     href: "/space/growth/projects/beta",
     priority: "medium",
     tags: [],
-    statusKind: "not_started",
+    status: "backlog",
+    lead: null,
+    members: [],
     progressPercent: 0,
     milestoneCount: 0,
     taskCount: 0,
@@ -82,7 +87,9 @@ const rows: ProjectListRow[] = [
     href: "/space/growth/projects/gamma",
     priority: "low",
     tags: [tag("t1", "核心目标"), tag("t2", "日常维护")],
-    statusKind: "completed",
+    status: "completed",
+    lead: null,
+    members: [],
     progressPercent: 100,
     milestoneCount: 2,
     taskCount: 5,
@@ -96,9 +103,11 @@ describe("filterProjectRows（纯函数）", () => {
     expect(filterProjectRows(rows, { status: "all", priority: "all", tagId: "all", keyword: "" })).toHaveLength(3);
   });
 
-  it("状态筛选：in_progress 只剩 Alpha", () => {
+  it("状态筛选：in_progress 只剩 Alpha；backlog 只剩 Beta", () => {
     const result = filterProjectRows(rows, { status: "in_progress", priority: "all", tagId: "all", keyword: "" });
     expect(result.map((r) => r.id)).toEqual(["a"]);
+    const backlog = filterProjectRows(rows, { status: "backlog", priority: "all", tagId: "all", keyword: "" });
+    expect(backlog.map((r) => r.id)).toEqual(["b"]);
   });
 
   it("优先级筛选：high 只剩 Alpha；medium 只剩 Beta", () => {
@@ -146,6 +155,25 @@ describe("ProjectListTable（DOM 探针）", () => {
     container.remove();
   });
 
+  function renderTablePersonal(inputRows: ProjectListRow[]) {
+    vi.mocked(listTeamProjectMilestonesAction).mockResolvedValue({ ok: true, data: [] });
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
+          <ProjectListTable rows={inputRows} space={{ kind: "personal" }} canManage />
+        </NextIntlClientProvider>,
+      );
+    });
+  }
+
+  function click(testid: string) {
+    const button = document.body.querySelector<HTMLButtonElement>(`[data-testid="${testid}"]`);
+    if (!button) throw new Error(`missing button ${testid}`);
+    act(() => {
+      button.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
   function renderTable(inputRows: ProjectListRow[], canManage = true) {
     vi.mocked(listTeamProjectMilestonesAction).mockResolvedValue({ ok: true, data: [] });
     act(() => {
@@ -187,17 +215,39 @@ describe("ProjectListTable（DOM 探针）", () => {
     expect(link?.getAttribute("href")).toBe("/space/growth/projects/alpha");
   });
 
-  it("点击状态 tab「进行中」过滤行", () => {
+  it("团队表格 7 列头（负责人/截止时间/任务数在列）", () => {
     renderTable(rows);
-    const trigger = document.body.querySelector<HTMLButtonElement>('[data-testid="project-status-tab-in_progress"]');
-    if (!trigger) throw new Error("missing in_progress tab");
-    act(() => {
-      // Radix TabsTrigger 在 pointerdown/mousedown 上激活，click 单发不够。
-      trigger.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
-      trigger.dispatchEvent(new MouseEvent("mouseup", { bubbles: true }));
-      trigger.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    const headers = Array.from(document.body.querySelectorAll("th")).map((th) => th.textContent);
+    expect(headers.some((h) => h?.includes("负责人"))).toBe(true);
+    expect(headers.some((h) => h?.includes("截止时间"))).toBe(true);
+    expect(headers.some((h) => h?.includes("任务数"))).toBe(true);
+    expect(headers.some((h) => h?.includes("标签"))).toBe(false);
+    expect(headers.some((h) => h?.includes("里程碑"))).toBe(false);
+    // 负责人单元格渲染头像+名
+    expect(document.body.textContent).toContain("负责人甲");
+  });
+
+  it("个人空间 6 列（无负责人列）", () => {
+    renderTablePersonal(rows);
+    const headers = Array.from(document.body.querySelectorAll("th")).map((th) => th.textContent);
+    expect(headers.some((h) => h?.includes("负责人"))).toBe(false);
+  });
+
+  it("状态就地改：pill 选项点击调用 status action", async () => {
+    vi.mocked(updateTeamProjectStatusAction).mockResolvedValue({
+      ok: true,
+      data: { ...rows[0]!, tags: undefined, lead: null, members: [] } as never,
     });
-    expect(queryAll("project-row")).toHaveLength(1);
+    renderTable(rows);
+    click(`project-status-pill-a`);
+    click("project-status-option-canceled");
+    await act(async () => {});
+    await act(async () => {});
+    expect(updateTeamProjectStatusAction).toHaveBeenCalledWith({
+      teamId: "66666666-6666-6666-6666-666666666666",
+      projectId: "a",
+      status: "canceled",
+    });
   });
 
   it("关键字搜索过滤行", () => {
@@ -247,7 +297,9 @@ describe("ProjectListTable（DOM 探针）", () => {
       href: `/space/growth/projects/p${i}`,
       priority: "medium",
       tags: [],
-      statusKind: "not_started",
+      status: "backlog",
+      lead: null,
+      members: [],
       progressPercent: 0,
       milestoneCount: 0,
       taskCount: 0,
@@ -274,10 +326,9 @@ describe("ProjectListTable（DOM 探针）", () => {
     expect(queryAll("project-row")).toHaveLength(2);
   });
 
-  it("里程碑 0 显示「-」，非 0 显示 N 个节点", () => {
+  it("截止时间/任务数列渲染", () => {
     renderTable(rows);
-    expect(document.body.textContent).toContain("1 个节点");
-    expect(document.body.textContent).toContain("2 个节点");
-    expect(document.body.textContent).toContain("-");
+    expect(document.body.textContent).toContain("2026-11-30");
+    expect(document.body.textContent).toContain("12");
   });
 });

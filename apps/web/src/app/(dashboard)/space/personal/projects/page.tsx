@@ -1,5 +1,4 @@
-import type { ProjectStatusKind } from "@open-doing/types";
-import { getProjectStatusKind } from "@open-doing/types";
+
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 
@@ -46,7 +45,9 @@ export default async function PersonalProjectsPage() {
     href: personalProjectHref(item.project.slug),
     priority: item.project.priority,
     tags: projectTagsMap.get(item.project.id) ?? [],
-    statusKind: getProjectStatusKind(item.stats.progress) as ProjectStatusKind,
+    status: item.project.status,
+    lead: null,
+    members: [],
     progressPercent: Math.round(item.stats.progress * 100),
     milestoneCount: item.milestoneCount,
     startDate: item.project.startDate,

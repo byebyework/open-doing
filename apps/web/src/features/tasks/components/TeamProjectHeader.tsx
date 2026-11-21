@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/shadcn/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import type { ProjectMemberRef } from "@open-doing/types";
 import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
+import { ProjectStatusPill } from "@/features/projects/components/ProjectStatusPill";
+import { updateTeamProjectStatusAction } from "@/features/projects/actions";
 import { TeamProjectHeaderActions } from "@/features/projects/components/TeamProjectHeaderActions";
 
 import { NewTeamTaskModal } from "./NewTeamTaskModal";
@@ -64,8 +66,43 @@ export function TeamProjectHeader({
   const t = useTranslations("tasks");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
+  const lead = memberPool?.find((m) => m.id === project.leadId) ?? null;
+
+  async function changeStatus(status: Parameters<typeof ProjectStatusPill>[0]["status"]) {
+    if (!canManage) return;
+    try {
+      const result = await updateTeamProjectStatusAction({
+        teamId,
+        projectId: project.id,
+        status,
+      });
+      if (!result.ok) return;
+      router.refresh();
+    } catch {
+      /* 静默：toast 由调用方场景决定 */
+    }
+  }
+
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <ProjectStatusPill
+        status={project.status ?? "backlog"}
+        disabled={!canManage}
+        onChange={changeStatus}
+        testid="project-detail-status-pill"
+      />
+      {lead ? (
+        <span className="inline-flex items-center gap-1.5 text-[13px] text-[var(--color-text-secondary)]">
+          <span className="text-[12px] text-[var(--color-text-muted)]">负责人</span>
+          {lead.name}
+        </span>
+      ) : null}
+      {memberPool && memberPool.length > 0 ? (
+        <span className="inline-flex items-center gap-1 text-[13px] text-[var(--color-text-secondary)]">
+          <span className="text-[12px] text-[var(--color-text-muted)]">成员</span>
+          {memberPool.map((m) => m.name).join("、")}
+        </span>
+      ) : null}
       {canManage ? (
         <TeamProjectHeaderActions
           teamId={teamId}

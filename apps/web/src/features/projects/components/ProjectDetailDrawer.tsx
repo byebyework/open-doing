@@ -1,9 +1,11 @@
 "use client";
 
-import type { ProjectMilestone } from "@open-doing/types";
+import type { ProjectMilestone, ProjectStatus } from "@open-doing/types";
 import { ExternalLinkIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
+import { toast } from "sonner";
 
 import {
   Sheet,
@@ -11,13 +13,18 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/shadcn/sheet";
-import { listPersonalProjectMilestonesAction } from "@/features/personal/projects/actions";
+import { UserAvatar } from "@/components/ui/UserAvatar";
+import {
+  listPersonalProjectMilestonesAction,
+  updatePersonalProjectStatusAction,
+} from "@/features/personal/projects/actions";
 import { Button } from "@/components/ui/shadcn/button";
 import { TagPill } from "@/features/tags/components/TagPill";
-import { listTeamProjectMilestonesAction } from "../actions";
+import { listTeamProjectMilestonesAction, updateTeamProjectStatusAction } from "../actions";
 import { ProjectMilestonesSection } from "./ProjectMilestonesSection";
 import type { ProjectFormSpace } from "./ProjectForm";
 import type { ProjectListRow } from "./ProjectListTable";
+import { ProjectStatusPill } from "./ProjectStatusPill";
 
 /** Drawer 概览数据（ProjectListRow 加任务统计；RSC 侧组装）。 */
 export type ProjectDrawerProject = ProjectListRow;
@@ -45,7 +52,10 @@ export function ProjectDetailDrawer({
   canManage,
 }: ProjectDetailDrawerProps) {
   const t = useTranslations("projects");
+  const tErrors = useTranslations("errors");
+  const router = useRouter();
   const [milestones, setMilestones] = useState<ProjectMilestone[]>([]);
+  const [submittingStatus, setSubmittingStatus] = useState(false);
 
   const projectId = project?.id;
 
@@ -59,6 +69,26 @@ export function ProjectDetailDrawer({
     if (result.ok) setMilestones(result.data);
   }, [space, projectId]);
 
+  const changeStatus = async (status: ProjectStatus) => {
+    if (!projectId || submittingStatus) return;
+    setSubmittingStatus(true);
+    try {
+      const result =
+        space.kind === "team"
+          ? await updateTeamProjectStatusAction({ teamId: space.teamId, projectId, status })
+          : await updatePersonalProjectStatusAction(projectId, status);
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return;
+      }
+      router.refresh();
+    } catch {
+      toast.error(tErrors("operationFailed"));
+    } finally {
+      setSubmittingStatus(false);
+    }
+  };
+
   useEffect(() => {
     if (!open || !projectId) return;
     // 首拉放到下一轮事件循环（同 NotificationBell 模式）：effect 体内同步触发
@@ -69,19 +99,6 @@ export function ProjectDetailDrawer({
 
   if (!open || !project) return null;
 
-  const statusLabel = t(
-    project.statusKind === "not_started"
-      ? "statusNotStarted"
-      : project.statusKind === "in_progress"
-        ? "statusInProgress"
-        : "statusCompleted",
-  );
-  const statusClass =
-    project.statusKind === "completed"
-      ? "bg-[var(--color-success-bg)] text-[var(--color-success)]"
-      : project.statusKind === "in_progress"
-        ? "bg-[var(--color-primary-bg)] text-[var(--color-primary)]"
-        : "border border-[var(--border)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)]";
   const priorityClass =
     project.priority === "high"
       ? "bg-[var(--color-error-bg)] text-[var(--color-error)]"
@@ -106,9 +123,13 @@ export function ProjectDetailDrawer({
         <SheetHeader className="gap-2 text-left">
           <div className="flex items-center gap-2">
             <SheetTitle className="min-w-0 truncate text-[18px]">{project.name}</SheetTitle>
-            <span className={`inline-flex shrink-0 rounded-full px-2 py-0.5 text-xs font-medium ${statusClass}`}>
-              {statusLabel}
-            </span>
+            <ProjectStatusPill
+              status={project.status}
+              disabled={!canManage || submittingStatus}
+              onChange={(status) => void changeStatus(status)}
+              onError={(message) => toast.error(message)}
+              testid="project-drawer-status-pill"
+            />
           </div>
           {(project.summary ?? project.description) ? (
             <p className="text-[13px] leading-relaxed text-[var(--color-text-secondary)]">
@@ -150,6 +171,31 @@ export function ProjectDetailDrawer({
           </div>
         </dl>
 
+        {/* 负责人/成员（团队空间；补回表格移除的协作字段展示）。 */}
+        {project.lead || (project.members && project.members.length > 0) ? (
+          <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-[13px]">
+            {project.lead ? (
+              <div className="flex flex-col gap-1">
+                <dt className="text-[12px] text-[var(--color-text-muted)]">{t("leadLabel")}</dt>
+                <dd className="flex items-center gap-1.5">
+                  <UserAvatar userId={project.lead.id} name={project.lead.name} size={24} />
+                  <span className="truncate">{project.lead.name}</span>
+                </dd>
+              </div>
+            ) : null}
+            {project.members && project.members.length > 0 ? (
+              <div className="flex flex-col gap-1">
+                <dt className="text-[12px] text-[var(--color-text-muted)]">{t("membersLabel")}</dt>
+                <dd className="flex flex-wrap items-center gap-1">
+                  {project.members.map((member) => (
+                    <UserAvatar key={member.id} userId={member.id} name={member.name} size={24} />
+                  ))}
+                </dd>
+              </div>
+            ) : null}
+          </dl>
+        ) : null}
+
         <div className="flex flex-col gap-1.5">
           <div className="flex items-center justify-between text-[13px]">
             <span className="text-[12px] text-[var(--color-text-muted)]">{t("colProgress")}</span>
@@ -163,7 +209,7 @@ export function ProjectDetailDrawer({
               style={{
                 width: `${project.progressPercent}%`,
                 backgroundColor:
-                  project.statusKind === "completed"
+                  project.status === "completed"
                     ? "var(--color-success)"
                     : project.progressPercent > 0
                       ? "var(--color-progress)"

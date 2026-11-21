@@ -1,11 +1,13 @@
 "use client";
 
-import type { Tag, TaskPriority } from "@open-doing/types";
-import type { ProjectStatusKind } from "@open-doing/types";
+import type { ProjectMemberRef, ProjectStatus, Tag, TaskPriority } from "@open-doing/types";
+import { PROJECT_STATUSES } from "@open-doing/types";
 import { motion } from "motion/react";
-import { ChevronLeftIcon, ChevronRightIcon, FlagIcon } from "lucide-react";
+import { ChevronLeftIcon, ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
@@ -16,10 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/shadcn/select";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { TagPill } from "@/features/tags/components/TagPill";
+import { updatePersonalProjectStatusAction } from "@/features/personal/projects/actions";
+import { updateTeamProjectStatusAction } from "../actions";
+import { PROJECT_STATUS_COLORS } from "../constants";
 import { ProjectDetailDrawer } from "./ProjectDetailDrawer";
 import type { ProjectFormSpace } from "./ProjectForm";
+import { ProjectStatusPill } from "./ProjectStatusPill";
 
 /** 每页行数（客户端分页；筛选变化重置页码）。 */
 const PAGE_SIZE = 10;
@@ -34,7 +40,11 @@ export interface ProjectListRow {
   href: string;
   priority: TaskPriority;
   tags: Tag[];
-  statusKind: ProjectStatusKind;
+  status: ProjectStatus;
+  /** 团队负责人；个人空间为 null。 */
+  lead: ProjectMemberRef | null;
+  /** 项目成员视图（团队空间组装；个人空间空数组）。 */
+  members: ProjectMemberRef[];
   /** 0–100 整数（RSC 侧 Math.round(progress*100)）。 */
   progressPercent: number;
   milestoneCount: number;
@@ -47,18 +57,11 @@ export interface ProjectListRow {
 }
 
 export interface ProjectListFilters {
-  status: ProjectStatusKind | "all";
+  status: ProjectStatus | "all";
   priority: TaskPriority | "all";
   tagId: string | "all";
   keyword: string;
 }
-
-const STATUS_TABS: (ProjectStatusKind | "all")[] = [
-  "all",
-  "in_progress",
-  "not_started",
-  "completed",
-];
 
 /**
  * 客户端筛选（纯函数，单测锁定）：状态/优先级精确匹配，标签含于项目标签，
@@ -70,7 +73,7 @@ export function filterProjectRows(
 ): ProjectListRow[] {
   const keyword = filters.keyword.trim().toLowerCase();
   return rows.filter((row) => {
-    if (filters.status !== "all" && row.statusKind !== filters.status) return false;
+    if (filters.status !== "all" && row.status !== filters.status) return false;
     if (filters.priority !== "all" && row.priority !== filters.priority) return false;
     if (filters.tagId !== "all" && !row.tags.some((tag) => tag.id === filters.tagId)) {
       return false;
@@ -78,17 +81,6 @@ export function filterProjectRows(
     if (keyword && !row.name.toLowerCase().includes(keyword)) return false;
     return true;
   });
-}
-
-function statusPillClass(kind: ProjectStatusKind): string {
-  switch (kind) {
-    case "completed":
-      return "bg-[var(--color-success-bg)] text-[var(--color-success)]";
-    case "in_progress":
-      return "bg-[var(--color-primary-bg)] text-[var(--color-primary)]";
-    case "not_started":
-      return "border border-[var(--border)] bg-[var(--color-surface-inset)] text-[var(--color-text-secondary)]";
-  }
 }
 
 function priorityPillClass(priority: TaskPriority): string {
@@ -102,16 +94,15 @@ function priorityPillClass(priority: TaskPriority): string {
   }
 }
 
-const progressFillVar: Record<ProjectStatusKind, string> = {
-  completed: "var(--color-success)",
+const progressFillVar: Record<ProjectStatus, string> = {
+  backlog: "transparent",
+  planned: "transparent",
   in_progress: "var(--color-progress)",
-  not_started: "transparent",
+  completed: "var(--color-success)",
+  canceled: "transparent",
 };
 
-/**
- * 项目列表表格（对照原型 projects-list.png）：筛选栏 + 七列表格 +
- * 客户端分页（每页 10 条）+ 行点击打开右侧详情 Drawer。
- */
+/** 项目列表表格：筛选栏 + 客户端分页 + 行点击打开右侧详情 Drawer。 */
 export function ProjectListTable({
   rows,
   space,
@@ -119,10 +110,12 @@ export function ProjectListTable({
 }: {
   rows: ProjectListRow[];
   space: ProjectFormSpace;
-  /** 团队 owner/admin、个人 owner（Drawer 里程碑管理入口）。 */
+  /** 团队 owner/admin、个人 owner（状态就地改 + Drawer 里程碑管理入口）。 */
   canManage: boolean;
 }) {
   const t = useTranslations("projects");
+  const tErrors = useTranslations("errors");
+  const router = useRouter();
   const [filters, setFilters] = useState<ProjectListFilters>({
     status: "all",
     priority: "all",
@@ -137,6 +130,36 @@ export function ProjectListTable({
     setPrevFilters(filters);
     setPage(1);
   }
+
+  const statusLabel = (kind: ProjectStatus) =>
+    t(
+      kind === "backlog"
+        ? "statusBacklog"
+        : kind === "planned"
+          ? "statusPlanned"
+          : kind === "in_progress"
+            ? "statusInProgress"
+            : kind === "completed"
+              ? "statusCompleted"
+              : "statusCanceled",
+    );
+
+  const changeStatus = async (row: ProjectListRow, status: ProjectStatus) => {
+    if (!canManage || status === row.status) return;
+    try {
+      const result =
+        space.kind === "team"
+          ? await updateTeamProjectStatusAction({ teamId: space.teamId, projectId: row.id, status })
+          : await updatePersonalProjectStatusAction(row.id, status);
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return;
+      }
+      router.refresh();
+    } catch {
+      toast.error(tErrors("operationFailed"));
+    }
+  };
 
   // 标签筛选项从行内标签去重派生（保持首次出现顺序）。
   const tagOptions = useMemo(() => {
@@ -156,15 +179,18 @@ export function ProjectListTable({
     [filtered, page],
   );
 
-  const statusLabel = (kind: ProjectStatusKind) =>
-    t(kind === "not_started" ? "statusNotStarted" : kind === "in_progress" ? "statusInProgress" : "statusCompleted");
   const priorityLabel = (priority: TaskPriority) =>
     t(priority === "high" ? "priorityHigh" : priority === "medium" ? "priorityMedium" : "priorityLow");
+
+  // 团队 7 列（含负责人）；个人 6 列（负责人恒为自己，不展示）。
+  const showLeadColumn = space.kind === "team";
+  const columnCount = showLeadColumn ? 7 : 6;
 
   return (
     <div className="flex flex-col gap-4">
       <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--card)] px-3 py-2.5">
-        <Tabs
+        {/* 状态筛选下拉（全部 + 五态；替换原 tabs）。 */}
+        <Select
           value={filters.status}
           onValueChange={(next) =>
             setFilters((current) => ({
@@ -173,14 +199,18 @@ export function ProjectListTable({
             }))
           }
         >
-          <TabsList>
-            {STATUS_TABS.map((kind) => (
-              <TabsTrigger key={kind} value={kind} data-testid={`project-status-tab-${kind}`}>
-                {kind === "all" ? t("filterAll") : statusLabel(kind)}
-              </TabsTrigger>
+          <SelectTrigger className="w-[150px]" aria-label={t("colStatus")}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">{t("statusFilterAll")}</SelectItem>
+            {PROJECT_STATUSES.map((kind) => (
+              <SelectItem key={kind} value={kind}>
+                {statusLabel(kind)}
+              </SelectItem>
             ))}
-          </TabsList>
-        </Tabs>
+          </SelectContent>
+        </Select>
 
         <div className="ml-auto flex flex-wrap items-center gap-2">
           <Select
@@ -242,19 +272,21 @@ export function ProjectListTable({
           <thead>
             <tr className="border-b border-[var(--border)] text-[12.5px] text-[var(--color-text-muted)]">
               <th className="px-4 py-2.5 text-left font-medium">{t("colName")}</th>
-              <th className="px-3 py-2.5 text-left font-medium">{t("colPriority")}</th>
-              <th className="px-3 py-2.5 text-left font-medium">{t("colTags")}</th>
-              <th className="px-3 py-2.5 text-left font-medium">{t("colStatus")}</th>
               <th className="px-3 py-2.5 text-left font-medium">{t("colProgress")}</th>
-              <th className="px-3 py-2.5 text-left font-medium">{t("colMilestones")}</th>
-              <th className="px-4 py-2.5 text-right font-medium">{t("colDates")}</th>
+              <th className="px-3 py-2.5 text-left font-medium">{t("colPriority")}</th>
+              {showLeadColumn ? (
+                <th className="px-3 py-2.5 text-left font-medium">{t("colLead")}</th>
+              ) : null}
+              <th className="px-3 py-2.5 text-left font-medium">{t("colDueDate")}</th>
+              <th className="px-3 py-2.5 text-left font-medium">{t("colTaskCount")}</th>
+              <th className="px-4 py-2.5 text-right font-medium">{t("colStatus")}</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
               <tr>
                 <td
-                  colSpan={7}
+                  colSpan={columnCount}
                   data-testid="project-filter-empty"
                   className="px-4 py-10 text-center text-[var(--color-text-muted)]"
                 >
@@ -293,38 +325,13 @@ export function ProjectListTable({
                     </button>
                   </td>
                   <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${priorityPillClass(row.priority)}`}
-                    >
-                      {priorityLabel(row.priority)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">
-                    {row.tags.length > 0 ? (
-                      <span className="flex flex-wrap gap-1">
-                        {row.tags.map((tag) => (
-                          <TagPill key={tag.id} name={tag.name} color={tag.color} />
-                        ))}
-                      </span>
-                    ) : (
-                      <span className="text-[var(--color-text-muted)]">-</span>
-                    )}
-                  </td>
-                  <td className="px-3 py-3">
-                    <span
-                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${statusPillClass(row.statusKind)}`}
-                    >
-                      {statusLabel(row.statusKind)}
-                    </span>
-                  </td>
-                  <td className="px-3 py-3">
                     <span className="flex items-center gap-2">
                       <span className="h-1.5 w-24 overflow-hidden rounded-full bg-[var(--color-progress-bg)]">
                         <span
                           className="block h-full rounded-full"
                           style={{
                             width: `${row.progressPercent}%`,
-                            backgroundColor: progressFillVar[row.statusKind],
+                            backgroundColor: progressFillVar[row.status],
                           }}
                         />
                       </span>
@@ -334,19 +341,40 @@ export function ProjectListTable({
                     </span>
                   </td>
                   <td className="px-3 py-3">
-                    {row.milestoneCount > 0 ? (
-                      <span className="flex items-center gap-1.5 text-[var(--color-primary)]">
-                        <FlagIcon className="size-3.5" aria-hidden="true" />
-                        {t("milestoneCount", { count: row.milestoneCount })}
-                      </span>
-                    ) : (
-                      <span className="text-[var(--color-text-muted)]">-</span>
-                    )}
+                    <span
+                      className={`inline-flex rounded-full px-2 py-0.5 text-xs font-medium ${priorityPillClass(row.priority)}`}
+                    >
+                      {priorityLabel(row.priority)}
+                    </span>
                   </td>
-                  <td className="px-4 py-3 text-right tabular-nums text-[var(--color-text-secondary)]">
-                    {row.startDate && row.endDate
-                      ? `${row.startDate} ~ ${row.endDate}`
-                      : (row.startDate ?? row.endDate ?? "-")}
+                  {showLeadColumn ? (
+                    <td className="px-3 py-3">
+                      {row.lead ? (
+                        <span className="flex items-center gap-1.5">
+                          <UserAvatar userId={row.lead.id} name={row.lead.name} size={22} />
+                          <span className="truncate text-[var(--color-text-secondary)]">
+                            {row.lead.name}
+                          </span>
+                        </span>
+                      ) : (
+                        <span className="text-[var(--color-text-muted)]">-</span>
+                      )}
+                    </td>
+                  ) : null}
+                  <td className="px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">
+                    {row.endDate ?? "-"}
+                  </td>
+                  <td className="px-3 py-3 tabular-nums text-[var(--color-text-secondary)]">
+                    {row.taskCount}
+                  </td>
+                  <td className="px-4 py-3">
+                    <ProjectStatusPill
+                      status={row.status}
+                      disabled={!canManage}
+                      onChange={(status) => void changeStatus(row, status)}
+                      onError={(message) => toast.error(message)}
+                      testid={`project-status-pill-${row.id}`}
+                    />
                   </td>
                 </motion.tr>
               ))

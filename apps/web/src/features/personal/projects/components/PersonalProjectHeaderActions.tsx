@@ -14,7 +14,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/shadcn/dialog";
+import { updatePersonalProjectStatusAction } from "../actions";
 import { ProjectForm, type ProjectFormProject } from "@/features/projects/components/ProjectForm";
+import { ProjectStatusPill } from "@/features/projects/components/ProjectStatusPill";
 import { spaceDashboardHref } from "@/lib/routes";
 
 import { deletePersonalProjectAction } from "../actions";
@@ -66,8 +68,26 @@ export function PersonalProjectHeaderActions({
     }
   }
 
+  async function handleStatusChange(status: Parameters<typeof ProjectStatusPill>[0]["status"]) {
+    try {
+      const result = await updatePersonalProjectStatusAction(project.id, status);
+      if (!result.ok) {
+        toast.error(result.errors.form ?? tErrors("operationFailed"));
+        return;
+      }
+      router.refresh();
+    } catch {
+      toast.error(tCommon("networkError"));
+    }
+  }
+
   return (
     <div className="flex shrink-0 items-center gap-1">
+      <ProjectStatusPill
+        status={project.status ?? "backlog"}
+        onChange={handleStatusChange}
+        testid="project-detail-status-pill"
+      />
       <Button variant="ghost" onClick={() => setEditOpen(true)}>
         {tCommon("edit")}
       </Button>
