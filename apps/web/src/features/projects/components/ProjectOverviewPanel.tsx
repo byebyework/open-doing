@@ -18,6 +18,7 @@ import { updatePersonalProjectAction } from "@/features/personal/projects/action
 import { updateTeamProjectAction } from "../actions";
 import { PROJECT_STATUS_COLORS } from "../constants";
 import { MilestoneProgress } from "../service";
+import { MilestoneDatePopover } from "./MilestoneDatePopover";
 import { ProjectStatusPill } from "./ProjectStatusPill";
 import { TagPill } from "@/features/tags/components/TagPill";
 import { AttrPill } from "./AttrPill";

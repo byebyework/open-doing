@@ -228,14 +228,11 @@ export function ProjectMilestonesSection({
               disabled={submitting}
               className="h-8 min-w-0 flex-1 border-none bg-transparent px-1 text-[13px] font-medium shadow-none focus-visible:ring-0"
             />
-            <Input
-              type="date"
+            <MilestoneDatePopover
               value={inlineDue}
-              aria-label={t("milestoneDueDateLabel")}
-              data-testid="project-milestone-inline-due"
-              onChange={(event) => setInlineDue(event.target.value)}
+              onChange={setInlineDue}
               disabled={submitting}
-              className="h-7 w-[140px] shrink-0 rounded-full border-[var(--border)] bg-[var(--card)] px-3 text-[12.5px] tabular-nums"
+              testid="project-milestone-inline-due"
             />
             <button
               type="button"
