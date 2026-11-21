@@ -139,6 +139,7 @@ export function ProjectPropertiesPanel({
         {row(
           t("colPriority"),
           <AttrPill
+            quiet
             testid="properties-priority-pill"
             icon={null}
             label={priorityLabel(project.priority)}
@@ -174,7 +175,7 @@ export function ProjectPropertiesPanel({
                 icon={null}
                 label={
                   leadRef ? (
-                    <span className="inline-flex items-center gap-1.5">
+                    <span className="inline-flex items-center gap-1.5 pr-3">
                       <UserAvatar userId={leadRef.id} name={leadRef.name} size={20} />
                       {leadRef.name}
                     </span>
@@ -234,7 +235,7 @@ export function ProjectPropertiesPanel({
                 icon={null}
                 label={
                   memberRefs.length > 0 ? (
-                    <span className="flex items-center -space-x-1">
+                    <span className="flex items-center -space-x-1 pr-3">
                       {visibleMembers.map((member) => (
                         <UserAvatar
                           key={member.id}
@@ -352,7 +353,7 @@ export function ProjectPropertiesPanel({
     if (!project.tags || project.tags.length === 0) return null;
     return row(
       tTags("tagNameLabel"),
-      <span className="flex flex-wrap items-center justify-end gap-1">
+      <span className="flex flex-wrap items-center justify-end gap-1 pr-3">
         {project.tags.map((tag) => (
           <TagPill key={tag.id} name={tag.name} color={tag.color} />
         ))}
