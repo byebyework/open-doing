@@ -104,6 +104,8 @@ export function ProjectOverviewPanel({
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
   /** 展开描述的里程碑 id 集合 */
   const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
+  /** 展开行的描述草稿（失焦保存） */
+  const [milestoneDescDrafts, setMilestoneDescDrafts] = useState<Record<string, string>>({});
   const draftNameRef = useRef<HTMLInputElement | null>(null);
 
   const toggleMilestoneExpanded = (id: string) => {
@@ -496,21 +498,19 @@ export function ProjectOverviewPanel({
               className="flex flex-col border-b border-[var(--border)] py-2.5 last:border-b-0"
             >
               <div className="flex items-center gap-2.5">
-                {item.milestone.description ? (
-                  <button
-                    type="button"
-                    aria-expanded={expanded}
-                    aria-label={t("milestoneLabel")}
-                    data-testid={`overview-milestone-toggle-${item.milestone.id}`}
-                    onClick={() => toggleMilestoneExpanded(item.milestone.id)}
-                    className="cursor-pointer"
-                  >
-                    <ChevronRightIcon
-                      className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
-                      aria-hidden="true"
-                    />
-                  </button>
-                ) : null}
+                <button
+                  type="button"
+                  aria-expanded={expanded}
+                  aria-label={t("milestoneLabel")}
+                  data-testid={`overview-milestone-toggle-${item.milestone.id}`}
+                  onClick={() => toggleMilestoneExpanded(item.milestone.id)}
+                  className="cursor-pointer"
+                >
+                  <ChevronRightIcon
+                    className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+                    aria-hidden="true"
+                  />
+                </button>
                 <span
                   className="inline-block size-2.5 rotate-45 rounded-[2px] border border-[var(--color-text-muted)]"
                   aria-hidden="true"
@@ -586,10 +586,37 @@ export function ProjectOverviewPanel({
                   </DropdownMenu>
                 ) : null}
               </div>
-              {expanded && item.milestone.description ? (
-                <p className="mt-1 pl-6 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)]">
-                  {item.milestone.description}
-                </p>
+              {/* 展开体：描述内联编辑（对照 Linear——空态即「添加描述...」输入，失焦保存） */}
+              {expanded ? (
+                <Textarea
+                  rows={2}
+                  value={milestoneDescDrafts[item.milestone.id] ?? item.milestone.description ?? ""}
+                  placeholder={t("milestoneDescriptionPlaceholder")}
+                  data-testid={`overview-milestone-description-${item.milestone.id}`}
+                  onChange={(event) =>
+                    setMilestoneDescDrafts((current) => ({
+                      ...current,
+                      [item.milestone.id]: event.target.value,
+                    }))
+                  }
+                  onBlur={() => {
+                    const next = milestoneDescDrafts[item.milestone.id] ?? "";
+                    if (!canManage || next === (item.milestone.description ?? "")) return;
+                    void (space.kind === "team"
+                      ? updateTeamProjectMilestoneAction({
+                          teamId: space.teamId,
+                          projectId,
+                          milestoneId: item.milestone.id,
+                          description: next,
+                        })
+                      : updatePersonalProjectMilestoneAction(projectId, item.milestone.id, {
+                          description: next,
+                        }));
+                    router.refresh();
+                  }}
+                  disabled={!canManage || saving}
+                  className="mt-1 ml-6 resize-none rounded-[var(--radius-md)] border-none bg-transparent px-2 py-1 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0 hover:bg-[var(--color-surface-hover)] dark:bg-transparent"
+                />
               ) : null}
             </li>
               );
