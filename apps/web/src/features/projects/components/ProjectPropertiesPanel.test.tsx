@@ -198,6 +198,37 @@ describe("ProjectPropertiesPanel 成员行", () => {
     expect(overflow?.getAttribute("title")).toContain("庚");
   });
 
+  it("收起属性卡：体内容驻留至退出动画结束（不是瞬时卸载）", async () => {
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
+          <ProjectPropertiesPanel
+            project={project}
+            memberPool={roster}
+            canManage
+            space={{ kind: "team", teamId: "team-1" }}
+          />
+        </NextIntlClientProvider>,
+      );
+    });
+
+    // 展开态：内容在 DOM
+    expect(document.body.querySelector('[data-testid="properties-lead-pill"]')).not.toBeNull();
+
+    click('[data-testid="properties-collapse"]');
+
+    // 点击后立即查询：退出动画进行中，内容应仍驻留（AnimatePresence exit）
+    expect(document.body.querySelector('[data-testid="properties-lead-pill"]')).not.toBeNull();
+
+    // 动画结束后卸载
+    await vi.waitFor(
+      () => {
+        expect(document.body.querySelector('[data-testid="properties-lead-pill"]')).toBeNull();
+      },
+      { timeout: 2_000 },
+    );
+  });
+
   it("成员 Popover 勾选名册成员后保存：memberIds 含 lead 自动并入", async () => {
     act(() => {
       root.render(
