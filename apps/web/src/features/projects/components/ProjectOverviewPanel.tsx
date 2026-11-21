@@ -4,6 +4,7 @@ import type { Project, ProjectMemberRef, Tag, TaskPriority } from "@open-doing/t
 import {
   CalendarPlusIcon,
   CheckIcon,
+  ChevronRightIcon,
   MoreHorizontalIcon,
   PencilIcon,
   PlusIcon,
@@ -14,13 +15,13 @@ import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/shadcn/dropdown-menu";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
 import { Textarea } from "@/components/ui/shadcn/textarea";
@@ -101,7 +102,18 @@ export function ProjectOverviewPanel({
   const [milestoneEditName, setMilestoneEditName] = useState("");
   /** 待删除里程碑（ConfirmModal）。 */
   const [pendingDelete, setPendingDelete] = useState<string | null>(null);
+  /** 展开描述的里程碑 id 集合 */
+  const [expandedMilestones, setExpandedMilestones] = useState<Set<string>>(new Set());
   const draftNameRef = useRef<HTMLInputElement | null>(null);
+
+  const toggleMilestoneExpanded = (id: string) => {
+    setExpandedMilestones((current) => {
+      const next = new Set(current);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
   const [editingField, setEditingField] = useState<EditableField>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
@@ -475,17 +487,64 @@ export function ProjectOverviewPanel({
           <p className="py-2 text-[13px] text-[var(--color-text-muted)]">{t("milestoneEmpty")}</p>
         ) : (
           <ul className="flex flex-col">
-            {milestones.map((item) => (
-              <li
-                key={item.milestone.id}
-                data-testid="overview-milestone-row"
-                className="flex items-center gap-2.5 border-b border-[var(--border)] py-2.5 last:border-b-0"
-              >
+            {milestones.map((item) => {
+              const expanded = expandedMilestones.has(item.milestone.id);
+              return (
+            <li
+              key={item.milestone.id}
+              data-testid="overview-milestone-row"
+              className="flex flex-col border-b border-[var(--border)] py-2.5 last:border-b-0"
+            >
+              <div className="flex items-center gap-2.5">
+                {item.milestone.description ? (
+                  <button
+                    type="button"
+                    aria-expanded={expanded}
+                    aria-label={t("milestoneLabel")}
+                    data-testid={`overview-milestone-toggle-${item.milestone.id}`}
+                    onClick={() => toggleMilestoneExpanded(item.milestone.id)}
+                    className="cursor-pointer"
+                  >
+                    <ChevronRightIcon
+                      className={`size-3.5 text-[var(--color-text-muted)] transition-transform duration-150 ${expanded ? "rotate-90" : ""}`}
+                      aria-hidden="true"
+                    />
+                  </button>
+                ) : null}
                 <span
                   className="inline-block size-2.5 rotate-45 rounded-[2px] border border-[var(--color-text-muted)]"
                   aria-hidden="true"
                 />
+                {milestoneEditingId === item.milestone.id ? (
+                  <Input
+                    autoFocus
+                    value={milestoneEditName}
+                    maxLength={50}
+                    data-testid={`overview-milestone-rename-${item.milestone.id}`}
+                    onChange={(event) => setMilestoneEditName(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        void (space.kind === "team"
+                          ? updateTeamProjectMilestoneAction({
+                              teamId: space.teamId,
+                              projectId,
+                              milestoneId: item.milestone.id,
+                              name: milestoneEditName.trim(),
+                            })
+                          : updatePersonalProjectMilestoneAction(projectId, item.milestone.id, {
+                              name: milestoneEditName.trim(),
+                            }));
+                        setMilestoneEditingId(null);
+                        router.refresh();
+                      }
+                      if (event.key === "Escape") setMilestoneEditingId(null);
+                    }}
+                    disabled={saving}
+                    className="h-6 min-w-0 flex-1 border-none bg-transparent px-0 text-[13px] font-medium shadow-none focus-visible:ring-0"
+                  />
+                ) : (
                 <span className="text-[13px] font-medium">{item.milestone.name}</span>
+                )}
                 {item.milestone.dueDate ? (
                   <span className="text-[12px] tabular-nums text-[var(--color-text-muted)]">
                     {item.milestone.dueDate}
@@ -494,8 +553,47 @@ export function ProjectOverviewPanel({
                 <span className="ml-auto tabular-nums text-[12.5px] text-[var(--color-text-muted)]">
                   {t("milestoneProgressMeta", { count: item.taskCount, percent: item.percent })}
                 </span>
-              </li>
-            ))}
+                {canManage ? (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label={tCommon("edit")}
+                        data-testid={`overview-milestone-menu-${item.milestone.id}`}
+                        className="inline-flex size-6 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
+                      >
+                        <MoreHorizontalIcon className="size-4" aria-hidden="true" />
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem
+                        data-testid={`overview-milestone-edit-${item.milestone.id}`}
+                        onSelect={() => {
+                          setMilestoneEditingId(item.milestone.id);
+                          setMilestoneEditName(item.milestone.name);
+                        }}
+                      >
+                        {tCommon("edit")}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        data-testid={`overview-milestone-delete-${item.milestone.id}`}
+                        className="text-[var(--color-error)]"
+                        onSelect={() => setPendingDelete(item.milestone.id)}
+                      >
+                        {tCommon("delete")}
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                ) : null}
+              </div>
+              {expanded && item.milestone.description ? (
+                <p className="mt-1 pl-6 text-[12.5px] leading-relaxed text-[var(--color-text-secondary)]">
+                  {item.milestone.description}
+                </p>
+              ) : null}
+            </li>
+              );
+            })}
           </ul>
         )}
 
@@ -534,34 +632,6 @@ export function ProjectOverviewPanel({
             >
               {newMilestoneDue || t("notSet")}
             </MilestoneDatePopover>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  type="button"
-                  aria-label={tCommon("edit")}
-                  data-testid="overview-milestone-draft-menu"
-                  disabled={saving}
-                  className="inline-flex size-7 items-center justify-center rounded-md text-[var(--color-text-muted)] transition-colors hover:bg-[var(--color-surface-hover)] hover:text-[var(--color-text)]"
-                >
-                  <MoreHorizontalIcon className="size-4" aria-hidden="true" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem
-                  data-testid="overview-milestone-draft-edit"
-                  onSelect={() => draftNameRef.current?.focus()}
-                >
-                  {tCommon("edit")}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  data-testid="overview-milestone-draft-delete"
-                  className="text-[var(--color-error)]"
-                  onSelect={() => cancelMilestone()}
-                >
-                  {tCommon("delete")}
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
             <button
               type="button"
               aria-label={tCommon("cancel")}
@@ -608,6 +678,29 @@ export function ProjectOverviewPanel({
           ) : null
         )}
       </div>
+
+      <ConfirmModal
+        open={pendingDelete !== null}
+        title={t("milestoneDelete")}
+        content={t("milestoneSectionTitle")}
+        confirmText={tCommon("delete")}
+        danger
+        onConfirm={async () => {
+          if (!pendingDelete) return;
+          const result =
+            space.kind === "team"
+              ? await deleteTeamProjectMilestoneAction({ teamId: space.teamId, projectId, milestoneId: pendingDelete })
+              : await deletePersonalProjectMilestoneAction(projectId, pendingDelete);
+          if (!result.ok) {
+            toast.error(result.errors.form ?? tErrors("operationFailed"));
+            return;
+          }
+          setPendingDelete(null);
+          router.refresh();
+        }}
+        onCancel={() => setPendingDelete(null)}
+        okButtonProps={{ "data-testid": "overview-milestone-delete-confirm" }}
+      />
     </div>
   );
 }
