@@ -144,10 +144,13 @@ describe("ProjectMilestonesSection", () => {
 
     click("project-milestone-add-trigger");
     setInput("project-milestone-name-input", "评审");
+    // 编辑器日期现为 Popover 触发按钮：点击打开后在 popover 内原生输入填值
+    click("project-milestone-due-date");
+    await act(async () => {});
     const dateInput = document.body.querySelector<HTMLInputElement>(
-      '[data-testid="project-milestone-due-date"]',
+      '[data-testid="project-milestone-due-date-input"]',
     );
-    if (!dateInput) throw new Error("missing date input");
+    if (!dateInput) throw new Error("missing date popover input");
     act(() => {
       const setter = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
