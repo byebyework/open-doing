@@ -72,6 +72,7 @@ export function ProjectStatusPill({
       valueActive={false}
       disabled={disabled}
       quiet={quiet}
+      className="min-w-24"
     >
       {(close) => (
         <div className="flex flex-col">
