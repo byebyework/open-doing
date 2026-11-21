@@ -59,12 +59,13 @@ describe("ProjectOverviewPanel", () => {
     vi.resetAllMocks();
   });
 
-  function render(project: Project, space: "team" | "personal" = "team") {
+  function render(project: Project, space: "team" | "personal" = "team", projectTagPool: Project["tags"] = []) {
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
           <ProjectOverviewPanel
             project={project}
+            projectTagPool={projectTagPool}
             actorId="u1"
             milestones={[
               {
@@ -131,6 +132,36 @@ describe("ProjectOverviewPanel", () => {
   it("个人空间不渲染负责人", () => {
     render(projectFixture(), "personal");
     expect(document.body.textContent).not.toContain("甲");
+  });
+
+  it("标签行：+ 钮弹出勾选列表，勾选后保存 tagIds", async () => {
+    render(
+      projectFixture({
+        tags: [
+          { id: "t1", teamId: "team-1", ownerId: null, name: "P1", color: "purple", type: "project", updatedAt: "", createdAt: "" },
+        ],
+      }),
+      "team",
+      [
+        { id: "t1", teamId: "team-1", ownerId: null, name: "P1", color: "purple", type: "project", updatedAt: "", createdAt: "" },
+        { id: "t2", teamId: "team-1", ownerId: null, name: "P2", color: "mint", type: "project", updatedAt: "", createdAt: "" },
+      ],
+    );
+    expect(document.body.querySelector('[data-testid="overview-labels-add"]')).not.toBeNull();
+
+    click('[data-testid="overview-labels-add"]');
+    click('[data-testid="overview-labels-option-t2"]');
+    // 勾选即保存（逐次持久化），无需关闭
+    await act(async () => {});
+    await act(async () => {});
+
+    await act(async () => {});
+    await act(async () => {});
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        tagIds: expect.arrayContaining(["t1", "t2"]),
+      }),
+    );
   });
 
   it("简述内联编辑：保存走单字段 update action", async () => {

@@ -1,7 +1,7 @@
 "use client";
 
-import type { Project, ProjectMemberRef, TaskPriority } from "@open-doing/types";
-import { CalendarPlusIcon, CheckIcon, PencilIcon, XIcon } from "lucide-react";
+import type { Project, ProjectMemberRef, Tag, TaskPriority } from "@open-doing/types";
+import { CalendarPlusIcon, CheckIcon, PencilIcon, PlusIcon, XIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -30,6 +30,8 @@ export interface ProjectOverviewPanelProps {
   /** 概览里程碑行（进度口径见 service） */
   milestones: import("../service").MilestoneProgress[];
   memberPool: ProjectMemberRef[];
+  /** 项目类型标签池（标签行编辑用）。 */
+  projectTagPool?: import("@open-doing/types").Tag[];
   displayLead: ProjectMemberRef | null;
   displayMembers: ProjectMemberRef[];
   canManage: boolean;
@@ -58,6 +60,7 @@ export function ProjectOverviewPanel({
   actorId,
   milestones,
   memberPool,
+  projectTagPool = [],
   displayLead,
   displayMembers,
   canManage,
@@ -65,6 +68,7 @@ export function ProjectOverviewPanel({
 }: ProjectOverviewPanelProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
+  const tTags = useTranslations("tags");
   const tErrors = useTranslations("errors");
   const router = useRouter();
   const [milestoneCreating, setMilestoneCreating] = useState(false);
@@ -74,6 +78,7 @@ export function ProjectOverviewPanel({
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
   const [endDate, setEndDate] = useState(project.endDate ?? "");
+  const [tagIds, setTagIds] = useState<string[]>(project.tags?.map((tag) => tag.id) ?? []);
   const [syncedProject, setSyncedProject] = useState(project);
   if (project !== syncedProject) {
     setSyncedProject(project);
@@ -126,7 +131,7 @@ export function ProjectOverviewPanel({
   const summaryValue = project.summary ?? project.description ?? "";
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
       {/* 大标题 */}
       <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
         {project.name}
@@ -179,8 +184,9 @@ export function ProjectOverviewPanel({
         )}
       </div>
 
-      {/* 属性行（可内联编辑 pills；团队空间含负责人/成员展示） */}
+      {/* 属性行（可内联编辑；quiet 样式对照 Linear 主列）。 */}
       <div className="flex flex-wrap items-center gap-2 text-[13px]">
+        <span className="text-[13px] text-[var(--color-text-muted)]">{t("propertiesTitle")}</span>
         <ProjectStatusPill
           status={project.status}
           disabled={!canManage}
@@ -189,10 +195,12 @@ export function ProjectOverviewPanel({
           }}
           onError={(message) => toast.error(message)}
           testid="overview-status-pill"
+          quiet
         />
         <AttrPill
           testid="overview-priority-pill"
           icon={null}
+          quiet
           label={priorityLabel(project.priority)}
           valueActive
           disabled={!canManage || saving}
@@ -221,6 +229,7 @@ export function ProjectOverviewPanel({
           icon={<CalendarPlusIcon className="size-3.5" aria-hidden="true" />}
           label={endDate ? endDate : t("notSet")}
           disabled={!canManage || saving}
+          quiet
         >
           {(close) => (
             <Calendar
@@ -251,12 +260,50 @@ export function ProjectOverviewPanel({
         ) : null}
       </div>
 
-      {/* 标签行（只读 pills；编辑走侧栏 Properties） */}
-      {project.tags && project.tags.length > 0 ? (
-        <div className="flex flex-wrap items-center gap-1.5">
-          {project.tags.map((tag) => (
-            <TagPill key={tag.id} name={tag.name} color={tag.color} />
-          ))}
+      {/* 标签行（内联编辑：+ 钮弹出勾选列表）。 */}
+      {projectTagPool && projectTagPool.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-2 text-[13px]">
+          <span className="text-[13px] text-[var(--color-text-muted)]">{tTags("tagNameLabel")}</span>
+          {tagIds.map((id) => {
+            const tag = projectTagPool.find((item) => item.id === id);
+            return tag ? <TagPill key={tag.id} name={tag.name} color={tag.color} /> : null;
+          })}
+          <AttrPill
+            testid="overview-labels-add"
+            icon={<PlusIcon className="size-3.5" aria-hidden="true" />}
+            label=""
+            disabled={!canManage || saving}
+            quiet
+          >
+            {(close) => (
+              <div className="flex max-h-56 w-[220px] flex-col overflow-y-auto">
+                {projectTagPool.map((tag) => {
+                  const checked = tagIds.includes(tag.id);
+                  return (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      data-testid={`overview-labels-option-${tag.id}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                      onClick={() => {
+                        const next = checked
+                          ? tagIds.filter((id) => id !== tag.id)
+                          : [...tagIds, tag.id];
+                        setTagIds(next);
+                        void saveField({ tagIds: next });
+                      }}
+                    >
+                      <CheckIcon
+                        className={`size-3.5 ${checked ? "text-[var(--color-primary)]" : "text-transparent"}`}
+                        aria-hidden="true"
+                      />
+                      <TagPill name={tag.name} color={tag.color} />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </AttrPill>
         </div>
       ) : null}
 
@@ -321,8 +368,7 @@ export function ProjectOverviewPanel({
                 className="flex items-center gap-2.5 border-b border-[var(--border)] py-2.5 last:border-b-0"
               >
                 <span
-                  className="inline-block size-2.5 rounded-full"
-                  style={{ backgroundColor: PROJECT_STATUS_COLORS[project.status] }}
+                  className="inline-block size-2.5 rotate-45 rounded-[2px] border border-[var(--color-text-muted)]"
                   aria-hidden="true"
                 />
                 <span className="text-[13px] font-medium">{item.milestone.name}</span>

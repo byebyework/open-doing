@@ -169,6 +169,7 @@ export default async function TeamProjectPage({
               project={project}
               actorId={user.id}
               milestones={milestoneProgress}
+              projectTagPool={projectTagPool}
               memberPool={memberRoster}
               displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
               displayMembers={projectMembers}

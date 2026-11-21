@@ -15,6 +15,8 @@ export interface AttrPillProps {
   valueActive?: boolean;
   children: (close: () => void) => React.ReactNode;
   disabled?: boolean;
+  /** 安静样式：无边框透明底（Linear 主列属性行口径）。 */
+  quiet?: boolean;
 }
 
 export function AttrPill({
@@ -25,6 +27,7 @@ export function AttrPill({
   valueActive,
   children,
   disabled,
+  quiet = false,
 }: AttrPillProps) {
   const [open, setOpen] = useState(false);
   return (
@@ -34,7 +37,7 @@ export function AttrPill({
           type="button"
           data-testid={testid}
           disabled={disabled}
-          className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50"
+          className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)] disabled:opacity-50 ${quiet ? "" : "border border-[var(--border)] bg-[var(--card)]"}`}
         >
           <span className="text-[var(--color-text-muted)]">{icon}</span>
           <span>{label}</span>

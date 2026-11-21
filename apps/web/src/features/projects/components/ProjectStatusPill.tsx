@@ -32,6 +32,8 @@ export interface ProjectStatusPillProps {
   testid?: string;
   /** 就地改失败的 toast 文案回调（列表/Drawer 用）。 */
   onError?: (message: string) => void;
+  /** 安静样式（无边框，主列属性行口径）。 */
+  quiet?: boolean;
 }
 
 /**
@@ -43,6 +45,7 @@ export function ProjectStatusPill({
   onChange,
   disabled,
   testid = "project-status-pill",
+  quiet = false,
 }: ProjectStatusPillProps) {
   const t = useTranslations("projects");
 
@@ -68,6 +71,7 @@ export function ProjectStatusPill({
       label={statusLabel(status)}
       valueActive={false}
       disabled={disabled}
+      quiet={quiet}
     >
       {(close) => (
         <div className="flex flex-col">

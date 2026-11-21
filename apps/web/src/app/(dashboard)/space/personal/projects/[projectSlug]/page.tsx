@@ -130,6 +130,7 @@ export default async function PersonalProjectPage({
               project={project}
               actorId={user.id}
               milestones={milestoneProgress}
+              projectTagPool={projectTagPool}
               memberPool={[]}
               displayLead={null}
               displayMembers={[]}
