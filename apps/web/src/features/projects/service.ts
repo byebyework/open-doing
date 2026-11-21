@@ -795,6 +795,24 @@ export async function listTeamProjectMilestones(
   return rows.map(toMilestone);
 }
 
+/** 列出团队项目成员视图（编辑弹窗池/详情页展示用；owner/admin 校验）。 */
+export async function listTeamProjectMembers(
+  teamId: string,
+  projectId: string,
+  client: DbClient = db,
+): Promise<ProjectMemberRef[]> {
+  await requireTeamProjectRow(teamId, projectId, client);
+
+  const rows = await client
+    .select({ userId: projectMembers.userId, name: users.name, image: users.image })
+    .from(projectMembers)
+    .innerJoin(users, eq(projectMembers.userId, users.id))
+    .where(eq(projectMembers.projectId, projectId))
+    .orderBy(asc(projectMembers.userId));
+
+  return rows.map((row) => ({ id: row.userId, name: row.name, image: row.image }));
+}
+
 /** 批量统计项目里程碑数（group by 一次查询，防 N+1）；空集合返回空 Map。 */
 export async function milestoneCountsByProjectId(
   projectIds: string[],

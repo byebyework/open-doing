@@ -15,12 +15,15 @@ import {
   DialogTitle,
 } from "@/components/ui/shadcn/dialog";
 
+import type { ProjectMemberRef } from "@open-doing/types";
 import { ProjectForm, type ProjectFormSpace } from "./ProjectForm";
 
 export interface ProjectCreateDialogProps {
   space: ProjectFormSpace;
   /** 项目类型标签池（RSC 注入；空池不渲染标签区）。 */
   projectTagPool: Tag[];
+  /** 团队成员池（RSC 注入；负责人/成员 pill 数据源）。 */
+  memberPool?: ProjectMemberRef[];
   /** 触发按钮文案（缺省复用 projects.newProjectButton）。 */
   triggerLabel?: string;
   /** 表单 testid 前缀（团队页 "team-project"、个人页 "personal-project"）。 */
@@ -38,6 +41,7 @@ export interface ProjectCreateDialogProps {
 export function ProjectCreateDialog({
   space,
   projectTagPool,
+  memberPool,
   triggerLabel,
   testIdPrefix = "project",
   triggerTestId,
@@ -73,6 +77,7 @@ export function ProjectCreateDialog({
           <ProjectForm
             space={space}
             projectTagPool={projectTagPool}
+            memberPool={memberPool}
             onSuccess={() => {
               toast.success(t("projectCreated"));
               setOpen(false);

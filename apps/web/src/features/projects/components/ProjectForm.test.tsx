@@ -151,6 +151,32 @@ describe("ProjectForm", () => {
       teamId: TEAM_ID,
       name: "Prio Project",
       priority: "high",
+      status: "backlog",
+    });
+  });
+
+  it("团队 memberPool：选负责人/勾成员后 payload 携带且 lead 自动并入", async () => {
+    mockTeamCreate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
+    renderForm({
+      memberPool: [
+        { id: "m1", name: "成员一", image: null },
+        { id: "m2", name: "成员二", image: null },
+      ],
+    });
+
+    setInput("test-project-name-input", "Staffed Project");
+    click("test-project-lead-pill");
+    click("test-project-lead-option-m1");
+    click("test-project-members-pill");
+    click("test-project-member-option-m2");
+    submit();
+    await act(async () => {});
+    await act(async () => {});
+
+    expect(mockTeamCreate.mock.calls[0]![0]).toMatchObject({
+      status: "backlog",
+      leadId: "m1",
+      memberIds: ["m1", "m2"],
     });
   });
 
@@ -274,17 +300,21 @@ describe("ProjectForm", () => {
         priority: "low",
         status: "backlog",
         leadId: null,
+        memberIds: [],
       },
+      memberPool: [
+        { id: "m1", name: "成员一", image: null },
+        { id: "m2", name: "成员二", image: null },
+      ],
     });
 
     expect(
       document.body.querySelector('[data-testid="test-project-milestone-add-button"]'),
     ).toBeNull();
 
-    const low = document.body.querySelector<HTMLButtonElement>(
-      '[data-testid="test-project-priority-low"]',
-    )!;
-    expect(low.getAttribute("aria-pressed")).toBe("true");
+    // pill 行布局下优先级是 pill 展示值
+    const priorityPill = document.body.querySelector('[data-testid="test-project-priority-pill"]')!;
+    expect(priorityPill.textContent).toContain("低优先级");
 
     setInput("test-project-name-input", "New");
     submit();
@@ -296,6 +326,9 @@ describe("ProjectForm", () => {
       teamId: TEAM_ID,
       projectId: "33333333-3333-3333-3333-333333333333",
       priority: "low",
+      status: "backlog",
+      leadId: null,
+      memberIds: [],
     });
     expect(mockTeamCreate).not.toHaveBeenCalled();
   });
@@ -314,6 +347,9 @@ describe("ProjectForm", () => {
 
     expect(mockPersonalCreate).toHaveBeenCalledTimes(1);
     expect(mockTeamCreate).not.toHaveBeenCalled();
+    // 个人空间不渲染负责人/成员 pill
+    expect(document.body.querySelector('[data-testid="test-project-lead-pill"]')).toBeNull();
+    expect(document.body.querySelector('[data-testid="test-project-members-pill"]')).toBeNull();
   });
 
   it("点击添加后按钮消失、编辑卡拉出；取消回到未添加状态", async () => {

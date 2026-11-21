@@ -92,6 +92,7 @@ export default async function PersonalProjectPage({
               startDate: project.startDate,
               endDate: project.endDate,
               priority: project.priority,
+              status: project.status,
               tags: project.tags,
             }}
             projectPath={projectPath}

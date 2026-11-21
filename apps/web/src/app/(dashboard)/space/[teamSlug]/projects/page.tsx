@@ -1,5 +1,5 @@
 import type { ProjectStatusKind } from "@open-doing/types";
-import { averageProjectProgress, getProjectStatusKind } from "@open-doing/types";
+import { averageProjectProgress, displayName, getProjectStatusKind } from "@open-doing/types";
 import type { Metadata } from "next";
 import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
@@ -15,7 +15,7 @@ import {
 import { getTeamProjectListWithStats } from "@/features/projects/service";
 import { listTags, tagsByProjectId } from "@/features/tags/service";
 import { can, getMembership } from "@/features/teams/permissions";
-import { getTeamBySlug } from "@/features/teams/service";
+import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { teamProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
@@ -64,9 +64,15 @@ export default async function TeamProjectsPage(
     averageProjectProgress(list.map((item) => item.stats.progress)) * 100,
   );
   const canManageProjects = can(membership.role, "team:manage_projects");
-  const projectTagPool = canManageProjects
-    ? (await listTags({ teamId: team.id })).filter((tag) => tag.type === "project")
-    : [];
+  const [tagPool, memberViews] = canManageProjects
+    ? await Promise.all([listTags({ teamId: team.id }), listMembers(team.id)])
+    : [[], []];
+  const projectTagPool = tagPool.filter((tag) => tag.type === "project");
+  const memberPool = memberViews.map((view) => ({
+    id: view.user.id,
+    name: displayName(view.user),
+    image: null,
+  }));
 
   const rows: ProjectListRow[] = list.map((item) => ({
     id: item.project.id,
@@ -103,6 +109,7 @@ export default async function TeamProjectsPage(
             <ProjectCreateDialog
               space={{ kind: "team", teamId: team.id }}
               projectTagPool={projectTagPool}
+              memberPool={memberPool}
               testIdPrefix="team-project"
               triggerTestId="projects-new-team-button"
             />

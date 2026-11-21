@@ -1,6 +1,6 @@
 "use client";
 
-import type { Project, Tag } from "@open-doing/types";
+import type { Project, ProjectMemberRef, Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
@@ -27,6 +27,8 @@ export interface TeamProjectFormProps {
   onCancel?: () => void;
   /** 项目类型标签池（RSC 注入；打标入口，空池不渲染）。 */
   projectTagPool?: Tag[];
+  /** 团队成员池（RSC 注入；负责人/成员 pill 数据源）。 */
+  memberPool?: ProjectMemberRef[];
 }
 
 /**
@@ -39,12 +41,14 @@ export function TeamProjectForm({
   onSuccess,
   onCancel,
   projectTagPool = [],
+  memberPool,
 }: TeamProjectFormProps) {
   return (
     <ProjectForm
       space={{ kind: "team", teamId }}
       project={project}
       projectTagPool={projectTagPool}
+      memberPool={memberPool}
       onSuccess={onSuccess}
       onCancel={onCancel}
       testIdPrefix="team-project"
@@ -59,11 +63,14 @@ export function TeamProjectCreatePanel({
   teamId,
   teamSlug,
   projectTagPool = [],
+  memberPool,
 }: {
   teamId: string;
   teamSlug: string;
   /** 项目类型标签池（RSC 注入；空池不渲染标签区）。 */
   projectTagPool?: Tag[];
+  /** 团队成员池（RSC 注入）。 */
+  memberPool?: ProjectMemberRef[];
 }) {
   const router = useRouter();
   const t = useTranslations("projects");
@@ -72,6 +79,7 @@ export function TeamProjectCreatePanel({
     <ProjectForm
       space={{ kind: "team", teamId }}
       projectTagPool={projectTagPool}
+      memberPool={memberPool}
       onSuccess={(project) => {
         toast.success(t("projectCreated"));
         router.push(teamProjectHref(teamSlug, project.slug));

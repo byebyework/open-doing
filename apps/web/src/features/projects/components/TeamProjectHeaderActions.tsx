@@ -1,6 +1,6 @@
 "use client";
 
-import type { Tag } from "@open-doing/types";
+import type { ProjectMemberRef, Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -28,6 +28,8 @@ export interface TeamProjectHeaderActionsProps {
   redirectTo: string;
   /** 项目类型标签池（编辑弹层打标用）。 */
   projectTagPool?: Tag[];
+  /** 团队成员池（负责人/成员 pill 数据源）。 */
+  memberPool?: ProjectMemberRef[];
 }
 
 /**
@@ -40,6 +42,7 @@ export function TeamProjectHeaderActions({
   project,
   redirectTo,
   projectTagPool,
+  memberPool,
 }: TeamProjectHeaderActionsProps) {
   const router = useRouter();
   const t = useTranslations("projects");

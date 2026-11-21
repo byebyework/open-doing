@@ -7,6 +7,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/shadcn/button";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
+import type { ProjectMemberRef } from "@open-doing/types";
 import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import { TeamProjectHeaderActions } from "@/features/projects/components/TeamProjectHeaderActions";
 
@@ -37,6 +38,8 @@ export interface TeamProjectHeaderProps {
   tagPool?: Tag[];
   /** 项目类型标签池（type='project'；编辑弹层打标用）。 */
   projectTagPool?: Tag[];
+  /** 团队成员池（负责人/成员编辑弹层）。 */
+  memberPool?: ProjectMemberRef[];
 }
 
 /**
@@ -55,6 +58,7 @@ export function TeamProjectHeader({
   redirectTo,
   tagPool,
   projectTagPool,
+  memberPool,
 }: TeamProjectHeaderProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -68,6 +72,7 @@ export function TeamProjectHeader({
           project={project}
           redirectTo={redirectTo}
           projectTagPool={projectTagPool}
+          memberPool={memberPool}
         />
       ) : null}
 

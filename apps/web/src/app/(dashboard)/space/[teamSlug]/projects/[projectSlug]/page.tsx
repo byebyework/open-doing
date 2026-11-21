@@ -9,7 +9,7 @@ import {
   listTeamProjects,
 } from "@/features/projects/service";
 import { ProjectMilestonesSection } from "@/features/projects/components/ProjectMilestonesSection";
-import { listTeamProjectMilestones } from "@/features/projects/service";
+import { listTeamProjectMembers, listTeamProjectMilestones } from "@/features/projects/service";
 import {
   TeamProjectHeader,
   type TeamProjectView,
@@ -66,6 +66,7 @@ export default async function TeamProjectPage({
   ]);
   // 类型分流：任务打标入口只列 task 标签，项目编辑弹层只列 project 标签。
   const milestones = await listTeamProjectMilestones(team.id, project.id);
+  const projectMembers = await listTeamProjectMembers(team.id, project.id);
   const taskTagPool = tagPool.filter((tag) => tag.type === "task");
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
@@ -109,6 +110,9 @@ export default async function TeamProjectPage({
               startDate: project.startDate,
               endDate: project.endDate,
               priority: project.priority,
+              status: project.status,
+              leadId: project.leadId,
+              memberIds: projectMembers.map((m) => m.id),
               tags: project.tags,
             }}
             projectPath={projectPath}
@@ -120,6 +124,7 @@ export default async function TeamProjectPage({
             redirectTo={teamSettingsHref(team.slug)}
             tagPool={taskTagPool}
             projectTagPool={projectTagPool}
+            memberPool={projectMembers}
           />
         }
       />
