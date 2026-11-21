@@ -2,7 +2,6 @@
 
 import type { Project, ProjectMemberRef, ProjectStatus, TaskPriority } from "@open-doing/types";
 import { CalendarPlusIcon, CheckIcon, ChevronRightIcon } from "lucide-react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -50,7 +49,6 @@ export function ProjectPropertiesPanel({
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const router = useRouter();
-  const prefersReducedMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
   const [tagIds, setTagIds] = useState<string[]>(project.tags?.map((tag) => tag.id) ?? []);
   // 项目负责人/成员本地态（Properties 行可编辑；渲染期同步 RSC 快照）
@@ -111,20 +109,7 @@ export function ProjectPropertiesPanel({
           aria-hidden="true"
         />
       </button>
-      <AnimatePresence initial={false}>
-        {!collapsed ? (
-          <motion.div
-            key="properties-body"
-            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={
-              prefersReducedMotion
-                ? { duration: 0 }
-                : { height: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }, opacity: { duration: 0.16 } }
-            }
-            className="overflow-hidden"
-          >
+      {!collapsed ? (
       <div className="flex flex-col divide-y divide-[var(--border)]">
         {row(
           t("colStatus"),
@@ -320,9 +305,7 @@ export function ProjectPropertiesPanel({
         )}
         {projectTagPoolRow()}
       </div>
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      ) : null}
     </section>
   );
 

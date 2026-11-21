@@ -3,7 +3,6 @@
 import { ChevronRightIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
-import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 
 import { ProjectMilestonesSection } from "./ProjectMilestonesSection";
 import type { ProjectMilestone } from "@open-doing/types";
@@ -27,7 +26,6 @@ export function ProjectMilestonesPanel({
   progress,
 }: ProjectMilestonesPanelProps) {
   const t = useTranslations("projects");
-  const prefersReducedMotion = useReducedMotion();
   const [collapsed, setCollapsed] = useState(false);
 
   return (
@@ -53,20 +51,7 @@ export function ProjectMilestonesPanel({
           aria-hidden="true"
         />
       </button>
-      <AnimatePresence initial={false}>
-        {!collapsed ? (
-          <motion.div
-            key="milestones-body"
-            initial={prefersReducedMotion ? false : { height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={prefersReducedMotion ? { opacity: 0 } : { height: 0, opacity: 0 }}
-            transition={
-              prefersReducedMotion
-                ? { duration: 0 }
-                : { height: { duration: 0.22, ease: [0.25, 0.1, 0.25, 1] }, opacity: { duration: 0.16 } }
-            }
-            className="overflow-hidden"
-          >
+      {!collapsed ? (
       <ProjectMilestonesSection
         space={space}
         projectId={projectId}
@@ -75,9 +60,7 @@ export function ProjectMilestonesPanel({
         compact
         progress={progress}
       />
-          </motion.div>
-        ) : null}
-      </AnimatePresence>
+      ) : null}
     </section>
   );
 }
