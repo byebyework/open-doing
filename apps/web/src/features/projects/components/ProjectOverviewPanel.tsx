@@ -299,10 +299,12 @@ export function ProjectOverviewPanel({
         )}
       </div>
 
-      {/* 里程碑进度行（只读；CRUD 在侧栏 Milestones 卡）。 */}
-      {milestones.length > 0 ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-[13px] font-medium text-[var(--color-text)]">{t("milestoneLabel")}</p>
+      {/* 里程碑区恒显（对照 Linear）：空态提示，添加入口在右侧 Milestones 卡。 */}
+      <div className="flex flex-col gap-2">
+        <p className="text-[13px] font-medium text-[var(--color-text)]">{t("milestoneLabel")}</p>
+        {milestones.length === 0 ? (
+          <p className="py-2 text-[13px] text-[var(--color-text-muted)]">{t("milestoneEmpty")}</p>
+        ) : (
           <ul className="flex flex-col">
             {milestones.map((item) => (
               <li
@@ -327,8 +329,8 @@ export function ProjectOverviewPanel({
               </li>
             ))}
           </ul>
-        </div>
-      ) : null}
+        )}
+      </div>
     </div>
   );
 }
