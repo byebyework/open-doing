@@ -14,6 +14,8 @@ export interface ProjectMilestonesPanelProps {
   projectId: string;
   milestones: ProjectMilestone[];
   canManage: boolean;
+  /** 里程碑进度（compact 行右侧文案）。 */
+  progress?: Record<string, { taskCount: number; doneCount: number; percent: number }>;
 }
 
 /** 右侧 Milestones 卡：标题 + 复用 ProjectMilestonesSection（增删改）。 */
@@ -22,6 +24,7 @@ export function ProjectMilestonesPanel({
   projectId,
   milestones,
   canManage,
+  progress,
 }: ProjectMilestonesPanelProps) {
   const t = useTranslations("projects");
   const prefersReducedMotion = useReducedMotion();
@@ -70,6 +73,7 @@ export function ProjectMilestonesPanel({
         milestones={milestones}
         canManage={canManage}
         compact
+        progress={progress}
       />
           </motion.div>
         ) : null}

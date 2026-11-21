@@ -800,7 +800,8 @@
     "propertiesTitle": "属性",
     "sidebarToggle": "显示/隐藏侧栏",
     "milestoneEmpty": "暂无里程碑，可在右侧「里程碑」卡添加",
-    "colActions": "操作"
+    "colActions": "操作",
+    "progressTitle": "进度"
   },
   "dashboard": {
     "title": "仪表盘",

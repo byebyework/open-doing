@@ -136,6 +136,7 @@ export function ProjectPropertiesPanel({
             }}
             onError={(message) => toast.error(message)}
             testid="properties-status-pill"
+            quiet
           />,
         )}
         {row(
@@ -171,6 +172,7 @@ export function ProjectPropertiesPanel({
           ? row(
               t("leadLabel"),
               <AttrPill
+                quiet
                 testid="properties-lead-pill"
                 icon={null}
                 label={
@@ -223,6 +225,7 @@ export function ProjectPropertiesPanel({
           ? row(
               t("membersLabel"),
               <AttrPill
+                quiet
                 testid="properties-members-pill"
                 icon={null}
                 label={
@@ -274,6 +277,7 @@ export function ProjectPropertiesPanel({
         {row(
           t("startDate"),
           <AttrPill
+            quiet
             testid="properties-start-pill"
             icon={<CalendarPlusIcon className="size-3.5" aria-hidden="true" />}
             label={project.startDate ?? t("notSet")}
@@ -295,6 +299,7 @@ export function ProjectPropertiesPanel({
         {row(
           t("endDate"),
           <AttrPill
+            quiet
             testid="properties-end-pill"
             icon={<CalendarPlusIcon className="size-3.5" aria-hidden="true" />}
             label={project.endDate ?? t("notSet")}

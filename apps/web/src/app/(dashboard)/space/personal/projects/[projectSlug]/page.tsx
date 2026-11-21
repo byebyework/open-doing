@@ -9,6 +9,7 @@ import {
 } from "@/features/personal/projects/service";
 import { ProjectDetailLayout } from "@/features/projects/components/ProjectDetailLayout";
 import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
+import { ProjectProgressPanel } from "@/features/projects/components/ProjectProgressPanel";
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
 import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
 import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
@@ -119,7 +120,20 @@ export default async function PersonalProjectPage({
               space={{ kind: "personal" }}
               projectId={project.id}
               milestones={milestoneProgress.map((item) => item.milestone)}
+              progress={Object.fromEntries(
+                milestoneProgress.map((item) => [
+                  item.milestone.id,
+                  { taskCount: item.taskCount, doneCount: item.doneCount, percent: item.percent },
+                ]),
+              )}
               canManage
+            />
+            <ProjectProgressPanel
+              percent={Math.round(
+                (tasks.filter((task) => task.status === "done").length /
+                  Math.max(tasks.length, 1)) *
+                  100,
+              )}
             />
           </>
         }

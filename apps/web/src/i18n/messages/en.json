@@ -800,7 +800,8 @@
     "propertiesTitle": "Properties",
     "sidebarToggle": "Toggle sidebar",
     "milestoneEmpty": "No milestones yet — add one from the Milestones card",
-    "colActions": "Actions"
+    "colActions": "Actions",
+    "progressTitle": "Progress"
   },
   "dashboard": {
     "title": "Dashboard",

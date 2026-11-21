@@ -41,6 +41,8 @@ export interface ProjectMilestonesSectionProps {
    * （名称必填、日期可选），不使用完整编辑卡。
    */
   compact?: boolean;
+  /** 里程碑进度（compact 行右侧「n 任务 · x%」；可缺省）。 */
+  progress?: Record<string, { taskCount: number; doneCount: number; percent: number }>;
 }
 
 /**
@@ -57,6 +59,7 @@ export function ProjectMilestonesSection({
   canManage,
   onChanged,
   compact = false,
+  progress,
 }: ProjectMilestonesSectionProps) {
   const t = useTranslations("projects");
   const tCommon = useTranslations("common");
@@ -324,6 +327,14 @@ export function ProjectMilestonesSection({
                 <p className="mt-0.5 truncate text-[12.5px] text-[var(--color-text-muted)]">
                   {item.description ?? "-"}
                 </p>
+                {progress?.[item.id] ? (
+                  <p className="mt-0.5 text-[12px] tabular-nums text-[var(--color-text-muted)]">
+                    {t("milestoneProgressMeta", {
+                      count: progress[item.id]!.taskCount,
+                      percent: progress[item.id]!.percent,
+                    })}
+                  </p>
+                ) : null}
               </div>
               {canManage ? (
                 <div className="flex shrink-0 items-center gap-1">
