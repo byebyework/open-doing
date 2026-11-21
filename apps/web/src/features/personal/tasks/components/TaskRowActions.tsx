@@ -103,6 +103,7 @@ export function TaskStatusMenu({
   editable = true,
 }: TaskStatusMenuProps) {
   const t = useTranslations("tasks");
+  const tProjects = useTranslations("projects");
   const tStatus = useTranslations("status");
   const { pending, change } = useStatusChange(task, onChanged);
 
@@ -165,6 +166,7 @@ export function TaskRowActions({
 }: TaskRowActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
+  const tProjects = useTranslations("projects");
   const tCommon = useTranslations("common");
   const tErrors = useTranslations("errors");
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -292,7 +294,7 @@ export interface PersonalProjectPageActionsProps {
   /** 项目类型标签池（编辑弹层打标用）。 */
   projectTagPool?: Tag[];
   /** 当前视图：列表 / 看板。 */
-  view: "list" | "board";
+  view: "overview" | "list" | "board";
   /** 新建任务弹窗可选的个人项目。 */
   projects: { id: string; name: string }[];
 }
@@ -312,6 +314,7 @@ export function PersonalProjectPageActions({
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
+  const tProjects = useTranslations("projects");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   return (
@@ -319,11 +322,12 @@ export function PersonalProjectPageActions({
       <PersonalProjectHeaderActions project={project} projectTagPool={projectTagPool} />
 
       <Tabs value={view} onValueChange={(nextView) => {
-        if (nextView === "list" || nextView === "board") {
+        if (nextView === "overview" || nextView === "list" || nextView === "board") {
           router.push(`${projectPath}?view=${nextView}`);
         }
       }}>
         <TabsList>
+          <TabsTrigger value="overview">{t("viewOverview")}</TabsTrigger>
           <TabsTrigger value="list">{t("viewList")}</TabsTrigger>
           <TabsTrigger value="board">{t("viewBoard")}</TabsTrigger>
         </TabsList>

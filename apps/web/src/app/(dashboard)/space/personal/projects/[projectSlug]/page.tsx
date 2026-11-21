@@ -7,8 +7,10 @@ import {
   getPersonalProjectBySlug,
   listPersonalProjects,
 } from "@/features/personal/projects/service";
-import { ProjectMilestonesSection } from "@/features/projects/components/ProjectMilestonesSection";
-import { listPersonalProjectMilestones } from "@/features/personal/projects/service";
+import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
+import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
+import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPropertiesPanel";
+import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
 import { listTags } from "@/features/tags/service";
 import { PersonalKanban } from "@/features/personal/tasks/components/PersonalKanban";
@@ -18,7 +20,7 @@ import { personalProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 /** 视图切换参数：缺省（或其他值）一律按列表处理。 */
-type ProjectView = "list" | "board";
+type ProjectView = "overview" | "list" | "board";
 
 interface PersonalProjectPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
@@ -44,7 +46,7 @@ export default async function PersonalProjectPage({
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
   const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-  const view: ProjectView = requestedView === "board" ? "board" : "list";
+  const view: ProjectView = requestedView === "board" || requestedView === "list" ? requestedView : "overview";
 
   const user = await requireUser();
   const project = await getPersonalProjectBySlug(user.id, projectSlug);
@@ -57,7 +59,7 @@ export default async function PersonalProjectPage({
     listTags({ ownerId: user.id }),
   ]);
   const taskTagPool = tagPool.filter((tag) => tag.type === "task");
-  const milestones = await listPersonalProjectMilestones(user.id, project.id);
+  const milestoneProgress = await listPersonalProjectMilestonesWithProgress(user.id, project.id);
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
@@ -103,17 +105,35 @@ export default async function PersonalProjectPage({
         }
       />
 
-      <div className="mt-5">
-        <ProjectMilestonesSection
-          space={{ kind: "personal" }}
-          projectId={project.id}
-          milestones={milestones}
-          canManage
-        />
-      </div>
-
-      <div className="mt-5">
-        {view === "board" ? (
+      {view === "overview" ? (
+        <div className="mt-5 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
+          <ProjectOverviewPanel
+            project={project}
+            milestones={milestoneProgress}
+            memberPool={[]}
+            displayLead={null}
+            displayMembers={[]}
+            canManage
+            space={{ kind: "personal" }}
+          />
+          <div className="flex flex-col gap-4 lg:sticky lg:top-[76px] lg:self-start">
+            <ProjectPropertiesPanel
+              project={project}
+              memberPool={[]}
+              canManage
+              space={{ kind: "personal" }}
+            />
+            <ProjectMilestonesPanel
+              space={{ kind: "personal" }}
+              projectId={project.id}
+              milestones={milestoneProgress.map((item) => item.milestone)}
+              canManage
+            />
+          </div>
+        </div>
+      ) : (
+        <div className="mt-5">
+          {view === "board" ? (
           <PersonalKanban
             tasks={tasks}
             today={today}
@@ -130,7 +150,8 @@ export default async function PersonalProjectPage({
             tagPool={taskTagPool}
           />
         )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
