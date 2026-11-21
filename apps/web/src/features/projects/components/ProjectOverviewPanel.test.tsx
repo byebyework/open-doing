@@ -250,6 +250,18 @@ describe("ProjectOverviewPanel", () => {
     });
   });
 
+  it("简述为空时展示回退描述；编辑回填所见文案（summary/description 同源）", () => {
+    render(projectFixture({ summary: undefined, description: "持续学习与个人知识管理。" }));
+    // 展示行回退显示描述文案
+    expect(document.body.querySelector('[data-testid="project-summary-display"]')?.textContent).toContain(
+      "持续学习与个人知识管理。",
+    );
+    click('[data-testid="project-summary-display"]');
+    // 编辑器回填展示文案（回归：曾只回填 project.summary，简述为空时编辑器清空）
+    const input = document.body.querySelector<HTMLInputElement>('[data-testid="project-summary-edit"]');
+    expect(input?.value).toBe("持续学习与个人知识管理。");
+  });
+
   it("描述空态展示提示语，内联编辑走 description 字段", async () => {
     render(projectFixture({ description: undefined }));
     const display = document.body.querySelector('[data-testid="project-description-display"]')!;

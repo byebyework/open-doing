@@ -304,7 +304,7 @@ export function ProjectOverviewPanel({
           <button
             type="button"
             data-testid="project-summary-display"
-            onClick={() => startEdit("summary", project.summary ?? "")}
+            onClick={() => startEdit("summary", summaryValue)}
             className={`block text-left text-[14px] text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:text-[var(--color-text)]" : "cursor-default"}`}
           >
             {summaryValue || t("summaryPlaceholder")}
