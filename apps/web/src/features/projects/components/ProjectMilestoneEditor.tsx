@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/shadcn/button";
 import { Input } from "@/components/ui/shadcn/input";
+import { MilestoneDatePopover } from "./MilestoneDatePopover";
 import { MILESTONE_DESCRIPTION_MAX_LENGTH, MILESTONE_NAME_MAX_LENGTH } from "../constants";
 
 /** 里程碑编辑卡片提交值（时间节点为空串时不可提交）。 */
@@ -81,16 +82,15 @@ export function ProjectMilestoneEditor({
           disabled={submitting}
           className="h-auto border-none bg-transparent px-0 text-[14px] font-medium shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
-        <Input
-          id={`${testIdPrefix}-milestone-due-date`}
-          type="date"
-          data-testid={`${testIdPrefix}-milestone-due-date`}
-          aria-label={t("milestoneDueDateLabel")}
+        <MilestoneDatePopover
           value={dueDate}
-          onChange={(event) => setDueDate(event.target.value)}
+          onChange={setDueDate}
           disabled={submitting}
-          className="h-7 w-[150px] shrink-0 rounded-full border-[var(--border)] bg-[var(--card)] px-3 text-[12.5px] tabular-nums"
-        />
+          testid={`${testIdPrefix}-milestone-due-date`}
+          inputTestid={`${testIdPrefix}-milestone-due-date-input`}
+        >
+          {dueDate}
+        </MilestoneDatePopover>
       </div>
       <Input
         type="text"

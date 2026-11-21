@@ -5,6 +5,7 @@ import { CalendarPlusIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
+import { Input } from "@/components/ui/shadcn/input";
 import { Calendar } from "@/components/ui/shadcn/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/popover";
 
@@ -30,6 +31,8 @@ export interface MilestoneDatePopoverProps {
   testid?: string;
   /** 触发按钮附加内容（如日期文本）。 */
   children?: ReactNode;
+  /** Popover 内日期输入的 testid（测试驱动用）。 */
+  inputTestid?: string;
 }
 
 /**
@@ -41,6 +44,7 @@ export function MilestoneDatePopover({
   onChange,
   disabled,
   testid = "milestone-date-button",
+  inputTestid,
   children,
 }: MilestoneDatePopoverProps) {
   const t = useTranslations("projects");
@@ -64,6 +68,16 @@ export function MilestoneDatePopover({
         </button>
       </PopoverTrigger>
       <PopoverContent align="end" className="w-auto p-2">
+        {inputTestid ? (
+          <Input
+            type="date"
+            data-testid={inputTestid}
+            value={value}
+            onChange={(event) => onChange(event.target.value)}
+            disabled={disabled}
+            className="mb-2 h-8 w-full"
+          />
+        ) : null}
         <Calendar
           mode="single"
           selected={parseISODate(value)}

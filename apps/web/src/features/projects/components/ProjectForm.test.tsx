@@ -223,10 +223,13 @@ describe("ProjectForm", () => {
     setInput("test-project-milestone-name-input", "上线");
     expect(add().disabled).toBe(false);
 
+    // 打开日期 Popover，在 popover 内的原生日期输入填值
+    click("test-project-milestone-due-date");
+    await act(async () => {});
     const dateInput = document.body.querySelector<HTMLInputElement>(
-      '[data-testid="test-project-milestone-due-date"] input, input[data-testid="test-project-milestone-due-date"]',
+      '[data-testid="test-project-milestone-due-date-input"]',
     );
-    if (!dateInput) throw new Error("missing milestone date input");
+    if (!dateInput) throw new Error("missing milestone date popover input");
     act(() => {
       const setter = Object.getOwnPropertyDescriptor(
         window.HTMLInputElement.prototype,
@@ -260,8 +263,10 @@ describe("ProjectForm", () => {
     setInput("test-project-name-input", "Remove Project");
     setInput("test-project-milestone-name-input", "节点");
     setInput("test-project-milestone-description-input", "首个交付");
+    click("test-project-milestone-due-date");
+    await act(async () => {});
     const dateInput = document.body.querySelector<HTMLInputElement>(
-      '[data-testid="test-project-milestone-due-date"] input, input[data-testid="test-project-milestone-due-date"]',
+      '[data-testid="test-project-milestone-due-date-input"]',
     )!;
     act(() => {
       const setter = Object.getOwnPropertyDescriptor(
@@ -385,8 +390,11 @@ describe("ProjectForm", () => {
     click("test-project-milestone-add-trigger");
     setInput("test-project-name-input", "Toggle Project");
     setInput("test-project-milestone-name-input", "节点一");
+    // 打开日期 Popover，在 popover 内的原生日期输入填值
+    click("test-project-milestone-due-date");
+    await act(async () => {});
     const dateInput = document.body.querySelector<HTMLInputElement>(
-      '[data-testid="test-project-milestone-due-date"]',
+      '[data-testid="test-project-milestone-due-date-input"]',
     )!;
     act(() => {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
@@ -425,8 +433,11 @@ describe("ProjectForm", () => {
     click("test-project-milestone-add-trigger");
     setInput("test-project-name-input", "Edit Draft Project");
     setInput("test-project-milestone-name-input", "旧名");
+    // 打开日期 Popover，在 popover 内的原生日期输入填值
+    click("test-project-milestone-due-date");
+    await act(async () => {});
     const dateInput = document.body.querySelector<HTMLInputElement>(
-      '[data-testid="test-project-milestone-due-date"]',
+      '[data-testid="test-project-milestone-due-date-input"]',
     )!;
     act(() => {
       const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, "value")!.set!;
