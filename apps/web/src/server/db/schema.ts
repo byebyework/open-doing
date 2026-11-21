@@ -45,6 +45,7 @@ import {
 import type {
   Gender,
   NotificationType,
+  ProjectStatus,
   SpaceType,
   TagColor,
   TagType,
@@ -298,6 +299,10 @@ export const projects = pgTable(
     endDate: date("end_date", { mode: "string" }),
     // 项目优先级三档（与 tasks.priority 同口径）；存量行由 DEFAULT 回填为 medium。
     priority: text("priority").$type<TaskPriority>().notNull().default("medium"),
+    // Linear 五态项目状态（存储口径，2026-11-21 起）；存量行由迁移回填。
+    status: text("status").$type<ProjectStatus>().notNull().default("backlog"),
+    // 团队项目负责人；个人项目恒 null（lead 语义即 owner）。成员被移除/退出时置空。
+    leadId: uuidRef("lead_id").references(() => users.id, { onDelete: "set null" }),
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
@@ -389,6 +394,23 @@ export const projectMilestones = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [index("project_milestones_project_id_idx").on(t.projectId)],
+);
+
+/** 项目成员（团队空间）：复合主键去重；项目/用户删除均级联清关联。 */
+export const projectMembers = pgTable(
+  "project_members",
+  {
+    projectId: uuidRef("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuidRef("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+  },
+  (t) => [
+    primaryKey({ name: "project_members_project_id_user_id_pk", columns: [t.projectId, t.userId] }),
+    index("project_members_user_id_idx").on(t.userId),
+  ],
 );
 
 /** 任务：project_id 可空（零散个人任务）；assignee_id 可空（成员退出后未指派）。 */
