@@ -2,7 +2,7 @@ import { and, eq, inArray } from "drizzle-orm";
 
 import type { DomainErrorI18n } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
-import { projects, tasks, teamMemberships, teams } from "@/server/db/schema";
+import { projectMembers, projects, tasks, teamMemberships, teams } from "@/server/db/schema";
 
 import {
   assertCan,
@@ -115,6 +115,26 @@ async function removeMembershipAndClearAssignments(
         ),
       ),
     );
+
+  // 项目成员清理与负责人置空（范围同上：仅本团队的项目）。
+  await tx
+    .delete(projectMembers)
+    .where(
+      and(
+        eq(projectMembers.userId, input.userId),
+        inArray(
+          projectMembers.projectId,
+          tx
+            .select({ id: projects.id })
+            .from(projects)
+            .where(eq(projects.teamId, input.teamId)),
+        ),
+      ),
+    );
+  await tx
+    .update(projects)
+    .set({ leadId: null })
+    .where(and(eq(projects.teamId, input.teamId), eq(projects.leadId, input.userId)));
 }
 
 export interface RemoveMemberInput {

@@ -6,6 +6,7 @@ import type { DbClient } from "@/server/db/client";
 import {
   comments,
   notifications,
+  projectMembers,
   projects,
   subtasks,
   tasks,
@@ -154,6 +155,24 @@ async function taskById(db: DbClient, id: string) {
 }
 
 describe.skipIf(!hasTestDatabase)("成员移除 / 主动退出 service", () => {
+  /** 直插项目成员/负责人（本文件原有夹具只造任务，不造项目成员）。 */
+  async function staffProject(
+    db: DbClient,
+    teamId: string,
+    projectId: string,
+    leadId: string,
+    memberIds: string[],
+  ): Promise<void> {
+    await db
+      .update(projects)
+      .set({ leadId })
+      .where(eq(projects.id, projectId));
+    await db
+      .insert(projectMembers)
+      .values(memberIds.map((userId) => ({ projectId, userId })))
+      .onConflictDoNothing();
+  }
+
   let db: DbClient;
 
   beforeEach(async () => {
@@ -225,6 +244,63 @@ describe.skipIf(!hasTestDatabase)("成员移除 / 主动退出 service", () => {
 
     // owner 成员关系保持不变。
     expect(await getMembership(ctx.team.id, ctx.owner.id, db)).not.toBeNull();
+  });
+
+  it("移除/退出成员：project_members 行删除、其任 lead 的项目 leadId 置空（Review Focus 3）", async () => {
+    const ctx = await seedTeam(db);
+    // 项目归团队（seedTeam 已建团队项目），成员/负责人由 helper 直插。
+    const teamProject = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.teamId, ctx.team.id))
+      .limit(1);
+    const projectId = teamProject[0]!.id;
+    await staffProject(db, ctx.team.id, projectId, ctx.member.id, [
+      ctx.member.id,
+      ctx.admin.id,
+    ]);
+
+    await removeMember(
+      { teamId: ctx.team.id, targetUserId: ctx.member.id, actorId: ctx.admin.id },
+      db,
+    );
+
+    // project_members 行被清理，其他成员保留
+    const memberRows = await db
+      .select()
+      .from(projectMembers)
+      .where(eq(projectMembers.projectId, projectId));
+    expect(memberRows.map((r) => r.userId)).toEqual([ctx.admin.id]);
+    // 其任 lead 的项目 leadId 置空
+    const updated = await db
+      .select({ leadId: projects.leadId })
+      .from(projects)
+      .where(eq(projects.id, projectId));
+    expect(updated[0]!.leadId).toBeNull();
+  });
+
+  it("leaveTeam：同样清理 project_members 与 leadId", async () => {
+    const ctx = await seedTeam(db);
+    const teamProject = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(eq(projects.teamId, ctx.team.id))
+      .limit(1);
+    const projectId = teamProject[0]!.id;
+    await staffProject(db, ctx.team.id, projectId, ctx.member.id, [ctx.member.id]);
+
+    await leaveTeam({ teamId: ctx.team.id, actorId: ctx.member.id }, db);
+
+    const memberRows = await db
+      .select()
+      .from(projectMembers)
+      .where(eq(projectMembers.projectId, projectId));
+    expect(memberRows).toHaveLength(0);
+    const updated = await db
+      .select({ leadId: projects.leadId })
+      .from(projects)
+      .where(eq(projects.id, projectId));
+    expect(updated[0]!.leadId).toBeNull();
   });
 
   it("member 调 removeMember 被拒（Review Focus 5）", async () => {
