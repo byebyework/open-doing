@@ -109,8 +109,8 @@ export default async function TeamProjectPage({
 
       <PageHeader
         className="mt-2"
-        title={project.name}
-        subtitle={`${view === "board"
+        title={view === "overview" ? undefined : project.name}
+        subtitle={view === "overview" ? undefined : `${view === "board"
           ? t("boardDragHint")
           : t("teamProjectMeta", { tasks: tasks.length, members: participantCount })}${project.startDate && project.endDate ? ` · ${t("dateRange")}: ${project.startDate} → ${project.endDate}` : ""}`}
         actions={
