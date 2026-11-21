@@ -95,6 +95,9 @@ export default async function TeamProjectPage({
   ).size;
   const today = todayInShanghai();
   const projectPath = teamProjectHref(team.slug, project.slug);
+  // 面板用项目快照：members 由 listTeamProjectMembers 装载（getTeamProjectBySlug 不带成员），
+  // Properties 卡据此回显成员；否则保存刷新后回显未设置。
+  const detailProject = { ...project, members: projectMembers };
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
@@ -150,7 +153,7 @@ export default async function TeamProjectPage({
         sidebar={
           <>
             <ProjectPropertiesPanel
-              project={project}
+              project={detailProject}
               memberPool={memberRoster}
               canManage={can(membership.role, "team:manage_projects")}
               space={{ kind: "team", teamId: team.id }}
@@ -180,7 +183,7 @@ export default async function TeamProjectPage({
         {view === "overview" ? (
           <div className="mt-5">
             <ProjectOverviewPanel
-              project={project}
+              project={detailProject}
               milestones={milestoneProgress}
               projectTagPool={projectTagPool}
               displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}

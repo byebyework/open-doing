@@ -84,6 +84,12 @@ export function ProjectPropertiesPanel({
   const priorityLabel = (value: TaskPriority) =>
     t(value === "high" ? "priorityHigh" : value === "medium" ? "priorityMedium" : "priorityLow");
 
+  // 行值节点：负责人 = 头像 + 名称；成员 = 头像栈（与负责人行可区分）
+  const leadRef = memberPool.find((member) => member.id === leadId) ?? null;
+  const memberRefs = memberIds
+    .map((id) => memberPool.find((member) => member.id === id))
+    .filter((member): member is ProjectMemberRef => Boolean(member));
+
   const row = (label: string, value: React.ReactNode, testid?: string) => (
     <div className="flex items-center justify-between gap-2 py-1.5" data-testid={testid}>
       <span className="text-[12.5px] text-[var(--color-text-muted)]">{label}</span>
@@ -161,7 +167,14 @@ export function ProjectPropertiesPanel({
                 testid="properties-lead-pill"
                 icon={null}
                 label={
-                  memberPool.find((m) => m.id === leadId)?.name ?? t("notSet")
+                  leadRef ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      <UserAvatar userId={leadRef.id} name={leadRef.name} size={20} />
+                      {leadRef.name}
+                    </span>
+                  ) : (
+                    t("notSet")
+                  )
                 }
                 valueActive
                 disabled={!canManage}
@@ -214,9 +227,21 @@ export function ProjectPropertiesPanel({
                 testid="properties-members-pill"
                 icon={null}
                 label={
-                  memberIds.length > 0
-                    ? `${memberIds.length}`
-                    : t("notSet")
+                  memberRefs.length > 0 ? (
+                    <span className="flex items-center -space-x-1">
+                      {memberRefs.map((member) => (
+                        <UserAvatar
+                          key={member.id}
+                          userId={member.id}
+                          name={member.name}
+                          size={20}
+                          className="ring-2 ring-[var(--card)]"
+                        />
+                      ))}
+                    </span>
+                  ) : (
+                    t("notSet")
+                  )
                 }
                 disabled={!canManage}
               >

@@ -274,6 +274,27 @@ describe.skipIf(!hasTestDatabase)("团队项目 service", () => {
     await expect(getTeamProjectBySlug(other.team.id, project.slug, db)).resolves.toBeNull();
   });
 
+  it("按 slug 读取带回项目标签（详情页属性行依赖）", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Tagged roadmap" },
+      db,
+    );
+    const tag = await createTag(
+      { teamId: team.id, actorId: owner.id, name: "PTag", color: "mint", type: "project" },
+      db,
+    );
+    await applyProjectTags(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, tagIds: [tag.id] },
+      db,
+    );
+
+    await expect(getTeamProjectBySlug(team.id, project.slug, db)).resolves.toMatchObject({
+      id: project.id,
+      tags: [expect.objectContaining({ id: tag.id })],
+    });
+  });
+
   it("列表：按团队查询与批量查询都只返回对应团队的项目", async () => {
     const { owner, team } = await setupTeam(db);
     const other = await setupTeam(db);

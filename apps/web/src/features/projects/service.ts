@@ -316,7 +316,10 @@ export async function getTeamProjectBySlug(
     .where(and(eq(projects.teamId, teamId), eq(projects.slug, slug)))
     .limit(1);
 
-  return row ? toProject(row) : null;
+  if (!row) return null;
+  // 详情页属性行依赖 tags；成员由页面层 listTeamProjectMembers 装载。
+  const tagsMap = await tagsByProjectId([row.id], client);
+  return toProject(row, tagsMap.get(row.id) ?? []);
 }
 
 /**

@@ -133,6 +133,32 @@ describe("ProjectPropertiesPanel 成员行", () => {
     );
   });
 
+  it("成员行按 project.members 渲染头像栈；负责人行展示头像加名称", () => {
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
+          <ProjectPropertiesPanel
+            project={project}
+            memberPool={roster}
+            canManage
+            space={{ kind: "team", teamId: "team-1" }}
+          />
+        </NextIntlClientProvider>,
+      );
+    });
+
+    // 成员行：成员头像而非「未设置」占位（回归：详情页曾因 project.members
+    // 未装载而在保存刷新后永远回显未设置）
+    const membersPill = document.body.querySelector('[data-testid="properties-members-pill"]');
+    expect(membersPill?.querySelectorAll('[role="img"]')).toHaveLength(1);
+    expect(membersPill?.textContent).not.toContain(zh.projects.notSet);
+
+    // 负责人行：头像 + 名称，与成员行可区分
+    const leadPill = document.body.querySelector('[data-testid="properties-lead-pill"]');
+    expect(leadPill?.querySelector('[role="img"]')).not.toBeNull();
+    expect(leadPill?.textContent).toContain("甲");
+  });
+
   it("成员 Popover 勾选名册成员后保存：memberIds 含 lead 自动并入", async () => {
     act(() => {
       root.render(

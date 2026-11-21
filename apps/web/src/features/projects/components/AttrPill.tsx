@@ -10,7 +10,8 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/shadcn/
 export interface AttrPillProps {
   testid: string;
   icon: React.ReactNode;
-  label: string;
+  /** 当前值（字符串或头像栈等节点）。 */
+  label: React.ReactNode;
   value?: string;
   valueActive?: boolean;
   children: (close: () => void) => React.ReactNode;
