@@ -32,6 +32,7 @@ import { db, type DbClient } from "@/server/db/client";
 import { isUniqueViolation } from "@/server/db/errors";
 import {
   comments,
+  projectMilestones,
   projects,
   subtasks,
   taskTags,
@@ -72,6 +73,7 @@ function toTask(row: TaskRow): Task {
     projectId: row.projectId,
     spaceType: row.spaceType,
     title: row.title,
+    milestoneId: row.milestoneId ?? undefined,
     description: row.description ?? undefined,
     status: row.status,
     priority: row.priority,
@@ -230,6 +232,24 @@ async function requireTeamProject(
  * - 任何成员可建；`assigneeId` 缺省为本人，显式指派必须是团队成员；
  * - 指派给他人时给责任人发 `task_assigned`（自己指派自己不通知）。
  */
+/** 归属校验：里程碑必须属于任务所在项目；返回归一值（null 清空）。 */
+async function resolveTaskMilestone(
+  projectId: string,
+  milestoneId: string | null | undefined,
+  client: DbClient,
+): Promise<string | null> {
+  if (milestoneId == null) return null;
+  const [row] = await client
+    .select({ id: projectMilestones.id })
+    .from(projectMilestones)
+    .where(and(eq(projectMilestones.id, milestoneId), eq(projectMilestones.projectId, projectId)))
+    .limit(1);
+  if (!row) {
+    throw new DomainError("里程碑不属于该项目", "milestoneId", { key: "milestoneInvalid" });
+  }
+  return milestoneId;
+}
+
 export async function createTeamTask(
   input: {
     teamId: string;
@@ -242,6 +262,8 @@ export async function createTeamTask(
     dueDate?: string | null;
     startDate?: string | null;
     assigneeId?: string | null;
+    /** 所属里程碑（须属于项目）。 */
+    milestoneId?: string | null;
     /** 初始标签（全量覆写语义）；仅写 task_tags，不影响 updated_at。 */
     tagIds?: string[];
   },
@@ -255,6 +277,7 @@ export async function createTeamTask(
   const startDate = validateTaskStartDate(input?.startDate);
   assertStartNotAfterTaskDue(startDate, dueDate);
   const assigneeId = input.assigneeId ?? actorId;
+  const milestoneId = await resolveTaskMilestone(projectId, input.milestoneId, client);
 
   return client.transaction(async (tx) => {
     await requireMember(teamId, actorId, tx);
@@ -271,6 +294,7 @@ export async function createTeamTask(
         status: "todo",
         priority,
         assigneeId,
+        milestoneId,
         dueDate,
         startDate,
         createdById: actorId,
@@ -307,6 +331,8 @@ export interface UpdateTeamTaskInput {
   actorId: string;
   title?: string;
   description?: string;
+  /** 所属里程碑（须属于任务所在项目）；`null` 清空。 */
+  milestoneId?: string | null;
   /** 优先级三档；作为内容字段纳入 `task:edit` 权限判定。 */
   priority?: TaskPriority;
   dueDate?: string | null;
@@ -338,6 +364,7 @@ export async function updateTeamTask(
       TaskRow,
       | "title"
       | "description"
+      | "milestoneId"
       | "priority"
       | "dueDate"
       | "startDate"
@@ -364,6 +391,18 @@ export async function updateTeamTask(
     const description = validateTaskDescription(input.description);
     if ((description ?? null) !== (existing.task.description ?? null)) {
       changes.description = description;
+      hasValueChange = true;
+    }
+  }
+  if (input.milestoneId !== undefined) {
+    hasContentChange = true;
+    const milestoneId = await resolveTaskMilestone(
+      existing.task.projectId ?? "",
+      input.milestoneId,
+      client,
+    );
+    if (milestoneId !== (existing.task.milestoneId ?? null)) {
+      changes.milestoneId = milestoneId;
       hasValueChange = true;
     }
   }

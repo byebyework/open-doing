@@ -2,12 +2,12 @@ import type { TaskStatus } from "@open-doing/types";
 import { eq } from "drizzle-orm";
 import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
-import { createPersonalProject } from "@/features/personal/projects/service";
+import { addPersonalProjectMilestone, createPersonalProject } from "@/features/personal/projects/service";
 import { createTag } from "@/features/tags/service";
 import { DomainError } from "@/lib/domain-error";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
-import { comments, subtasks, taskTags, tasks, users } from "@/server/db/schema";
+import { comments, projectMilestones, subtasks, taskTags, tasks, users } from "@/server/db/schema";
 import { closeTestDb, setupTestDb } from "@/server/db/testing";
 
 import {
@@ -633,5 +633,64 @@ describe.skipIf(!hasTestDatabase)("个人任务打标 service", () => {
     await expect(
       setPersonalTaskTags({ taskId: task.id, actorId: stranger, tagIds: [] }, db),
     ).rejects.toMatchObject({ i18n: { key: "taskNotFound" } });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("个人任务里程碑关联", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  async function createUser(): Promise<string> {
+    const id = crypto.randomUUID();
+    await db
+      .insert(users)
+      .values({ id, uid: generateUid(), username: `milestone_${id.slice(0, 8)}`, name: "里程碑用户", email: `${id}@test.local`, displayUsername: `milestone_${id.slice(0, 8)}` });
+    return id;
+  }
+
+  it("挂项目里程碑可创建/更新；无项目任务挂里程碑被拒；他项目里程碑被拒", async () => {
+    const userId = await createUser();
+    const project = await createPersonalProject(userId, { name: "M项目" }, db);
+    const milestone = await addPersonalProjectMilestone(
+      userId,
+      project.id,
+      { name: "节点", dueDate: "2026-12-20" },
+      db,
+    );
+
+    const task = await createPersonalTask(
+      userId,
+      { title: "带里程碑", projectId: project.id, milestoneId: milestone.id },
+      db,
+    );
+    expect(task.milestoneId).toBe(milestone.id);
+
+    // 无项目的零散任务挂里程碑 → 拒绝
+    await expect(
+      createPersonalTask(userId, { title: "零散", milestoneId: milestone.id }, db),
+    ).rejects.toMatchObject({ field: "milestoneId", i18n: { key: "milestoneInvalid" } });
+
+    // 他项目里程碑 → 拒绝
+    const other = await createPersonalProject(userId, { name: "另一项目" }, db);
+    const otherMilestone = await addPersonalProjectMilestone(
+      userId,
+      other.id,
+      { name: "外部节点", dueDate: "2026-12-25" },
+      db,
+    );
+    await expect(
+      updatePersonalTask(userId, task.id, { milestoneId: otherMilestone.id }, db),
+    ).rejects.toMatchObject({ field: "milestoneId", i18n: { key: "milestoneInvalid" } });
+
+    // 更新清空
+    const cleared = await updatePersonalTask(userId, task.id, { milestoneId: null }, db);
+    expect(cleared.milestoneId).toBeUndefined();
   });
 });

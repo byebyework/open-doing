@@ -198,6 +198,8 @@ export interface Task {
   dueDate?: string;
   /** 开始日期，`YYYY-MM-DD`；可空（按天排程，不早于校验在服务层） */
   startDate?: string;
+  /** 所属里程碑（项目内节点；读路径按需组装）；里程碑删除时脱钩 */
+  milestoneId?: string;
   createdAt: string;
   updatedAt: string;
   /**

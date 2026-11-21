@@ -3,7 +3,8 @@ import { afterAll, beforeEach, describe, expect, it } from "vitest";
 
 import type { NotificationType } from "@open-doing/types";
 
-import { createTeamProject } from "@/features/projects/service";
+import { addTeamProjectMilestone, createTeamProject } from "@/features/projects/service";
+import { projectMilestones } from "@/server/db/schema";
 import { createTag } from "@/features/tags/service";
 import { createTeam } from "@/features/teams/service";
 import { DomainError } from "@/lib/domain-error";
@@ -1002,5 +1003,103 @@ describe.skipIf(!hasTestDatabase)("任务打标类型收紧（T3）", () => {
     await expect(
       setTeamTaskTags({ teamId: fixture.team.id, taskId: task.id, actorId: fixture.owner.id, tagIds: [pTag.id] }, db),
     ).rejects.toMatchObject({ i18n: { key: "tagTypeMismatch" }, field: "tags" });
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("任务里程碑关联", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  /** 直插团队项目里程碑（返回单个，便于解构）。 */
+  async function createTeamProjectMilestone(
+    fixture: { team: { id: string }; project: { id: string }; owner: { id: string } },
+    name: string,
+  ) {
+    const milestone = await addTeamProjectMilestone(
+      {
+        teamId: fixture.team.id,
+        projectId: fixture.project.id,
+        actorId: fixture.owner.id,
+        name,
+        dueDate: "2026-12-20",
+      },
+      db,
+    );
+    return [milestone];
+  }
+
+  it("create/update 接受本项目 milestoneId；他项目里程碑 → milestoneInvalid", async () => {
+    const fixture = await setupTeamWithProject(db);
+    const other = await setupTeamWithProject(db);
+
+    const [ownMilestone] = await createTeamProjectMilestone(fixture, "本项节点");
+    const [foreignMilestone] = await createTeamProjectMilestone(other, "外部节点");
+
+    const task = await createTeamTask(
+      {
+        teamId: fixture.team.id,
+        projectId: fixture.project.id,
+        actorId: fixture.owner.id,
+        title: "带里程碑",
+        milestoneId: ownMilestone.id,
+      },
+      db,
+    );
+    expect(task.milestoneId).toBe(ownMilestone.id);
+
+    // 他项目里程碑 → 拒绝
+    await expect(
+      createTeamTask(
+        {
+          teamId: fixture.team.id,
+          projectId: fixture.project.id,
+          actorId: fixture.owner.id,
+          title: "外部里程碑",
+          milestoneId: foreignMilestone.id,
+        },
+        db,
+      ),
+    ).rejects.toMatchObject({ field: "milestoneId", i18n: { key: "milestoneInvalid" } });
+
+    // update 设置与清空
+    const updated = await updateTeamTask(
+      { teamId: fixture.team.id, taskId: task.id, actorId: fixture.owner.id, milestoneId: null },
+      db,
+    );
+    expect(updated.milestoneId).toBeUndefined();
+    const setAgain = await updateTeamTask(
+      { teamId: fixture.team.id, taskId: task.id, actorId: fixture.owner.id, milestoneId: ownMilestone.id },
+      db,
+    );
+    expect(setAgain.milestoneId).toBe(ownMilestone.id);
+  });
+
+  it("里程碑删除后任务脱钩（FK set null）", async () => {
+    const fixture = await setupTeamWithProject(db);
+    const [milestone] = await createTeamProjectMilestone(fixture, "将删除");
+    const task = await createTeamTask(
+      {
+        teamId: fixture.team.id,
+        projectId: fixture.project.id,
+        actorId: fixture.owner.id,
+        title: "挂钩任务",
+        milestoneId: milestone.id,
+      },
+      db,
+    );
+
+    await db
+      .delete(projectMilestones)
+      .where(eq(projectMilestones.id, milestone.id));
+
+    const rows = await db.select().from(tasks).where(eq(tasks.id, task.id));
+    expect(rows[0]!.milestoneId).toBeNull();
   });
 });

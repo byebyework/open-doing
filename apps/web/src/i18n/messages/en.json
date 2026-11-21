@@ -343,7 +343,8 @@
     "editTaskAria": "Edit task: {title}",
     "deleteTaskAria": "Delete task: {title}",
     "dueSoonFull": "Due {date}",
-    "tagsLabel": "Tags"
+    "tagsLabel": "Tags",
+    "milestoneInvalid": "Milestone does not belong to this project"
   },
   "moments": {
     "titleRequired": "Title is required",
@@ -685,7 +686,8 @@
     "summaryTooLong": "Summary must be at most {max} characters",
     "statusInvalid": "Invalid status value",
     "leadNotMember": "Lead must be a team member",
-    "memberNotInTeam": "Members must be team members"
+    "memberNotInTeam": "Members must be team members",
+    "milestoneInvalid": "Milestone does not belong to this project"
   },
   "projects": {
     "project": "Project",

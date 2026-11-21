@@ -19,6 +19,7 @@ import {
   taskTags,
   tasks,
   users,
+  projectMilestones,
 } from "@/server/db/schema";
 
 // 任务字段限长常量的唯一来源是 lib/task-fields.ts（客户端安全，可被表单
@@ -48,6 +49,8 @@ export interface PersonalTaskInput {
   /** 开始日期（`YYYY-MM-DD`，可空）；与 dueDate 同粒度，不得晚于截止日期。 */
   startDate?: string | null;
   projectId?: string | null;
+  /** 所属里程碑（须属于所填个人项目）；`null` 清空。 */
+  milestoneId?: string | null;
   /** 初始标签（全量覆写语义）；仅写 task_tags，不影响 updated_at。 */
   tagIds?: string[];
 }
@@ -83,6 +86,7 @@ function toTask(row: TaskRow): Task {
     projectId: row.projectId,
     spaceType: row.spaceType,
     title: row.title,
+    milestoneId: row.milestoneId ?? undefined,
     description: row.description ?? undefined,
     status: row.status,
     priority: row.priority,
@@ -256,6 +260,33 @@ function normalizeProjectId(value: unknown): string | null {
   return trimmed.length > 0 ? trimmed : null;
 }
 
+/** 归属校验：里程碑必须属于任务所填个人项目；无项目时里程碑必须为空。 */
+async function resolvePersonalTaskMilestone(
+  userId: string,
+  projectId: string | null,
+  milestoneId: string | null | undefined,
+  client: DbClient,
+): Promise<string | null> {
+  if (milestoneId == null) return null;
+  if (!projectId) {
+    throw new DomainError("里程碑不属于该项目", "milestoneId", { key: "milestoneInvalid" });
+  }
+  const [row] = await client
+    .select({ id: projectMilestones.id })
+    .from(projectMilestones)
+    .where(
+      and(
+        eq(projectMilestones.id, milestoneId),
+        eq(projectMilestones.projectId, projectId),
+      ),
+    )
+    .limit(1);
+  if (!row) {
+    throw new DomainError("里程碑不属于该项目", "milestoneId", { key: "milestoneInvalid" });
+  }
+  return milestoneId;
+}
+
 /** 读取本人个人任务行（内部使用）；不存在 / 非本人 / 非 UUID 返回 undefined。 */
 async function findOwnedPersonalTaskRow(
   userId: string,
@@ -334,6 +365,7 @@ export async function createPersonalTask(
   if (projectId && !(await isOwnedPersonalProject(userId, projectId, client))) {
     throw new DomainError("项目不存在或无权访问", "projectId", { key: "projectNotFound" });
   }
+  const milestoneId = await resolvePersonalTaskMilestone(userId, projectId, input?.milestoneId, client);
 
   const [row] = await client
     .insert(tasks)
@@ -345,6 +377,7 @@ export async function createPersonalTask(
       status: "todo",
       priority,
       assigneeId: userId,
+      milestoneId,
       dueDate,
       startDate,
       createdById: userId,
@@ -521,6 +554,8 @@ export async function updatePersonalTask(
     dueDate?: string | null;
     startDate?: string | null;
     status?: TaskStatus;
+    /** 所属里程碑；`null` 清空（须属于任务所填项目）。 */
+    milestoneId?: string | null;
     /** 标签全量覆写；仅标签变更不推进 updatedAt（完成日代理口径）。 */
     tagIds?: string[];
   },
@@ -531,7 +566,14 @@ export async function updatePersonalTask(
   const changes: Partial<
     Pick<
       TaskRow,
-      "title" | "description" | "priority" | "dueDate" | "startDate" | "status" | "updatedAt"
+      | "title"
+      | "description"
+      | "milestoneId"
+      | "priority"
+      | "dueDate"
+      | "startDate"
+      | "status"
+      | "updatedAt"
     >
   > = {};
 
@@ -552,6 +594,14 @@ export async function updatePersonalTask(
   }
   if (input?.priority !== undefined) {
     changes.priority = validatePriority(input.priority);
+  }
+  if (input?.milestoneId !== undefined) {
+    changes.milestoneId = await resolvePersonalTaskMilestone(
+      userId,
+      existing.projectId,
+      input.milestoneId,
+      client,
+    );
   }
 
   // 与新值组合出最终日期对，校验开始不晚于截止。

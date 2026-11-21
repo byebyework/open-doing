@@ -343,7 +343,8 @@
     "editTaskAria": "编辑任务：{title}",
     "deleteTaskAria": "删除任务：{title}",
     "dueSoonFull": "{date} 到期",
-    "tagsLabel": "标签"
+    "tagsLabel": "标签",
+    "milestoneInvalid": "里程碑不属于该项目"
   },
   "moments": {
     "titleRequired": "请填写名称",
@@ -685,7 +686,8 @@
     "summaryTooLong": "简述不能超过 {max} 个字符",
     "statusInvalid": "状态取值非法",
     "leadNotMember": "负责人必须是团队成员",
-    "memberNotInTeam": "成员必须是团队成员"
+    "memberNotInTeam": "成员必须是团队成员",
+    "milestoneInvalid": "里程碑不属于该项目"
   },
   "projects": {
     "project": "项目",
