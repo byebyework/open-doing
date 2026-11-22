@@ -13,12 +13,12 @@ import kanbanShot from "../assets/kanban.png";
 import { fadeUp, staggerContainer } from "../motion-presets";
 
 /**
- * 功能区四个模块：顺序与 mockup 一致（dashboard / kanban / calendar /
+ * 功能区四个模块：顺序与 mockup 一致（dashboard / tasks / calendar /
  * analysis）。偶数行图片在右、奇数行图片在左；移动端一律「文在上、图在下」。
  */
 const FEATURE_ITEMS = [
   { key: "dashboard", shot: dashboardShot },
-  { key: "kanban", shot: kanbanShot },
+  { key: "tasks", shot: kanbanShot },
   { key: "calendar", shot: calendarShot },
   { key: "analysis", shot: analysisShot },
 ] as const;
@@ -52,7 +52,7 @@ export function FeaturesSection() {
 
       <div>
         {FEATURE_ITEMS.map((item, index) => {
-          // mockup：dashboard / calendar 图在右，kanban / analysis 图在左。
+          // mockup：dashboard / calendar 图在右，tasks / analysis 图在左。
           const imageRight = index % 2 === 0;
 
           return (

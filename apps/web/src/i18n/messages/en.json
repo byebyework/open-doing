@@ -33,7 +33,7 @@
     "byRecentActivity": "By recent activity",
     "byRecentActivityDesc": "Projects with recent task activity come first; quiet projects sink to the bottom.",
     "currentRule": "Current rule",
-    "orderingScopeAlert": "Ordering applies to the project lists on your personal Kanban, project pages and task details.",
+    "orderingScopeAlert": "Ordering applies to the project lists on your personal dashboard, project pages and task details.",
     "language": "Interface language",
     "languageCaption": "Choose the language of the interface.",
     "languageChanged": "Language updated",
@@ -809,7 +809,7 @@
     "overdueHintNone": "Nothing overdue",
     "statDoneThisWeek": "Done this week",
     "statDoneThisWeekHint": "Since Monday ({date})",
-    "teamSubtitle": "Project health, milestones, and member workload, aggregated from tasks automatically. See the full picture in Kanban.",
+    "teamSubtitle": "Project health, milestones, and member workload, aggregated from tasks automatically. See the full picture in Tasks.",
     "statProjects": "Projects",
     "statProjectsHint": "All team projects",
     "statOverallProgress": "Overall progress",
@@ -842,12 +842,12 @@
     "emptyMilestonesDescription": "Give unfinished tasks due dates and the nearest milestones sort to the top.",
     "dueLine": "Due {date}",
     "dueOverdueLine": "Due {date}, {days} days overdue",
-    "viewAllTasks": "View all tasks · Go to Kanban →",
+    "viewAllTasks": "View all tasks →",
     "todayHeader": "Today · {weekday}, {month}/{day}",
     "badgeOverdue": "{count} overdue",
     "badgeToday": "{count} today",
     "emptyTodayTitle": "Nothing due or overdue today",
-    "emptyTodayDescription": "Focus on what's in progress, or view everything in Kanban.",
+    "emptyTodayDescription": "Focus on what's in progress, or view the full picture in Tasks.",
     "markCompleteAria": "Mark done: {title}",
     "me": "Me",
     "sourceTeam": "Team",
@@ -856,18 +856,18 @@
     "sourcePersonalWithProject": "Personal · {name}",
     "dueOverdueBadge": "Due {date} · {days} days overdue",
     "updateFailed": "Update failed, please try again",
-    "moreTasksFooter": "{count} more unfinished tasks (incl. future due dates) · View all in Kanban →",
+    "moreTasksFooter": "{count} more unfinished tasks (incl. future due dates) · View all →",
     "listHintAria": "List scope explanation",
     "listHintSummary": "Only what matters today",
     "listHintTitle": "Today list scope",
     "listHintItem1": "Overdue tasks due before today stay on top; once checked complete they disappear from the list.",
-    "listHintItem2": "To browse all tasks by status or project, go to the Kanban board.",
+    "listHintItem2": "To browse all tasks by status or project, go to Tasks.",
     "unassignedHintAria": "Unassigned tasks explanation",
     "unassignedHintSummary": "Unassigned tasks: {count}",
     "unassignedHintTitle": "Unassigned tasks",
     "unassignedHintLead": "The full list and assignment guidance now live in the ",
-    "unassignedHintLink": "Kanban board",
-    "unassignedHintTail": " (space-level board).",
+    "unassignedHintLink": "Tasks",
+    "unassignedHintTail": " (space-level Tasks page).",
     "milestonesPagerLabel": "Milestones pagination",
     "milestonesPrevPage": "Previous page",
     "milestonesNextPage": "Next page",
@@ -1009,7 +1009,7 @@
     "zombieEmpty": "No stale tasks.",
     "lastUpdatedLine": "Last updated {date}, stalled for {days} days",
     "stalledBadge": "{days} days stalled",
-    "zombieFooter": "Triage or close these tasks · Go to Kanban →",
+    "zombieFooter": "Triage or close these tasks →",
     "chartToday": "Today {label}",
     "chartDoneValue": "{value} completed",
     "chartCreatedValue": "{value} created",
@@ -1072,7 +1072,7 @@
   "landing": {
     "meta": {
       "title": "Open Doing — Task management for individuals and teams",
-      "description": "Personal to-dos and team projects in one system. Kanban, calendar, reminders, and analytics — ready out of the box."
+      "description": "Personal to-dos and team projects in one system. Tasks, calendar, reminders, and analytics — ready out of the box."
     },
     "nav": {
       "features": "Features",
@@ -1090,7 +1090,7 @@
       "badge": "Built for small teams",
       "titleLine1": "Turn ideas into",
       "titleLine2": "your team's every day",
-      "subtitle": "Personal to-dos and team projects in one system. Kanban, calendar, reminders, and analytics — ready out of the box.",
+      "subtitle": "Personal to-dos and team projects in one system. Tasks, calendar, reminders, and analytics — ready out of the box.",
       "ctaStart": "Start for free",
       "ctaLogin": "Log in",
       "trust": "Free to use · Works out of the box · Personal and team spaces in one",
@@ -1106,10 +1106,10 @@
           "body": "Active projects, overall progress, due-soon and overdue tasks, aggregated automatically. Each project's health is computed live from task completion — no chasing, no nudging.",
           "alt": "Dashboard screenshot: project health and milestones"
         },
-        "kanban": {
-          "tag": "Kanban",
+        "tasks": {
+          "tag": "Tasks",
           "title": "Drag it, and the task moves",
-          "body": "Three columns — to do, in progress, done. Drag to move. Assignee, due date, and labels at a glance; see who is doing what on the board.",
+          "body": "Board and list views — drag a card to move work along; assignees, due dates, and labels at a glance.",
           "alt": "Kanban screenshot: three-column task board"
         },
         "calendar": {
@@ -1135,7 +1135,7 @@
       },
       "team": {
         "title": "Small teams",
-        "body": "Split work by project in the team space: collaborate on the kanban, align on the calendar, review with analytics. Permissions stay clear — members only touch their own tasks."
+        "body": "Split work by project in the team space: collaborate on tasks, align on the calendar, review with analytics. Permissions stay clear — members only touch their own tasks."
       }
     },
     "faq": {

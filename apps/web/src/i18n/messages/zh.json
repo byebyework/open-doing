@@ -33,7 +33,7 @@
     "byRecentActivity": "按最近活动",
     "byRecentActivityDesc": "最近有任务动态的项目排在最前，长时间没动静的项目沉底。",
     "currentRule": "当前规则",
-    "orderingScopeAlert": "排序应用于个人看板、项目详情页与任务详情页的项目列表。",
+    "orderingScopeAlert": "排序应用于个人仪表盘、项目详情页与任务详情页的项目列表。",
     "language": "界面语言",
     "languageCaption": "选择界面显示语言。",
     "languageChanged": "语言已切换",
@@ -809,7 +809,7 @@
     "overdueHintNone": "暂无逾期",
     "statDoneThisWeek": "本周已完成",
     "statDoneThisWeekHint": "自本周一（{date}）以来",
-    "teamSubtitle": "项目健康度、重要节点与成员负载，数据自任务自动聚合；任务全景看「看板」。",
+    "teamSubtitle": "项目健康度、重要节点与成员负载，数据自任务自动聚合；任务全景看「任务」。",
     "statProjects": "在册项目",
     "statProjectsHint": "团队全部项目",
     "statOverallProgress": "团队整体进度",
@@ -842,12 +842,12 @@
     "emptyMilestonesDescription": "给未完成任务设上截止日期，最近的节点会排在这里最上面。",
     "dueLine": "截止 {date}",
     "dueOverdueLine": "截止 {date}，已逾期 {days} 天",
-    "viewAllTasks": "查看全部任务 · 前往看板 →",
+    "viewAllTasks": "查看全部任务 →",
     "todayHeader": "今天 · {month} 月 {day} 日 {weekday}",
     "badgeOverdue": "{count} 逾期",
     "badgeToday": "{count} 今天",
     "emptyTodayTitle": "今天没有到期或逾期的任务",
-    "emptyTodayDescription": "可以安心推进进行中的任务，或去看板查看任务全景。",
+    "emptyTodayDescription": "可以安心推进进行中的任务，或去「任务」查看全景。",
     "markCompleteAria": "标记完成：{title}",
     "me": "我",
     "sourceTeam": "团队",
@@ -856,18 +856,18 @@
     "sourcePersonalWithProject": "个人 · {name}",
     "dueOverdueBadge": "截止 {date} · 已逾期 {days} 天",
     "updateFailed": "更新失败，请重试",
-    "moreTasksFooter": "还有 {count} 项未完成任务（含未来截止）· 前往看板查看全部 →",
+    "moreTasksFooter": "还有 {count} 项未完成任务（含未来截止）· 查看全部 →",
     "listHintAria": "列表口径说明",
     "listHintSummary": "只保留今天该看的",
     "listHintTitle": "今天列表口径",
     "listHintItem1": "截止早于今天的逾期任务置顶；勾选完成后即从列表消失。",
-    "listHintItem2": "想按状态或项目翻看全部任务，去「看板」。",
+    "listHintItem2": "想按状态或项目翻看全部任务，去「任务」。",
     "unassignedHintAria": "未指派任务说明",
     "unassignedHintSummary": "未指派任务 {count} 项",
     "unassignedHintTitle": "未指派任务",
     "unassignedHintLead": "完整列表与指派引导已移至 ",
-    "unassignedHintLink": "看板",
-    "unassignedHintTail": "（空间级看板）。",
+    "unassignedHintLink": "任务",
+    "unassignedHintTail": "（空间级任务页）。",
     "milestonesPagerLabel": "重要节点翻页",
     "milestonesPrevPage": "上一页",
     "milestonesNextPage": "下一页",
@@ -1009,7 +1009,7 @@
     "zombieEmpty": "暂无僵尸任务。",
     "lastUpdatedLine": "最后更新 {date}，已停留 {days} 天",
     "stalledBadge": "停留 {days} 天",
-    "zombieFooter": "处理或关闭这些任务 · 前往看板 →",
+    "zombieFooter": "处理或关闭这些任务 →",
     "chartToday": "今天 {label}",
     "chartDoneValue": "完成 {value}",
     "chartCreatedValue": "新增 {value}",
@@ -1072,7 +1072,7 @@
   "landing": {
     "meta": {
       "title": "Open Doing — 个人与团队的任务管理",
-      "description": "个人待办与团队项目同处一个系统。看板、日历、提醒、数据分析,开箱即用。"
+      "description": "个人待办与团队项目同处一个系统。任务、日历、提醒、数据分析,开箱即用。"
     },
     "nav": {
       "features": "功能",
@@ -1090,7 +1090,7 @@
       "badge": "为小团队打造",
       "titleLine1": "把想法,",
       "titleLine2": "变成团队的每一天",
-      "subtitle": "个人待办与团队项目同处一个系统。看板、日历、提醒、数据分析,开箱即用。",
+      "subtitle": "个人待办与团队项目同处一个系统。任务、日历、提醒、数据分析,开箱即用。",
       "ctaStart": "免费开始使用",
       "ctaLogin": "登录",
       "trust": "免费使用 · 开箱即用 · 个人空间与团队空间一体",
@@ -1106,10 +1106,10 @@
           "body": "在办项目、整体进度、临期与逾期任务自动聚合;每个项目的健康状态按任务完成度实时计算,不用追问、不用催。",
           "alt": "仪表盘截图:项目健康度与重要节点"
         },
-        "kanban": {
-          "tag": "看板",
+        "tasks": {
+          "tag": "任务",
           "title": "拖一下,任务就动了",
-          "body": "待办、进行中、已完成三列看板,拖拽即流转;负责人、截止日、标签一目了然,团队谁在做什么,board 上见。",
+          "body": "看板、列表双视图,拖拽即流转;负责人、截止日、标签一目了然。",
           "alt": "看板截图:三列任务看板"
         },
         "calendar": {
@@ -1135,7 +1135,7 @@
       },
       "team": {
         "title": "小团队",
-        "body": "团队空间里按项目分工,看板协作、日历对齐、分析复盘;权限清清楚楚,成员只动自己的任务。"
+        "body": "团队空间里按项目分工,任务协作、日历对齐、分析复盘;权限清清楚楚,成员只动自己的任务。"
       }
     },
     "faq": {
