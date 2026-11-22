@@ -80,6 +80,13 @@ const EDITOR_ENTRANCE = {
   transition: { duration: 0.15, ease: "easeOut" as const },
 };
 
+/** 大块编辑器（描述）入场：纯淡入——288px 高的块带位移会把下方内容整体抖动。 */
+const FADE_ENTRANCE = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1 },
+  transition: { duration: 0.15, ease: "easeOut" as const },
+};
+
 /**
  * 概览主列（Linear 布局）：大标题 → 简述 → 属性行（可内联编辑 pills）→
  * 标签行 → 描述（内联编辑）→ 里程碑进度行（只读，CRUD 在侧栏）。
@@ -498,7 +505,7 @@ export function ProjectOverviewPanel({
       <div className="flex flex-col gap-2">
         <p className="text-[13px] font-medium text-[var(--color-text)]">{t("descriptionLabel")}</p>
         {editingField === "description" ? (
-          <motion.div {...EDITOR_ENTRANCE} className="flex flex-col gap-2">
+          <motion.div {...FADE_ENTRANCE} className="flex flex-col gap-2">
             <Textarea
               rows={12}
               value={draft}
@@ -535,7 +542,7 @@ export function ProjectOverviewPanel({
             type="button"
             data-testid="project-description-display"
             onClick={() => startEdit("description", project.description ?? "")}
-            className={`block min-h-36 whitespace-pre-wrap text-left text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:text-[var(--color-text)]" : "cursor-default"}`}
+            className={`block min-h-[18rem] whitespace-pre-wrap text-left text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:text-[var(--color-text)]" : "cursor-default"}`}
           >
             {project.description || t("descriptionHint")}
           </button>
