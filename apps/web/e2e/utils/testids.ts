@@ -69,6 +69,8 @@ export const TEST_IDS = {
     /** 双视图面板（两面板常驻，非激活面板 inert）。 */
     viewPanelBoard: "tasks-view-panel-board",
     viewPanelList: "tasks-view-panel-list",
+    /** 任务页列表视图表格（SpaceTaskTable）。 */
+    taskTable: "space-task-table",
   },
   calendar: {
     prevMonth: "calendar-prev-month",

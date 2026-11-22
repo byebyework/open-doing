@@ -70,11 +70,11 @@ export interface SpaceKanbanProps {
   expandFilter?: { projectSlug?: string; unassignedOnly?: boolean };
 }
 
-/** 看板列顺序。 */
-const STATUS_ORDER: readonly TaskStatus[] = ["todo", "in_progress", "done"];
+/** 看板列顺序（导出给列表视图的状态按钮组共用）。 */
+export const STATUS_ORDER: readonly TaskStatus[] = ["todo", "in_progress", "done"];
 
-/** 列头文案 key（`kanban` 命名空间），语言无关，渲染时翻译。 */
-const STATUS_KEYS: Record<TaskStatus, "colTodo" | "colInProgress" | "colDone"> = {
+/** 列头文案 key（`kanban` 命名空间），语言无关，渲染时翻译（列表视图共用）。 */
+export const STATUS_KEYS: Record<TaskStatus, "colTodo" | "colInProgress" | "colDone"> = {
   todo: "colTodo",
   in_progress: "colInProgress",
   done: "colDone",
@@ -113,7 +113,7 @@ function toLocalBoard(board: SpaceBoard | TeamSpaceBoard): LocalBoard {
 }
 
 /** Server Action 失败时取第一条可展示文案（兜底文案由调用方按语言传入）。 */
-function firstError(errors: Record<string, string>, fallback: string): string {
+export function firstError(errors: Record<string, string>, fallback: string): string {
   return errors.form ?? Object.values(errors)[0] ?? fallback;
 }
 
@@ -145,8 +145,9 @@ function completedThisWeek(completedAt: string, weekStart: string): boolean {
   );
 }
 
-/** 项目 tag：团队紫 / 个人薄荷；无项目的零散个人任务显示「个人」。 */
-function ProjectTag({
+/** 项目 tag：团队紫 / 个人薄荷；无项目的零散个人任务显示「个人」。
+ * 导出给列表视图（SpaceTaskTable）的项目列复用同一 pill 口径。 */
+export function ProjectTag({
   variant,
   projectName,
 }: {
@@ -176,7 +177,8 @@ function ProjectTag({
  * 逾期红「YYYY-MM-DD · 已逾期 N 天」/ 临期琥珀色「YYYY-MM-DD」/
  * 未来灰「YYYY-MM-DD」/ 无「—」；done 卡显示完成日期「YYYY-MM-DD 完成」。
  */
-function DueLabel({ card, today }: { card: BoardCard; today: string }) {
+/** 导出给列表视图（SpaceTaskTable）的截止列复用同一口径。 */
+export function DueLabel({ card, today }: { card: BoardCard; today: string }) {
   const t = useTranslations("kanban");
   if (card.status === "done") {
     return card.completedAt ? (

@@ -927,7 +927,9 @@
     "captionHintCount": "Counts update instantly with the filters.",
     "captionHintScopeTeam": "The team board counts unfinished tasks only.",
     "tabBoard": "Board",
-    "tabList": "List"
+    "tabList": "List",
+    "listEmptyTitle": "No tasks",
+    "listEmptyDescription": "No tasks match the current filters."
   },
   "calendar": {
     "calendar": "Calendar",
