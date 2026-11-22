@@ -81,7 +81,7 @@ features/
 ├── teams/      Teams, memberships, invites, roles and permission decisions
 ├── projects/   Project CRUD (project page header actions)
 ├── tasks/      Tasks, subtasks, comments, kanban status transitions
-├── kanban/     Space-level Kanban: cross-project aggregation, filters, done convergence
+├── kanban/     Tasks module's board/list view implementation: cross-project aggregation, filters, done convergence
 ├── calendar/   Space-level Calendar: month grid aggregated by due date, this-week / this-month due-soon lists
 ├── analysis/   Space-level Analysis: completion trends / throughput / member load / project health
 ├── personal/   Personal space: personal tasks (kanban/detail) and personal projects
@@ -172,9 +172,9 @@ app/
 - `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (personal space: Dashboard / Tasks / Calendar / Analysis, no settings entry; team space: the same four plus Settings, labeled 团队管理 (team management), route unchanged; the item arrays are hardcoded per space type and shared by the desktop sidebar and the mobile drawer; a separate account group holds the pending-invites entry), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + Radix Sheet drawer).
 - The desktop sidebar and the mobile Drawer share the same navigation tree; `(dashboard)/layout.tsx` imports are adjusted accordingly.
 
-### 5.3 Space-level Kanban
+### 5.3 Space-level Tasks (Kanban board / list views)
 
-One set of components for both spaces (`features/kanban/`; `SpaceKanban` distinguishes personal/team via `variant`):
+One set of components for both spaces (`features/kanban/`, the tasks module's view implementation directory; `SpaceKanban` distinguishes personal/team via `variant`):
 
 | Route | Data scope |
 |---|---|
@@ -192,7 +192,7 @@ URL query contract (filter state lives in the URL; the RSC filters the three col
 - Columns are fixed: `todo / in_progress / done`; the done column converges by default to the last 7 days (`updatedAt >= today-6`), with an in-place "show N older completed" toggle that is reversible. The expanded state is **not in the URL** (ephemeral view state); any action that triggers `router.refresh()` (drag, mobile status button) resets the expanded view back to 7 days.
 - Dragging only changes status, never project ownership; permissions follow `canEditTask` (a team member cannot drag others'/unassigned cards); below 861px dragging is disabled in favor of in-card status buttons.
 - The expansion fetches via Server Action `getOlderDoneTasksAction` (`features/kanban/actions.ts`): the personal branch calls `requireUser()`, the team branch calls `getCurrentUser()` + membership check; filter params (`projectSlug` / `unassignedOnly`) are re-resolved to ids inside the action, invalid slugs ignored likewise.
-- The team kanban header's "＋ New project" renders only for owner / admin, matching the gate on `/space/{teamSlug}/projects/new`.
+- The team tasks page header's "＋ New project" renders only for owner / admin, matching the gate on `/space/{teamSlug}/projects/new`.
 
 ### 5.4 Space-level Calendar
 

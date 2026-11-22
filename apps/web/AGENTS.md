@@ -27,8 +27,9 @@ The only application in the monorepo: pages + Server Actions + Route Handlers + 
 ```
 app/            Routes: page.tsx (landing for anonymous / redirect for logged in),
                 (auth)/, (dashboard)/, api/cron/. (dashboard) is guarded by requireUser()
-features/       Domain modules: auth, users, teams, projects, tasks, kanban,
-                calendar, analysis, notifications, personal, dashboard, landing.
+features/       Domain modules: auth, users, teams, projects, tasks, kanban
+                (the tasks module's view implementation directory), calendar,
+                analysis, notifications, personal, dashboard, landing.
                 Each has actions.ts (Server Actions) / service.ts (data access +
                 business rules) / components/ — landing is the exception (showcase
                 components + one anonymous locale action, no service/DB access)
