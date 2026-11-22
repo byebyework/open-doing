@@ -167,40 +167,44 @@ export function TaskListFilters() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <button
-            type="button"
-            data-testid="list-filter-project"
-            className={triggerClass(filters.projectId !== "all")}
-          >
-            <span className="text-[var(--ink-400)]">
-              {t("filterProjectLabel")}
-            </span>
-            <span className="max-w-[120px] truncate font-medium">
-              {projectLabel}
-            </span>
-            <ChevronDownIcon aria-hidden className="size-3.5 opacity-60" />
-          </button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="min-w-[160px]">
-          <FilterOption
-            testid="list-filter-project-option-all"
-            label={t("filterAll")}
-            selected={filters.projectId === "all"}
-            onSelect={() => setFilter({ projectId: "all" })}
-          />
-          {projects.map((project) => (
+      {/* 项目下拉只在项目池非空时渲染：零项目空间（个人散任务）仍保留
+          状态 / 优先级筛选。 */}
+      {projects.length > 0 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-testid="list-filter-project"
+              className={triggerClass(filters.projectId !== "all")}
+            >
+              <span className="text-[var(--ink-400)]">
+                {t("filterProjectLabel")}
+              </span>
+              <span className="max-w-[120px] truncate font-medium">
+                {projectLabel}
+              </span>
+              <ChevronDownIcon aria-hidden className="size-3.5 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[160px]">
             <FilterOption
-              key={project.id}
-              testid={`list-filter-project-option-${project.id}`}
-              label={project.name}
-              selected={filters.projectId === project.id}
-              onSelect={() => setFilter({ projectId: project.id })}
+              testid="list-filter-project-option-all"
+              label={t("filterAll")}
+              selected={filters.projectId === "all"}
+              onSelect={() => setFilter({ projectId: "all" })}
             />
-          ))}
-        </DropdownMenuContent>
-      </DropdownMenu>
+            {projects.map((project) => (
+              <FilterOption
+                key={project.id}
+                testid={`list-filter-project-option-${project.id}`}
+                label={project.name}
+                selected={filters.projectId === project.id}
+                onSelect={() => setFilter({ projectId: project.id })}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
     </div>
   );
 }

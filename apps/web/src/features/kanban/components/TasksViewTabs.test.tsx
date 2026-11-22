@@ -1,7 +1,7 @@
 /**
  * @vitest-environment jsdom
  */
-import { act } from "react";
+import { act, type ReactNode } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -9,6 +9,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import en from "@/i18n/messages/en.json";
 import zh from "@/i18n/messages/zh.json";
 
+import { useListFilters } from "../list-filters-context";
+import { filterTaskRows } from "../sort-task-rows";
 import { TasksViewTabs, type TasksView } from "./TasksViewTabs";
 
 /** 筛选下拉依赖的项目池（id/name/slug，页面同款形状）。 */
@@ -65,6 +67,7 @@ afterEach(() => {
 function renderTabs(
   initialView: TasksView = "board",
   projects?: { id: string; name: string; slug: string }[],
+  listSlot: ReactNode = <div data-testid="slot-list">列表内容</div>,
 ): void {
   act(() => {
     root.render(
@@ -73,7 +76,7 @@ function renderTabs(
           initialView={initialView}
           projects={projects}
           board={<div data-testid="slot-board">看板内容</div>}
-          list={<div data-testid="slot-list">列表内容</div>}
+          list={listSlot}
         />
       </NextIntlClientProvider>,
     );
@@ -94,6 +97,68 @@ function panel(name: TasksView): HTMLElement {
 
 function filterTrigger(field: keyof typeof FILTER_SELECTOR): HTMLElement | null {
   return container.querySelector<HTMLElement>(FILTER_SELECTOR[field]);
+}
+
+/** 列表槽探针夹具：一行 todo、一行 done，供 filterTaskRows 演示行收窄。 */
+const PROBE_ROWS = [
+  { status: "todo" as const, priority: "high" as const, projectId: "proj-a" },
+  { status: "done" as const, priority: "low" as const, projectId: "proj-b" },
+];
+
+/**
+ * 列表槽探针：读 provider 的筛选 state，并用 filterTaskRows 算可见行数，
+ * 让「切 tab 重置筛选」同时钉住 state 与派生的行结果（不限触发器文案）。
+ */
+function FilterProbe() {
+  const { filters } = useListFilters();
+  return (
+    <div>
+      <span data-testid="filter-probe-status">{filters.status}</span>
+      <span data-testid="filter-probe-rows">
+        {filterTaskRows(PROBE_ROWS, filters).length}
+      </span>
+    </div>
+  );
+}
+
+function probeStatus(): string | null {
+  return (
+    container.querySelector('[data-testid="filter-probe-status"]')
+      ?.textContent ?? null
+  );
+}
+
+function probeRowCount(): number | null {
+  const text = container.querySelector('[data-testid="filter-probe-rows"]')
+    ?.textContent;
+  return text ? Number(text) : null;
+}
+
+/** 打开筛选下拉（Radix DropdownMenu 由 pointerdown 触发）。 */
+function openFilterMenu(field: keyof typeof FILTER_SELECTOR): void {
+  const trigger = filterTrigger(field);
+  if (!trigger) throw new Error(`missing ${field} filter trigger`);
+  act(() => {
+    trigger.dispatchEvent(
+      new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
+    );
+  });
+}
+
+/** 点选筛选菜单项；菜单挂在 document.body（portal）。 */
+function clickFilterOption(
+  field: keyof typeof FILTER_SELECTOR,
+  value: string,
+): void {
+  const option = document.body.querySelector<HTMLElement>(
+    `[data-testid="list-filter-${field}-option-${value}"]`,
+  );
+  if (!option) throw new Error(`missing ${field} option ${value}`);
+  act(() => {
+    option.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+  });
 }
 
 /** 最近一次 replaceState 调用的 URL（组件传的是 URL 对象，统一转字符串比对）。 */
@@ -282,12 +347,51 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(filterTrigger("status")).toBeNull();
   });
 
-  it("未传 projects（或空数组）：列表视图不渲染筛选组", () => {
-    renderTabs("list");
-    expect(filterTrigger("status")).toBeNull();
+  it("零项目空间（未传 projects / 空数组）：状态 + 优先级照常渲染，仅无项目下拉", () => {
+    // 个人空间可只有散任务而无项目：筛选组不得整体消失，否则连状态 /
+    // 优先级都无法筛选（生产回归：曾经按 projects?.length 整体门控）。
+    const projectPools: ({ id: string; name: string; slug: string }[] | undefined)[] =
+      [undefined, []];
+    for (const projects of projectPools) {
+      renderTabs("list", projects);
 
-    renderTabs("list", []);
-    expect(filterTrigger("status")).toBeNull();
+      expect(filterTrigger("status")).not.toBeNull();
+      expect(filterTrigger("priority")).not.toBeNull();
+      expect(filterTrigger("project")).toBeNull();
+      // 状态 / 优先级初始值仍为「全部」。
+      expect(filterTrigger("status")?.textContent).toContain(zh.kanban.filterAll);
+      expect(filterTrigger("priority")?.textContent).toContain(
+        zh.kanban.filterAll,
+      );
+    }
+  });
+
+  it("切换 tab 重置本地筛选：状态筛选在看板 ↔ 列表往返后归零", () => {
+    renderTabs("list", PROJECTS, <FilterProbe />);
+
+    // 初始：筛选为「全部」，两行都在。
+    expect(filterTrigger("status")?.textContent).toContain(zh.kanban.filterAll);
+    expect(probeStatus()).toBe("all");
+    expect(probeRowCount()).toBe(2);
+
+    openFilterMenu("status");
+    clickFilterOption("status", "todo");
+
+    // 选中待办：触发器不再显示「全部」，探针只剩待办那一行。
+    expect(filterTrigger("status")?.textContent).not.toContain(
+      zh.kanban.filterAll,
+    );
+    expect(filterTrigger("status")?.textContent).toContain(zh.kanban.colTodo);
+    expect(probeStatus()).toBe("todo");
+    expect(probeRowCount()).toBe(1);
+
+    // 切到看板（重置筛选）再切回列表：触发器回到「全部」，行恢复全量。
+    click(tab("board"));
+    click(tab("list"));
+
+    expect(filterTrigger("status")?.textContent).toContain(zh.kanban.filterAll);
+    expect(probeStatus()).toBe("all");
+    expect(probeRowCount()).toBe(2);
   });
 
   it("筛选文案键在 zh / en 消息包中都存在", () => {

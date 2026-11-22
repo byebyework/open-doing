@@ -24,7 +24,7 @@ export interface TasksViewTabsProps {
   board: ReactNode;
   /** 列表视图内容（RSC 传入）。 */
   list: ReactNode;
-  /** 列表视图本地筛选的项目池（RSC 传入）；非空且列表激活时渲染右侧筛选组。 */
+  /** 列表视图本地筛选的项目池（RSC 传入）；列表激活时渲染右侧筛选组。 */
   projects?: { id: string; name: string; slug: string }[];
 }
 
@@ -164,9 +164,9 @@ export function TasksViewTabs({
               );
             })}
           </div>
-          {/* 右侧本地筛选：仅列表视图且项目池非空时渲染；flex-wrap 让
-              375px 下筛选组折到 tab 行下方。 */}
-          {view === "list" && projects?.length ? (
+          {/* 右侧本地筛选：列表视图即渲染（无项目时仅有状态 / 优先级）；
+              flex-wrap 让 375px 下筛选组折到 tab 行下方。 */}
+          {view === "list" ? (
             <div className="ml-auto">
               <TaskListFilters />
             </div>

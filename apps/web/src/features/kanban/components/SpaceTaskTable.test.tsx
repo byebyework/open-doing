@@ -707,4 +707,108 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
       "待办行",
     );
   });
+
+  /** 两行同状态夹具：供「筛选生效时切换状态」的成功 / 失败两条路径共用。 */
+  function twoTodoRows(): KanbanCardItem[] {
+    return [
+      personalRow({
+        id: "f-a",
+        title: "待办一",
+        status: "todo",
+        dueDate: "2026-11-20",
+      }),
+      personalRow({
+        id: "f-b",
+        title: "待办二",
+        status: "todo",
+        dueDate: "2026-11-21",
+      }),
+    ];
+  }
+
+  it("状态筛选生效时切换状态：乐观更新把行移出列表，成功后保持移出", async () => {
+    let resolveAction: (value: { ok: true; data: object }) => void = () => {};
+    updatePersonalTaskAction.mockReturnValue(
+      new Promise<{ ok: true; data: object }>((resolve) => {
+        resolveAction = resolve;
+      }),
+    );
+    renderPersonalWithFilters(
+      { ...DEFAULT_LIST_FILTERS, status: "todo" },
+      twoTodoRows(),
+    );
+    expect(bodyRows()).toHaveLength(2);
+
+    openStatusMenu(0);
+    await act(async () => {
+      clickStatusItem("in_progress");
+      await Promise.resolve();
+    });
+
+    // 乐观状态把第一行变为进行中：status=todo 筛选立即把它移出列表。
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0].querySelector("td:first-child")?.textContent).toBe(
+      "待办二",
+    );
+    expect(updatePersonalTaskAction).toHaveBeenCalledWith("f-a", {
+      status: "in_progress",
+    });
+
+    // action 成功：行保持移出（不会因回滚 / 刷新重新出现在 todo 列表）。
+    await act(async () => {
+      resolveAction({ ok: true, data: {} });
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0].querySelector("td:first-child")?.textContent).toBe(
+      "待办二",
+    );
+    expect(refresh).toHaveBeenCalled();
+    expect(toastError).not.toHaveBeenCalled();
+  });
+
+  it("状态筛选生效时切换状态失败：回滚后行重新进入筛选列表", async () => {
+    let resolveAction: (value: {
+      ok: false;
+      errors: Record<string, string>;
+    }) => void = () => {};
+    updatePersonalTaskAction.mockReturnValue(
+      new Promise<{ ok: false; errors: Record<string, string> }>((resolve) => {
+        resolveAction = resolve;
+      }),
+    );
+    renderPersonalWithFilters(
+      { ...DEFAULT_LIST_FILTERS, status: "todo" },
+      twoTodoRows(),
+    );
+    expect(bodyRows()).toHaveLength(2);
+
+    openStatusMenu(0);
+    await act(async () => {
+      clickStatusItem("in_progress");
+      await Promise.resolve();
+    });
+
+    // pending 期间同样先按乐观状态移出。
+    expect(bodyRows()).toHaveLength(1);
+
+    await act(async () => {
+      resolveAction({ ok: false, errors: { form: "没有权限执行该操作" } });
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    // 回滚把状态改回 todo：行重新进入 status=todo 的筛选列表。
+    expect(bodyRows()).toHaveLength(2);
+    expect(
+      Array.from(document.querySelectorAll("tbody tr td:first-child")).map(
+        (td) => td.textContent,
+      ),
+    ).toEqual(["待办一", "待办二"]);
+    expect(toastError).toHaveBeenCalled();
+    expect(refresh).not.toHaveBeenCalled();
+  });
 });
