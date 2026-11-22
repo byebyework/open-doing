@@ -11,8 +11,8 @@ import type { AppLocale } from "@/i18n/config";
 import zh from "@/i18n/messages/zh.json";
 
 /**
- * 空间级任务表格探针：沿用 ProjectTaskTable.test.tsx 的 jsdom + React 官方
- * act 最小探针写法（仓库 vitest 是 node 环境、无 @testing-library）。
+ * 空间级任务表格探针：jsdom + React 官方 act 的最小探针写法
+ * （仓库 vitest 是 node 环境、无 @testing-library）。
  * Server Actions 与 sonner 走 vi.hoisted mock，断言入参形状与回滚路径。
  */
 

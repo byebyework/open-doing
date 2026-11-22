@@ -19,15 +19,14 @@ import {
  * <= window.innerWidth`，即页面本身不横向溢出。
  *
  * 豁免清单（均为仓库既有的「卡内横滚」模式：`min-w-0 overflow-x-auto`
- * 包裹 `min-w-[680px]` / `min-w-[860px]` 的表格，表格在卡片内横向滚动，
- * 页面本身不横向溢出；见
- * `features/personal/tasks/components/ProjectTaskTable.tsx`、
- * `features/tasks/components/TeamProjectTaskTable.tsx`）：
+ * 包裹宽于容器的表格，表格在卡片内横向滚动，页面本身不横向溢出）：
  *
- * - `/space/personal/projects/[slug]`（列表视图）：一张 `ProjectTaskTable`；
- * - `/space/[teamSlug]/projects/[projectSlug]`（列表视图）：一张
- *   `TeamProjectTaskTable`；
+ * - `/space/{spaceRef}/tasks?view=list`（个人 / 团队任务模块列表视图）：一张
+ *   `SpaceTaskTable`（`min-w-[920px]` 表格 + overflow-x-auto）；
  * - `/space/[teamSlug]/settings`：一张 `MemberList` 成员表（同模式包裹）。
+ *
+ * 项目页已收敛为概览（任务列表 / 看板在任务模块），其 375px 覆盖相应改为
+ * 项目概览页本体 + 任务模块的看板 / 列表两个视图。
  *
  * v1.1 的 `/space/personal/dashboard` 改为统计卡 +「今天」任务列表，
  * 不再有表格，因此不再需要豁免。
@@ -46,20 +45,12 @@ interface InCardScrollExemption {
   reason: string;
 }
 
-/** `/space/personal/projects/[slug]`：一张卡内横滚表格。 */
-const PERSONAL_PROJECT_TABLE: InCardScrollExemption = {
+/** `/space/{spaceRef}/tasks?view=list`：一张卡内横滚表格。 */
+const SPACE_TASK_TABLE: InCardScrollExemption = {
   container: "div.overflow-x-auto",
   count: 1,
   reason:
-    "ProjectTaskTable 在卡片内横向滚动（min-w-[680px] 表格 + overflow-x-auto），页面不横向溢出",
-};
-
-/** `/space/[teamSlug]/projects/[projectSlug]`：一张卡内横滚表格。 */
-const TEAM_PROJECT_TABLE: InCardScrollExemption = {
-  container: "div.overflow-x-auto",
-  count: 1,
-  reason:
-    "TeamProjectTaskTable 在卡片内横向滚动（min-w-[860px] 表格 + overflow-x-auto），页面不横向溢出",
+    "SpaceTaskTable 在卡片内横向滚动（min-w-[920px] 表格 + overflow-x-auto），页面不横向溢出",
 };
 
 /** `/space/[teamSlug]/settings`：成员表（同一卡内横滚模式）。 */
@@ -322,9 +313,11 @@ test.describe("375px 无横向溢出", () => {
         await teamTaskDialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
         await expect(teamTaskDialog).toBeHidden();
 
-        // 项目页默认「概览」视图不渲染任务列表：切「列表」再点任务链接。
-        await pageA.getByRole("tab", { name: "列表" }).click();
+        // 项目页已收敛为概览（不渲染任务列表）：到团队任务模块「列表」视图
+        // 点任务链接。
+        await pageA.goto(`${data.teamPath}/tasks?view=list`);
         await pageA
+          .getByTestId(TEST_IDS.kanban.taskTable)
           .getByRole("link", { name: data.teamTaskTitle, exact: true })
           .click();
         await expect(pageA).toHaveURL(
@@ -419,14 +412,17 @@ test.describe("375px 无横向溢出", () => {
         path: () => "/space/personal/dashboard",
       },
       {
-        name: "/space/personal/projects/[projectSlug]（列表）",
-        // 项目页默认「概览」视图：显式带 ?view=list 才是待测的列表视图。
-        path: () => `${data.personalProjectPath}?view=list`,
-        exemptions: [PERSONAL_PROJECT_TABLE],
+        name: "/space/personal/projects/[projectSlug]（概览）",
+        path: () => data.personalProjectPath,
       },
       {
-        name: "/space/personal/projects/[projectSlug]?view=board（看板）",
-        path: () => `${data.personalProjectPath}?view=board`,
+        name: "/space/personal/tasks?view=list（列表）",
+        path: () => "/space/personal/tasks?view=list",
+        exemptions: [SPACE_TASK_TABLE],
+      },
+      {
+        name: "/space/personal/tasks（看板）",
+        path: () => "/space/personal/tasks",
       },
       {
         name: "/space/personal/tasks/[taskId]",
@@ -454,14 +450,17 @@ test.describe("375px 无横向溢出", () => {
         path: () => `${data.teamPath}/projects/new`,
       },
       {
-        name: "/space/[teamSlug]/projects/[projectSlug]（列表）",
-        // 项目页默认「概览」视图：显式带 ?view=list 才是待测的列表视图。
-        path: () => `${data.teamProjectPath}?view=list`,
-        exemptions: [TEAM_PROJECT_TABLE],
+        name: "/space/[teamSlug]/projects/[projectSlug]（概览）",
+        path: () => data.teamProjectPath,
       },
       {
-        name: "/space/[teamSlug]/projects/[projectSlug]?view=board（看板）",
-        path: () => `${data.teamProjectPath}?view=board`,
+        name: "/space/[teamSlug]/tasks?view=list（列表）",
+        path: () => `${data.teamPath}/tasks?view=list`,
+        exemptions: [SPACE_TASK_TABLE],
+      },
+      {
+        name: "/space/[teamSlug]/tasks（看板）",
+        path: () => `${data.teamPath}/tasks`,
       },
       {
         name: "/space/[teamSlug]/projects/[projectSlug]/tasks/[taskId]",
@@ -482,25 +481,33 @@ test.describe("375px 无横向溢出", () => {
           page.getByRole("heading", { name: /^今天 · / }),
         ).toBeVisible();
       },
-      "/space/personal/projects/[projectSlug]（列表）": async (page) => {
+      "/space/personal/projects/[projectSlug]（概览）": async (page) => {
         await expect(
           page.getByRole("heading", {
             name: data.personalProjectName,
             level: 1,
           }),
         ).toBeVisible();
+      },
+      "/space/personal/tasks?view=list（列表）": async (page) => {
+        const table = page.getByTestId(TEST_IDS.kanban.taskTable);
+        await expect(table).toBeVisible();
         await expect(
-          page.getByRole("link", { name: data.personalTaskTitle, exact: true }),
+          table.getByRole("link", {
+            name: data.personalTaskTitle,
+            exact: true,
+          }),
         ).toBeVisible();
       },
-      "/space/personal/projects/[projectSlug]?view=board（看板）": async (
-        page,
-      ) => {
+      "/space/personal/tasks（看板）": async (page) => {
         await expect(
-          page.getByTestId(TEST_IDS.kanban.columnTodo),
+          page.getByTestId(TEST_IDS.kanban.spaceColumnTodo),
         ).toBeVisible();
+        // 双视图后看板卡片与列表行同屏（非激活面板常驻）：锚定看板面板。
         await expect(
-          page.getByText(data.personalTaskTitle, { exact: true }),
+          page
+            .getByTestId(TEST_IDS.kanban.viewPanelBoard)
+            .getByText(data.personalTaskTitle, { exact: true }),
         ).toBeVisible();
       },
       "/space/personal/tasks/[taskId]": async (page) => {
@@ -553,25 +560,30 @@ test.describe("375px 无横向溢出", () => {
           page.getByRole("heading", { name: "新建项目", level: 1 }),
         ).toBeVisible();
       },
-      "/space/[teamSlug]/projects/[projectSlug]（列表）": async (page) => {
+      "/space/[teamSlug]/projects/[projectSlug]（概览）": async (page) => {
         await expect(
           page.getByRole("heading", {
             name: data.teamProjectName,
             level: 1,
           }),
         ).toBeVisible();
+      },
+      "/space/[teamSlug]/tasks?view=list（列表）": async (page) => {
+        const table = page.getByTestId(TEST_IDS.kanban.taskTable);
+        await expect(table).toBeVisible();
         await expect(
-          page.getByRole("link", { name: data.teamTaskTitle, exact: true }),
+          table.getByRole("link", { name: data.teamTaskTitle, exact: true }),
         ).toBeVisible();
       },
-      "/space/[teamSlug]/projects/[projectSlug]?view=board（看板）": async (
-        page,
-      ) => {
+      "/space/[teamSlug]/tasks（看板）": async (page) => {
         await expect(
-          page.getByTestId(TEST_IDS.kanban.columnTodo),
+          page.getByTestId(TEST_IDS.kanban.spaceColumnTodo),
         ).toBeVisible();
+        // 双视图后看板卡片与列表行同屏（非激活面板常驻）：锚定看板面板。
         await expect(
-          page.getByText(data.teamTaskTitle, { exact: true }),
+          page
+            .getByTestId(TEST_IDS.kanban.viewPanelBoard)
+            .getByText(data.teamTaskTitle, { exact: true }),
         ).toBeVisible();
       },
       "/space/[teamSlug]/projects/[projectSlug]/tasks/[taskId]": async (

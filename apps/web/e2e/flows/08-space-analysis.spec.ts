@@ -5,6 +5,7 @@ import {
   createPersonalProject,
   createPersonalTask,
   openPersonalProject,
+  personalProjectSlug,
   registerUser,
   shanghaiToday,
   uniqueLabel,
@@ -184,14 +185,22 @@ test.describe("flow 8: 空间级 Analysis", () => {
       page.getByRole("heading", { name: projectName, level: 1 }),
     ).toBeVisible({ timeout: 30_000 });
 
-    await createTeamTask(page, {
-      title: doneTaskTitle,
-      dueDate: shiftDate(today, -1),
-    });
-    await createTeamTask(page, {
-      title: activeTaskTitle,
-      dueDate: shiftDate(today, 3),
-    });
+    await createTeamTask(
+      page,
+      {
+        title: doneTaskTitle,
+        dueDate: shiftDate(today, -1),
+      },
+      { teamSlug, projectName },
+    );
+    await createTeamTask(
+      page,
+      {
+        title: activeTaskTitle,
+        dueDate: shiftDate(today, 3),
+      },
+      { teamSlug, projectName },
+    );
 
     // 窄屏卡内状态按钮（flow 6 同款路径，不用不稳定的 dnd 拖拽）。
     await page.setViewportSize({ width: 375, height: 812 });
@@ -323,12 +332,16 @@ function cardStatusButton(
  * 在团队项目页经「新建任务」弹窗创建任务。
  *
  * 沿 flow 6 的团队建任务路径；弹窗的截止日期是原生 date input，可直接
- * `fill("YYYY-MM-DD")`（个人任务 helper 同款）。
+ * `fill("YYYY-MM-DD")`（个人任务 helper 同款）。项目页已收敛为概览（不渲染
+ * 任务列表）：创建后到团队任务模块「列表」视图断言任务行出现，再回项目页。
  */
 async function createTeamTask(
   page: Page,
   input: { title: string; dueDate?: string },
+  context: { teamSlug: string; projectName: string },
 ): Promise<void> {
+  const projectSlug = personalProjectSlug(context.projectName);
+
   await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
   const dialog = page.getByRole("dialog");
@@ -342,11 +355,15 @@ async function createTeamTask(
   await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
-  // 项目页默认「概览」视图不渲染任务列表：切「列表」再断言任务行。
-  await page.getByRole("tab", { name: "列表" }).click();
+  await page.goto(
+    `/space/${context.teamSlug}/tasks?view=list&project=${projectSlug}`,
+  );
   await expect(
-    page.getByRole("link", { name: input.title, exact: true }),
+    page
+      .getByTestId(TEST_IDS.kanban.taskTable)
+      .getByRole("link", { name: input.title, exact: true }),
   ).toBeVisible();
+  await page.goto(`/space/${context.teamSlug}/projects/${projectSlug}`);
 }
 
 /**

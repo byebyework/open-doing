@@ -212,7 +212,7 @@ export function SpaceTaskTable({
     );
   }
 
-  // th 样式照抄 TeamProjectTaskTable；列序按任务页列表原型（无操作列）。
+  // 列序按任务页列表原型（无操作列）。
   const columns: { label: string; className: string }[] = [
     { label: t("colTask"), className: "" },
     { label: t("projectLabel"), className: "min-w-[110px]" },

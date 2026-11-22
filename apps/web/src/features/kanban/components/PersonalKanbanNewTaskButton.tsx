@@ -22,7 +22,10 @@ export function PersonalKanbanNewTaskButton({
 
   return (
     <>
-      <Button onClick={() => setOpen(true)}>{t("newTaskButton")}</Button>
+      {/* testid 与项目页/弹窗系新建任务按钮同名字面量（e2e 契约见 utils/testids.ts）。 */}
+      <Button data-testid="new-task-button" onClick={() => setOpen(true)}>
+        {t("newTaskButton")}
+      </Button>
 
       <NewTaskModal
         open={open}

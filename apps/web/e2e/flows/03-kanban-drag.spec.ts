@@ -5,17 +5,20 @@ import {
   createPersonalProject,
   createPersonalTask,
   openPersonalProject,
+  personalProjectSlug,
   registerUser,
   uniqueLabel,
   uniqueUsername,
 } from "../utils/flows";
 
 /**
- * 关键流 3：看板拖卡。
+ * 关键流 3：看板拖卡（空间看板）。
  *
- * 用 `page.mouse` 按下 → 移动 → 释放，模拟 @dnd-kit 的 PointerSensor；
- * 把「未开始」列的任务拖到「进行中」列，断言列归属变化，并通过刷新页面
- * 确认状态已写入数据库。
+ * 项目页已收敛为概览：任务看板在 `/space/personal/tasks`（`?project={slug}`
+ * 可按项目过滤，页头「新建任务」弹窗默认选中当前项目），建卡经任务模块
+ * 页头弹窗。用 `page.mouse` 按下 → 移动 → 释放模拟 @dnd-kit 的
+ * PointerSensor，把「未开始」列的任务拖到「进行中」列，断言列归属变化，
+ * 并通过刷新页面确认状态已写入数据库。
  */
 test.describe("flow 3: 看板拖拽", () => {
   test("拖到下一列后任务状态持久化", async ({ page }) => {
@@ -25,20 +28,16 @@ test.describe("flow 3: 看板拖拽", () => {
 
     await registerUser(page, username);
     await createPersonalProject(page, projectName);
-    await openPersonalProject(page, projectName);
 
-    const projectPath = new URL(page.url()).pathname;
-
-    // 直接用 ?view=board 进入看板再建卡：概览页不展示任务链接（详情页重构后），
-    // 卡片以拉伸链接呈现（getByRole("link") 可定位）。
-    await page.goto(`${projectPath}?view=board`);
+    // 任务模块看板按项目过滤：建卡助手收尾停在「列表」视图断言任务行，
+    // 拖拽前回到看板视图。
+    const boardPath = `/space/personal/tasks?project=${personalProjectSlug(projectName)}`;
+    await page.goto(boardPath);
     await createPersonalTask(page, { title: taskTitle });
+    await page.goto(boardPath);
 
-    // 播种助手收尾会切到「列表」视图断言任务行：拖拽前回到看板视图。
-    await page.goto(`${projectPath}?view=board`);
-
-    const todoColumn = page.getByTestId(TEST_IDS.kanban.columnTodo);
-    const inProgressColumn = page.getByTestId(TEST_IDS.kanban.columnInProgress);
+    const todoColumn = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
+    const inProgressColumn = page.getByTestId(TEST_IDS.kanban.spaceColumnInProgress);
 
     // 卡片以任务标题作为 aria-label（数据驱动定位，与文案无关）。
     const card = todoColumn.getByLabel(taskTitle);
@@ -75,13 +74,13 @@ test.describe("flow 3: 看板拖拽", () => {
       await page.reload();
       await expect(
         page
-          .getByTestId(TEST_IDS.kanban.columnInProgress)
+          .getByTestId(TEST_IDS.kanban.spaceColumnInProgress)
           .getByText(taskTitle, { exact: true }),
       ).toBeVisible();
       await expect(
-        page.getByTestId(TEST_IDS.kanban.columnTodo).getByText(taskTitle, {
-          exact: true,
-        }),
+        page
+          .getByTestId(TEST_IDS.kanban.spaceColumnTodo)
+          .getByText(taskTitle, { exact: true }),
       ).toHaveCount(0);
     }).toPass();
   });

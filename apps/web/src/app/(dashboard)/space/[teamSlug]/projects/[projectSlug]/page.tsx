@@ -16,47 +16,33 @@ import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPr
 import {
   buildProjectProgressPercent,
   listTeamProjectMembers,
-  listTeamProjectMilestones,
   listProjectMilestonesWithProgress,
 } from "@/features/projects/service";
-import {
-  TeamProjectHeader,
-  type TeamProjectView,
-} from "@/features/tasks/components/TeamProjectHeader";
-import { TeamProjectTaskTable } from "@/features/tasks/components/TeamProjectTaskTable";
-import { TeamKanban } from "@/features/tasks/components/TeamKanban";
+import { TeamProjectHeader } from "@/features/tasks/components/TeamProjectHeader";
 import { listTags } from "@/features/tags/service";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
-import { teamProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 interface TeamProjectPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
   params: Promise<{ teamSlug: string; projectSlug: string }>;
-  /** Next 16：searchParams 同样为 Promise。 */
-  searchParams: Promise<{ view?: string | string[] }>;
 }
 
 /**
- * 团队项目页（J-3）：列表视图；看板在 J-4 接入 `?view=board`。
+ * 团队项目页（J-3）：仅概览。
  *
- * 团队不存在、非成员、项目不属于该团队一律 404，不泄露存在性。
- * 页面保持 RSC：读取项目、任务、团队成员与项目选项；交互全部下沉到
- * `"use client"` 组件。
+ * 任务列表 / 看板已收敛到团队任务模块（`/space/{teamSlug}/tasks`，URL 契约
+ * `?view=list&project={slug}` / `?project={slug}`）。团队不存在、非成员、
+ * 项目不属于该团队一律 404，不泄露存在性。页面保持 RSC：读取项目、任务
+ * （进度用）、团队成员与项目选项；交互全部下沉到 `"use client"` 组件。
  */
 export default async function TeamProjectPage({
   params,
-  searchParams,
 }: TeamProjectPageProps) {
   const { teamSlug, projectSlug } = await params;
-  const { view: viewParam } = await searchParams;
-  const t = await getTranslations("projects");
   const tCommon = await getTranslations("common");
-  const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-  const view: TeamProjectView =
-    requestedView === "board" || requestedView === "list" ? requestedView : "overview";
 
   const user = await requireUser();
   const team = await getTeamBySlug(teamSlug);
@@ -91,11 +77,7 @@ export default async function TeamProjectPage({
     id: member.id,
     name: displayName(member),
   }));
-  const participantCount = new Set(
-    tasks.map((task) => task.assigneeId).filter((id): id is string => id !== null),
-  ).size;
   const today = todayInShanghai();
-  const projectPath = teamProjectHref(team.slug, project.slug);
   // 面板用项目快照：members 由 listTeamProjectMembers 装载（getTeamProjectBySlug 不带成员），
   // Properties 卡据此回显成员；否则保存刷新后回显未设置。
   const detailProject = { ...project, members: projectMembers };
@@ -113,12 +95,10 @@ export default async function TeamProjectPage({
         </strong>
       </nav>
 
+      {/* 概览页 PageHeader 不带标题（title 显式 undefined）：概览面板内的项目名是唯一 h1。 */}
       <PageHeader
         className="mt-2"
-        title={view === "overview" ? undefined : project.name}
-        subtitle={view === "overview" ? undefined : `${view === "board"
-          ? t("boardDragHint")
-          : t("teamProjectMeta", { tasks: tasks.length, members: participantCount })}${project.startDate && project.endDate ? ` · ${t("dateRange")}: ${project.startDate} → ${project.endDate}` : ""}`}
+        title={undefined}
         actions={
           <TeamProjectHeader
             teamId={team.id}
@@ -134,23 +114,15 @@ export default async function TeamProjectPage({
               memberIds: projectMembers.map((m) => m.id),
               tags: project.tags,
             }}
-            projectPath={projectPath}
-            view={view}
             projects={projectOptions}
             members={members}
             actorId={user.id}
-            canManage={can(membership.role, "team:manage_projects")}
             tagPool={taskTagPool}
-            projectTagPool={projectTagPool}
-            memberPool={memberRoster}
-            displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
-            displayMembers={projectMembers}
           />
         }
       />
 
       <ProjectDetailLayout
-        view={view}
         sidebar={
           <>
             <ProjectPropertiesPanel
@@ -177,49 +149,16 @@ export default async function TeamProjectPage({
           </>
         }
       >
-        {view === "overview" ? (
-          <div className="mt-5">
-            <ProjectOverviewPanel
-              project={detailProject}
-              milestones={milestoneProgress}
-              projectTagPool={projectTagPool}
-              displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
-              canManage={can(membership.role, "team:manage_projects")}
-              space={{ kind: "team", teamId: team.id }}
-            />
-          </div>
-        ) : (
-          <div className="mt-5">
-            {view === "board" ? (
-          <TeamKanban
-            teamId={team.id}
-            teamSlug={team.slug}
-            tasks={tasks}
-            members={members}
-            today={today}
-            projectId={project.id}
-            projects={projectOptions}
-            role={membership.role}
-            actorId={user.id}
-            projectSlug={project.slug}
-            tagPool={taskTagPool}
+        <div className="mt-5">
+          <ProjectOverviewPanel
+            project={detailProject}
+            milestones={milestoneProgress}
+            projectTagPool={projectTagPool}
+            displayLead={projectMembers.find((m) => m.id === project.leadId) ?? null}
+            canManage={can(membership.role, "team:manage_projects")}
+            space={{ kind: "team", teamId: team.id }}
           />
-        ) : (
-          <TeamProjectTaskTable
-            teamId={team.id}
-            teamSlug={team.slug}
-            tasks={tasks}
-            members={members}
-            today={today}
-            projectId={project.id}
-            projects={projectOptions}
-            role={membership.role}
-            actorId={user.id}
-            projectSlug={project.slug}
-          />
-        )}
         </div>
-      )}
       </ProjectDetailLayout>
     </div>
   );

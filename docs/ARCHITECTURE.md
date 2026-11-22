@@ -124,22 +124,22 @@ app/
 │   └── space/
 │       ├── personal/
 │       │   ├── dashboard/page.tsx   # personal Dashboard: stat cards + "today" list (≤20)
-│       │   ├── tasks/page.tsx       # personal tasks module (Kanban board): cross-project aggregation + ?project filter
+│       │   ├── tasks/page.tsx       # personal tasks module (Kanban board + list, ?view/?project): cross-project aggregation + filters
 │       │   ├── calendar/page.tsx    # personal Calendar: month view + this-week / this-month lists (?month)
 │       │   ├── analysis/page.tsx    # personal Analysis: trends / backlog / on-time rate / project comparison (?range)
 │       │   ├── projects/[projectSlug]/
-│       │   │   └── page.tsx         # personal project page (list/kanban dual view, owner only)
+│       │   │   └── page.tsx         # personal project page (overview only, owner only; tasks live in the tasks module)
 │       │   └── tasks/[taskId]/page.tsx # personal task detail (incl. tasks in personal projects)
 │       ├── [teamSlug]/
 │       │   ├── dashboard/page.tsx   # team Dashboard: health + key milestones + member load
-│       │   ├── tasks/page.tsx       # team tasks module (Kanban board): cross-project aggregation + ?project / ?assignee filters
+│       │   ├── tasks/page.tsx       # team tasks module (Kanban board + list, ?view/?project/?assignee): cross-project aggregation + filters
 │       │   ├── calendar/page.tsx    # team Calendar: all team tasks (incl. unassigned) + ?month
 │       │   ├── analysis/page.tsx    # team Analysis: throughput / member load / health / zombie tasks (?range)
 │       │   ├── settings/page.tsx    # team management (团队管理): team info/rename, invites, join-by-code and request approval, members, danger zone
 │       │   └── projects/
 │       │       ├── new/page.tsx      # create team project (edit/delete in project page header)
 │       │       └── [projectSlug]/
-│       │           ├── page.tsx      # team project page (list/kanban dual view)
+│       │           ├── page.tsx      # team project page (overview only; tasks live in the tasks module)
 │       │           └── tasks/[taskId]/ # team task detail
 └── api/
     └── cron/

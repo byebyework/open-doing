@@ -153,7 +153,12 @@ export function TasksViewTabs({ initialView, board, list }: TasksViewTabsProps) 
               aria-hidden={active ? undefined : true}
               inert={!active}
               data-testid={TAB_META[key].panelId}
-              className={cn("[grid-area:1/1]", !active && "pointer-events-none")}
+              className={cn(
+                // min-w-0：grid item 默认 min-width:auto，会让非激活列表面板
+                // 的 920px 表格把同格看板面板一起撑出视口（375px 页面横向溢出）。
+                "[grid-area:1/1] min-w-0",
+                !active && "pointer-events-none",
+              )}
             >
               {slots[key]}
             </motion.div>

@@ -10,18 +10,13 @@ import { Button } from "@/components/ui/shadcn/button";
 export interface ProjectDetailLayoutProps {
   /** 右侧栏内容（Properties + Milestones 卡）。 */
   sidebar: ReactNode;
-  /** 主列内容（概览面板或任务表格/看板）。 */
+  /** 主列内容（概览面板）。 */
   children: ReactNode;
-  /**
-   * 当前视图（`overview`/`list`/`board`）：作为主列动效的 key，
-   * 切换 tab 时新内容以 fade-rise 入场（无退场动画，不拖慢 RSC 导航）。
-   */
-  view?: string;
 }
 
 const SIDEBAR_HIDDEN_KEY = "project-detail-sidebar-hidden";
 
-/** 主列视图切换入场：与站内动效语言一致（快、克制、无过冲）。 */
+/** 主列与侧栏卡片入场：与站内动效语言一致（快、克制、无过冲）。 */
 const VIEW_TRANSITION = { duration: 0.2, ease: "easeOut" as const };
 
 /** 侧栏卡片级联间隔：Properties → Milestones → Progress 依次入场。 */
@@ -32,10 +27,9 @@ const SIDEBAR_STAGGER = 0.04;
  * 状态持久化到 localStorage。布局级切换不做动画（Linear 同款哲学：
  * 动效只留给轻交互），reduced-motion 用户无差异成本。
  *
- * 动效范围：主列视图切换入场 + 侧栏卡片首次挂载级联入场；
- * 收起/展开本身保持瞬时。
+ * 动效范围：主列与侧栏卡片首次挂载级联入场；收起/展开本身保持瞬时。
  */
-export function ProjectDetailLayout({ sidebar, children, view }: ProjectDetailLayoutProps) {
+export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutProps) {
   const t = useTranslations("projects");
   const [hidden, setHidden] = useState<boolean>(() => {
     try {
@@ -55,7 +49,6 @@ export function ProjectDetailLayout({ sidebar, children, view }: ProjectDetailLa
 
   const main = (
     <motion.div
-      key={view}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={VIEW_TRANSITION}

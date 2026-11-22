@@ -21,8 +21,9 @@ import {
  * 2. 团队看板「全部任务 / 未指派」筛选（URL 写入 + 刷新还原）；
  * 3. 移动端（375px）卡内状态按钮流转 + done「查看更早」原地展开可逆。
  *
- * 拖拽逻辑由 flow 3 的项目看板回归覆盖：dnd-kit 的 PointerSensor 在
- * Playwright 下不稳定，空间看板只验证移动端按钮路径。
+ * 拖拽逻辑由 flow 3 的空间看板回归覆盖（项目页已收敛为概览，任务看板在
+ * `/space/{spaceRef}/tasks`）：dnd-kit 的 PointerSensor 在 Playwright 下
+ * 不稳定，空间看板只验证移动端按钮路径。
  */
 
 // 团队用例要建第二个账号（邀请 + 移除），比其它流多一个浏览器上下文。
@@ -145,11 +146,17 @@ test.describe("flow 6: 空间级 Kanban", () => {
       await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
       await expect(dialog).toBeHidden();
-      // 项目页默认「概览」视图不渲染任务列表：切「列表」再断言任务行。
-      await page.getByRole("tab", { name: "列表" }).click();
+      // 项目页已收敛为概览（不渲染任务列表）：到团队任务模块「列表」视图
+      // 断言任务行出现，再回项目页继续下一张卡的创建。
+      await page.goto(
+        `/space/${teamSlug}/tasks?view=list&project=${personalProjectSlug(projectName)}`,
+      );
       await expect(
-        page.getByRole("link", { name: title, exact: true }),
+        page
+          .getByTestId(TEST_IDS.kanban.taskTable)
+          .getByRole("link", { name: title, exact: true }),
       ).toBeVisible();
+      await page.goto(`/space/${teamSlug}/projects/${personalProjectSlug(projectName)}`);
     }
 
     try {

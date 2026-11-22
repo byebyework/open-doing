@@ -6,6 +6,7 @@ import {
   createPersonalTask,
   openPersonalProject,
   openPersonalTask,
+  personalProjectSlug,
   registerUser,
   shanghaiToday,
   uniqueLabel,
@@ -295,12 +296,20 @@ test.describe("flow 7: 空间级 Calendar", () => {
         page.getByRole("heading", { name: projectName, level: 1 }),
       ).toBeVisible({ timeout: 30_000 });
 
-      await createTeamTask(page, { title: ownerTask, dueDate: today });
-      await createTeamTask(page, {
-        title: unassignedTask,
-        dueDate: today,
-        assignee: guestName,
-      });
+      await createTeamTask(
+        page,
+        { title: ownerTask, dueDate: today },
+        { teamSlug, projectName },
+      );
+      await createTeamTask(
+        page,
+        {
+          title: unassignedTask,
+          dueDate: today,
+          assignee: guestName,
+        },
+        { teamSlug, projectName },
+      );
 
       // 移除 guest：其负责的任务按既有语义置空为「未指派」。
       await page.goto(`/space/${teamSlug}/settings`);
@@ -431,11 +440,16 @@ async function seedPersonalTask(
  * 在团队项目页新建任务（责任人默认当前用户；传入 `assignee` 时改选成员）。
  *
  * 与 flow 6 同款操作路径；额外填「截止日期」，让任务落进日历。
+ * 项目页已收敛为概览（不渲染任务列表）：创建后到团队任务模块「列表」视图
+ * 断言任务行出现，再回项目页继续下一步。
  */
 async function createTeamTask(
   page: Page,
   input: { title: string; dueDate: string; assignee?: string },
+  context: { teamSlug: string; projectName: string },
 ): Promise<void> {
+  const projectSlug = personalProjectSlug(context.projectName);
+
   await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
   const dialog = page.getByRole("dialog");
@@ -457,11 +471,15 @@ async function createTeamTask(
   await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
-  // 团队项目页同样默认「概览」视图:切到「列表」再断言任务行出现。
-  await page.getByRole("tab", { name: "列表" }).click();
+  await page.goto(
+    `/space/${context.teamSlug}/tasks?view=list&project=${projectSlug}`,
+  );
   await expect(
-    page.getByRole("link", { name: input.title, exact: true }),
+    page
+      .getByTestId(TEST_IDS.kanban.taskTable)
+      .getByRole("link", { name: input.title, exact: true }),
   ).toBeVisible();
+  await page.goto(`/space/${context.teamSlug}/projects/${projectSlug}`);
 }
 
 /** 月历日期格：antd 在 `td` 上写 `title="YYYY-MM-DD"`。 */

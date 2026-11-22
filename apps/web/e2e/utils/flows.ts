@@ -129,6 +129,8 @@ export async function openPersonalProject(
  * 在项目页创建个人任务。
  *
  * `dueDate` 使用 `YYYY-MM-DD`（与应用及数据库 date 列口径一致）。
+ * 项目页已收敛为概览（不渲染任务列表）：创建成功后跳到任务模块的
+ * 「列表」视图（`?view=list&project={slug}`）断言任务行真实出现。
  */
 export async function createPersonalTask(
   page: Page,
@@ -155,11 +157,15 @@ export async function createPersonalTask(
   await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
-  // 项目页自 a9e853a 起默认落在「概览」视图(不渲染任务列表):
-  // 切到「列表」视图再断言任务行出现。
-  await page.getByRole("tab", { name: "列表" }).click();
+  // 任务模块列表视图（按当前项目过滤）：任务行出现即创建已落库。
+  const projectSlug = personalProjectSlug(
+    decodeURIComponent(new URL(page.url()).pathname.split("/").pop() ?? ""),
+  );
+  await page.goto(`/space/personal/tasks?view=list&project=${projectSlug}`);
   await expect(
-    page.getByRole("link", { name: input.title, exact: true }),
+    page
+      .getByTestId(TEST_IDS.kanban.taskTable)
+      .getByRole("link", { name: input.title, exact: true }),
   ).toBeVisible();
 }
 

@@ -77,19 +77,17 @@ test.describe("flow 17: 任务标签", () => {
     await taskDialog.getByTestId("task-create-submit-button").click();
     await expect(page.getByText("任务已创建")).toBeVisible();
 
-    // 3. 表格标签列可见 pill（任务列表在 ?view=list）
-    await page.goto(`${projectPath}?view=list`);
-    await expect(
-      page.getByRole("row").filter({ hasText: taskTitle }).getByTestId("tag-pill"),
-    ).toHaveText(tagName);
+    // 3. 表格标签列可见 pill（项目页只渲染概览：任务列表在任务模块 ?view=list）
+    const taskListPath = `/space/${teamSlug}/tasks?view=list&project=${projectSlug(projectName)}`;
+    await page.goto(taskListPath);
+    const taskRow = page
+      .getByTestId(TEST_IDS.kanban.taskTable)
+      .getByRole("row")
+      .filter({ hasText: taskTitle });
+    await expect(taskRow.getByTestId("tag-pill")).toHaveText(tagName);
 
     // 4. 详情 meta 行（标签在右侧卡片内）
-    await page
-      .getByRole("row")
-      .filter({ hasText: taskTitle })
-      .getByRole("link")
-      .first()
-      .click();
+    await taskRow.getByRole("link").first().click();
     await expect(page.getByTestId("task-tags-cell")).toBeVisible();
     await expect(page.getByTestId("task-tags-cell").getByTestId("tag-pill")).toHaveText(tagName);
 
@@ -99,7 +97,19 @@ test.describe("flow 17: 任务标签", () => {
     await page.getByTestId("tags-delete-confirm").click();
     await expect(page.getByTestId("tags-module-row")).toHaveCount(0);
 
-    await page.goto(`${projectPath}`);
-    await expect(page.getByRole("row").filter({ hasText: taskTitle }).getByTestId("tag-pill")).toHaveCount(0);
+    await page.goto(taskListPath);
+    await expect(
+      page
+        .getByTestId(TEST_IDS.kanban.taskTable)
+        .getByRole("row")
+        .filter({ hasText: taskTitle }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByTestId(TEST_IDS.kanban.taskTable)
+        .getByRole("row")
+        .filter({ hasText: taskTitle })
+        .getByTestId("tag-pill"),
+    ).toHaveCount(0);
   });
 });

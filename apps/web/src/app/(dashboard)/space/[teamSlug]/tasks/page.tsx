@@ -52,7 +52,7 @@ export async function generateMetadata(
  * boolean 后服务端过滤三列与 done 计数；无效 slug 静默忽略。URL 写回由
  * client 筛选条负责。
  */
-export default async function TeamKanbanPage(
+export default async function TeamTasksPage(
   props: PageProps<"/space/[teamSlug]/tasks">,
 ) {
   const { teamSlug } = await props.params;

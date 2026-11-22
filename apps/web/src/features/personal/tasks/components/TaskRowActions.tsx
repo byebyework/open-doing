@@ -1,6 +1,6 @@
 "use client";
 
-import type { Subtask, Tag, Task, TaskStatus } from "@open-doing/types";
+import type { Subtask, Task, TaskStatus } from "@open-doing/types";
 import { ChevronDownIcon, Loader2Icon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -16,7 +16,6 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/shadcn/dropdown-menu";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import type { ProjectFormProject } from "@/features/projects/components/ProjectForm";
 import { personalTaskHref } from "@/lib/routes";
 
@@ -288,45 +287,26 @@ export function TaskStatusButtons({
 export interface PersonalProjectPageActionsProps {
   /** 当前项目（新建任务弹窗默认选中项）。 */
   project: ProjectFormProject;
-  /** 项目页路径，用于写 `?view=`。 */
-  projectPath: string;
-  /** 当前视图：列表 / 看板。 */
-  view: "overview" | "list" | "board";
   /** 新建任务弹窗可选的个人项目。 */
   projects: { id: string; name: string }[];
 }
 
 /**
- * 项目页页头操作区（从左到右）：
- * 视图切换「概览 / 列表 / 看板」→ 主按钮「＋ 新建任务」。（删除入口只在项目列表）
+ * 项目页页头操作区：主按钮「＋ 新建任务」。（删除入口只在项目列表）
  *
- * 新建任务弹窗默认选中当前项目；视图切换写 `?view=list|board`。
+ * 任务列表 / 看板在任务模块（`/space/personal/tasks`）；项目页仅概览，
+ * 新建任务弹窗默认选中当前项目。
  */
 export function PersonalProjectPageActions({
   project,
-  projectPath,
-  view,
   projects,
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
-  const tProjects = useTranslations("projects");
   const [newTaskOpen, setNewTaskOpen] = useState(false);
 
   return (
     <div className="flex shrink-0 flex-wrap items-center gap-2">
-      <Tabs value={view} onValueChange={(nextView) => {
-        if (nextView === "overview" || nextView === "list" || nextView === "board") {
-          router.push(`${projectPath}?view=${nextView}`);
-        }
-      }}>
-        <TabsList>
-          <TabsTrigger value="overview">{t("viewOverview")}</TabsTrigger>
-          <TabsTrigger value="list">{t("viewList")}</TabsTrigger>
-          <TabsTrigger value="board">{t("viewBoard")}</TabsTrigger>
-        </TabsList>
-      </Tabs>
-
       <Button data-testid="new-task-button" onClick={() => setNewTaskOpen(true)}>
         {t("newTaskButton")}
       </Button>

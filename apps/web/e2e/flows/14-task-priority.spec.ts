@@ -6,18 +6,23 @@ import {
   createPersonalTask,
   openPersonalProject,
   openPersonalTask,
+  personalProjectSlug,
   registerUser,
   uniqueLabel,
   uniqueUsername,
 } from "../utils/flows";
 
 /**
- * 关键流 14：任务优先级 + 操作列权限（2026-11 任务列表改造）。
+ * 关键流 14：任务优先级 + 行内编辑权限（2026-11 任务列表改造）。
+ *
+ * 项目页已收敛为概览：任务列表断言一律走任务模块
+ * `/space/{spaceRef}/tasks?view=list&project={slug}`（SpaceTaskTable）。
  *
  * 覆盖：
  * 1. 优先级往返：新建任务选「高」→ 列表 chip 高 → 详情改「低」→
  *    列表 chip 低 → 空间看板色点低；
- * 2. 团队 member 权限：他人任务无删除按钮、状态下拉禁用（owner 反向可见）。
+ * 2. 团队 member 权限：他人任务的行内状态按钮禁用、详情页无编辑/删除入口
+ *    （owner 反向可见、可用）。
  */
 test.describe.configure({ timeout: 120_000 });
 
@@ -36,10 +41,12 @@ test.describe("flow 14: 任务优先级", () => {
     await createPersonalProject(page, projectName);
     await openPersonalProject(page, projectName);
 
-    // 新建任务选「高」，列表 chip 立即显示高档位。
+    // 新建任务选「高」；助手收尾停在任务模块列表视图，chip 立即显示高档位。
     await createPersonalTask(page, { title: taskTitle, priority: "high" });
+    const listPath = `/space/personal/tasks?view=list&project=${personalProjectSlug(projectName)}`;
     await expect(
       page
+        .getByTestId(TEST_IDS.kanban.taskTable)
         .getByRole("row")
         .filter({ hasText: taskTitle })
         .getByTestId(TEST_IDS.tasks.priorityChip),
@@ -54,11 +61,11 @@ test.describe("flow 14: 任务优先级", () => {
     ).toContainText(PRIORITY_LABELS.low);
 
     // 回列表：chip 变低（整页导航，服务端取数为准，无乐观窗口）。
-    // 项目页默认「概览」视图不渲染任务列表：显式带 ?view=list。
-    await openPersonalProject(page, projectName);
-    await page.goto(`${new URL(page.url()).pathname}?view=list`);
+    // 项目页只渲染概览：任务列表在任务模块，显式带 ?view=list&project={slug}。
+    await page.goto(listPath);
     await expect(
       page
+        .getByTestId(TEST_IDS.kanban.taskTable)
         .getByRole("row")
         .filter({ hasText: taskTitle })
         .getByTestId(TEST_IDS.tasks.priorityChip),
@@ -75,7 +82,7 @@ test.describe("flow 14: 任务优先级", () => {
     ).toHaveAttribute("data-priority", "low");
   });
 
-  test("member 对他人任务:无删除按钮、状态下拉禁用;owner 可见删除", async ({
+  test("member 对他人任务:行内状态按钮禁用、详情无编辑/删除入口;owner 可操作", async ({
     page,
     browser,
   }) => {
@@ -137,32 +144,44 @@ test.describe("flow 14: 任务优先级", () => {
       await guestPage.getByTestId(TEST_IDS.teams.inviteAcceptButton).click();
       await expect(guestPage.getByText("没有待处理的邀请。")).toBeVisible();
 
-      // owner 视角：操作列有删除按钮，状态下拉可用。
-      // 项目页默认「概览」视图不渲染任务列表：显式带 ?view=list。
-      await page.goto(`/space/${teamSlug}/projects/${projectName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")}?view=list`);
-      const ownerRow = page.getByRole("row").filter({ hasText: taskTitle });
-      await expect(ownerRow.getByTestId(TEST_IDS.tasks.rowDelete)).toBeVisible();
+      // 任务模块列表视图（任务页已收敛，项目页只渲染概览）。
+      const listPath = `/space/${teamSlug}/tasks?view=list&project=${personalProjectSlug(projectName)}`;
+
+      // owner 视角：他人任务 = 自己的任务，行内状态按钮可用。
+      await page.goto(listPath);
+      const ownerRow = page
+        .getByTestId(TEST_IDS.kanban.taskTable)
+        .getByRole("row")
+        .filter({ hasText: taskTitle });
+      await expect(ownerRow).toBeVisible();
       await expect(
-        ownerRow.getByTestId(TEST_IDS.tasks.statusMenuTrigger),
+        ownerRow.getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress")),
       ).toBeEnabled();
 
-      // member 视角：无删除按钮，状态下拉禁用（badge 退化为只读展示）。
-      // 同 owner 视角：显式带 ?view=list 才有任务列表。
-      await guestPage.goto(`/space/${teamSlug}/projects/${projectName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")}?view=list`);
-      const guestRow = guestPage.getByRole("row").filter({ hasText: taskTitle });
+      // member 视角：他人任务的行内状态按钮禁用（退化为只读展示）。
+      await guestPage.goto(listPath);
+      const guestRow = guestPage
+        .getByTestId(TEST_IDS.kanban.taskTable)
+        .getByRole("row")
+        .filter({ hasText: taskTitle });
       await expect(guestRow).toBeVisible();
       await expect(
-        guestRow.getByTestId(TEST_IDS.tasks.rowDelete),
+        guestRow.getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress")),
+      ).toBeDisabled();
+
+      // 详情页反向验证删除权限：owner 有「删除任务」入口，member 没有
+      // （编辑 / 状态切换按钮同样只对有编辑权的一方渲染）。
+      await ownerRow.getByRole("link").first().click();
+      await expect(
+        page.getByRole("button", { name: "删除任务" }),
+      ).toBeVisible();
+      await guestRow.getByRole("link").first().click();
+      await expect(
+        guestPage.getByRole("button", { name: "删除任务" }),
       ).toHaveCount(0);
       await expect(
-        guestRow.getByTestId(TEST_IDS.tasks.statusMenuTrigger),
-      ).toBeDisabled();
+        guestPage.getByTestId(TEST_IDS.tasks.statusToggle),
+      ).toHaveCount(0);
     } finally {
       await guestContext.close();
     }

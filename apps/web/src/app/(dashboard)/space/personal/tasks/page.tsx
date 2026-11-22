@@ -33,7 +33,7 @@ export async function generateMetadata(): Promise<Metadata> {
  * 未知 / 他人 slug 静默回退为全部（不 500、不报错）。筛选状态写回 URL 的
  * 交互下沉到 client 筛选条；看板组件只消费过滤后的数据。
  */
-export default async function PersonalKanbanPage(
+export default async function PersonalTasksPage(
   props: PageProps<"/space/personal/tasks">,
 ) {
   const t = await getTranslations("kanban");

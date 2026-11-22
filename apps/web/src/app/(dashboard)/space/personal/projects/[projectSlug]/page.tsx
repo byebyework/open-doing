@@ -16,40 +16,29 @@ import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/p
 import { buildProjectProgressPercent } from "@/features/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
 import { listTags } from "@/features/tags/service";
-import { PersonalKanban } from "@/features/personal/tasks/components/PersonalKanban";
-import { ProjectTaskTable } from "@/features/personal/tasks/components/ProjectTaskTable";
 import { listPersonalProjectTasks } from "@/features/personal/tasks/service";
-import { personalProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
-
-/** 视图切换参数：缺省（或其他值）一律按列表处理。 */
-type ProjectView = "overview" | "list" | "board";
 
 interface PersonalProjectPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
   params: Promise<{ projectSlug: string }>;
-  /** Next 16：searchParams 同样为 Promise。 */
-  searchParams: Promise<{ view?: string | string[] }>;
 }
 
 /**
- * 个人项目页（P-3）：列表 + 看板双视图。
+ * 个人项目页（P-3）：仅概览。
  *
- * 页面本身保持 RSC：服务端读取项目、项目任务与全部个人项目；
- * 交互（视图切换、新建任务、行内操作、拖拽）全部下沉到 `"use client"` 组件。
+ * 任务列表 / 看板已收敛到任务模块（`/space/personal/tasks`，URL 契约
+ * `?view=list&project={slug}` / `?project={slug}`）；页面本身保持 RSC：
+ * 服务端读取项目、项目任务（进度用）与全部个人项目，交互（新建任务、
+ * 行内编辑）全部下沉到 `"use client"` 组件。
  * 非本人或不存在一律 404，不泄露存在性。
  */
 export default async function PersonalProjectPage({
   params,
-  searchParams,
 }: PersonalProjectPageProps) {
   const { projectSlug } = await params;
-  const { view: viewParam } = await searchParams;
-  const t = await getTranslations("projects");
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
-  const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
-  const view: ProjectView = requestedView === "board" || requestedView === "list" ? requestedView : "overview";
 
   const user = await requireUser();
   const project = await getPersonalProjectBySlug(user.id, projectSlug);
@@ -61,13 +50,11 @@ export default async function PersonalProjectPage({
     listPersonalProjects(user.id),
     listTags({ ownerId: user.id }),
   ]);
-  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
   const milestoneProgress = await listPersonalProjectMilestonesWithProgress(user.id, project.id);
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
   const today = todayInShanghai();
-  const projectPath = personalProjectHref(project.slug);
 
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
@@ -82,12 +69,10 @@ export default async function PersonalProjectPage({
         </strong>
       </nav>
 
+      {/* 概览页 PageHeader 不带标题（title 显式 undefined）：概览面板内的项目名是唯一 h1。 */}
       <PageHeader
         className="mt-2"
-        title={view === "overview" ? undefined : project.name}
-        subtitle={view === "overview" ? undefined : `${view === "board"
-          ? t("boardDragHint")
-          : t("personalProjectMeta", { tasks: tasks.length })}${project.startDate && project.endDate ? ` · ${t("dateRange")}: ${project.startDate} → ${project.endDate}` : ""}`}
+        title={undefined}
         actions={
           <PersonalProjectPageActions
             project={{
@@ -100,15 +85,12 @@ export default async function PersonalProjectPage({
               status: project.status,
               tags: project.tags,
             }}
-            projectPath={projectPath}
-            view={view}
             projects={projectOptions}
           />
         }
       />
 
       <ProjectDetailLayout
-        view={view}
         sidebar={
           <>
             <ProjectPropertiesPanel
@@ -135,38 +117,16 @@ export default async function PersonalProjectPage({
           </>
         }
       >
-        {view === "overview" ? (
-          <div className="mt-5">
-            <ProjectOverviewPanel
-              project={project}
-              milestones={milestoneProgress}
-              projectTagPool={projectTagPool}
-              displayLead={null}
-              canManage
-              space={{ kind: "personal" }}
-            />
-          </div>
-        ) : (
-          <div className="mt-5">
-            {view === "board" ? (
-          <PersonalKanban
-            tasks={tasks}
-            today={today}
-            projectId={project.id}
-            projects={projectOptions}
-            tagPool={taskTagPool}
+        <div className="mt-5">
+          <ProjectOverviewPanel
+            project={project}
+            milestones={milestoneProgress}
+            projectTagPool={projectTagPool}
+            displayLead={null}
+            canManage
+            space={{ kind: "personal" }}
           />
-        ) : (
-          <ProjectTaskTable
-            tasks={tasks}
-            today={today}
-            projectId={project.id}
-            projects={projectOptions}
-            tagPool={taskTagPool}
-          />
-        )}
         </div>
-      )}
       </ProjectDetailLayout>
     </div>
   );
