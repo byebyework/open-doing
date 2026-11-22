@@ -516,7 +516,7 @@ export function ProjectOverviewPanel({
               onChange={(event) => setDraft(event.target.value)}
               disabled={saving}
               data-testid="project-description-edit"
-              className="h-full w-full resize-none border-none bg-transparent px-0 text-[13.5px] md:text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
+              className="h-full w-full resize-none border-none bg-transparent px-0 py-0 text-[13.5px] md:text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
             />
             {/* 按钮浮在区域右下角内部：编辑态与展示态总高一致，下方内容零推挤 */}
             <div className="absolute bottom-1 right-0 flex gap-2">
