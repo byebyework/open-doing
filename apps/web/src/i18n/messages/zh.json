@@ -925,7 +925,9 @@
     "captionHintTitle": "筛选状态",
     "captionHintScope": "项目与指派筛选同时生效。",
     "captionHintCount": "计数随筛选即时更新。",
-    "captionHintScopeTeam": "团队看板只统计未完成任务。"
+    "captionHintScopeTeam": "团队看板只统计未完成任务。",
+    "tabBoard": "看板",
+    "tabList": "列表"
   },
   "calendar": {
     "calendar": "日历",

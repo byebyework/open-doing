@@ -63,6 +63,12 @@ export const TEST_IDS = {
     spaceColumnDone: "space-kanban-column-done",
     projectFilter: "kanban-project-filter",
     assigneeFilter: "kanban-assignee-filter",
+    /** 看板 / 列表双视图切换 tab（TasksViewTabs）。 */
+    viewTabBoard: "tasks-view-tab-board",
+    viewTabList: "tasks-view-tab-list",
+    /** 双视图面板（两面板常驻，非激活面板 inert）。 */
+    viewPanelBoard: "tasks-view-panel-board",
+    viewPanelList: "tasks-view-panel-list",
   },
   calendar: {
     prevMonth: "calendar-prev-month",

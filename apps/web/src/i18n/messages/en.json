@@ -925,7 +925,9 @@
     "captionHintTitle": "Filter status",
     "captionHintScope": "Project and assignee filters apply together.",
     "captionHintCount": "Counts update instantly with the filters.",
-    "captionHintScopeTeam": "The team board counts unfinished tasks only."
+    "captionHintScopeTeam": "The team board counts unfinished tasks only.",
+    "tabBoard": "Board",
+    "tabList": "List"
   },
   "calendar": {
     "calendar": "Calendar",
