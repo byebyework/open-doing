@@ -16,7 +16,10 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import { teamTaskHref } from "@/lib/routes";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -135,6 +138,8 @@ function TeamTaskStatusButtons({
 /** 可拖拽的任务卡片（仅本人可编辑的任务启用拖拽）。 */
 function TeamKanbanCard({
   teamId,
+  teamSlug,
+  projectSlug,
   task,
   today,
   assigneeName,
@@ -143,6 +148,8 @@ function TeamKanbanCard({
   onChanged,
 }: {
   teamId: string;
+  teamSlug: string;
+  projectSlug: string;
   task: TeamTaskRow;
   today: string;
   assigneeName: string | null;
@@ -151,6 +158,10 @@ function TeamKanbanCard({
   onChanged: () => void;
 }) {
   const t = useTranslations("tasks");
+  const router = useRouter();
+  // 点击卡片进任务详情；拖拽由 distance:6 激活约束区分（拖后 dnd-kit 抑制 click）。
+  const detailHref = teamTaskHref(teamSlug, projectSlug, task.id);
+  // 拉伸链接层（inset-0）供键盘/读屏语义；指针点击由外层 onClick 兜底。
   const { attributes, listeners, setNodeRef, transform, isDragging } =
     useDraggable({ id: task.id, disabled: !draggable });
 
@@ -165,19 +176,24 @@ function TeamKanbanCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[var(--shadow-rest)] hover:shadow-[var(--shadow-card-hover)] ${
+      onClick={() => router.push(detailHref)}
+      className={`relative cursor-pointer rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[var(--shadow-rest)] hover:shadow-[var(--shadow-card-hover)] ${
         // 非拖拽态带 transform 过渡：松手后卡片 200ms 缓出归位（settle）。
         isDragging
           ? "opacity-50 transition-shadow"
           : "transition-[transform,box-shadow] duration-200 ease-out"
       } ${done ? "opacity-[0.62]" : ""}`}
     >
+      <Link
+        href={detailHref}
+        aria-label={task.title}
+        className="absolute inset-0 z-0 rounded-xl focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+      />
       {/* 拖拽把手只覆盖卡片主体；窄屏不挂监听，保住 touch 滚动。 */}
       <div
         {...(draggable ? attributes : {})}
         {...listeners}
-        aria-label={task.title}
-        className={`select-none min-[861px]:cursor-grab min-[861px]:touch-none ${
+        className={`relative z-10 select-none min-[861px]:cursor-grab min-[861px]:touch-none ${
           draggable ? "" : "cursor-auto"
         }`}
       >
@@ -231,7 +247,8 @@ function TeamKanbanCard({
         </div>
       </div>
 
-      <div className="mt-2.5 min-[861px]:hidden">
+      {/* 移动端状态按钮：阻断冒泡，避免误触卡片导航 */}
+      <div className="mt-2.5 min-[861px]:hidden" onClick={(event) => event.stopPropagation()}>
         <TeamTaskStatusButtons
           teamId={teamId}
           task={task}
@@ -246,6 +263,8 @@ function TeamKanbanCard({
 /** 看板单列（同时是拖放目标）。 */
 function TeamKanbanColumn({
   teamId,
+  teamSlug,
+  projectSlug,
   status,
   tasks,
   today,
@@ -256,6 +275,8 @@ function TeamKanbanColumn({
   onChanged,
 }: {
   teamId: string;
+  teamSlug: string;
+  projectSlug: string;
   status: TaskStatus;
   tasks: TeamTaskRow[];
   today: string;
@@ -317,6 +338,8 @@ function TeamKanbanColumn({
             <TeamKanbanCard
               key={task.id}
               teamId={teamId}
+              teamSlug={teamSlug}
+              projectSlug={projectSlug}
               task={task}
               today={today}
               assigneeName={
@@ -344,11 +367,13 @@ function TeamKanbanColumn({
  */
 export function TeamKanban({
   teamId,
+  teamSlug,
   tasks,
   members,
   today,
   projectId,
   projects,
+  projectSlug,
   role,
   actorId,
   tagPool,
@@ -525,6 +550,8 @@ export function TeamKanban({
             <TeamKanbanColumn
               key={status}
               teamId={teamId}
+              teamSlug={teamSlug}
+              projectSlug={projectSlug}
               status={status}
               tasks={grouped[status]}
               today={today}

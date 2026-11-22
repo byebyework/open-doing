@@ -28,10 +28,11 @@ test.describe("flow 3: 看板拖拽", () => {
     await openPersonalProject(page, projectName);
 
     const projectPath = new URL(page.url()).pathname;
-    await createPersonalTask(page, { title: taskTitle });
 
-    // 直接用 ?view=board 进入看板，避免依赖 Segmented 的内部 DOM 结构。
+    // 直接用 ?view=board 进入看板再建卡：概览页不展示任务链接（详情页重构后），
+    // 卡片以拉伸链接呈现（getByRole("link") 可定位）。
     await page.goto(`${projectPath}?view=board`);
+    await createPersonalTask(page, { title: taskTitle });
 
     const todoColumn = page.getByTestId(TEST_IDS.kanban.columnTodo);
     const inProgressColumn = page.getByTestId(TEST_IDS.kanban.columnInProgress);

@@ -15,7 +15,10 @@ import {
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { useTranslations } from "next-intl";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+
+import { personalTaskHref } from "@/lib/routes";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 
@@ -66,6 +69,9 @@ function KanbanCard({
   draggable: boolean;
   onChanged: () => void;
 }) {
+  const router = useRouter();
+  // 点击卡片进任务详情；拖拽由 distance:6 激活约束区分。
+  // 拉伸链接层（inset-0）供键盘/读屏语义；指针点击由外层 onClick 兜底。
   const {
     attributes,
     listeners,
@@ -96,20 +102,25 @@ function KanbanCard({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Translate.toString(transform) }}
-      className={`rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[var(--shadow-rest)] hover:shadow-[var(--shadow-card-hover)] ${
+      onClick={() => router.push(personalTaskHref(task.id))}
+      className={`relative cursor-pointer rounded-xl border border-[var(--border-default)] bg-white px-3.5 py-3 shadow-[var(--shadow-rest)] hover:shadow-[var(--shadow-card-hover)] ${
         // 非拖拽态带 transform 过渡：松手后卡片 200ms 缓出归位（settle）。
         isDragging
           ? "opacity-50 transition-shadow"
           : "transition-[transform,box-shadow] duration-200 ease-out"
       } ${done ? "opacity-[0.62]" : ""}`}
     >
+      <Link
+        href={personalTaskHref(task.id)}
+        aria-label={task.title}
+        className="absolute inset-0 z-0 rounded-xl focus-visible:ring-2 focus-visible:ring-[var(--color-primary)] focus-visible:outline-none"
+      />
       {/* 拖拽把手覆盖卡片主体（标题 / 进度 / 截止）；移动端状态按钮留在把手外。
           窄屏不挂拖拽监听，且 touch-action 保持默认，让浏览器接管纵向滚动。 */}
       <div
         {...(draggable ? attributes : {})}
         {...listeners}
-        aria-label={task.title}
-        className={`select-none min-[861px]:cursor-grab min-[861px]:touch-none ${
+        className={`relative z-10 select-none min-[861px]:cursor-grab min-[861px]:touch-none ${
           draggable ? "" : "cursor-auto"
         }`}
       >
@@ -143,7 +154,10 @@ function KanbanCard({
       </div>
 
       <div className="mt-2.5 min-[861px]:hidden">
-        <TaskStatusButtons task={task} onChanged={onChanged} />
+        {/* 阻断冒泡，避免误触卡片导航 */}
+        <div onClick={(event) => event.stopPropagation()}>
+          <TaskStatusButtons task={task} onChanged={onChanged} />
+        </div>
       </div>
     </div>
   );
