@@ -147,27 +147,43 @@ test.describe("flow 14: 任务优先级", () => {
       // 任务模块列表视图（任务页已收敛，项目页只渲染概览）。
       const listPath = `/space/${teamSlug}/tasks?view=list&project=${personalProjectSlug(projectName)}`;
 
-      // owner 视角：他人任务 = 自己的任务，行内状态按钮可用。
+      // owner 视角：他人任务 = 自己的任务，状态 pill 可用且能完整切换
+      // （点 pill 弹出菜单 → 点菜单项；菜单 portal 到 body，按 role 锚定）。
       await page.goto(listPath);
       const ownerRow = page
         .getByTestId(TEST_IDS.kanban.taskTable)
         .getByRole("row")
         .filter({ hasText: taskTitle });
       await expect(ownerRow).toBeVisible();
+      const ownerPill = ownerRow.getByTestId(TEST_IDS.tasks.taskStatusPill);
+      await expect(ownerPill).toBeEnabled();
+      await ownerPill.click();
+      const ownerMenu = page.getByRole("menu");
       await expect(
-        ownerRow.getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress")),
+        ownerMenu.getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress")),
       ).toBeEnabled();
+      await ownerMenu
+        .getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress"))
+        .click();
+      await expect(ownerPill).toContainText("进行中");
 
-      // member 视角：他人任务的行内状态按钮禁用（退化为只读展示）。
+      // member 视角：他人任务的状态 pill 禁用（退化为只读展示），
+      // 触发器没有菜单语义、菜单项不存在——菜单不可达。
       await guestPage.goto(listPath);
       const guestRow = guestPage
         .getByTestId(TEST_IDS.kanban.taskTable)
         .getByRole("row")
         .filter({ hasText: taskTitle });
       await expect(guestRow).toBeVisible();
+      const guestPill = guestRow.getByTestId(TEST_IDS.tasks.taskStatusPill);
+      await expect(guestPill).toBeDisabled();
+      await expect(guestPill).not.toHaveAttribute("aria-haspopup", "menu");
+      // 菜单不可达：行内没有菜单项、页面上也没有打开的状态菜单
+      //（看板面板常驻挂载，其移动端卡内按钮不在行作用域内，按 menu role 锚定）。
       await expect(
         guestRow.getByTestId(TEST_IDS.tasks.cardStatusButton("in_progress")),
-      ).toBeDisabled();
+      ).toHaveCount(0);
+      await expect(guestPage.getByRole("menu")).toHaveCount(0);
 
       // 详情页反向验证删除权限：owner 有「删除任务」入口，member 没有
       // （编辑 / 状态切换按钮同样只对有编辑权的一方渲染）。

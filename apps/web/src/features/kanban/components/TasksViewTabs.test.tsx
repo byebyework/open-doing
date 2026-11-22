@@ -6,9 +6,22 @@ import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+import en from "@/i18n/messages/en.json";
 import zh from "@/i18n/messages/zh.json";
 
 import { TasksViewTabs, type TasksView } from "./TasksViewTabs";
+
+/** 筛选下拉依赖的项目池（id/name/slug，页面同款形状）。 */
+const PROJECTS = [
+  { id: "proj-a", name: "项目A", slug: "project-a" },
+  { id: "proj-b", name: "项目B", slug: "project-b" },
+];
+
+const FILTER_SELECTOR = {
+  status: '[data-testid="list-filter-status"]',
+  priority: '[data-testid="list-filter-priority"]',
+  project: '[data-testid="list-filter-project"]',
+} as const;
 
 /**
  * 双视图壳探针：仓库 vitest 是 node 环境（无 @testing-library），交互
@@ -49,12 +62,16 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-function renderTabs(initialView: TasksView = "board"): void {
+function renderTabs(
+  initialView: TasksView = "board",
+  projects?: { id: string; name: string; slug: string }[],
+): void {
   act(() => {
     root.render(
       <NextIntlClientProvider locale="zh" messages={zh}>
         <TasksViewTabs
           initialView={initialView}
+          projects={projects}
           board={<div data-testid="slot-board">看板内容</div>}
           list={<div data-testid="slot-list">列表内容</div>}
         />
@@ -73,6 +90,10 @@ function panel(name: TasksView): HTMLElement {
   const element = container.querySelector<HTMLElement>(PANEL_SELECTOR[name]);
   if (!element) throw new Error(`missing ${PANEL_SELECTOR[name]}`);
   return element;
+}
+
+function filterTrigger(field: keyof typeof FILTER_SELECTOR): HTMLElement | null {
+  return container.querySelector<HTMLElement>(FILTER_SELECTOR[field]);
 }
 
 /** 最近一次 replaceState 调用的 URL（组件传的是 URL 对象，统一转字符串比对）。 */
@@ -223,5 +244,60 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(pillOnList).not.toBeNull();
     expect(tab("board").querySelector('span[aria-hidden="true"]')).toBeNull();
     expect(layoutIdOf(pillOnList as Element)).toBe("tasks-view-active-pill");
+  });
+
+  it("列表视图 + 项目池：tab 行右侧渲染三个筛选触发器（label + 全部）", () => {
+    renderTabs("list", PROJECTS);
+
+    for (const field of ["status", "priority", "project"] as const) {
+      expect(filterTrigger(field), `missing ${field} filter`).not.toBeNull();
+    }
+
+    // 触发器文案 = 标签 + 当前值；初始三项均为「全部」。
+    expect(filterTrigger("status")?.textContent).toContain(
+      zh.kanban.filterStatusLabel,
+    );
+    expect(filterTrigger("priority")?.textContent).toContain(
+      zh.kanban.filterPriorityLabel,
+    );
+    expect(filterTrigger("project")?.textContent).toContain(
+      zh.kanban.filterProjectLabel,
+    );
+    for (const field of ["status", "priority", "project"] as const) {
+      expect(filterTrigger(field)?.textContent).toContain(zh.kanban.filterAll);
+    }
+
+    // 折行容器：375px 下筛选组落到 tab 行下方。
+    expect(filterTrigger("status")?.closest(".flex-wrap")).not.toBeNull();
+  });
+
+  it("筛选仅在列表视图渲染：切看板隐藏、切回列表重现", () => {
+    renderTabs("board", PROJECTS);
+    expect(filterTrigger("status")).toBeNull();
+
+    click(tab("list"));
+    expect(filterTrigger("status")).not.toBeNull();
+
+    click(tab("board"));
+    expect(filterTrigger("status")).toBeNull();
+  });
+
+  it("未传 projects（或空数组）：列表视图不渲染筛选组", () => {
+    renderTabs("list");
+    expect(filterTrigger("status")).toBeNull();
+
+    renderTabs("list", []);
+    expect(filterTrigger("status")).toBeNull();
+  });
+
+  it("筛选文案键在 zh / en 消息包中都存在", () => {
+    expect(zh.kanban.filterStatusLabel).toBe("状态");
+    expect(zh.kanban.filterPriorityLabel).toBe("优先级");
+    expect(zh.kanban.filterProjectLabel).toBe("项目");
+    expect(zh.kanban.filterAll).toBe("全部");
+    expect(en.kanban.filterStatusLabel).toBe("Status");
+    expect(en.kanban.filterPriorityLabel).toBe("Priority");
+    expect(en.kanban.filterProjectLabel).toBe("Project");
+    expect(en.kanban.filterAll).toBe("All");
   });
 });

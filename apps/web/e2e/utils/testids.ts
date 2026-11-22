@@ -51,6 +51,8 @@ export const TEST_IDS = {
     rowEdit: "row-edit",
     /** 操作列删除按钮（无删除权时不渲染）。 */
     rowDelete: "row-delete",
+    /** 列表行状态 pill（SpaceTaskTable 单 pill 触发器）。 */
+    taskStatusPill: "task-status-pill",
     cardStatusButton: (status: "todo" | "in_progress" | "done") =>
       `task-status-button-${status}`,
   },
@@ -63,6 +65,15 @@ export const TEST_IDS = {
     spaceColumnDone: "space-kanban-column-done",
     projectFilter: "kanban-project-filter",
     assigneeFilter: "kanban-assignee-filter",
+    /** 列表视图右侧本地筛选（TaskListFilters）触发器。 */
+    listFilterStatus: "list-filter-status",
+    listFilterPriority: "list-filter-priority",
+    listFilterProject: "list-filter-project",
+    /** 本地筛选下拉选项（Radix 菜单 portal 到 body）。 */
+    listFilterOption: (
+      field: "status" | "priority" | "project",
+      value: string,
+    ) => `list-filter-${field}-option-${value}`,
     /** 看板 / 列表双视图切换 tab（TasksViewTabs）。 */
     viewTabBoard: "tasks-view-tab-board",
     viewTabList: "tasks-view-tab-list",

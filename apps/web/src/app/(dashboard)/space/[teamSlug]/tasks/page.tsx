@@ -230,6 +230,7 @@ export default async function TeamTasksPage(
       <div className="mt-5">
         <TasksViewTabs
           initialView={initialView}
+          projects={projects}
           board={
             <SpaceKanban
               variant="team"

@@ -97,6 +97,25 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
     await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(board.getByText(taskB, { exact: true })).toBeVisible();
+
+    // 列表视图右侧「项目」本地筛选：只收窄行，不写 URL（与上方 ?project=
+    // 服务端筛选语义独立）。
+    await page.goto("/space/personal/tasks?view=list");
+    const listTable = page.getByTestId(TEST_IDS.kanban.taskTable);
+    await expect(listTable.locator("tbody tr")).toHaveCount(2);
+    await page.getByTestId(TEST_IDS.kanban.listFilterProject).click();
+    await page
+      .getByRole("menu")
+      .getByRole("menuitem", { name: projectA, exact: true })
+      .click();
+    await expect(listTable.locator("tbody tr")).toHaveCount(1);
+    await expect(
+      listTable.getByRole("link", { name: taskA, exact: true }),
+    ).toBeVisible();
+    await expect(
+      listTable.getByRole("link", { name: taskB, exact: true }),
+    ).toHaveCount(0);
+    await expect(page).not.toHaveURL(/project=/);
   });
 
   test("团队看板未指派筛选", async ({ page, browser }) => {
@@ -460,7 +479,6 @@ test.describe("flow 6: 任务页双视图", () => {
     await expect(page).toHaveURL(/\/space\/personal\/tasks\?view=list$/);
 
     await page.getByTestId(TEST_IDS.kanban.viewTabList).focus();
-    await page.keyboard.press("Tab");
     const focusInside = (testid: string) =>
       page.evaluate(
         (panelTestid) =>
@@ -469,8 +487,15 @@ test.describe("flow 6: 任务页双视图", () => {
           ),
         testid,
       );
-    expect(await focusInside(TEST_IDS.kanban.viewPanelBoard)).toBe(false);
-    expect(await focusInside(TEST_IDS.kanban.viewPanelList)).toBe(true);
+    // tab 行右侧的筛选工具栏位于 tab 与面板之间，Tab 顺序会先穿过它；
+    // 关键契约是「遍历过程不落入 inert 的看板面板」，并最终到达列表面板。
+    let landedInList = false;
+    for (let step = 0; step < 8 && !landedInList; step += 1) {
+      await page.keyboard.press("Tab");
+      expect(await focusInside(TEST_IDS.kanban.viewPanelBoard)).toBe(false);
+      landedInList = await focusInside(TEST_IDS.kanban.viewPanelList);
+    }
+    expect(landedInList).toBe(true);
 
     // 3. 深链接：直开 ?view=list，刷新后首屏仍是列表。
     await page.goto("/space/personal/tasks?view=list");

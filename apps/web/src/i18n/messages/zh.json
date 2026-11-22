@@ -923,6 +923,10 @@
     "captionHintScopeTeam": "团队看板只统计未完成任务。",
     "tabBoard": "看板",
     "tabList": "列表",
+    "filterStatusLabel": "状态",
+    "filterPriorityLabel": "优先级",
+    "filterProjectLabel": "项目",
+    "filterAll": "全部",
     "listEmptyTitle": "暂无任务",
     "listEmptyDescription": "当前筛选下没有任务。"
   },

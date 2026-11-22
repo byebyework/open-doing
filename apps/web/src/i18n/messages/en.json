@@ -923,6 +923,10 @@
     "captionHintScopeTeam": "The team board counts unfinished tasks only.",
     "tabBoard": "Board",
     "tabList": "List",
+    "filterStatusLabel": "Status",
+    "filterPriorityLabel": "Priority",
+    "filterProjectLabel": "Project",
+    "filterAll": "All",
     "listEmptyTitle": "No tasks",
     "listEmptyDescription": "No tasks match the current filters."
   },

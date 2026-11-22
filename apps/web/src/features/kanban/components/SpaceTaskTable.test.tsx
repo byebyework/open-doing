@@ -53,6 +53,7 @@ vi.mock("@/features/tasks/actions", () => ({
 import type { KanbanCardItem, TeamKanbanCardItem } from "../service";
 
 const { SpaceTaskTable } = await import("./SpaceTaskTable");
+const { TasksViewTabs } = await import("./TasksViewTabs");
 const { sortTaskRows, DEFAULT_LIST_FILTERS } = await import("../sort-task-rows");
 const { ListFiltersProvider } = await import("../list-filters-context");
 
@@ -637,5 +638,73 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
       document.querySelector('[data-testid="space-task-table"]'),
     ).toBeNull();
     expect(document.body.textContent).toContain(zh.kanban.listEmptyTitle);
+  });
+
+  it("TasksViewTabs provider 穿透 list slot：点状态筛选后表格只剩匹配行", () => {
+    const rows = [
+      personalRow({
+        id: "i-1",
+        title: "待办行",
+        status: "todo",
+        dueDate: "2026-11-20",
+      }),
+      personalRow({
+        id: "i-2",
+        title: "进行行",
+        status: "in_progress",
+        dueDate: "2026-11-21",
+      }),
+      personalRow({
+        id: "i-3",
+        title: "完成行",
+        status: "done",
+        dueDate: "2026-11-22",
+      }),
+    ];
+
+    // 模拟页面接线：list slot 以 ReactNode 传入（RSC 创建元素的渲染位置
+    // 在 provider 子树内，context 必须能穿透到表格）。
+    renderTable(
+      <TasksViewTabs
+        initialView="list"
+        projects={[{ id: "proj-1", name: "官网改版", slug: "site" }]}
+        board={<div data-testid="slot-board" />}
+        list={
+          <SpaceTaskTable
+            variant="personal"
+            rows={rows}
+            today={TODAY}
+            taskHrefs={{}}
+          />
+        }
+      />,
+    );
+    expect(bodyRows()).toHaveLength(3);
+
+    // 打开状态筛选下拉（Radix 由 pointerdown 触发），点「待办」。
+    const trigger = document.querySelector<HTMLButtonElement>(
+      '[data-testid="list-filter-status"]',
+    );
+    if (!trigger) throw new Error("missing status filter trigger");
+    act(() => {
+      trigger.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    const option = document.body.querySelector<HTMLElement>(
+      '[data-testid="list-filter-status-option-todo"]',
+    );
+    if (!option) throw new Error("missing todo filter option");
+    act(() => {
+      option.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0].querySelector("td:first-child")?.textContent).toBe(
+      "待办行",
+    );
   });
 });

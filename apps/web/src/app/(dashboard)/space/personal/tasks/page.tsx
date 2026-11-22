@@ -131,6 +131,7 @@ export default async function PersonalTasksPage(
       <div className="mt-5">
         <TasksViewTabs
           initialView={initialView}
+          projects={projects}
           board={
             <SpaceKanban
               variant="personal"
