@@ -532,15 +532,21 @@ export async function updateTeamProject(
   if (input?.memberIds !== undefined) {
     await assertTeamMembers(input.teamId, input.memberIds, client);
   }
-  // members 全量覆写（lead 自动并入）；随后覆写不含现 lead → leadId 置 null
+  // members 全量覆写（lead 自动并入）；随后覆写不含现 lead → leadId 置 null。
+  // 显式 leadId: null 是清空负责人，不得被 memberIds 分支吞掉（此前 effectiveLead
+  // 为 null 时 if 短路，leadId 列保持原值，UI 取消负责人静默失效）。
   if (input?.memberIds !== undefined) {
     const finalMembers = input.leadId
       ? Array.from(new Set([input.leadId, ...input.memberIds]))
       : Array.from(new Set(input.memberIds));
     await applyProjectMembers(input.projectId, finalMembers, client);
-    const effectiveLead = input.leadId !== undefined ? input.leadId : existing.leadId;
-    if (effectiveLead && !finalMembers.includes(effectiveLead)) {
+    if (input.leadId === null) {
       changes.leadId = null;
+    } else {
+      const effectiveLead = input.leadId !== undefined ? input.leadId : existing.leadId;
+      if (effectiveLead && !finalMembers.includes(effectiveLead)) {
+        changes.leadId = null;
+      }
     }
   } else if (input?.leadId !== undefined) {
     if (input.leadId === null) {

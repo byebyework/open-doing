@@ -214,6 +214,27 @@ describe.skipIf(!hasTestDatabase)("团队项目 service", () => {
     ).rejects.toBeInstanceOf(TeamPermissionError);
   });
 
+  it("显式清空负责人：leadId 置 null，成员覆写仍生效（回归：memberIds 分支吞掉 null）", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member = await createUser(db, "member");
+    await addMember(db, team.id, member.id, "member");
+
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Lead Clear", leadId: owner.id },
+      db,
+    );
+
+    await updateTeamProject(
+      { teamId: team.id, projectId: project.id, actorId: owner.id, leadId: null, memberIds: [member.id] },
+      db,
+    );
+
+    const [row] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect(row!.leadId).toBeNull();
+    const members = await db.select().from(projectMembers).where(eq(projectMembers.projectId, project.id));
+    expect(members.map((m) => m.userId)).toEqual([member.id]);
+  });
+
   it("删除项目级联清理任务、子任务、评论与通知；member 被拒绝", async () => {
     const { owner, team } = await setupTeam(db);
     const member = await createUser(db, "member");
