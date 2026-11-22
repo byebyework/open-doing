@@ -250,6 +250,22 @@ describe("ProjectOverviewPanel", () => {
     });
   });
 
+  it("标题内联改名：回填当前名，保存走 name 字段（回归：重构后无改名入口）", async () => {
+    render(projectFixture());
+    click('[data-testid="project-name-display"]');
+    const input = document.body.querySelector<HTMLInputElement>('[data-testid="project-name-edit"]');
+    expect(input?.value).toBe("官网改版");
+    setInput('[data-testid="project-name-edit"]', "官网改版 2.0");
+    click('[aria-label="保存"]');
+    await act(async () => {});
+    await act(async () => {});
+    expect(mockUpdate).toHaveBeenCalledWith({
+      teamId: "team-1",
+      projectId: "p1",
+      name: "官网改版 2.0",
+    });
+  });
+
   it("简述为空时展示回退描述；编辑回填所见文案（summary/description 同源）", () => {
     render(projectFixture({ summary: undefined, description: "持续学习与个人知识管理。" }));
     // 展示行回退显示描述文案

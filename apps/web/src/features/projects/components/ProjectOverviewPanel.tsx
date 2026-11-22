@@ -40,6 +40,7 @@ import {
   updateTeamProjectMilestoneAction,
   updateTeamProjectAction,
 } from "../actions";
+import { PROJECT_NAME_MAX_LENGTH } from "../constants";
 import type { MilestoneProgress } from "../service";
 
 import { MilestoneDatePopover } from "./MilestoneDatePopover";
@@ -59,7 +60,7 @@ export interface ProjectOverviewPanelProps {
   space: ProjectFormSpace;
 }
 
-type EditableField = "summary" | "description" | null;
+type EditableField = "name" | "summary" | "description" | null;
 
 /** `YYYY-MM-DD` -> Date（Calendar 受控值）。 */
 function parseISODate(value: string): Date | undefined {
@@ -259,13 +260,74 @@ export function ProjectOverviewPanel({
     setDraft("");
   };
 
+  /** 标题改名提交：空值或未变更直接退出；否则走单字段 name 更新。 */
+  const commitName = async () => {
+    const next = draft.trim();
+    if (!next || next === project.name) {
+      cancelEdit();
+      return;
+    }
+    if (await saveField({ name: next })) cancelEdit();
+  };
+
   const summaryValue = project.summary ?? project.description ?? "";
 
   return (
     <div className="mx-auto flex w-full max-w-[760px] flex-col gap-5">
-      {/* 大标题 */}
+      {/* 大标题（内联改名：点标题进入编辑，Enter/保存提交，Esc 取消） */}
       <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
-        {project.name}
+        {editingField === "name" ? (
+          <motion.div {...EDITOR_ENTRANCE} className="flex items-center gap-2">
+            <Input
+              value={draft}
+              maxLength={PROJECT_NAME_MAX_LENGTH}
+              autoFocus
+              disabled={saving}
+              data-testid="project-name-edit"
+              className="h-auto border-none bg-transparent px-0 text-[24px] font-bold shadow-none focus-visible:ring-0"
+              onChange={(event) => setDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter") void commitName();
+                if (event.key === "Escape") cancelEdit();
+              }}
+            />
+            <Button
+              type="button"
+              size="icon"
+              aria-label={tCommon("save")}
+              disabled={saving}
+              onClick={() => void commitName()}
+            >
+              <CheckIcon className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              aria-label={tCommon("cancel")}
+              onClick={cancelEdit}
+            >
+              <XIcon className="size-4" aria-hidden="true" />
+            </Button>
+          </motion.div>
+        ) : (
+          <button
+            type="button"
+            data-testid="project-name-display"
+            onClick={() => {
+              if (canManage) startEdit("name", project.name);
+            }}
+            className={`block text-left ${canManage ? "cursor-pointer" : "cursor-default"}`}
+          >
+            {project.name}
+            {canManage ? (
+              <PencilIcon
+                className="ml-2 inline size-4 text-[var(--color-text-muted)] opacity-0 transition-opacity hover:opacity-100 group-hover/name:opacity-100"
+                aria-hidden="true"
+              />
+            ) : null}
+          </button>
+        )}
       </h1>
 
       {/* 简述（内联编辑） */}
