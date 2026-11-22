@@ -340,6 +340,7 @@ export function ProjectOverviewPanel({
               onChange={(event) => setDraft(event.target.value)}
               disabled={saving}
               data-testid="project-summary-edit"
+              className="h-auto border-none bg-transparent px-0 text-[14px] md:text-[14px] text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
             />
             <Button
               type="button"
@@ -499,12 +500,13 @@ export function ProjectOverviewPanel({
         {editingField === "description" ? (
           <motion.div {...EDITOR_ENTRANCE} className="flex flex-col gap-2">
             <Textarea
-              rows={4}
+              rows={12}
               value={draft}
               maxLength={500}
               onChange={(event) => setDraft(event.target.value)}
               disabled={saving}
               data-testid="project-description-edit"
+              className="min-h-[18rem] border-none bg-transparent px-0 text-[13.5px] md:text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
             />
             <div className="flex justify-end gap-2">
               <Button
@@ -533,7 +535,7 @@ export function ProjectOverviewPanel({
             type="button"
             data-testid="project-description-display"
             onClick={() => startEdit("description", project.description ?? "")}
-            className={`block whitespace-pre-wrap rounded-[var(--radius-lg)] px-3 py-3 text-left text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:bg-[var(--color-surface-hover)]" : "cursor-default"} bg-[var(--color-surface-inset)]`}
+            className={`block min-h-36 whitespace-pre-wrap text-left text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:text-[var(--color-text)]" : "cursor-default"}`}
           >
             {project.description || t("descriptionHint")}
           </button>
