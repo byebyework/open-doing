@@ -195,7 +195,7 @@ test.describe("flow 8: 空间级 Analysis", () => {
 
     // 窄屏卡内状态按钮（flow 6 同款路径，不用不稳定的 dnd 拖拽）。
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto(`/space/${teamSlug}/kanban`);
+    await page.goto(`/space/${teamSlug}/tasks`);
 
     const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
     const inProgress = page.getByTestId(TEST_IDS.kanban.spaceColumnInProgress);

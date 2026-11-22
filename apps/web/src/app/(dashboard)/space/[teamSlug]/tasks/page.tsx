@@ -23,7 +23,7 @@ import { moduleHref, teamProjectNewHref, teamTaskHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
 export async function generateMetadata(
-  props: PageProps<"/space/[teamSlug]/kanban">,
+  props: PageProps<"/space/[teamSlug]/tasks">,
 ): Promise<Metadata> {
   const { teamSlug } = await props.params;
   const user = await requireUser();
@@ -33,13 +33,13 @@ export async function generateMetadata(
   // 非成员不通过标题泄露团队名（页面本身也会 404）。
   const team = await getTeamBySlug(teamSlug);
   const membership = team ? await getMembership(team.id, user.id) : null;
-  if (!team || !membership) return { title: t("kanbanTitle") };
+  if (!team || !membership) return { title: t("tasksTitle") };
 
-  return { title: t("teamModuleTitle", { team: team.name, module: await tNav("kanban") }) };
+  return { title: t("teamModuleTitle", { team: team.name, module: await tNav("tasks") }) };
 }
 
 /**
- * 团队空间 Kanban（v1.1 M2）。
+ * 团队空间任务（v1.1 M2，原 Kanban 模块改名）。
  *
  * 权限：团队不存在或非成员一律 404（不泄露存在性）。
  * 筛选：`?project={slug}` + `?assignee=unassigned` 由 RSC 解析成 projectId /
@@ -47,7 +47,7 @@ export async function generateMetadata(
  * client 筛选条负责。
  */
 export default async function TeamKanbanPage(
-  props: PageProps<"/space/[teamSlug]/kanban">,
+  props: PageProps<"/space/[teamSlug]/tasks">,
 ) {
   const { teamSlug } = await props.params;
   const {
@@ -138,7 +138,7 @@ export default async function TeamKanbanPage(
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <PageHeader
-        title={tNav("kanban")}
+        title={tNav("tasks")}
         subtitle={t("teamSubtitle")}
         actions={
           canManageProjects ? (
@@ -158,7 +158,7 @@ export default async function TeamKanbanPage(
           overdue: statFilter.overdueOnly,
           dueSoon: statFilter.dueSoonOnly,
         }}
-        basePath={moduleHref(team.slug, "kanban")}
+        basePath={moduleHref(team.slug, "tasks")}
         preserveParams={{
           ...(activeProject ? { project: activeProject.slug } : {}),
           ...(unassignedOnly ? { assignee: "unassigned" } : {}),
@@ -167,7 +167,7 @@ export default async function TeamKanbanPage(
 
       <SpaceKanbanFilterBar
         variant="team"
-        basePath={moduleHref(team.slug, "kanban")}
+        basePath={moduleHref(team.slug, "tasks")}
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         unassignedOnly={unassignedOnly}

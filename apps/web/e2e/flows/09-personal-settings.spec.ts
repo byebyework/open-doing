@@ -218,7 +218,7 @@ test.describe("flow 9: 个人空间设置", () => {
     await page.waitForTimeout(1_100);
     await createPersonalProject(page, projectB);
 
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
     await expectProjectOrder(page, [projectB, projectA]);
 
     // 给先建的 A 产生任务动态 → A 的最近活动晚于 B 的创建时间。
@@ -226,7 +226,7 @@ test.describe("flow 9: 个人空间设置", () => {
     await createPersonalTask(page, { title: taskA });
 
     // 刷新后顺序变化：A 置顶，证明排序消费的是「最近活动」而非创建时间。
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
     await expectProjectOrder(page, [projectA, projectB]);
   });
 });

@@ -16,18 +16,18 @@ import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
 
-  return { title: t("kanbanTitle") };
+  return { title: t("tasksTitle") };
 }
 
 /**
- * 个人空间 Kanban（v1.1 M2）。
+ * 个人空间任务（v1.1 M2，原 Kanban 模块改名）。
  *
  * RSC 取数：`?project={slug}` 命中本人项目时服务端过滤三列与 done 计数；
  * 未知 / 他人 slug 静默回退为全部（不 500、不报错）。筛选状态写回 URL 的
  * 交互下沉到 client 筛选条；看板组件只消费过滤后的数据。
  */
 export default async function PersonalKanbanPage(
-  props: PageProps<"/space/personal/kanban">,
+  props: PageProps<"/space/personal/tasks">,
 ) {
   const t = await getTranslations("kanban");
   const tDate = await getTranslations("date");
@@ -70,7 +70,7 @@ export default async function PersonalKanbanPage(
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <PageHeader
-        title={tNav("kanban")}
+        title={tNav("tasks")}
         subtitle={t("personalSubtitle")}
         actions={
           <PersonalKanbanNewTaskButton
@@ -88,7 +88,7 @@ export default async function PersonalKanbanPage(
           overdue: statFilter.overdueOnly,
           dueSoon: statFilter.dueSoonOnly,
         }}
-        basePath={moduleHref("personal", "kanban")}
+        basePath={moduleHref("personal", "tasks")}
         preserveParams={
           activeProject ? { project: activeProject.slug } : {}
         }
@@ -96,7 +96,7 @@ export default async function PersonalKanbanPage(
 
       <SpaceKanbanFilterBar
         variant="personal"
-        basePath={moduleHref("personal", "kanban")}
+        basePath={moduleHref("personal", "tasks")}
         projects={projects}
         activeProjectSlug={activeProject?.slug}
         statParams={{

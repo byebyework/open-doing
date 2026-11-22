@@ -14,7 +14,7 @@ import {
 } from "../utils/flows";
 
 /**
- * 关键流 6：空间级 Kanban（v1.1 M3，`/space/{spaceRef}/kanban`）。
+ * 关键流 6：空间级 Kanban（v1.1 M3，`/space/{spaceRef}/tasks`）。
  *
  * 覆盖（对照实现计划的 Task 6、不测 dnd-kit 拖拽本体）：
  * 1. 个人看板三列 + 卡片项目 tag + `?project=` 深链接刷新还原；
@@ -48,7 +48,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await openPersonalProject(page, projectB);
     await createPersonalTask(page, { title: taskB });
 
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
 
     // 三列（待办 / 进行中 / 已完成）都是真实 section。
     for (const column of [
@@ -78,7 +78,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
 
     // 深链接：直接带 ?project= 进入，只保留该项目；刷新后仍是同一视图。
-    const filteredPath = `/space/personal/kanban?project=${personalProjectSlug(projectA)}`;
+    const filteredPath = `/space/personal/tasks?project=${personalProjectSlug(projectA)}`;
     await page.goto(filteredPath);
     await expect(page.getByText(`当前筛选：${projectA} · 1 个任务`)).toBeVisible();
     await expect(page.getByText(taskA, { exact: true })).toBeVisible();
@@ -90,7 +90,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(page.getByText(taskB, { exact: true })).toHaveCount(0);
 
     // 非法 slug 静默回退为全部（不 500、不报错），与页面契约一致。
-    await page.goto("/space/personal/kanban?project=not-a-real-project");
+    await page.goto("/space/personal/tasks?project=not-a-real-project");
     await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
     await expect(page.getByText(taskA, { exact: true })).toBeVisible();
     await expect(page.getByText(taskB, { exact: true })).toBeVisible();
@@ -197,7 +197,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     }
 
     // 团队看板：默认「全部任务」= 两张卡；被移除成员的任务显示未指派 tag。
-    await page.goto(`/space/${teamSlug}/kanban`);
+    await page.goto(`/space/${teamSlug}/tasks`);
     const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
     await expect(page.getByText("当前筛选：全部项目 · 2 个未完成任务")).toBeVisible();
     await expect(todo.getByText(ownerTask, { exact: true })).toBeVisible();
@@ -212,7 +212,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
     const filterBar = page.getByTestId(TEST_IDS.kanban.assigneeFilter);
     await filterBar.getByText("未指派", { exact: true }).click();
     await expect(page).toHaveURL(
-      new RegExp(`/space/${teamSlug}/kanban\\?assignee=unassigned$`),
+      new RegExp(`/space/${teamSlug}/tasks\\?assignee=unassigned$`),
     );
     await expect(page.getByText("当前筛选：全部项目 · 1 个未完成任务")).toBeVisible();
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
@@ -226,7 +226,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
 
     // 切回「全部任务」：URL 回到干净地址，两张卡都回来。
     await filterBar.getByText("全部任务", { exact: true }).click();
-    await expect(page).toHaveURL(new RegExp(`/space/${teamSlug}/kanban$`));
+    await expect(page).toHaveURL(new RegExp(`/space/${teamSlug}/tasks$`));
     await expect(page.getByText("当前筛选：全部项目 · 2 个未完成任务")).toBeVisible();
     await expect(todo.getByText(ownerTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
@@ -244,7 +244,7 @@ test.describe("flow 6: 空间级 Kanban", () => {
 
     // 375px：看板单列堆叠，拖拽关闭，卡内状态按钮可达。
     await page.setViewportSize({ width: 375, height: 812 });
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
 
     const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
     const inProgress = page.getByTestId(TEST_IDS.kanban.spaceColumnInProgress);
@@ -341,14 +341,14 @@ test.describe("flow 6: 看板统计带", () => {
     await createPersonalTask(page, { title: overdueTask, dueDate: "2020-01-01" });
     await createPersonalTask(page, { title: futureTask, dueDate: "2099-01-01" });
 
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
 
     const overdueChip = page.locator('[data-filter="overdue"]');
     await expect(overdueChip).toHaveAttribute("aria-pressed", "false");
 
     // 点击即筛选：URL 写入契约参数，激活态翻转。
     await overdueChip.click();
-    await expect(page).toHaveURL(/\/space\/personal\/kanban\?overdue=1$/);
+    await expect(page).toHaveURL(/\/space\/personal\/tasks\?overdue=1$/);
     await expect(overdueChip).toHaveAttribute("aria-pressed", "true");
 
     // 看板只剩逾期卡，未来到期卡被筛掉。
@@ -363,7 +363,7 @@ test.describe("flow 6: 看板统计带", () => {
 
     // 再点取消：参数删除，URL 回到干净地址，两张卡都回来。
     await overdueChip.click();
-    await expect(page).toHaveURL(/\/space\/personal\/kanban$/);
+    await expect(page).toHaveURL(/\/space\/personal\/tasks$/);
     await expect(overdueChip).toHaveAttribute("aria-pressed", "false");
     await expect(todo.getByText(overdueTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(futureTask, { exact: true })).toBeVisible();
@@ -379,10 +379,10 @@ test.describe("flow 6: 看板统计带", () => {
     await openPersonalProject(page, projectName);
     await createPersonalTask(page, { title: overdueTask, dueDate: "2020-01-01" });
 
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
     const overdueChip = page.locator('[data-filter="overdue"]');
     await overdueChip.click();
-    await expect(page).toHaveURL(/\/space\/personal\/kanban\?overdue=1$/);
+    await expect(page).toHaveURL(/\/space\/personal\/tasks\?overdue=1$/);
 
     // 视角内细化：切到项目 A，已逾期视角必须跟着走（URL 仍带 overdue=1，chip 仍激活）。
     await page.getByTestId(TEST_IDS.kanban.projectFilter).click();

@@ -194,7 +194,7 @@ export default async function TeamDashboardPage(
           >
             {t("unassignedHintLead")}
             <Link
-              href={moduleHref(team.slug, "kanban")}
+              href={moduleHref(team.slug, "tasks")}
               className="font-medium underline underline-offset-2"
             >
               {t("unassignedHintLink")}

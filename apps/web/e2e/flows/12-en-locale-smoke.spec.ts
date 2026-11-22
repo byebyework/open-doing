@@ -63,7 +63,7 @@ test.describe("flow 12: 英文界面冒烟", () => {
     ).toBeVisible();
 
     // ===== 看板英文列头 =====
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
     await expect(
       page
         .getByTestId(TEST_IDS.kanban.spaceColumnTodo)
@@ -94,7 +94,7 @@ test.describe("flow 12: 英文界面冒烟", () => {
     // ===== 刷新后仍为英文（cookie 持久化） =====
     await page.reload(); // 仍在日历页，硬刷新验证 cookie 生效
     await expect(page.locator("html")).toHaveAttribute("lang", "en-US");
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
     await expect(
       page
         .getByTestId(TEST_IDS.kanban.spaceColumnTodo)

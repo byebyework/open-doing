@@ -6,7 +6,7 @@ export type SpaceRef = string; // "personal" 或团队 slug
 export type SpaceModule =
   | "dashboard"
   | "projects"
-  | "kanban"
+  | "tasks"
   | "calendar"
   | "moments"
   | "analysis"

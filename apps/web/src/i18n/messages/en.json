@@ -223,7 +223,7 @@
     "notSignedInAria": "Not signed in",
     "dashboard": "Dashboard",
     "projects": "Projects",
-    "kanban": "Kanban",
+    "tasks": "Tasks",
     "calendar": "Calendar",
     "analysis": "Analysis",
     "moments": "Moments",
@@ -877,7 +877,7 @@
     "welcomeEvening": "Good evening, {name}"
   },
   "kanban": {
-    "kanban": "Kanban",
+    "kanban": "Tasks",
     "personalSubtitle": "The full picture of your personal projects: all personal tasks across projects, drag a card to change its status.",
     "teamSubtitle": "The full picture of every team task: filter by project and drag cards to change status. Claim unassigned tasks here.",
     "newProjectButton": "＋ New project",
@@ -1282,7 +1282,7 @@
     "teamSettingsTitle": "Team management · Open Doing",
     "dashboardTitle": "Dashboard · Open Doing",
     "projectsTitle": "Projects · Open Doing",
-    "kanbanTitle": "Kanban · Open Doing",
+    "tasksTitle": "Tasks · Open Doing",
     "calendarTitle": "Calendar · Open Doing",
     "analysisTitle": "Analysis · Open Doing",
     "momentsTitle": "Moments · Open Doing",

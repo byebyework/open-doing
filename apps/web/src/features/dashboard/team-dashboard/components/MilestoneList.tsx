@@ -53,7 +53,7 @@ export async function MilestoneList({
 
       <div className="-mx-4 mt-auto border-t border-[var(--border-default)] px-4 pt-2.5 min-[861px]:-mx-5 min-[861px]:px-5">
         <Link
-          href={moduleHref(teamSlug, "kanban")}
+          href={moduleHref(teamSlug, "tasks")}
           className="text-[12.5px] font-medium text-[var(--purple-600)] hover:underline"
         >
           {t("viewAllTasks")}

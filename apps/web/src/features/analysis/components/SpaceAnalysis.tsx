@@ -418,7 +418,7 @@ async function TeamBody({
   const todayIndex = unit === "day" ? buckets.length - 1 : undefined;
   const { stats } = analysis;
   const weekStart = getWeekStart(today);
-  const kanbanHref = moduleHref(spaceRef, "kanban");
+  const kanbanHref = moduleHref(spaceRef, "tasks");
 
   const drillByProject = new Map(
     analysis.projectTagDrillDowns.map((drill) => [drill.projectId, drill]),

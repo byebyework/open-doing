@@ -107,7 +107,7 @@ features/
 
 ## 5. Routing Structure
 
-The app is unified as a space tree: `/space/{spaceRef}/{module}`, where `spaceRef` is `personal` or a team slug. Personal space exposes four modules — `dashboard / kanban / calendar / analysis`; team space adds a fifth, `settings` (displayed as 团队管理 / team management, route unchanged). Personal settings are not a space module: they live at the top-level `/settings` route, reached from the topbar user menu.
+The app is unified as a space tree: `/space/{spaceRef}/{module}`, where `spaceRef` is `personal` or a team slug. Personal space exposes four modules — `dashboard / tasks / calendar / analysis`; team space adds a fifth, `settings` (displayed as 团队管理 / team management, route unchanged). Personal settings are not a space module: they live at the top-level `/settings` route, reached from the topbar user menu.
 
 ```
 app/
@@ -124,7 +124,7 @@ app/
 │   └── space/
 │       ├── personal/
 │       │   ├── dashboard/page.tsx   # personal Dashboard: stat cards + "today" list (≤20)
-│       │   ├── kanban/page.tsx      # personal Kanban: cross-project aggregation + ?project filter
+│       │   ├── tasks/page.tsx       # personal tasks module (Kanban board): cross-project aggregation + ?project filter
 │       │   ├── calendar/page.tsx    # personal Calendar: month view + this-week / this-month lists (?month)
 │       │   ├── analysis/page.tsx    # personal Analysis: trends / backlog / on-time rate / project comparison (?range)
 │       │   ├── projects/[projectSlug]/
@@ -132,7 +132,7 @@ app/
 │       │   └── tasks/[taskId]/page.tsx # personal task detail (incl. tasks in personal projects)
 │       ├── [teamSlug]/
 │       │   ├── dashboard/page.tsx   # team Dashboard: health + key milestones + member load
-│       │   ├── kanban/page.tsx      # team Kanban: cross-project aggregation + ?project / ?assignee filters
+│       │   ├── tasks/page.tsx       # team tasks module (Kanban board): cross-project aggregation + ?project / ?assignee filters
 │       │   ├── calendar/page.tsx    # team Calendar: all team tasks (incl. unassigned) + ?month
 │       │   ├── analysis/page.tsx    # team Analysis: throughput / member load / health / zombie tasks (?range)
 │       │   ├── settings/page.tsx    # team management (团队管理): team info/rename, invites, join-by-code and request approval, members, danger zone
@@ -146,7 +146,7 @@ app/
         └── due-scan/route.ts        # due-soon/overdue scan, secret-protected
 ```
 
-- Both space types render the same domain pages; personal space has four modules (`dashboard` / `kanban` / `calendar` / `analysis`), team space has five (the same four plus `settings`, displayed as 团队管理). The pages share domain components, differentiated by `spaceType` / variant (see §5.2–§5.5).
+- Both space types render the same domain pages; personal space has four modules (`dashboard` / `tasks` / `calendar` / `analysis`), team space has five (the same four plus `settings`, displayed as 团队管理). The pages share domain components, differentiated by `spaceType` / variant (see §5.2–§5.5).
 - The root `/` route (`app/page.tsx`) calls `getCurrentUser()`: logged-in users are redirected to `/space/personal/dashboard`; anonymous visitors get the landing page (`features/landing`), a client-motion showcase whose copy is fully localized. Anonymous locale preference lives in the `od_locale` cookie (`setAnonymousLocaleAction`, no DB access); logged-in language preference stays `users.language` via personal settings.
 - Personal settings are a **system-level page** at `/settings`, inside the `(dashboard)` group so it inherits AppShell and `requireUser()`: profile fields, change password, reminder toggles, language, project ordering. The former `/space/personal/settings` route was removed outright (404, no redirect).
 - `personal` is a reserved spaceRef: team slug generation treats `personal` as taken (`RESERVED_SPACE_SLUGS` in `lib/slug.ts`); a team named "Personal" falls back to `personal-2`, leaving personal-space routing unaffected.
@@ -169,7 +169,7 @@ app/
 ### 5.2 Navigation (AppShell / SpaceNav)
 
 - `AppShell` props: `{ nav, mobileNav, user, children }`.
-- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (personal space: Dashboard / Kanban / Calendar / Analysis, no settings entry; team space: the same four plus Settings, labeled 团队管理 (team management), route unchanged; the item arrays are hardcoded per space type and shared by the desktop sidebar and the mobile drawer; a separate account group holds the pending-invites entry), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + Radix Sheet drawer).
+- `SpaceNav`, `SpaceNavData` (`getSpaceNavData()` fetches everything in one pass), `SpaceNavMenu` (personal space: Dashboard / Tasks / Calendar / Analysis, no settings entry; team space: the same four plus Settings, labeled 团队管理 (team management), route unchanged; the item arrays are hardcoded per space type and shared by the desktop sidebar and the mobile drawer; a separate account group holds the pending-invites entry), and `MobileNav` (hamburger button below 861px, `aria-label="打开导航"` + Radix Sheet drawer).
 - The desktop sidebar and the mobile Drawer share the same navigation tree; `(dashboard)/layout.tsx` imports are adjusted accordingly.
 
 ### 5.3 Space-level Kanban
@@ -178,8 +178,8 @@ One set of components for both spaces (`features/kanban/`; `SpaceKanban` disting
 
 | Route | Data scope |
 |---|---|
-| `/space/personal/kanban` | All of the user's personal tasks (incl. loose tasks), aggregated across projects |
-| `/space/{teamSlug}/kanban` | Tasks of all the team's projects (incl. unassigned); non-members get 404 |
+| `/space/personal/tasks` | All of the user's personal tasks (incl. loose tasks), aggregated across projects |
+| `/space/{teamSlug}/tasks` | Tasks of all the team's projects (incl. unassigned); non-members get 404 |
 
 URL query contract (filter state lives in the URL; the RSC filters the three columns and done count server-side):
 

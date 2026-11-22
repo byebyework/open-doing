@@ -65,7 +65,7 @@ test.describe("flow 14: 任务优先级", () => {
     ).toHaveAttribute("data-priority", "low");
 
     // 空间看板：卡面渲染低档色点（新用户仅此一张卡，first() 唯一）。
-    await page.goto("/space/personal/kanban");
+    await page.goto("/space/personal/tasks");
     await expect(page.getByTestId(TEST_IDS.tasks.priorityDot).first())
       .toBeVisible();
     await expect(

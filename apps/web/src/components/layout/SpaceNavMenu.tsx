@@ -82,8 +82,8 @@ function DashboardIcon() {
   );
 }
 
-/** Kanban 图标（原型三列看板）。 */
-function KanbanIcon() {
+/** 任务图标（勾选方块列表，模块改名后沿用同粗细线稿）。 */
+function TasksIcon() {
   return (
     <svg
       className={ICON_CLASS}
@@ -95,9 +95,9 @@ function KanbanIcon() {
       strokeLinejoin="round"
       aria-hidden="true"
     >
-      <rect x="3" y="3" width="5" height="18" rx="1" />
-      <rect x="10" y="3" width="5" height="12" rx="1" />
-      <rect x="17" y="3" width="4" height="8" rx="1" />
+      <rect x="3.5" y="4.5" width="7" height="7" rx="1.5" />
+      <rect x="3.5" y="14.5" width="7" height="7" rx="1.5" />
+      <path d="M14 6.5h6.5M14 16.5h6.5" />
     </svg>
   );
 }
@@ -242,7 +242,7 @@ interface SpaceNavModule {
   labelKey:
     | "dashboard"
     | "projects"
-    | "kanban"
+    | "tasks"
     | "calendar"
     | "moments"
     | "analysis"
@@ -296,7 +296,7 @@ function TagsIcon() {
 const PERSONAL_MODULES: SpaceNavModule[] = [
   { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
   { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
-  { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
+  { module: "tasks", labelKey: "tasks", Icon: TasksIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
   { module: "moments", labelKey: "moments", Icon: MomentsIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
@@ -311,7 +311,7 @@ const PERSONAL_MODULES: SpaceNavModule[] = [
 const TEAM_MODULES: SpaceNavModule[] = [
   { module: "dashboard", labelKey: "dashboard", Icon: DashboardIcon },
   { module: "projects", labelKey: "projects", Icon: ProjectsIcon },
-  { module: "kanban", labelKey: "kanban", Icon: KanbanIcon },
+  { module: "tasks", labelKey: "tasks", Icon: TasksIcon },
   { module: "calendar", labelKey: "calendar", Icon: CalendarIcon },
   { module: "analysis", labelKey: "analysis", Icon: AnalysisIcon },
   { module: "tags", labelKey: "tags", Icon: TagsIcon },
@@ -359,7 +359,7 @@ export function resolveSpaceLabel(
  * 统一空间导航菜单（v1.1 M2 新 IA）。
  *
  * 结构对照原型 `space-dashboard-*.html` 侧栏：
- * - 当前空间名作为分组标题；个人空间 6 项（Dashboard / 项目 / Kanban /
+ * - 当前空间名作为分组标题；个人空间 6 项（Dashboard / 项目 / 任务 /
  *   Calendar / 时刻 / Analysis，v1.2 新增「项目」，「时刻」为
  *   个人空间专属），团队空间不含「时刻」，额外第 6 项「团队管理」
  *   （团队的 settings 路由）；

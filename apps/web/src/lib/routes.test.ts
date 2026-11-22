@@ -24,7 +24,7 @@ describe("spaceDashboardHref", () => {
 
 describe("moduleHref", () => {
   it("拼接 /space/{spaceRef}/{module}", () => {
-    expect(moduleHref("personal", "kanban")).toBe("/space/personal/kanban");
+    expect(moduleHref("personal", "tasks")).toBe("/space/personal/tasks");
     expect(moduleHref("growth", "analysis")).toBe("/space/growth/analysis");
     expect(moduleHref("growth", "settings")).toBe("/space/growth/settings");
   });

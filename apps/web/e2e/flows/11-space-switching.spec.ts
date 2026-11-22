@@ -215,7 +215,7 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     ).toBeVisible();
     // 个人空间 6 个模块（含 v1.2 新增的「项目」与个人专属的「时刻」）；
     // 个人设置已上移至顶栏用户菜单（/settings）。
-    for (const label of ["仪表盘", "项目", "看板", "日历", "时刻", "分析"]) {
+    for (const label of ["仪表盘", "项目", "任务", "日历", "时刻", "分析"]) {
       await expect(
         drawer.getByRole("link", { name: label, exact: true }),
       ).toBeVisible();
@@ -227,13 +227,13 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
       drawer.getByRole("link", { name: "待处理邀请" }),
     ).toBeVisible();
 
-    // 经 Drawer 内 Kanban 跳转 → URL 与页面真实渲染；路由变化自动收起 Drawer。
-    await drawer.getByRole("link", { name: "看板", exact: true }).click();
-    await expect(page).toHaveURL(/\/space\/personal\/kanban$/, {
+    // 经 Drawer 内任务模块跳转 → URL 与页面真实渲染；路由变化自动收起 Drawer。
+    await drawer.getByRole("link", { name: "任务", exact: true }).click();
+    await expect(page).toHaveURL(/\/space\/personal\/tasks$/, {
       timeout: 30_000,
     });
     await expect(
-      page.getByRole("heading", { name: "看板", level: 1 }),
+      page.getByRole("heading", { name: "任务", level: 1 }),
     ).toBeVisible();
     await expect(drawer).toBeHidden();
 
@@ -257,7 +257,7 @@ test.describe("flow 11: 移动端 Drawer 导航", () => {
     for (const label of [
       "仪表盘",
       "项目",
-      "看板",
+      "任务",
       "日历",
       "分析",
       "团队管理",

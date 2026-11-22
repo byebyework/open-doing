@@ -262,7 +262,7 @@ export function TodayTaskList({
       {total > tasks.length ? (
         <div className="border-t border-[var(--border-default)] px-4 py-3 min-[861px]:px-5">
           <Link
-            href={moduleHref("personal", "kanban")}
+            href={moduleHref("personal", "tasks")}
             className="text-[12.5px] text-[var(--purple-600)] no-underline hover:underline"
           >
             {t("moreTasksFooter", {
