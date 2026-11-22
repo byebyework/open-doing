@@ -78,22 +78,24 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
 
     // 深链接：直接带 ?project= 进入，只保留该项目；刷新后仍是同一视图。
+    // 双视图后看板卡片与列表行同屏（非激活面板常驻），标题断言需锚定看板面板。
     const filteredPath = `/space/personal/tasks?project=${personalProjectSlug(projectA)}`;
+    const board = page.getByTestId(TEST_IDS.kanban.viewPanelBoard);
     await page.goto(filteredPath);
     await expect(page.getByText(`当前筛选：${projectA} · 1 个任务`)).toBeVisible();
-    await expect(page.getByText(taskA, { exact: true })).toBeVisible();
+    await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(page.getByText(taskB, { exact: true })).toHaveCount(0);
 
     await page.reload();
     await expect(page.getByText(`当前筛选：${projectA} · 1 个任务`)).toBeVisible();
-    await expect(page.getByText(taskA, { exact: true })).toBeVisible();
+    await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(page.getByText(taskB, { exact: true })).toHaveCount(0);
 
     // 非法 slug 静默回退为全部（不 500、不报错），与页面契约一致。
     await page.goto("/space/personal/tasks?project=not-a-real-project");
     await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
-    await expect(page.getByText(taskA, { exact: true })).toBeVisible();
-    await expect(page.getByText(taskB, { exact: true })).toBeVisible();
+    await expect(board.getByText(taskA, { exact: true })).toBeVisible();
+    await expect(board.getByText(taskB, { exact: true })).toBeVisible();
   });
 
   test("团队看板未指派筛选", async ({ page, browser }) => {
@@ -395,5 +397,180 @@ test.describe("flow 6: 看板统计带", () => {
     );
     await expect(page).toHaveURL(/overdue=1/);
     await expect(overdueChip).toHaveAttribute("aria-pressed", "true");
+  });
+});
+
+/**
+ * 任务页双视图（看板 / 列表，TasksViewTabs + SpaceTaskTable）。
+ *
+ * 覆盖（对照实现计划的 Task 5）：
+ * 1. 默认看板且 URL 无 view；2. tab 切列表 + ?view=list 入 URL + Tab 遍历
+ * 不落入看板面板（inert）；3. ?view=list 深链接刷新首屏即列表；
+ * 4. 统计 chip 导航保留 view=list（view 贯通）；
+ * 5. 窗口外已完成（updatedAt > 7 天）入列表、看板 done 列（未展开）不可见；
+ * 6. 团队：member 会话可见「新建任务」并经弹窗创建成功出现在列表。
+ */
+test.describe("flow 6: 任务页双视图", () => {
+  test("个人任务页：tab 切换、深链接刷新、统计保留 view、更早已完成入列表", async ({
+    page,
+  }) => {
+    const username = uniqueUsername("e2e_kv");
+    const projectName = uniqueLabel("E2E kv project");
+    const todoTask = uniqueLabel("E2E kv todo task");
+    const doneTask = uniqueLabel("E2E kv done task");
+
+    await registerUser(page, username);
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, { title: doneTask });
+
+    // 预置一张近 7 天完成的卡：卡内状态按钮仅移动端布局渲染
+    // （`min-[861px]:hidden`），借 375px 视口走真实按钮路径（todo 列此刻
+    // 只有这张卡，无需卡片级定位）。
+    await page.setViewportSize({ width: 375, height: 812 });
+    await page.goto("/space/personal/tasks");
+    await page
+      .getByTestId(TEST_IDS.kanban.spaceColumnTodo)
+      .getByTestId(TEST_IDS.tasks.cardStatusButton("done"))
+      .click();
+    const done = page.getByTestId(TEST_IDS.kanban.spaceColumnDone);
+    await expect(done.getByText(doneTask, { exact: true })).toBeVisible();
+
+    // 回到桌面视口，补建第二张卡（后续用例不再点卡内按钮）。
+    await page.setViewportSize({ width: 1280, height: 720 });
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, { title: todoTask });
+
+    // 1. 默认看板：面板可见，URL 无 view。
+    await page.goto("/space/personal/tasks");
+    await expect(page.getByTestId(TEST_IDS.kanban.viewPanelBoard)).toBeVisible();
+    await expect(page).toHaveURL(/\/space\/personal\/tasks$/);
+
+    // 2. 切列表：表格可见、?view=list 入 URL；Tab 遍历不落入看板面板。
+    await page.getByTestId(TEST_IDS.kanban.viewTabList).click();
+    const table = page.getByTestId(TEST_IDS.kanban.taskTable);
+    await expect(table).toBeVisible();
+    await expect(page).toHaveURL(/\/space\/personal\/tasks\?view=list$/);
+
+    await page.getByTestId(TEST_IDS.kanban.viewTabList).focus();
+    await page.keyboard.press("Tab");
+    const focusInside = (testid: string) =>
+      page.evaluate(
+        (panelTestid) =>
+          !!document.activeElement?.closest(
+            `[data-testid="${panelTestid}"]`,
+          ),
+        testid,
+      );
+    expect(await focusInside(TEST_IDS.kanban.viewPanelBoard)).toBe(false);
+    expect(await focusInside(TEST_IDS.kanban.viewPanelList)).toBe(true);
+
+    // 3. 深链接：直开 ?view=list，刷新后首屏仍是列表。
+    await page.goto("/space/personal/tasks?view=list");
+    await expect(page.getByTestId(TEST_IDS.kanban.taskTable)).toBeVisible();
+    await page.reload();
+    await expect(page.getByTestId(TEST_IDS.kanban.taskTable)).toBeVisible();
+    await expect(table.getByText(todoTask, { exact: true })).toBeVisible();
+
+    // 4. 统计 chip 导航保留 view：URL 同时含筛选参数与 view=list。
+    await page.locator('[data-filter="status:todo"]').click();
+    await expect(page).toHaveURL(
+      /\/space\/personal\/tasks\?status=todo&view=list$/,
+    );
+    await expect(page.getByTestId(TEST_IDS.kanban.taskTable)).toBeVisible();
+
+    // 5. 窗口外已完成：列表可见，看板 done 列（未展开）不可见。
+    await page.goto("/space/personal/tasks?view=list");
+    await ageTaskUpdatedAt(doneTask, 10);
+    await page.reload();
+    await expect(table.getByText(doneTask, { exact: true })).toBeVisible();
+    await expect(page.getByTestId(TEST_IDS.kanban.spaceColumnDone).getByText(doneTask, { exact: true })).toHaveCount(0);
+    await expect(table.getByText(todoTask, { exact: true })).toBeVisible();
+  });
+
+  test("团队任务页：member 会话可见新建任务，经弹窗创建成功出现在列表", async ({
+    page,
+    browser,
+  }) => {
+    const ownerName = uniqueUsername("e2e_kvto");
+    const memberName = uniqueUsername("e2e_kvtm");
+    const teamName = uniqueLabel("E2E kvt team");
+    const projectName = uniqueLabel("E2E kvt project");
+    const taskTitle = uniqueLabel("E2E kvt task");
+
+    await registerUser(page, ownerName);
+
+    await page.goto("/teams/new");
+    await page.getByTestId(TEST_IDS.teams.teamNameInput).fill(teamName);
+    await page.getByTestId(TEST_IDS.teams.createTeamButton).click();
+    await expect(page).toHaveURL(/\/space\/[^/]+\/settings$/, {
+      timeout: 30_000,
+    });
+    const teamSlug = decodeURIComponent(
+      new URL(page.url()).pathname.split("/")[2] ?? "",
+    );
+    expect(teamSlug).not.toBe("");
+
+    const memberContext = await browser.newContext();
+    const memberPage = await memberContext.newPage();
+
+    try {
+      // 邀请第二账号入队（member 角色，验证新建任务入口不被权限门槛挡住）。
+      await registerUser(memberPage, memberName);
+      await memberPage.goto("/invites");
+      const uid = (
+        await memberPage.getByTestId(TEST_IDS.teams.accountUid).innerText()
+      ).trim();
+
+      await page
+        .getByTestId(TEST_IDS.teams.inviteUidInput)
+        .fill(uid.replace(/^doing_/, ""));
+      await page.getByTestId(TEST_IDS.teams.inviteSendButton).click();
+      await expect(
+        page.getByTestId(TEST_IDS.teams.invitePendingHeading),
+      ).toContainText("1");
+
+      await memberPage.goto("/invites");
+      await memberPage.getByTestId(TEST_IDS.teams.inviteAcceptButton).click();
+      await expect(memberPage.getByText("没有待处理的邀请。")).toBeVisible();
+
+      // owner 建一个团队项目，保证弹窗的项目下拉有可选项。
+      await page.goto(`/space/${teamSlug}/projects/new`);
+      await page
+        .getByTestId(TEST_IDS.projects.teamProjectNameInput)
+        .fill(projectName);
+      await page.getByTestId(TEST_IDS.projects.teamProjectSubmitButton).click();
+      await expect(
+        page.getByRole("heading", { name: projectName, level: 1 }),
+      ).toBeVisible({ timeout: 30_000 });
+
+      // member 会话进团队任务页：新建任务可见（新建项目则仅 owner 可见）。
+      await memberPage.goto(`/space/${teamSlug}/tasks`);
+      const newTaskButton = memberPage.getByRole("button", {
+        name: "新建任务",
+        exact: true,
+      });
+      await expect(newTaskButton).toBeVisible();
+
+      // 经弹窗创建任务（项目 / 责任人走默认值：唯一项目 / 自己）。
+      await newTaskButton.click();
+      const dialog = memberPage.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      // 等弹窗动效与初始值同步完成后再填写。
+      await memberPage.waitForTimeout(500);
+      await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(taskTitle);
+      await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
+      await expect(dialog).toBeHidden();
+
+      // 成功后出现在列表视图（router.refresh 已带回新数据）。
+      await memberPage.getByTestId(TEST_IDS.kanban.viewTabList).click();
+      await expect(
+        memberPage
+          .getByTestId(TEST_IDS.kanban.taskTable)
+          .getByText(taskTitle, { exact: true }),
+      ).toBeVisible();
+    } finally {
+      await memberContext.close();
+    }
   });
 });

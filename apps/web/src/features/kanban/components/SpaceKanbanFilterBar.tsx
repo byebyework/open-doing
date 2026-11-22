@@ -1,7 +1,7 @@
 "use client";
 
 import { useTranslations } from "next-intl";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 import { HintBadge } from "@/components/ui/HintBadge";
 import {
@@ -67,6 +67,9 @@ export function SpaceKanbanFilterBar({
   allProjectsProgress,
 }: SpaceKanbanFilterBarProps) {
   const router = useRouter();
+  // 双视图（TasksViewTabs）切换是纯客户端 replaceState，RSC 的 props 感知不到；
+  // 筛选导航必须读实时 URL，否则列表视图下切筛选会把用户甩回看板。
+  const viewParam = useSearchParams().get("view");
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
   const tDate = useTranslations("date");
@@ -91,6 +94,7 @@ export function SpaceKanbanFilterBar({
     if (variant === "team" && onlyUnassigned) {
       params.set("assignee", "unassigned");
     }
+    if (viewParam === "list") params.set("view", "list");
 
     const query = params.toString();
     router.push(query ? `${basePath}?${query}` : basePath);

@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { aggregateProjectProgress } from "@open-doing/types";
+import { aggregateProjectProgress, displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -10,15 +10,21 @@ import { requireUser } from "@/features/auth/session";
 import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
+import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
+import { sortTaskRows } from "@/features/kanban/sort-task-rows";
+import { TasksViewTabs } from "@/features/kanban/components/TasksViewTabs";
+import { TeamTasksNewTaskButton } from "@/features/kanban/components/TeamTasksNewTaskButton";
 import {
+  getOlderDoneTeamTasks,
   getTeamKanbanProjectProgress,
   getTeamKanbanStats,
   getTeamSpaceBoard,
 } from "@/features/kanban/service";
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listTeamProjects } from "@/features/projects/service";
+import { listTags } from "@/features/tags/service";
 import { can, getMembership } from "@/features/teams/permissions";
-import { getTeamBySlug } from "@/features/teams/service";
+import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { moduleHref, teamProjectNewHref, teamTaskHref } from "@/lib/routes";
 import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
 
@@ -53,6 +59,7 @@ export default async function TeamKanbanPage(
   const {
     project: projectParam,
     assignee: assigneeParam,
+    view: viewParam,
     ...statParams
   } = await props.searchParams;
   const requestedSlug = Array.isArray(projectParam)
@@ -61,6 +68,9 @@ export default async function TeamKanbanPage(
   const assigneeValue = Array.isArray(assigneeParam)
     ? assigneeParam[0]
     : assigneeParam;
+  // 双视图：`?view=list` 即列表，无 view（含非法值）回归看板默认。
+  const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
+  const initialView = requestedView === "list" ? "list" : "board";
   const statFilter = parseStatFilterParams(statParams);
 
   const t = await getTranslations("kanban");
@@ -85,12 +95,19 @@ export default async function TeamKanbanPage(
     unassignedOnly,
     ...statFilter,
   };
-  // 卡片、统计与项目进度共用同一组筛选谓词（统计带数字与看板内容不叉）。
-  const [board, stats, progressEntries] = await Promise.all([
-    getTeamSpaceBoard(team.id, today, filter),
-    getTeamKanbanStats(team.id, today, filter),
-    getTeamKanbanProjectProgress(team.id, today),
-  ]);
+  // 卡片、统计、列表的窗口外已完成与项目进度共用同一组筛选谓词
+  // （统计带数字与看板内容不叉）；成员 / 标签池供页头新建任务弹窗。
+  const [board, stats, progressEntries, olderDone, memberList, tagPool] =
+    await Promise.all([
+      getTeamSpaceBoard(team.id, today, filter),
+      getTeamKanbanStats(team.id, today, filter),
+      getTeamKanbanProjectProgress(team.id, today),
+      getOlderDoneTeamTasks(team.id, today, filter),
+      listMembers(team.id),
+      listTags({ teamId: team.id }),
+    ]);
+  // 类型分流：任务打标入口只列 task 标签（先例团队项目页）。
+  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
 
   // 项目筛选下拉的 `· NN%`：slug → 进度 + 全部项目的简单平均。
   const progressBySlug = new Map(
@@ -111,12 +128,20 @@ export default async function TeamKanbanPage(
     projects.map((project) => [project.id, project.slug]),
   );
   const taskHrefs: Record<string, string> = {};
-  for (const card of [...board.todo, ...board.inProgress, ...board.doneRecent]) {
+  const allCards = [
+    ...board.todo,
+    ...board.inProgress,
+    ...board.doneRecent,
+    ...olderDone,
+  ];
+  for (const card of allCards) {
     const projectSlug = projectSlugById.get(card.projectId);
     if (projectSlug) {
       taskHrefs[card.id] = teamTaskHref(team.slug, projectSlug, card.id);
     }
   }
+  // 列表视图行 = 三列卡片 + 窗口外已完成；无 href 的行（项目被删）退化为非链接标题。
+  const rows = sortTaskRows(allCards);
 
   // 展开「更早」时沿用当前 URL 筛选（无筛选则不传）。
   const expandFilter =
@@ -141,12 +166,26 @@ export default async function TeamKanbanPage(
         title={tNav("tasks")}
         subtitle={t("teamSubtitle")}
         actions={
-          canManageProjects ? (
-            /* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */
-            <Link href={teamProjectNewHref(team.slug)}>
-              <Button variant="outline">{t("newProjectButton")}</Button>
-            </Link>
-          ) : null
+          <>
+            {/* 新建任务对所有成员开放（service 层再做成员裁决）。 */}
+            <TeamTasksNewTaskButton
+              teamId={team.id}
+              projects={projects.map(({ id, name }) => ({ id, name }))}
+              defaultProjectId={activeProject?.id ?? null}
+              members={memberList.map(({ user: member }) => ({
+                id: member.id,
+                name: displayName(member),
+              }))}
+              defaultAssigneeId={user.id}
+              tagPool={taskTagPool}
+            />
+            {canManageProjects ? (
+              /* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */
+              <Link href={teamProjectNewHref(team.slug)}>
+                <Button variant="outline">{t("newProjectButton")}</Button>
+              </Link>
+            ) : null}
+          </>
         }
       />
 
@@ -189,17 +228,34 @@ export default async function TeamKanbanPage(
       />
 
       <div className="mt-5">
-        <SpaceKanban
-          variant="team"
-          board={board}
-          projects={projects}
-          today={today}
-          teamId={team.id}
-          teamSlug={team.slug}
-          role={membership.role}
-          actorId={user.id}
-          taskHrefs={taskHrefs}
-          expandFilter={expandFilter}
+        <TasksViewTabs
+          initialView={initialView}
+          board={
+            <SpaceKanban
+              variant="team"
+              board={board}
+              projects={projects}
+              today={today}
+              teamId={team.id}
+              teamSlug={team.slug}
+              role={membership.role}
+              actorId={user.id}
+              taskHrefs={taskHrefs}
+              expandFilter={expandFilter}
+            />
+          }
+          list={
+            <SpaceTaskTable
+              variant="team"
+              rows={rows}
+              today={today}
+              taskHrefs={taskHrefs}
+              teamId={team.id}
+              teamSlug={team.slug}
+              role={membership.role}
+              actorId={user.id}
+            />
+          }
         />
       </div>
     </div>

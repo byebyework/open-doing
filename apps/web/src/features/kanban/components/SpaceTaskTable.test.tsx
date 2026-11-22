@@ -52,7 +52,8 @@ vi.mock("@/features/tasks/actions", () => ({
 
 import type { KanbanCardItem, TeamKanbanCardItem } from "../service";
 
-const { SpaceTaskTable, sortTaskRows } = await import("./SpaceTaskTable");
+const { SpaceTaskTable } = await import("./SpaceTaskTable");
+const { sortTaskRows } = await import("../sort-task-rows");
 
 const tag: Tag = {
   id: "tag-1",

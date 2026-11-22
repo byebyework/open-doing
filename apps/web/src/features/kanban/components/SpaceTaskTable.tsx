@@ -1,7 +1,7 @@
 "use client";
 
-import type { TaskPriority, TaskStatus } from "@open-doing/types";
-import { getTaskProgress, TASK_PRIORITY_ORDER } from "@open-doing/types";
+import type { TaskStatus } from "@open-doing/types";
+import { getTaskProgress } from "@open-doing/types";
 import { Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
@@ -27,6 +27,7 @@ import {
   STATUS_KEYS,
   STATUS_ORDER,
 } from "./SpaceKanban";
+import { sortTaskRows } from "../sort-task-rows";
 import type { KanbanCardItem, TeamKanbanCardItem } from "../service";
 
 /**
@@ -52,29 +53,6 @@ export interface SpaceTaskTableProps {
   teamSlug?: string;
   role?: TeamRole;
   actorId?: string;
-}
-
-/** 无截止日期的任务排在最后。 */
-const NO_DUE_DATE = "9999-12-31";
-
-/**
- * 列表默认排序：截止日期升序、null 最后；同日期按优先级高 > 中 > 低；
- * 其余平局保持输入顺序（Array.prototype.sort 稳定）。
- */
-export function sortTaskRows<
-  T extends { dueDate: string | null; priority: TaskPriority },
->(rows: T[]): T[] {
-  return [...rows].sort((a, b) => {
-    const aDue = a.dueDate ?? NO_DUE_DATE;
-    const bDue = b.dueDate ?? NO_DUE_DATE;
-    if (aDue !== bDue) return aDue < bDue ? -1 : 1;
-
-    // 与 compareByPriority 同口径：TASK_PRIORITY_ORDER 索引差取反（高在前）。
-    return (
-      TASK_PRIORITY_ORDER.indexOf(b.priority) -
-      TASK_PRIORITY_ORDER.indexOf(a.priority)
-    );
-  });
 }
 
 /** 行内状态切换按钮组（testid 惯例同看板：`task-status-button-{status}`）。 */

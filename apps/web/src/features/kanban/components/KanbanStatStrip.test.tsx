@@ -1,9 +1,20 @@
+/**
+ * @vitest-environment jsdom
+ */
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { renderToStaticMarkup } from "react-dom/server";
 import { NextIntlClientProvider } from "next-intl";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const { pushMock, searchParamsMock } = vi.hoisted(() => ({
+  pushMock: vi.fn<(url: string) => void>(),
+  searchParamsMock: vi.fn<() => URLSearchParams>(() => new URLSearchParams()),
+}));
 
 vi.mock("next/navigation", () => ({
-  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  useRouter: () => ({ push: pushMock, refresh: vi.fn() }),
+  useSearchParams: () => searchParamsMock(),
 }));
 
 import zh from "@/i18n/messages/zh.json";
@@ -100,5 +111,77 @@ describe("KanbanStatStrip（统计即筛选）", () => {
 
     expect(html).toContain("var(--error)");
     expect(html).toContain("#a66b00");
+  });
+
+  // —— view 贯通：统计条导航不得丢掉 TasksViewTabs 写入的 ?view=list ——
+  // 仓库 vitest 默认 node 环境（无 @testing-library），交互用例沿用
+  // LanguageSwitch.test.tsx 的 jsdom + act 最小探针：真实挂载、点原生按钮、
+  // 读 router.push 收到的 URL。
+
+  let container: HTMLDivElement;
+  let root: Root;
+
+  beforeEach(() => {
+    container = document.createElement("div");
+    document.body.appendChild(container);
+    root = createRoot(container);
+  });
+
+  afterEach(() => {
+    act(() => root.unmount());
+    container.remove();
+    pushMock.mockClear();
+    searchParamsMock.mockReturnValue(new URLSearchParams());
+  });
+
+  function renderStrip(): void {
+    act(() => {
+      root.render(
+        withIntl(
+          <KanbanStatStrip
+            stats={STATS}
+            today="2026-10-21"
+            active={{}}
+            basePath="/space/personal/tasks"
+            preserveParams={{}}
+          />,
+        ),
+      );
+    });
+  }
+
+  function chipButton(filter: string): HTMLButtonElement {
+    const element = container.querySelector<HTMLButtonElement>(
+      `[data-filter="${filter}"]`,
+    );
+    if (!element) throw new Error(`missing chip ${filter}`);
+    return element;
+  }
+
+  it("view=list 时点击 chip：push 的 URL 保留 view=list", async () => {
+    searchParamsMock.mockReturnValue(new URLSearchParams("view=list"));
+    renderStrip();
+
+    await act(async () => {
+      chipButton("status:todo").click();
+    });
+
+    expect(pushMock).toHaveBeenCalledTimes(1);
+    expect(pushMock.mock.calls[0]?.[0]).toBe(
+      "/space/personal/tasks?status=todo&view=list",
+    );
+  });
+
+  it("无 view 参数时点击 chip：URL 不含 view（干净地址契约不变）", async () => {
+    searchParamsMock.mockReturnValue(new URLSearchParams());
+    renderStrip();
+
+    await act(async () => {
+      chipButton("status:todo").click();
+    });
+
+    expect(pushMock).toHaveBeenCalledTimes(1);
+    expect(pushMock.mock.calls[0]?.[0]).toBe("/space/personal/tasks?status=todo");
+    expect(pushMock.mock.calls[0]?.[0]).not.toContain("view=");
   });
 });
