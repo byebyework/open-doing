@@ -382,4 +382,42 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     expect(inProgress.disabled).toBe(false);
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  it("变更进行中：其他行的状态按钮同样禁用（pending 是全表门禁）", async () => {
+    let resolveAction: (value: { ok: true; data: object }) => void = () => {};
+    updatePersonalTaskAction.mockReturnValue(
+      new Promise<{ ok: true; data: object }>((resolve) => {
+        resolveAction = resolve;
+      }),
+    );
+    renderPersonal([
+      personalRow({ id: "row-1", title: "任务1" }),
+      personalRow({ id: "row-2", title: "任务2" }),
+    ]);
+
+    const [firstRow, secondRow] = Array.from(
+      document.querySelectorAll("tbody tr"),
+    );
+    const firstButton = firstRow.querySelector(
+      '[data-testid="task-status-button-in_progress"]',
+    ) as HTMLButtonElement;
+    const secondButton = secondRow.querySelector(
+      '[data-testid="task-status-button-in_progress"]',
+    ) as HTMLButtonElement;
+
+    // action promise 保持未决：pending 不落地，第二轮的状态按钮也应禁用。
+    await act(async () => {
+      firstButton.click();
+      await Promise.resolve();
+    });
+
+    expect(firstButton.disabled).toBe(true);
+    expect(secondButton.disabled).toBe(true);
+
+    // 收尾释放 promise，避免卸载后仍有状态更新。
+    await act(async () => {
+      resolveAction({ ok: true, data: {} });
+      await Promise.resolve();
+    });
+  });
 });

@@ -70,6 +70,9 @@ function TaskRowStatusButtons({
 }) {
   const t = useTranslations("kanban");
   const rowPending = pending !== null && pending.id === row.id;
+  // pending 是全表单 token：变更在飞期间所有行的状态按钮一并禁用
+  // （handleStatusChange 会早退，不能只让 pending 行看起来不可点）。
+  const tablePending = pending !== null;
 
   return (
     <div className="flex flex-wrap gap-1.5">
@@ -83,7 +86,7 @@ function TaskRowStatusButtons({
             data-testid={`task-status-button-${status}`}
             size="sm"
             variant={current ? "default" : "outline"}
-            disabled={!editable || current || rowPending}
+            disabled={!editable || current || tablePending}
             onClick={() => {
               onStatusChange(row, status);
             }}

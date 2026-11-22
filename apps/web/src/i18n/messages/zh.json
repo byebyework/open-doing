@@ -998,6 +998,7 @@
     "memberLoadCaption": "当前进行中任务数",
     "memberLoadEmpty": "暂无成员负载数据。",
     "unassignedPrefix": "未指派任务 {count} 项 · 前往 ",
+    "unassignedLink": "任务",
     "unassignedSuffix": " 指派。",
     "noProjects": "暂无项目。",
     "projectLine": "{count} 个任务 · {done} 已完成",

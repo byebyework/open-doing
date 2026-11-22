@@ -135,9 +135,10 @@ export function TasksViewTabs({ initialView, board, list }: TasksViewTabsProps) 
           );
         })}
       </div>
-      {/* 双面板常驻且同格叠放（grid 同一 cell）：非激活面板不占流式高度，
-          避免把激活面板顶出视口；视觉显隐全靠 variants 的 opacity/x。 */}
-      <div className="grid">
+      {/* 双面板常驻挂载：激活面板留在文档流，容器高度跟随激活视图；
+          非激活面板 absolute 脱离布局高度（避免长列表把默认看板视图撑出
+          大片空白）。视觉显隐全靠 variants 的 opacity/x。 */}
+      <div className="relative">
         {(["board", "list"] as TasksView[]).map((key) => {
           const active = view === key;
           return (
@@ -154,10 +155,11 @@ export function TasksViewTabs({ initialView, board, list }: TasksViewTabsProps) 
               inert={!active}
               data-testid={TAB_META[key].panelId}
               className={cn(
-                // min-w-0：grid item 默认 min-width:auto，会让非激活列表面板
-                // 的 920px 表格把同格看板面板一起撑出视口（375px 页面横向溢出）。
-                "[grid-area:1/1] min-w-0",
-                !active && "pointer-events-none",
+                // 非激活面板 absolute 贴顶、不贡献容器高度；激活面板保持
+                // 流式（block）撑起容器高度。min-w-0 保留：列表内 920px
+                // 表格需由内层 overflow-x-auto 滚动，不得撑出页面宽度。
+                "min-w-0",
+                !active && "pointer-events-none absolute inset-x-0 top-0",
               )}
             >
               {slots[key]}

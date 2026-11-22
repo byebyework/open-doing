@@ -998,6 +998,7 @@
     "memberLoadCaption": "Currently in-progress tasks",
     "memberLoadEmpty": "No member workload data yet.",
     "unassignedPrefix": "{count} unassigned tasks · Assign them in ",
+    "unassignedLink": "Tasks",
     "unassignedSuffix": ".",
     "noProjects": "No projects yet.",
     "projectLine": "{count} tasks · {done} completed",

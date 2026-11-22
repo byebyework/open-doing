@@ -533,7 +533,7 @@ async function TeamBody({
               href={kanbanHref}
               className="font-medium underline underline-offset-2"
             >
-              Kanban
+              {t("unassignedLink")}
             </Link>
             {t("unassignedSuffix")}
           </InfoCallout>

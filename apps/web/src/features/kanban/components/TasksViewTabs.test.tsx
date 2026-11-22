@@ -144,10 +144,10 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(list.getAttribute("aria-hidden")).toBe("true");
     expect(list.className).toContain("pointer-events-none");
 
-    // 双面板 grid 同格叠放（[grid-area:1/1]）：常驻但不叠加流式高度。
-    expect(board.className).toContain("[grid-area:1/1]");
-    expect(list.className).toContain("[grid-area:1/1]");
-    expect(board.parentElement?.className).toBe("grid");
+    // 激活面板留在文档流（撑起容器高度）；非激活面板 absolute 脱离高度。
+    expect(board.className).not.toContain("absolute");
+    expect(list.className).toContain("absolute");
+    expect(board.parentElement?.className).toBe("relative");
   });
 
   it("点击列表 tab：list 变可见、board 变 inert，URL 同步为 ?view=list", () => {
@@ -159,6 +159,9 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(panel("list").getAttribute("aria-hidden")).toBeNull();
     expect(panel("board").hasAttribute("inert")).toBe(true);
     expect(panel("board").getAttribute("aria-hidden")).toBe("true");
+    // 流式/absolute 随之互换：容器高度改由列表视图决定。
+    expect(panel("list").className).not.toContain("absolute");
+    expect(panel("board").className).toContain("absolute");
     expect(lastSyncedUrl()).toBe(
       "http://localhost:3000/space/personal/tasks?view=list",
     );
