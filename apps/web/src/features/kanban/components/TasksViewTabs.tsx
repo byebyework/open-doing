@@ -27,20 +27,21 @@ export interface TasksViewTabsProps {
 const ACTIVE_PILL_LAYOUT_ID = "tasks-view-active-pill";
 
 /**
- * 面板切行动效：active 归位淡入（0.25s decelerate），inactive 按方向
- * custom d 滑出淡出（0.15s accelerate，d=+1 向左切列表 / d=-1 向右切回
- * 看板）。两面板常驻，非激活面板再叠 inert + aria-hidden 挡交互与读屏。
+ * 面板切行动效：active 归位淡入（OD_MS.overlayIn decelerate），inactive
+ * 按方向 custom d 滑出淡出（OD_MS.popOut accelerate，d=+1 向左切列表 /
+ * d=-1 向右切回看板）。两面板常驻，非激活面板再叠 inert + aria-hidden
+ * 挡交互与读屏。
  */
 const panelVariants: Variants = {
   active: {
     opacity: 1,
     x: 0,
-    transition: { duration: 0.25, ease: OD_EASE.decelerate },
+    transition: { duration: OD_MS.overlayIn / 1000, ease: OD_EASE.decelerate },
   },
   inactive: (d: number) => ({
     opacity: 0,
     x: -16 * d,
-    transition: { duration: 0.15, ease: OD_EASE.accelerate },
+    transition: { duration: OD_MS.popOut / 1000, ease: OD_EASE.accelerate },
   }),
 };
 
@@ -134,27 +135,31 @@ export function TasksViewTabs({ initialView, board, list }: TasksViewTabsProps) 
           );
         })}
       </div>
-      {(["board", "list"] as TasksView[]).map((key) => {
-        const active = view === key;
-        return (
-          <motion.div
-            key={key}
-            custom={dir}
-            initial={false}
-            animate={active ? "active" : "inactive"}
-            variants={panelVariants}
-            role="tabpanel"
-            id={TAB_META[key].panelId}
-            aria-labelledby={TAB_META[key].testid}
-            aria-hidden={active ? undefined : true}
-            inert={!active}
-            data-testid={TAB_META[key].panelId}
-            className={cn(!active && "pointer-events-none")}
-          >
-            {slots[key]}
-          </motion.div>
-        );
-      })}
+      {/* 双面板常驻且同格叠放（grid 同一 cell）：非激活面板不占流式高度，
+          避免把激活面板顶出视口；视觉显隐全靠 variants 的 opacity/x。 */}
+      <div className="grid">
+        {(["board", "list"] as TasksView[]).map((key) => {
+          const active = view === key;
+          return (
+            <motion.div
+              key={key}
+              custom={dir}
+              initial={false}
+              animate={active ? "active" : "inactive"}
+              variants={panelVariants}
+              role="tabpanel"
+              id={TAB_META[key].panelId}
+              aria-labelledby={TAB_META[key].testid}
+              aria-hidden={active ? undefined : true}
+              inert={!active}
+              data-testid={TAB_META[key].panelId}
+              className={cn("[grid-area:1/1]", !active && "pointer-events-none")}
+            >
+              {slots[key]}
+            </motion.div>
+          );
+        })}
+      </div>
     </div>
   );
 }

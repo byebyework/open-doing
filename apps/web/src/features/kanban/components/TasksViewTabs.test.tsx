@@ -143,6 +143,11 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(list.hasAttribute("inert")).toBe(true);
     expect(list.getAttribute("aria-hidden")).toBe("true");
     expect(list.className).toContain("pointer-events-none");
+
+    // 双面板 grid 同格叠放（[grid-area:1/1]）：常驻但不叠加流式高度。
+    expect(board.className).toContain("[grid-area:1/1]");
+    expect(list.className).toContain("[grid-area:1/1]");
+    expect(board.parentElement?.className).toBe("grid");
   });
 
   it("点击列表 tab：list 变可见、board 变 inert，URL 同步为 ?view=list", () => {
