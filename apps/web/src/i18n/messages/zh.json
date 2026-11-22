@@ -937,6 +937,7 @@
     "monthTitle": "{year} 年 {month} 月",
     "prevMonth": "上个月",
     "nextMonth": "下个月",
+    "jumpToDate": "跳转到指定日期",
     "cellOverflow": "还有 {count} 项",
     "metaOverdue": "已逾期 {days} 天",
     "metaDaysLeft": "还有 {days} 天",

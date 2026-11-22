@@ -937,6 +937,7 @@
     "monthTitle": "{month}/{year}",
     "prevMonth": "Previous month",
     "nextMonth": "Next month",
+    "jumpToDate": "Jump to date",
     "cellOverflow": "{count} more",
     "metaOverdue": "{days} days overdue",
     "metaDaysLeft": "{days} days left",

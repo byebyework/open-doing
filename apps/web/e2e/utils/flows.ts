@@ -155,6 +155,9 @@ export async function createPersonalTask(
   await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
+  // 项目页自 a9e853a 起默认落在「概览」视图(不渲染任务列表):
+  // 切到「列表」视图再断言任务行出现。
+  await page.getByRole("tab", { name: "列表" }).click();
   await expect(
     page.getByRole("link", { name: input.title, exact: true }),
   ).toBeVisible();

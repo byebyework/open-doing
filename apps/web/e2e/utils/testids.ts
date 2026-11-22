@@ -67,6 +67,7 @@ export const TEST_IDS = {
   calendar: {
     prevMonth: "calendar-prev-month",
     nextMonth: "calendar-next-month",
+    jumpDate: "calendar-jump-date",
     today: "calendar-today",
     weekCard: "calendar-week-card",
     gridScroll: "calendar-grid-scroll",

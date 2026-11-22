@@ -171,6 +171,54 @@ test.describe("flow 7: 空间级 Calendar", () => {
     ).toBeVisible();
   });
 
+  test("指定日期跳转:popover 选日期落到所在月", async ({ page }) => {
+    const username = uniqueUsername("e2e_cal8");
+    const projectName = uniqueLabel("E2E cal jump project");
+    const taskTitle = uniqueLabel("E2E cal jump task");
+    const today = shanghaiToday();
+    const targetMonth = shiftMonth(today.slice(0, 7), 2);
+    const targetDate = `${targetMonth}-15`;
+
+    await seedPersonalTask(page, {
+      username,
+      projectName,
+      taskTitle,
+      dueDate: targetDate,
+    });
+
+    await page.goto("/space/personal/calendar");
+
+    // 打开「跳转到指定日期」popover:面板内是迷你月历。
+    await page.getByTestId(TEST_IDS.calendar.jumpDate).click();
+    const popover = page.getByRole("dialog");
+    await expect(popover).toBeVisible();
+
+    // Esc 关闭不得产生导航(URL 仍无 ?month=)。
+    await page.keyboard.press("Escape");
+    await expect(popover).toBeHidden();
+    await expect(page).toHaveURL(/\/space\/personal\/calendar$/);
+
+    // 重新打开:面板内翻两个月后选 15 日。
+    await page.getByTestId(TEST_IDS.calendar.jumpDate).click();
+    await expect(popover).toBeVisible();
+    await popover.getByRole("button", { name: "下个月" }).click();
+    await popover.getByRole("button", { name: "下个月" }).click();
+    // RDP v10 日格按钮的可访问名是完整本地化日期(文本才是日号),只能子串匹配
+    // "15";showOutsideDays=false 令面板内 role=button 中 "15" 唯一(strict 兜底)。
+    await popover.getByRole("button", { name: "15" }).click();
+
+    // 三重断言:URL、月标题、15 日格 chip(shiftMonth 跨年自然进位)。
+    await expect(page).toHaveURL(
+      new RegExp(`/space/personal/calendar\\?month=${targetMonth}$`),
+    );
+    await expect(
+      page.getByText(monthHeading(targetMonth), { exact: true }),
+    ).toBeVisible();
+    await expect(
+      dayCell(page, targetDate).getByText(taskTitle, { exact: true }),
+    ).toBeVisible();
+  });
+
   test("个人无截止日期入口可见并跳 Dashboard", async ({ page }) => {
     const username = uniqueUsername("e2e_cal4");
     const projectName = uniqueLabel("E2E cal nodue project");
@@ -409,6 +457,8 @@ async function createTeamTask(
   await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
   await expect(dialog).toBeHidden();
+  // 团队项目页同样默认「概览」视图:切到「列表」再断言任务行出现。
+  await page.getByRole("tab", { name: "列表" }).click();
   await expect(
     page.getByRole("link", { name: input.title, exact: true }),
   ).toBeVisible();

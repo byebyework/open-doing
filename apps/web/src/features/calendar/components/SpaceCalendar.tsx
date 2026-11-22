@@ -16,6 +16,12 @@ import {
 import { DayPicker, type DayProps } from "react-day-picker";
 
 import { HintBadge } from "@/components/ui/HintBadge";
+import { Calendar } from "@/components/ui/shadcn/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/shadcn/popover";
 import { NewTaskModal } from "@/features/personal/tasks/components/NewTaskModal";
 import { NewTeamTaskModal } from "@/features/tasks/components/NewTeamTaskModal";
 import {
@@ -439,6 +445,25 @@ function PlusIcon() {
   );
 }
 
+/** 「跳转到指定日期」图标（描边日历，与 PlusIcon 同粗细规格）。 */
+function CalendarIcon() {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 14 14"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      strokeLinecap="round"
+      aria-hidden="true"
+    >
+      <rect x="1.5" y="2.5" width="11" height="10" rx="1.5" />
+      <path d="M1.5 5.5h11M4.5 1v3M9.5 1v3" />
+    </svg>
+  );
+}
+
 /** 本周清单单条：标题 + 右侧 meta（时间线节点由日分组渲染）。 */
 function WeekItem({
   variant,
@@ -583,6 +608,12 @@ export function SpaceCalendar({
   const [upcomingExpanded, setUpcomingExpanded] = useState(false);
   /** 「+」所点的日期；非 null 时渲染预填该日期的新建任务弹窗。 */
   const [createDate, setCreateDate] = useState<string | null>(null);
+  /** 「跳转到指定日期」popover 开关。 */
+  const [jumpOpen, setJumpOpen] = useState(false);
+  /** popover 内迷你月历的受控月份（面板内可连续翻月）。 */
+  const [jumpPickerMonth, setJumpPickerMonth] = useState<Date>(
+    monthAnchor(month),
+  );
   // 翻月 / 回今天都是 RSC 重取数，用 transition 标记 pending：旧月保持
   // 可见，导航按钮降透明度作为「正在加载」的反馈。
   const [monthPending, startMonthTransition] = useTransition();
@@ -709,6 +740,12 @@ export function SpaceCalendar({
     startMonthTransition(() => router.push(`${basePath}?month=${monthKey}`));
   }
 
+  /** 打开时把面板定位到当前查看月；关闭走 onOpenChange / onSelect 两条路，幂等。 */
+  function handleJumpOpenChange(next: boolean) {
+    if (next) setJumpPickerMonth(monthAnchor(month));
+    setJumpOpen(next);
+  }
+
   const navButtonClassName = `inline-flex h-8 w-8 items-center justify-center rounded-lg text-[16px] text-[var(--ink-700)] transition-[color,background-color,opacity] duration-150 hover:bg-[var(--surface-subtle)] hover:text-[var(--ink-900)] ${
     monthPending ? "opacity-50" : ""
   }`;
@@ -773,6 +810,39 @@ export function SpaceCalendar({
               {tCalendar("monthDueCount", { count: monthDueCount })}
             </span>
             <div className="ml-auto flex items-center gap-0.5">
+              <Popover open={jumpOpen} onOpenChange={handleJumpOpenChange}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    data-testid="calendar-jump-date"
+                    aria-label={tCalendar("jumpToDate")}
+                    title={tCalendar("jumpToDate")}
+                    className={navButtonClassName}
+                  >
+                    <CalendarIcon />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-auto p-2">
+                  <Calendar
+                    mode="single"
+                    month={jumpPickerMonth}
+                    onMonthChange={setJumpPickerMonth}
+                    showOutsideDays={false}
+                    weekStartsOn={1}
+                    locale={locale === "zh" ? zhCN : enUS}
+                    labels={{
+                      labelPrevious: () => tDate("pickerPreviousMonth"),
+                      labelNext: () => tDate("pickerNextMonth"),
+                    }}
+                    onSelect={(day) => {
+                      if (!day) return;
+                      // 先关面板再导航：出场保持期内内容不可交互，防二次触发。
+                      setJumpOpen(false);
+                      pushMonth(dateKey(day).slice(0, 7));
+                    }}
+                  />
+                </PopoverContent>
+              </Popover>
               <button
                 type="button"
                 data-testid="calendar-prev-month"
