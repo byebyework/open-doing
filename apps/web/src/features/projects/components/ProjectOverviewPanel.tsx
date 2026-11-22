@@ -284,38 +284,41 @@ export function ProjectOverviewPanel({
       {/* 大标题（内联改名：点标题进入编辑，Enter/保存提交，Esc 取消） */}
       <h1 className="break-words text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)]">
         {editingField === "name" ? (
-          <motion.div {...EDITOR_ENTRANCE} className="flex items-center gap-2">
+          <motion.div {...EDITOR_ENTRANCE} className="relative pr-[88px]">
             <Input
               value={draft}
               maxLength={PROJECT_NAME_MAX_LENGTH}
               autoFocus
               disabled={saving}
               data-testid="project-name-edit"
-              className="h-auto border-none bg-transparent px-0 text-[30px] md:text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)] shadow-none focus-visible:ring-0"
+              className="h-auto border-none bg-transparent px-0 py-0 text-[30px] md:text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)] shadow-none focus-visible:ring-0"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") void commitName();
                 if (event.key === "Escape") cancelEdit();
               }}
             />
-            <Button
-              type="button"
-              size="icon"
-              aria-label={tCommon("save")}
-              disabled={saving}
-              onClick={() => void commitName()}
-            >
-              <CheckIcon className="size-4" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              aria-label={tCommon("cancel")}
-              onClick={cancelEdit}
-            >
-              <XIcon className="size-4" aria-hidden="true" />
-            </Button>
+            {/* 按钮浮在行右缘：不参与行高，编辑态行高与标题展示态一致 */}
+            <div className="absolute right-0 top-1/2 flex -translate-y-1/2 gap-2">
+              <Button
+                type="button"
+                size="icon"
+                aria-label={tCommon("save")}
+                disabled={saving}
+                onClick={() => void commitName()}
+              >
+                <CheckIcon className="size-4" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label={tCommon("cancel")}
+                onClick={cancelEdit}
+              >
+                <XIcon className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
           </motion.div>
         ) : (
           <button
@@ -340,35 +343,37 @@ export function ProjectOverviewPanel({
       {/* 简述（内联编辑） */}
       <div>
         {editingField === "summary" ? (
-          <motion.div {...EDITOR_ENTRANCE} className="flex items-center gap-2">
+          <motion.div {...EDITOR_ENTRANCE} className="relative pr-[88px]">
             <Input
               value={draft}
               maxLength={100}
               onChange={(event) => setDraft(event.target.value)}
               disabled={saving}
               data-testid="project-summary-edit"
-              className="h-auto border-none bg-transparent px-0 text-[14px] md:text-[14px] text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
+              className="h-auto border-none bg-transparent px-0 py-0 text-[14px] md:text-[14px] text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
             />
-            <Button
-              type="button"
-              size="icon"
-              aria-label={tCommon("save")}
-              disabled={saving}
-              onClick={async () => {
-                if (await saveField({ summary: draft })) cancelEdit();
-              }}
-            >
-              <CheckIcon className="size-4" aria-hidden="true" />
-            </Button>
-            <Button
-              type="button"
-              size="icon"
-              variant="ghost"
-              aria-label={tCommon("cancel")}
-              onClick={cancelEdit}
-            >
-              <XIcon className="size-4" aria-hidden="true" />
-            </Button>
+            <div className="absolute right-0 top-1/2 flex -translate-y-1/2 gap-2">
+              <Button
+                type="button"
+                size="icon"
+                aria-label={tCommon("save")}
+                disabled={saving}
+                onClick={async () => {
+                  if (await saveField({ summary: draft })) cancelEdit();
+                }}
+              >
+                <CheckIcon className="size-4" aria-hidden="true" />
+              </Button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                aria-label={tCommon("cancel")}
+                onClick={cancelEdit}
+              >
+                <XIcon className="size-4" aria-hidden="true" />
+              </Button>
+            </div>
           </motion.div>
         ) : (
           <button
