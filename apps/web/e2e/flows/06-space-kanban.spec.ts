@@ -143,6 +143,8 @@ test.describe("flow 6: 空间级 Kanban", () => {
       await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
 
       await expect(dialog).toBeHidden();
+      // 项目页默认「概览」视图不渲染任务列表：切「列表」再断言任务行。
+      await page.getByRole("tab", { name: "列表" }).click();
       await expect(
         page.getByRole("link", { name: title, exact: true }),
       ).toBeVisible();

@@ -34,6 +34,9 @@ test.describe("flow 3: 看板拖拽", () => {
     await page.goto(`${projectPath}?view=board`);
     await createPersonalTask(page, { title: taskTitle });
 
+    // 播种助手收尾会切到「列表」视图断言任务行：拖拽前回到看板视图。
+    await page.goto(`${projectPath}?view=board`);
+
     const todoColumn = page.getByTestId(TEST_IDS.kanban.columnTodo);
     const inProgressColumn = page.getByTestId(TEST_IDS.kanban.columnInProgress);
 

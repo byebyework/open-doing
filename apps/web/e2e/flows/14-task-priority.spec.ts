@@ -54,7 +54,9 @@ test.describe("flow 14: 任务优先级", () => {
     ).toContainText(PRIORITY_LABELS.low);
 
     // 回列表：chip 变低（整页导航，服务端取数为准，无乐观窗口）。
+    // 项目页默认「概览」视图不渲染任务列表：显式带 ?view=list。
     await openPersonalProject(page, projectName);
+    await page.goto(`${new URL(page.url()).pathname}?view=list`);
     await expect(
       page
         .getByRole("row")
@@ -136,10 +138,11 @@ test.describe("flow 14: 任务优先级", () => {
       await expect(guestPage.getByText("没有待处理的邀请。")).toBeVisible();
 
       // owner 视角：操作列有删除按钮，状态下拉可用。
+      // 项目页默认「概览」视图不渲染任务列表：显式带 ?view=list。
       await page.goto(`/space/${teamSlug}/projects/${projectName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")}`);
+        .replace(/^-+|-+$/g, "")}?view=list`);
       const ownerRow = page.getByRole("row").filter({ hasText: taskTitle });
       await expect(ownerRow.getByTestId(TEST_IDS.tasks.rowDelete)).toBeVisible();
       await expect(
@@ -147,10 +150,11 @@ test.describe("flow 14: 任务优先级", () => {
       ).toBeEnabled();
 
       // member 视角：无删除按钮，状态下拉禁用（badge 退化为只读展示）。
+      // 同 owner 视角：显式带 ?view=list 才有任务列表。
       await guestPage.goto(`/space/${teamSlug}/projects/${projectName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, "-")
-        .replace(/^-+|-+$/g, "")}`);
+        .replace(/^-+|-+$/g, "")}?view=list`);
       const guestRow = guestPage.getByRole("row").filter({ hasText: taskTitle });
       await expect(guestRow).toBeVisible();
       await expect(

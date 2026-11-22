@@ -322,6 +322,8 @@ test.describe("375px 无横向溢出", () => {
         await teamTaskDialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
         await expect(teamTaskDialog).toBeHidden();
 
+        // 项目页默认「概览」视图不渲染任务列表：切「列表」再点任务链接。
+        await pageA.getByRole("tab", { name: "列表" }).click();
         await pageA
           .getByRole("link", { name: data.teamTaskTitle, exact: true })
           .click();
@@ -418,7 +420,8 @@ test.describe("375px 无横向溢出", () => {
       },
       {
         name: "/space/personal/projects/[projectSlug]（列表）",
-        path: () => data.personalProjectPath,
+        // 项目页默认「概览」视图：显式带 ?view=list 才是待测的列表视图。
+        path: () => `${data.personalProjectPath}?view=list`,
         exemptions: [PERSONAL_PROJECT_TABLE],
       },
       {
@@ -452,7 +455,8 @@ test.describe("375px 无横向溢出", () => {
       },
       {
         name: "/space/[teamSlug]/projects/[projectSlug]（列表）",
-        path: () => data.teamProjectPath,
+        // 项目页默认「概览」视图：显式带 ?view=list 才是待测的列表视图。
+        path: () => `${data.teamProjectPath}?view=list`,
         exemptions: [TEAM_PROJECT_TABLE],
       },
       {
