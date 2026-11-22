@@ -284,7 +284,7 @@ export function ProjectOverviewPanel({
               autoFocus
               disabled={saving}
               data-testid="project-name-edit"
-              className="h-auto border-none bg-transparent px-0 text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)] shadow-none focus-visible:ring-0"
+              className="h-auto border-none bg-transparent px-0 text-[30px] md:text-[30px] font-bold leading-[1.15] tracking-[-0.01em] text-[var(--ink-900)] shadow-none focus-visible:ring-0"
               onChange={(event) => setDraft(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === "Enter") void commitName();
