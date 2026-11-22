@@ -2,7 +2,7 @@
 
 import type { TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
-import { Loader2Icon } from "lucide-react";
+import { CheckIcon, ChevronDownIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,13 +13,21 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
-import { Button } from "@/components/ui/shadcn/button";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/shadcn/dropdown-menu";
 import { updatePersonalTaskAction } from "@/features/personal/tasks/actions";
 import { TaskTags } from "@/features/tags/components/TaskTags";
 import { canEditTask } from "@/features/tasks/permissions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
 import type { TeamRole } from "@/features/teams/permissions";
 
+import { useListFilters } from "../list-filters-context";
+import { filterTaskRows, sortTaskRows } from "../sort-task-rows";
+import type { KanbanCardItem, TeamKanbanCardItem } from "../service";
 import {
   DueLabel,
   firstError,
@@ -27,8 +35,6 @@ import {
   STATUS_KEYS,
   STATUS_ORDER,
 } from "./SpaceKanban";
-import { sortTaskRows } from "../sort-task-rows";
-import type { KanbanCardItem, TeamKanbanCardItem } from "../service";
 
 /**
  * 组件内部行模型：个人行没有指派人字段，团队行在基类上补充
@@ -55,8 +61,19 @@ export interface SpaceTaskTableProps {
   actorId?: string;
 }
 
-/** 行内状态切换按钮组（testid 惯例同看板：`task-status-button-{status}`）。 */
-function TaskRowStatusButtons({
+/** 状态 pill 配色（与看板卡 / badge 同一组 token，无字面量色值）。 */
+const STATUS_TONE: Record<TaskStatus, string> = {
+  todo: "bg-[var(--status-todo-bg)] text-[var(--status-todo)]",
+  in_progress: "bg-[var(--status-progress-bg)] text-[var(--status-progress)]",
+  done: "bg-[var(--status-done-bg)] text-[var(--status-done)]",
+};
+
+/**
+ * 行内状态列：单个当前状态 pill（触发器 `task-status-pill`），可编辑行
+ * 点击弹出三项状态菜单（testid 契约 `task-status-button-{status}` 迁移到
+ * 菜单项，e2e 改「点 pill → 点菜单项」）；不可编辑行 pill 纯展示（disabled）。
+ */
+function TaskRowStatusPill({
   row,
   editable,
   pending,
@@ -64,41 +81,65 @@ function TaskRowStatusButtons({
 }: {
   row: TaskRow;
   editable: boolean;
-  /** 全表单行的乐观更新占位（行内按钮在自家行变更期间禁用）。 */
+  /** 全表单行的乐观更新占位（行内 pill 在自家行变更期间禁用）。 */
   pending: { id: string; status: TaskStatus } | null;
   onStatusChange: (row: TaskRow, status: TaskStatus) => void;
 }) {
   const t = useTranslations("kanban");
   const rowPending = pending !== null && pending.id === row.id;
-  // pending 是全表单 token：变更在飞期间所有行的状态按钮一并禁用
+  // pending 是全表单 token：变更在飞期间所有行的 pill 一并禁用
   // （handleStatusChange 会早退，不能只让 pending 行看起来不可点）。
   const tablePending = pending !== null;
 
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {STATUS_ORDER.map((status) => {
-        const current = status === row.status;
-        const loading = rowPending && pending.status === status;
+  const pill = (
+    <button
+      type="button"
+      data-testid="task-status-pill"
+      disabled={!editable || tablePending}
+      aria-haspopup={editable ? "menu" : undefined}
+      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none transition-colors disabled:cursor-not-allowed ${STATUS_TONE[row.status]} ${
+        editable && !tablePending
+          ? "cursor-pointer hover:shadow-[var(--shadow-rest)]"
+          : ""
+      }`}
+    >
+      {rowPending ? (
+        <Loader2Icon aria-hidden className="size-3.5 animate-spin" />
+      ) : null}
+      {t(STATUS_KEYS[row.status])}
+      {editable ? (
+        <ChevronDownIcon aria-hidden className="size-3 opacity-70" />
+      ) : null}
+    </button>
+  );
 
-        return (
-          <Button
+  if (!editable) return pill;
+
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>{pill}</DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        {STATUS_ORDER.map((status) => (
+          <DropdownMenuItem
             key={status}
             data-testid={`task-status-button-${status}`}
-            size="sm"
-            variant={current ? "default" : "outline"}
-            disabled={!editable || current || tablePending}
-            onClick={() => {
+            disabled={status === row.status || tablePending}
+            onSelect={() => {
               onStatusChange(row, status);
             }}
           >
-            {loading ? (
-              <Loader2Icon aria-hidden className="size-3.5 animate-spin" />
+            <span
+              aria-hidden
+              className={`inline-flex size-2 flex-none rounded-full ${STATUS_TONE[status]}`}
+            />
+            <span className="flex-1">{t(STATUS_KEYS[status])}</span>
+            {status === row.status ? (
+              <CheckIcon aria-hidden className="size-3.5" />
             ) : null}
-            {t(STATUS_KEYS[status])}
-          </Button>
-        );
-      })}
-    </div>
+          </DropdownMenuItem>
+        ))}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -127,6 +168,9 @@ export function SpaceTaskTable({
   const tKanban = useTranslations("kanban");
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
+
+  // 列表视图本地筛选（Task 2 挂 provider）；无 provider 时三项全 "all"。
+  const { filters } = useListFilters();
 
   const taskRows: TaskRow[] = rows;
 
@@ -206,7 +250,10 @@ export function SpaceTaskTable({
     }
   }
 
-  if (localRows.length === 0) {
+  // 过滤保持既有排序（localRows 已排序），纯派生于渲染期，不进 state。
+  const visibleRows = filterTaskRows(localRows, filters);
+
+  if (visibleRows.length === 0) {
     return (
       <EmptyState
         title={tKanban("listEmptyTitle")}
@@ -249,7 +296,7 @@ export function SpaceTaskTable({
           </tr>
         </thead>
         <tbody className="[&_tr:last-child_td]:border-b-0">
-          {localRows.map((row) => {
+          {visibleRows.map((row) => {
             const done = row.status === "done";
             // 用「子任务计数」还原 getTaskProgress 入参，保持进度口径唯一
             // （与团队看板项目进度的还原方式一致）。
@@ -311,7 +358,7 @@ export function SpaceTaskTable({
                 </td>
 
                 <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  <TaskRowStatusButtons
+                  <TaskRowStatusPill
                     row={row}
                     editable={canEditRow(row)}
                     pending={pending}

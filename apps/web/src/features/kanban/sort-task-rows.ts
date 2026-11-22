@@ -1,4 +1,4 @@
-import type { TaskPriority } from "@open-doing/types";
+import type { TaskPriority, TaskStatus } from "@open-doing/types";
 import { TASK_PRIORITY_ORDER } from "@open-doing/types";
 
 /** 无截止日期的任务排在最后。 */
@@ -26,4 +26,36 @@ export function sortTaskRows<
       TASK_PRIORITY_ORDER.indexOf(a.priority)
     );
   });
+}
+
+/** 列表视图本地筛选三字段（"all" 表示不过滤）。 */
+export interface ListFilters {
+  status: TaskStatus | "all";
+  priority: TaskPriority | "all";
+  projectId: string | "all";
+}
+
+export const DEFAULT_LIST_FILTERS: ListFilters = {
+  status: "all",
+  priority: "all",
+  projectId: "all",
+};
+
+/**
+ * 列表视图本地行过滤：三字段按交集收窄，保序、纯函数（不改动入参）。
+ * 过滤放在客户端完成，不进 URL（与上方服务端筛选条语义独立）。
+ */
+export function filterTaskRows<
+  T extends {
+    status: TaskStatus;
+    priority: TaskPriority;
+    projectId: string;
+  },
+>(rows: T[], filters: ListFilters): T[] {
+  return rows.filter(
+    (row) =>
+      (filters.status === "all" || row.status === filters.status) &&
+      (filters.priority === "all" || row.priority === filters.priority) &&
+      (filters.projectId === "all" || row.projectId === filters.projectId),
+  );
 }
