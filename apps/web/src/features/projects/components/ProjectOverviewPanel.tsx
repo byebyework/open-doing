@@ -505,17 +505,21 @@ export function ProjectOverviewPanel({
       <div className="flex flex-col gap-2">
         <p className="text-[13px] font-medium text-[var(--color-text)]">{t("descriptionLabel")}</p>
         {editingField === "description" ? (
-          <motion.div {...FADE_ENTRANCE} className="flex flex-col gap-2">
+          <motion.div
+            {...FADE_ENTRANCE}
+            className="relative h-[18rem]"
+            data-testid="project-description-editing"
+          >
             <Textarea
-              rows={12}
               value={draft}
               maxLength={500}
               onChange={(event) => setDraft(event.target.value)}
               disabled={saving}
               data-testid="project-description-edit"
-              className="min-h-[18rem] border-none bg-transparent px-0 text-[13.5px] md:text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
+              className="h-full w-full resize-none border-none bg-transparent px-0 text-[13.5px] md:text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0"
             />
-            <div className="flex justify-end gap-2">
+            {/* 按钮浮在区域右下角内部：编辑态与展示态总高一致，下方内容零推挤 */}
+            <div className="absolute bottom-1 right-0 flex gap-2">
               <Button
                 type="button"
                 size="sm"
@@ -542,9 +546,9 @@ export function ProjectOverviewPanel({
             type="button"
             data-testid="project-description-display"
             onClick={() => startEdit("description", project.description ?? "")}
-            className={`block min-h-[18rem] whitespace-pre-wrap text-left text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:text-[var(--color-text)]" : "cursor-default"}`}
+            className={`flex min-h-[18rem] items-start text-left text-[13.5px] leading-relaxed text-[var(--color-text-secondary)] ${canManage ? "cursor-pointer hover:text-[var(--color-text)]" : "cursor-default"}`}
           >
-            {project.description || t("descriptionHint")}
+            <span className="whitespace-pre-wrap">{project.description || t("descriptionHint")}</span>
           </button>
         )}
       </div>
