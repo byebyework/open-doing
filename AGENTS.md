@@ -108,6 +108,16 @@ Self-contained by domain: auth / users / teams / projects / tasks / tags / kanba
 - Cascading deletes rely on foreign keys `ON DELETE CASCADE` as the safety net; removing a member only deletes the membership and nulls the tasks' `assignee_id` — it does not delete tasks. Tasks link to milestones via nullable `tasks.milestone_id` (set null on milestone delete; cleared on task project move).
 - `server/db/testing.ts` replays migrations + truncates the test database.
 
+### React Coding Guidelines
+
+- **Strictly forbid using `useEffect` in business components.**
+- Use the following alternatives instead:
+  1. **Data Fetching**: Use the project's data-fetching library (e.g., TanStack Query / SWR). Never `fetch` inside `useEffect`.
+  2. **Derived State**: Calculate values directly during render (e.g., `const fullName = first + last`) instead of using `useEffect` + `useState`.
+  3. **User Interactions**: Put logic directly inside event handlers (e.g., `onClick`, `onSubmit`) rather than updating a state and watching it in `useEffect`.
+  4. **Resetting Component State**: Pass a different `key` prop to reset a component instead of using `useEffect` to watch props and call `setState`.
+
+
 ## Code Style Guidelines
 
 - TypeScript throughout; match the surrounding style of the file you are editing.
