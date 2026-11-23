@@ -114,11 +114,6 @@ export default async function PersonalTasksPage(
       <SpaceKanbanFilterBar
         variant="personal"
         basePath={moduleHref("personal", "tasks")}
-        statParams={{
-          ...(statFilter.status ? { status: statFilter.status } : {}),
-          ...(statFilter.overdueOnly ? { overdue: "1" } : {}),
-          ...(statFilter.dueSoonOnly ? { dueSoon: "1" } : {}),
-        }}
         caption={t("captionPersonal", { project: projectName, count: total })}
         todayCaption={tDate("todayCaption", {
           date: today,

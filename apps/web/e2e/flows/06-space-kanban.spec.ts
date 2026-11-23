@@ -242,6 +242,20 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(page.getByText("当前筛选：全部项目 · 2 个未完成任务")).toBeVisible();
     await expect(todo.getByText(ownerTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
+
+    // 项目 × 未指派组合：先选项目，再切未指派——assignee 切换只动自己的
+    // 参数，project= 必须保留（回归：曾按 props 重建 URL 丢掉 project）。
+    await page.getByTestId(TEST_IDS.kanban.taskFilterProject).click();
+    await page
+      .getByRole("menuitem", { name: new RegExp(`^${projectName}`) })
+      .click();
+    await expect(page).toHaveURL(new RegExp(`project=${personalProjectSlug(projectName)}`));
+    await filterBar.getByText("未指派", { exact: true }).click();
+    await expect(page).toHaveURL(/project=/);
+    await expect(page).toHaveURL(/assignee=unassigned/);
+    await filterBar.getByText("全部任务", { exact: true }).click();
+    await expect(page).toHaveURL(/project=/);
+    await expect(page).not.toHaveURL(/assignee=/);
   });
 
   test("移动端状态按钮与 done 查看更早展开可逆", async ({ page }) => {

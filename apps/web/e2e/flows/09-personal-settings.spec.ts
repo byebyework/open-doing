@@ -232,26 +232,27 @@ test.describe("flow 9: 个人空间设置", () => {
 });
 
 /**
- * 断言 Kanban 项目筛选下拉的选项顺序。
+ * 断言任务页项目筛选（TaskProjectFilter）菜单的选项顺序。
  *
- * 下拉的 options 即 `listPersonalProjects` 的返回顺序（「全部项目」固定第一项），
+ * 菜单项即 `listPersonalProjects` 的返回顺序（「全部」固定第一项），
  * 因此无需专用 fixture 即可通过 UI 低成本验证排序。
  */
 async function expectProjectOrder(
   page: Page,
   names: readonly string[],
 ): Promise<void> {
-  const trigger = page.getByTestId(TEST_IDS.kanban.projectFilter);
+  // 项目筛选已由 tab 行右侧的 TaskProjectFilter（URL 驱动）接管：
+  // DropdownMenu 菜单项 role="menuitem"，选项顺序即 `listPersonalProjects`
+  // 的返回顺序（「全部」固定第一项）。
+  const trigger = page.getByTestId(TEST_IDS.kanban.taskFilterProject);
   await trigger.click();
 
-  // shadcn Select 的选项带 role="option"（迁移前 antd 虚拟列表无此 role，
-  // 旧定位用 .ant-select-item-option）。
-  const options = page.getByRole("option");
-  await expect(options).toHaveCount(names.length + 1); // +「全部项目」
-  await expect(options.nth(0)).toHaveText("全部项目");
+  const items = page.getByRole("menuitem");
+  await expect(items).toHaveCount(names.length + 1); // +「全部」
+  await expect(items.nth(0)).toHaveText("全部");
 
   for (const [index, name] of names.entries()) {
-    await expect(options.nth(index + 1)).toHaveText(name);
+    await expect(items.nth(index + 1)).toHaveText(name);
   }
 
   await page.keyboard.press("Escape");

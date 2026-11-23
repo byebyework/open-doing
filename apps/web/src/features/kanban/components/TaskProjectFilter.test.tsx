@@ -162,4 +162,16 @@ describe("TaskProjectFilter（URL 驱动的项目筛选）", () => {
 
     expect(hostEl.querySelector('[data-testid="task-filter-project"]')).toBeNull();
   });
+
+  it("无效 slug（RSC 已回退全部）：触发器显示「全部」且不高亮，不暴露 URL 原文", () => {
+    searchParamsMock.mockReturnValue(
+      new URLSearchParams("project=not-a-real-project"),
+    );
+    render(<TaskProjectFilter projects={PROJECTS} />);
+
+    const t = trigger();
+    expect(t?.textContent).toContain(zh.kanban.filterAll);
+    expect(t?.textContent).not.toContain("not-a-real-project");
+    expect(t?.className).not.toContain("border-[var(--primary)]");
+  });
 });

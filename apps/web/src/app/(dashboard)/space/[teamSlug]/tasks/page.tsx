@@ -208,11 +208,6 @@ export default async function TeamTasksPage(
         variant="team"
         basePath={moduleHref(team.slug, "tasks")}
         unassignedOnly={unassignedOnly}
-        statParams={{
-          ...(statFilter.status ? { status: statFilter.status } : {}),
-          ...(statFilter.overdueOnly ? { overdue: "1" } : {}),
-          ...(statFilter.dueSoonOnly ? { dueSoon: "1" } : {}),
-        }}
         caption={t("captionTeam", {
           project: projectName,
           count: incompleteTotal,

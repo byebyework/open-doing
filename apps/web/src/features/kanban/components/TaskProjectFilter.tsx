@@ -49,11 +49,13 @@ export function TaskProjectFilter({
       : `${name} · ${Math.round(progress * 100)}%`;
   }
 
-  const activeSlug = searchParams.get("project");
-  const activeProject = projects.find((project) => project.slug === activeSlug);
-  const label =
-    activeProject?.name ??
-    (activeSlug ? activeSlug : t("filterAll"));
+  // 无效 slug（RSC 已静默回退为全部）：触发器同步显示「全部」且不高亮，
+  // 与页面实际数据口径一致，也不把未校验的 URL 文本暴露到 UI。
+  const activeProject = projects.find(
+    (project) => project.slug === searchParams.get("project"),
+  );
+  const active = activeProject !== undefined;
+  const label = activeProject?.name ?? t("filterAll");
 
   function selectProject(slug: string | null) {
     const params = new URLSearchParams(searchParams);
@@ -72,7 +74,7 @@ export function TaskProjectFilter({
         <button
           type="button"
           data-testid="task-filter-project"
-          className={filterTriggerClass(Boolean(activeSlug))}
+          className={filterTriggerClass(active)}
         >
           <span className="text-[var(--ink-400)]">
             {t("filterProjectLabel")}

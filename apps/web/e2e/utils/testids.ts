@@ -63,7 +63,6 @@ export const TEST_IDS = {
     spaceColumnTodo: "space-kanban-column-todo",
     spaceColumnInProgress: "space-kanban-column-in-progress",
     spaceColumnDone: "space-kanban-column-done",
-    projectFilter: "kanban-project-filter",
     assigneeFilter: "kanban-assignee-filter",
     /** 列表视图右侧本地筛选（TaskListFilters）触发器。 */
     taskFilterStatus: "task-filter-status",

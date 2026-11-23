@@ -18,11 +18,6 @@ export interface SpaceKanbanFilterBarProps {
   basePath: string;
   /** 团队空间：是否只显示未指派任务（`?assignee=unassigned`）。 */
   unassignedOnly?: boolean;
-  /**
-   * 当前激活的统计参数（status / overdue / dueSoon）；`pushFilter` 重写 URL
-   * 时透传——项目 / 负责人是统计视角内的细化，切换细化不退出视角。
-   */
-  statParams?: Record<string, string>;
   /** 「当前筛选：{项目} · N 个任务」。 */
   caption: string;
   /** 「基准日期 YYYY-MM-DD（周X）」。 */
@@ -41,29 +36,28 @@ export function SpaceKanbanFilterBar({
   variant,
   basePath,
   unassignedOnly = false,
-  statParams,
   caption,
   todayCaption,
 }: SpaceKanbanFilterBarProps) {
   const router = useRouter();
   // 双视图（TasksViewTabs）切换是纯客户端 replaceState，RSC 的 props 感知不到；
-  // 筛选导航必须读实时 URL，否则列表视图下切筛选会把用户甩回看板。
-  const viewParam = useSearchParams().get("view");
+  // pushFilter 复制实时 URL 参数（project/view/统计），只动自己的 assignee。
+  const currentParams = useSearchParams();
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
   const tDate = useTranslations("date");
 
-  /** 把未指派筛选写回 URL；取消回到无 query 的干净地址（保留统计参数）。 */
+  /** 把未指派筛选写回 URL；只动 `assignee`，其余参数（project/view/统计）原样保留。 */
   function pushFilter(onlyUnassigned: boolean) {
-    const params = new URLSearchParams();
+    // 复制实时 URL 参数而非从 props 重建：project（TaskProjectFilter 写入）、
+    // view（TasksViewTabs replaceState 写入）RSC props 感知不到，重建会丢。
+    const params = new URLSearchParams(currentParams);
 
-    for (const [key, value] of Object.entries(statParams ?? {})) {
-      params.set(key, value);
-    }
     if (variant === "team" && onlyUnassigned) {
       params.set("assignee", "unassigned");
+    } else {
+      params.delete("assignee");
     }
-    if (viewParam === "list") params.set("view", "list");
 
     const query = params.toString();
     router.push(query ? `${basePath}?${query}` : basePath);
