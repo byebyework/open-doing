@@ -2,7 +2,13 @@
 
 import type { TaskStatus } from "@open-doing/types";
 import { getTaskProgress } from "@open-doing/types";
-import { CheckIcon, ChevronDownIcon, Loader2Icon } from "lucide-react";
+import {
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  Loader2Icon,
+} from "lucide-react";
 import { useTranslations } from "next-intl";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -13,6 +19,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { PriorityChip } from "@/components/ui/PriorityChip";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { Button } from "@/components/ui/shadcn/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,6 +31,12 @@ import { TaskTags } from "@/features/tags/components/TaskTags";
 import { canEditTask } from "@/features/tasks/permissions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
 import type { TeamRole } from "@/features/teams/permissions";
+import {
+  appendTaskOrigin,
+  DEFAULT_TASK_PAGE_SIZE,
+  TASK_PAGE_SIZES,
+  type TaskPageSize,
+} from "@/lib/task-origin";
 
 import { useListFilters } from "../list-filters-context";
 import { filterTaskRows, sortTaskRows } from "../sort-task-rows";
@@ -59,6 +72,16 @@ export interface SpaceTaskTableProps {
   teamSlug?: string;
   role?: TeamRole;
   actorId?: string;
+  /**
+   * 详情链接来源。传 `"tasks"` 时行标题链接带 `?from=tasks&view=list`
+   * （非首页再带 `page` / `size`），详情页据此把返回链接指回任务列表
+   * 同一页；RSC 只在任务模块传，其它入口保持「返回项目」。
+   */
+  taskOrigin?: "tasks";
+  /** URL `?page=` 解析出的初始页码（详情返回同一页时由 RSC 传入）。 */
+  initialPage?: number;
+  /** URL `?size=` 解析出的初始每页条数（白名单外由 RSC 过滤为 undefined）。 */
+  initialPageSize?: TaskPageSize;
 }
 
 /** 状态 pill 配色（与看板卡 / badge 同一组 token，无字面量色值）。 */
@@ -151,7 +174,11 @@ function TaskRowStatusPill({
  * - 默认排序 `sortTaskRows`（截止升序 null 最后，同日优先级高在前）；
  * - 状态切换乐观更新（sync props → state during render），失败回滚并 toast，
  *   action 分支与错误口径照抄 `SpaceKanban`（个人 / 团队 / 缺 teamId 三分支）；
- * - 截止列复用看板 `DueLabel`（逾期红 / 临期琥珀 / done 完成日期，`today` 口径）。
+ * - 截止列复用看板 `DueLabel`（逾期红 / 临期琥珀 / done 完成日期，`today` 口径）；
+ * - 客户端分页：默认每页 10 条（可选 20 / 50），条数超过 10 才出现分页行；
+ *   换筛选 / 换条数回第 1 页，页码越界渲染期收敛（行集合刷新不跳页）；
+ *   任务模块来源时行标题链接带 `?from=tasks&view=list&page&size`，详情页
+ *   「← 返回任务」据此回到同一页（`lib/task-origin`）。
  */
 export function SpaceTaskTable({
   variant,
@@ -161,6 +188,9 @@ export function SpaceTaskTable({
   teamId,
   role,
   actorId,
+  taskOrigin,
+  initialPage,
+  initialPageSize,
 }: SpaceTaskTableProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -174,8 +204,19 @@ export function SpaceTaskTable({
 
   const taskRows: TaskRow[] = rows;
 
+  // 分页：客户端切片（行数据本来就整批由 RSC 取回）。页码 / 每页条数只在
+  // 组件内维护，不进 URL；详情链接把它们作为来源参数带出去，返回时由
+  // RSC 读 `?page` / `?size` 还原（见 lib/task-origin）。
+  const [page, setPage] = useState(() =>
+    initialPage != null && initialPage > 0 ? initialPage : 1,
+  );
+  const [pageSize, setPageSize] = useState<TaskPageSize>(
+    initialPageSize ?? DEFAULT_TASK_PAGE_SIZE,
+  );
+
   // 服务端刷新（router.refresh）后以最新 props 为准；渲染期同步 props → state
-  // 是 React 推荐写法（同 SpaceKanban），避免 effect 多跑一轮渲染。
+  // 是 React 推荐写法（同 SpaceKanban），避免 effect 多跑一轮渲染。行集合
+  // 变化不重置页码（页内改状态也会 refresh）：越界由渲染期收敛处理。
   const [localRows, setLocalRows] = useState<TaskRow[]>(() =>
     sortTaskRows(taskRows),
   );
@@ -183,6 +224,14 @@ export function SpaceTaskTable({
   if (taskRows !== syncedRows) {
     setSyncedRows(taskRows);
     setLocalRows(sortTaskRows(taskRows));
+  }
+
+  // 本地筛选（状态 / 优先级）变化时同样回第 1 页：结果集换了，旧页码没有意义。
+  const filterKey = `${filters.status}:${filters.priority}`;
+  const [syncedFilterKey, setSyncedFilterKey] = useState(filterKey);
+  if (filterKey !== syncedFilterKey) {
+    setSyncedFilterKey(filterKey);
+    setPage(1);
   }
 
   const [pending, setPending] = useState<{
@@ -253,6 +302,29 @@ export function SpaceTaskTable({
   // 过滤保持既有排序（localRows 已排序），纯派生于渲染期，不进 state。
   const visibleRows = filterTaskRows(localRows, filters);
 
+  // 页码越界渲染期收敛（不写回 state）：删任务 / 筛选收窄后不会停在空页。
+  const totalPages = Math.max(1, Math.ceil(visibleRows.length / pageSize));
+  const currentPage = Math.min(page, totalPages);
+  const pageRows = visibleRows.slice(
+    (currentPage - 1) * pageSize,
+    currentPage * pageSize,
+  );
+  // 条数超过最小页容量就保留分页行：否则每页切到 20/50 后控件会消失，
+  // 用户无法切回 10。
+  const showPagination = visibleRows.length > DEFAULT_TASK_PAGE_SIZE;
+
+  /** 行标题链接：任务模块来源时带返回所需的来源参数（含当前页）。 */
+  function detailHref(taskId: string): string | undefined {
+    const base = taskHrefs[taskId];
+    if (!base || taskOrigin !== "tasks") return base;
+
+    return appendTaskOrigin(base, {
+      view: "list",
+      page: currentPage,
+      pageSize,
+    });
+  }
+
   if (visibleRows.length === 0) {
     return (
       <EmptyState
@@ -277,150 +349,225 @@ export function SpaceTaskTable({
   ];
 
   return (
-    // 窄屏：表格横向滚动，页面本身不横向溢出。
-    <div className="overflow-x-auto">
-      <table
-        data-testid="space-task-table"
-        className="w-full min-w-[920px] border-collapse text-left text-[13.5px]"
-      >
-        <thead>
-          <tr>
-            {columns.map(({ label, className }) => (
-              <th
-                key={label}
-                className={`whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)] ${className}`}
-              >
-                {label}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="[&_tr:last-child_td]:border-b-0">
-          {visibleRows.map((row) => {
-            const done = row.status === "done";
-            // 用「子任务计数」还原 getTaskProgress 入参，保持进度口径唯一
-            // （与团队看板项目进度的还原方式一致）。
-            const progress = getTaskProgress({
-              status: row.status,
-              subtasks: Array.from(
-                { length: row.subtaskTotal },
-                (_, index) => ({ completed: index < row.subtaskDone }),
-              ),
-            });
+    <>
+      {/* 窄屏：表格横向滚动，页面本身不横向溢出。 */}
+      <div className="overflow-x-auto">
+        <table
+          data-testid="space-task-table"
+          className="w-full min-w-[920px] border-collapse text-left text-[13.5px]"
+        >
+          <thead>
+            <tr>
+              {columns.map(({ label, className }) => (
+                <th
+                  key={label}
+                  className={`whitespace-nowrap border-b border-[var(--border-default)] px-3 pb-3 text-[12px] font-semibold uppercase tracking-[0.04em] text-[var(--ink-400)] ${className}`}
+                >
+                  {label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="[&_tr:last-child_td]:border-b-0">
+            {pageRows.map((row) => {
+              const done = row.status === "done";
+              // 用「子任务计数」还原 getTaskProgress 入参，保持进度口径唯一
+              // （与团队看板项目进度的还原方式一致）。
+              const progress = getTaskProgress({
+                status: row.status,
+                subtasks: Array.from(
+                  { length: row.subtaskTotal },
+                  (_, index) => ({ completed: index < row.subtaskDone }),
+                ),
+              });
 
-            return (
-              <tr
-                key={row.id}
-                className={`transition-colors hover:bg-[#f4f5f7] ${
-                  done ? "opacity-[0.62]" : ""
-                }`}
-              >
-                {/* 标题列限宽 + 单行省略：无空格长串不再撑出横向滚动 */}
-                <td className="w-[40%] max-w-0 border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  {taskHrefs[row.id] ? (
-                    <Link
-                      href={taskHrefs[row.id]}
-                      className={`block truncate font-medium ${
-                        done
-                          ? "text-[var(--ink-400)] line-through"
-                          : "text-[var(--ink-900)] no-underline hover:underline"
-                      }`}
-                    >
-                      {row.title}
-                    </Link>
-                  ) : (
-                    <span
-                      className={`block truncate font-medium ${
-                        done
-                          ? "text-[var(--ink-400)] line-through"
-                          : "text-[var(--ink-900)]"
-                      }`}
-                    >
-                      {row.title}
-                    </span>
-                  )}
-                </td>
-
-                <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  <ProjectTag variant={variant} projectName={row.projectName} />
-                </td>
-
-                <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  {(row.tags ?? []).length > 0 ? (
-                    <TaskTags tags={row.tags ?? []} />
-                  ) : (
-                    <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
-                  )}
-                </td>
-
-                <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  <PriorityChip priority={row.priority} />
-                </td>
-
-                <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  <TaskRowStatusPill
-                    row={row}
-                    editable={canEditRow(row)}
-                    pending={pending}
-                    onStatusChange={(target, status) => {
-                      void handleStatusChange(target, status);
-                    }}
-                  />
-                </td>
-
-                {variant === "team" ? (
-                  <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                    {row.assigneeName ? (
-                      <span className="flex items-center gap-2 text-[13px] text-[var(--ink-900)]">
-                        {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
-                        <UserAvatar
-                          userId={row.assigneeId ?? ""}
-                          name={row.assigneeName}
-                          size={26}
-                        />
-                        {row.assigneeName}
-                      </span>
+              return (
+                <tr
+                  key={row.id}
+                  className={`transition-colors hover:bg-[#f4f5f7] ${
+                    done ? "opacity-[0.62]" : ""
+                  }`}
+                >
+                  {/* 标题列限宽 + 单行省略：无空格长串不再撑出横向滚动 */}
+                  <td className="w-[40%] max-w-0 border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    {detailHref(row.id) ? (
+                      <Link
+                        href={detailHref(row.id)!}
+                        className={`block truncate font-medium ${
+                          done
+                            ? "text-[var(--ink-400)] line-through"
+                            : "text-[var(--ink-900)] no-underline hover:underline"
+                        }`}
+                      >
+                        {row.title}
+                      </Link>
                     ) : (
-                      <span className="text-[12.5px] text-[var(--ink-400)]">
-                        {t("unassigned")}
+                      <span
+                        className={`block truncate font-medium ${
+                          done
+                            ? "text-[var(--ink-400)] line-through"
+                            : "text-[var(--ink-900)]"
+                        }`}
+                      >
+                        {row.title}
                       </span>
                     )}
                   </td>
-                ) : null}
 
-                <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  {done ? (
-                    <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
-                  ) : row.subtaskTotal > 0 ? (
-                    <div>
-                      <div className="mb-1 w-[110px]">
-                        <ProgressBar value={progress} />
+                  <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    <ProjectTag variant={variant} projectName={row.projectName} />
+                  </td>
+
+                  <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    {(row.tags ?? []).length > 0 ? (
+                      <TaskTags tags={row.tags ?? []} />
+                    ) : (
+                      <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
+                    )}
+                  </td>
+
+                  <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    <PriorityChip priority={row.priority} />
+                  </td>
+
+                  <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    <TaskRowStatusPill
+                      row={row}
+                      editable={canEditRow(row)}
+                      pending={pending}
+                      onStatusChange={(target, status) => {
+                        void handleStatusChange(target, status);
+                      }}
+                    />
+                  </td>
+
+                  {variant === "team" ? (
+                    <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                      {row.assigneeName ? (
+                        <span className="flex items-center gap-2 text-[13px] text-[var(--ink-900)]">
+                          {/* Avatar color is keyed by user id; "" is a deterministic sentinel never seeded from the name. */}
+                          <UserAvatar
+                            userId={row.assigneeId ?? ""}
+                            name={row.assigneeName}
+                            size={26}
+                          />
+                          {row.assigneeName}
+                        </span>
+                      ) : (
+                        <span className="text-[12.5px] text-[var(--ink-400)]">
+                          {t("unassigned")}
+                        </span>
+                      )}
+                    </td>
+                  ) : null}
+
+                  <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    {done ? (
+                      <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
+                    ) : row.subtaskTotal > 0 ? (
+                      <div>
+                        <div className="mb-1 w-[110px]">
+                          <ProgressBar value={progress} />
+                        </div>
+                        <span className="text-[12px] text-[var(--ink-400)]">
+                          {t("tableSubtasksProgress", {
+                            completed: row.subtaskDone,
+                            total: row.subtaskTotal,
+                            percent: Math.round(progress * 100),
+                          })}
+                        </span>
                       </div>
+                    ) : (
                       <span className="text-[12px] text-[var(--ink-400)]">
-                        {t("tableSubtasksProgress", {
-                          completed: row.subtaskDone,
-                          total: row.subtaskTotal,
+                        {t("noSubtasksProgress", {
                           percent: Math.round(progress * 100),
                         })}
                       </span>
-                    </div>
-                  ) : (
-                    <span className="text-[12px] text-[var(--ink-400)]">
-                      {t("noSubtasksProgress", {
-                        percent: Math.round(progress * 100),
-                      })}
-                    </span>
-                  )}
-                </td>
+                    )}
+                  </td>
 
-                <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
-                  <DueLabel card={row} today={today} />
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
+                  <td className="whitespace-nowrap border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    <DueLabel card={row} today={today} />
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+
+      {/* 客户端分页：条数超过最小页容量才出现（每页条数 / 页码 / 上下一页）。 */}
+      {showPagination ? (
+        <div className="mt-3 flex items-center justify-end gap-3 text-[12.5px] text-[var(--color-text-muted)]">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                type="button"
+                data-testid="task-list-page-size"
+                className="inline-flex cursor-pointer items-center gap-1 rounded-[var(--radius-sm)] px-1.5 py-0.5 transition-colors hover:text-[var(--ink-900)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)]"
+              >
+                {t("pageSizeLabel", { count: pageSize })}
+                <ChevronDownIcon aria-hidden className="size-3 opacity-70" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {TASK_PAGE_SIZES.map((size) => (
+                <DropdownMenuItem
+                  key={size}
+                  data-testid={`task-list-page-size-${size}`}
+                  disabled={size === pageSize}
+                  onSelect={() => {
+                    setPageSize(size);
+                    setPage(1);
+                  }}
+                >
+                  <span className="flex-1">
+                    {t("pageSizeLabel", { count: size })}
+                  </span>
+                  {size === pageSize ? (
+                    <CheckIcon aria-hidden className="size-3.5" />
+                  ) : null}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          <span data-testid="task-list-page-info">
+            {t("pageInfo", {
+              page: currentPage,
+              total: totalPages,
+              count: visibleRows.length,
+            })}
+          </span>
+
+          <div className="flex items-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("prevPageAria")}
+              data-testid="task-list-page-prev"
+              disabled={currentPage <= 1}
+              onClick={() => setPage(Math.max(1, currentPage - 1))}
+            >
+              <ChevronLeftIcon className="size-4" aria-hidden="true" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              aria-label={t("nextPageAria")}
+              data-testid="task-list-page-next"
+              disabled={currentPage >= totalPages}
+              onClick={() =>
+                setPage(Math.min(totalPages, currentPage + 1))
+              }
+            >
+              <ChevronRightIcon className="size-4" aria-hidden="true" />
+            </Button>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }

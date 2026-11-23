@@ -668,4 +668,82 @@ test.describe("flow 6: 任务页双视图", () => {
     await expect(page).not.toHaveURL(/project=/);
     await expect(todo.getByText(looseTask, { exact: true })).toBeVisible();
   });
+
+  test("列表分页：默认 10 条、可切每页条数，详情「返回任务」回到同一页", async ({
+    page,
+  }) => {
+    const username = uniqueUsername("e2e_pg6");
+    const titles = Array.from({ length: 12 }, (_, index) =>
+      uniqueLabel(`E2E pg task ${index + 1}`),
+    );
+
+    await registerUser(page, username);
+    // 12 条用 SQL 预置：逐条走 UI 建任务太慢，分页只关心行数与页码。
+    await seedPersonalTasks(username, titles);
+
+    await page.goto("/space/personal/tasks?view=list");
+    const table = page.getByTestId(TEST_IDS.kanban.taskTable);
+    await expect(table.locator("tbody tr")).toHaveCount(10);
+    await expect(page.getByTestId(TEST_IDS.kanban.taskPageInfo)).toContainText(
+      "第 1 / 2 页",
+    );
+    await expect(page.getByTestId(TEST_IDS.kanban.taskPageInfo)).toContainText(
+      "共 12 个任务",
+    );
+
+    // 下一页：剩余 2 行，上一页可用、下一页禁用。
+    await page.getByTestId(TEST_IDS.kanban.taskPageNext).click();
+    await expect(table.locator("tbody tr")).toHaveCount(2);
+    await expect(page.getByTestId(TEST_IDS.kanban.taskPagePrev)).toBeEnabled();
+    await expect(page.getByTestId(TEST_IDS.kanban.taskPageNext)).toBeDisabled();
+
+    // 任务模块来源：详情返回链接是「← 返回任务」，带回列表同一页。
+    await table.locator("tbody tr td:first-child a").first().click();
+    const backToTasks = page.getByRole("link", { name: "← 返回任务" });
+    await expect(backToTasks).toBeVisible();
+    await expect(page).toHaveURL(/from=tasks&view=list&page=2$/);
+
+    await backToTasks.click();
+    await expect(page).toHaveURL(/\/space\/personal\/tasks\?view=list&page=2$/);
+    await expect(page.getByTestId(TEST_IDS.kanban.taskTable).locator("tbody tr")).toHaveCount(2);
+
+    // 每页 20 条：12 条一页装下，分页行保留（否则无法切回 10 条/页）。
+    await page.getByTestId(TEST_IDS.kanban.taskPageSize).click();
+    await page.getByTestId("task-list-page-size-20").click();
+    await expect(
+      page.getByTestId(TEST_IDS.kanban.taskTable).locator("tbody tr"),
+    ).toHaveCount(12);
+    await expect(page.getByTestId(TEST_IDS.kanban.taskPageInfo)).toContainText(
+      "第 1 / 1 页",
+    );
+  });
 });
+
+/**
+ * 给指定账号预置 N 条个人任务（无项目、无截止日期）。
+ *
+ * 分页夹具需要 10 条以上数据，逐条走 UI 建任务太慢；仅在 e2e 库上按
+ * `created_by_id` 写入（标题唯一，行数保护见 count 断言）。
+ */
+async function seedPersonalTasks(
+  username: string,
+  titles: string[],
+): Promise<void> {
+  assertE2EDatabaseUrl(E2E_DATABASE_URL);
+
+  const client = postgres(E2E_DATABASE_URL, { max: 1, onnotice: () => {} });
+  try {
+    const users = await client`SELECT id FROM users WHERE username = ${username}`;
+    expect(users.length).toBe(1);
+    const userId = users[0]!.id as string;
+
+    for (const title of titles) {
+      await client`
+        INSERT INTO tasks (space_type, title, created_by_id, assignee_id)
+        VALUES ('personal', ${title}, ${userId}, ${userId})
+      `;
+    }
+  } finally {
+    await client.end({ timeout: 5 });
+  }
+}

@@ -77,6 +77,11 @@ export const TEST_IDS = {
     viewPanelList: "tasks-view-panel-list",
     /** 任务页列表视图表格（SpaceTaskTable）。 */
     taskTable: "space-task-table",
+    /** 列表分页行（页码 / 每页条数 / 上下一页）。 */
+    taskPageInfo: "task-list-page-info",
+    taskPagePrev: "task-list-page-prev",
+    taskPageNext: "task-list-page-next",
+    taskPageSize: "task-list-page-size",
   },
   calendar: {
     prevMonth: "calendar-prev-month",

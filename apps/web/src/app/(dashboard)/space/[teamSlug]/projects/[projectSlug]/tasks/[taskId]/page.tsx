@@ -1,4 +1,5 @@
 import { displayName } from "@open-doing/types";
+import { getTranslations } from "next-intl/server";
 import { notFound } from "next/navigation";
 
 import { requireUser } from "@/features/auth/session";
@@ -15,6 +16,7 @@ import { getTeamTaskDetail } from "@/features/tasks/service";
 import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { teamProjectHref } from "@/lib/routes";
+import { parseTaskOrigin, taskModuleBackHref } from "@/lib/task-origin";
 
 interface TeamTaskDetailPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
@@ -23,6 +25,8 @@ interface TeamTaskDetailPageProps {
     projectSlug: string;
     taskId: string;
   }>;
+  /** `?from=tasks[&view=list&page&size]`：从任务模块进入时返回任务模块。 */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 /**
@@ -34,10 +38,13 @@ interface TeamTaskDetailPageProps {
  */
 export default async function TeamTaskDetailPage({
   params,
+  searchParams,
 }: TeamTaskDetailPageProps) {
   const { teamSlug, projectSlug, taskId } = await params;
+  const origin = parseTaskOrigin(await searchParams);
 
   const user = await requireUser();
+  const t = await getTranslations("tasks");
   const team = await getTeamBySlug(teamSlug);
   if (!team) notFound();
 
@@ -82,7 +89,12 @@ export default async function TeamTaskDetailPage({
       task={task}
       milestoneOptions={milestoneOptions}
       teamId={team.id}
-      backHref={teamProjectHref(team.slug, project.slug)}
+      backHref={
+        origin.fromTasks
+          ? taskModuleBackHref(team.slug, origin)
+          : teamProjectHref(team.slug, project.slug)
+      }
+      backLabel={origin.fromTasks ? t("backToTasks") : undefined}
       currentUserId={user.id}
       permissions={{
         canEdit: canEditTask(permissionInput),

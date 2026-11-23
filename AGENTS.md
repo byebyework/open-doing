@@ -72,6 +72,10 @@ Self-contained by domain: auth / users / teams / projects / tasks / tags / kanba
 - Pages are RSC by default: the server fetches data per session user, without going through a public API; the `(dashboard)` routes uniformly redirect to `/login` via `requireUser()`.
 - Radix-based interactive components (Dialog, AlertDialog, DropdownMenu, Popover, Select, Sheet, etc.) may only be used inside `"use client"` components; pages push interactions down into client wrappers and pass serializable data via props. Components with optimistic updates use the "sync props → state during render" pattern (`if (props !== synced) { ... }`) to integrate with `router.refresh()`.
 
+### Tasks module URL contract
+
+`/space/{spaceRef}/tasks` is the single tasks surface: board by default, `?view=list` for the table (filters: `?project=`, `?assignee=unassigned`, `?status` / `?overdue` / `?dueSoon`). The list view paginates client-side (10 rows per page, 20 / 50 selectable) and carries its position only through task-detail origin params: `?from=tasks[&view=list&page&size]` on the detail link. `lib/task-origin.ts` is the single place that builds/parses these params; team and personal detail pages use it to render "← Back to tasks" (returning to the same list page) instead of "← Back to project". Entries from project / calendar / dashboard / notifications stay unchanged.
+
 ### Permission model (must follow)
 
 - **Every Server Action performs its own authorization** — never trust that a page merely hides the entry point; permission decisions are centralized in `features/teams` (`canEditTask({ role, actorId, assigneeId })`, etc.) and each feature's service.

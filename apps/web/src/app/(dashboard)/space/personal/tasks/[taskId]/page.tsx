@@ -5,6 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/features/auth/session";
 import { listTags } from "@/features/tags/service";
 import { personalProjectHref, spaceDashboardHref } from "@/lib/routes";
+import { parseTaskOrigin, taskModuleBackHref } from "@/lib/task-origin";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { TaskDetailClient } from "@/features/personal/tasks/components/TaskDetailClient";
 import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
@@ -13,6 +14,8 @@ import { getPersonalTaskDetail } from "@/features/personal/tasks/service";
 interface PersonalTaskDetailPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
   params: Promise<{ taskId: string }>;
+  /** `?from=tasks[&view=list&page&size]`：从任务模块进入时返回任务模块。 */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
 /**
@@ -23,8 +26,10 @@ interface PersonalTaskDetailPageProps {
  */
 export default async function PersonalTaskDetailPage({
   params,
+  searchParams,
 }: PersonalTaskDetailPageProps) {
   const { taskId } = await params;
+  const origin = parseTaskOrigin(await searchParams);
 
   const user = await requireUser();
   const t = await getTranslations("tasks");
@@ -32,9 +37,14 @@ export default async function PersonalTaskDetailPage({
 
   if (!task) notFound();
 
-  // 返回地址：任务所属个人项目页；不属于项目时回到「我的任务」。
+  // 返回地址：任务模块来源回到任务列表同一页；否则回所属个人项目页，
+  // 不属于项目时回到「我的任务」。
   let backHref = spaceDashboardHref("personal");
-  if (task.projectId) {
+  let backLabel = task.projectId ? t("backToProject") : t("backToMyTasks");
+  if (origin.fromTasks) {
+    backHref = taskModuleBackHref("personal", origin);
+    backLabel = t("backToTasks");
+  } else if (task.projectId) {
     const projects = await listPersonalProjects(user.id);
     const project = projects.find((item) => item.id === task.projectId);
     if (project) {
@@ -60,7 +70,7 @@ export default async function PersonalTaskDetailPage({
       task={{ ...task, creatorName: displayName(user) }}
       milestoneOptions={milestoneOptions}
       backHref={backHref}
-      backLabel={task.projectId ? t("backToProject") : t("backToMyTasks")}
+      backLabel={backLabel}
       currentUserId={user.id}
       tagPool={taskTagPool}
     />

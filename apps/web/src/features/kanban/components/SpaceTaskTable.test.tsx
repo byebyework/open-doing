@@ -812,4 +812,147 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     expect(toastError).toHaveBeenCalled();
     expect(refresh).not.toHaveBeenCalled();
   });
+
+  /** 12 行夹具：超过默认每页 10 条，足以触发分页行。 */
+  function twelveRows(): KanbanCardItem[] {
+    return Array.from({ length: 12 }, (_, index) =>
+      personalRow({
+        id: `page-${index}`,
+        title: `分页任务 ${index + 1}`,
+        // 升序日期保证排序稳定：第 1 页是前 10 行，第 2 页是后 2 行。
+        dueDate: `2026-11-${String(index + 1).padStart(2, "0")}`,
+      }),
+    );
+  }
+
+  function pageInfoText(): string | null | undefined {
+    return document.querySelector('[data-testid="task-list-page-info"]')
+      ?.textContent;
+  }
+
+  function clickPageControl(testid: string): void {
+    const control = document.querySelector<HTMLButtonElement>(
+      `[data-testid="${testid}"]`,
+    );
+    if (!control) throw new Error(`missing ${testid}`);
+    act(() => {
+      control.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+  }
+
+  it("分页：超过 10 条只渲染第 1 页，下一页切到剩余行", () => {
+    renderPersonal(twelveRows());
+
+    expect(bodyRows()).toHaveLength(10);
+    expect(pageInfoText()).toBe("第 1 / 2 页 · 共 12 个任务");
+
+    clickPageControl("task-list-page-next");
+
+    expect(bodyRows()).toHaveLength(2);
+    expect(pageInfoText()).toBe("第 2 / 2 页 · 共 12 个任务");
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        '[data-testid="task-list-page-prev"]',
+      )?.disabled,
+    ).toBe(false);
+    expect(
+      document.querySelector<HTMLButtonElement>(
+        '[data-testid="task-list-page-next"]',
+      )?.disabled,
+    ).toBe(true);
+  });
+
+  it("分页：10 条以内不渲染分页行", () => {
+    renderPersonal([rowA, rowB, rowC, rowD]);
+
+    expect(
+      document.querySelector('[data-testid="task-list-page-info"]'),
+    ).toBeNull();
+    expect(bodyRows()).toHaveLength(4);
+  });
+
+  it("分页：URL 初值生效（page / size），越界页码渲染期收敛到末页", () => {
+    renderTable(
+      <SpaceTaskTable
+        variant="personal"
+        rows={twelveRows()}
+        today={TODAY}
+        taskHrefs={{}}
+        initialPage={5}
+        initialPageSize={20}
+      />,
+    );
+
+    // size=20：12 条一页装下；page=5 越界，收敛为唯一一页。
+    expect(bodyRows()).toHaveLength(12);
+    expect(pageInfoText()).toBe("第 1 / 1 页 · 共 12 个任务");
+  });
+
+  it("分页：每页条数可在 10 / 20 / 50 间切换", () => {
+    renderPersonal(twelveRows());
+
+    const trigger = document.querySelector<HTMLButtonElement>(
+      '[data-testid="task-list-page-size"]',
+    );
+    if (!trigger) throw new Error("missing page size trigger");
+    act(() => {
+      trigger.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    const option = document.body.querySelector<HTMLElement>(
+      '[data-testid="task-list-page-size-20"]',
+    );
+    if (!option) throw new Error("missing page size option");
+    act(() => {
+      option.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    });
+
+    expect(bodyRows()).toHaveLength(12);
+    expect(pageInfoText()).toBe("第 1 / 1 页 · 共 12 个任务");
+    // 条数超过最小页容量，分页行保留（否则无法切回 10 条/页）。
+    expect(
+      document.querySelector('[data-testid="task-list-page-size"]')
+        ?.textContent,
+    ).toContain("每页 20 条");
+  });
+
+  it("任务模块来源：行标题链接带 from=tasks&view=list，翻页后带 page", () => {
+    const rows = twelveRows();
+    renderTable(
+      <SpaceTaskTable
+        variant="personal"
+        rows={rows}
+        today={TODAY}
+        taskHrefs={Object.fromEntries(
+          rows.map((row) => [row.id, `/space/personal/tasks/${row.id}`]),
+        )}
+        taskOrigin="tasks"
+      />,
+    );
+
+    const firstHref = bodyRows()[0]
+      ?.querySelector("a")
+      ?.getAttribute("href");
+    expect(firstHref).toContain("?from=tasks&view=list");
+    expect(firstHref).not.toContain("page=");
+
+    clickPageControl("task-list-page-next");
+
+    const secondPageHref = bodyRows()[0]
+      ?.querySelector("a")
+      ?.getAttribute("href");
+    expect(secondPageHref).toContain("?from=tasks&view=list&page=2");
+  });
+
+  it("非任务模块来源：行标题链接保持原样（返回项目）", () => {
+    renderPersonal();
+
+    expect(
+      bodyRows()[0]?.querySelector("a")?.getAttribute("href"),
+    ).toBe(`/personal/tasks/${rowA.id}`);
+  });
 });

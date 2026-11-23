@@ -29,6 +29,7 @@ import { TaskTags } from "@/features/tags/components/TaskTags";
 import { canEditTask } from "@/features/tasks/permissions";
 import { updateTeamTaskAction } from "@/features/tasks/actions";
 import type { TeamRole } from "@/features/teams/permissions";
+import { appendTaskOrigin } from "@/lib/task-origin";
 import { getWeekStart } from "@/lib/today";
 
 import { getOlderDoneTasksAction } from "../actions";
@@ -68,6 +69,11 @@ export interface SpaceKanbanProps {
   taskHrefs: Record<string, string>;
   /** 当前 URL 筛选（project slug / 仅未指派），原样带给展开「更早」的 Server Action。 */
   expandFilter?: { projectSlug?: string; unassignedOnly?: boolean };
+  /**
+   * 详情链接来源。传 `"tasks"` 时卡片链接带 `?from=tasks`（看板入口），
+   * 详情页据此把返回链接指回任务模块看板；RSC 只在任务模块传。
+   */
+  taskOrigin?: "tasks";
 }
 
 /** 看板列顺序（导出给列表视图的状态按钮组共用）。 */
@@ -637,12 +643,24 @@ export function SpaceKanban({
   actorId,
   taskHrefs,
   expandFilter,
+  taskOrigin,
 }: SpaceKanbanProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
   const tKanban = useTranslations("kanban");
   const isDesktop = useIsDesktop();
+
+  // 任务模块来源：卡片链接统一带 `?from=tasks`（详情页「← 返回任务」回落看板）。
+  const cardHrefs =
+    taskOrigin === "tasks"
+      ? Object.fromEntries(
+          Object.entries(taskHrefs).map(([id, href]) => [
+            id,
+            appendTaskOrigin(href),
+          ]),
+        )
+      : taskHrefs;
 
   const [local, setLocal] = useState<LocalBoard>(() => toLocalBoard(board));
   const [syncedBoard, setSyncedBoard] = useState(board);
@@ -853,7 +871,7 @@ export function SpaceKanban({
               onToggleOlder={() => {
                 void toggleOlderDone();
               }}
-              taskHrefs={taskHrefs}
+              taskHrefs={cardHrefs}
               teamId={teamId}
               isDesktop={isDesktop}
               canEditCard={canEditCard}

@@ -26,6 +26,7 @@ import { listTags } from "@/features/tags/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { moduleHref, teamProjectNewHref, teamTaskHref } from "@/lib/routes";
+import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
 import { todayInShanghai } from "@/lib/today";
 
 export async function generateMetadata(
@@ -60,6 +61,8 @@ export default async function TeamTasksPage(
     project: projectParam,
     assignee: assigneeParam,
     view: viewParam,
+    page: pageParam,
+    size: sizeParam,
     ...statParams
   } = await props.searchParams;
   const requestedSlug = Array.isArray(projectParam)
@@ -71,6 +74,9 @@ export default async function TeamTasksPage(
   // 双视图：`?view=list` 即列表，无 view（含非法值）回归看板默认。
   const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
   const initialView = requestedView === "list" ? "list" : "board";
+  // 列表分页：详情页「← 返回任务」带回 `?page` / `?size`，非法值静默回默认。
+  const initialPage = parseTaskPage(pageParam) ?? undefined;
+  const initialPageSize = parseTaskPageSize(sizeParam) ?? undefined;
   const statFilter = parseStatFilterParams(statParams);
 
   const t = await getTranslations("kanban");
@@ -222,6 +228,7 @@ export default async function TeamTasksPage(
               actorId={user.id}
               taskHrefs={taskHrefs}
               expandFilter={expandFilter}
+              taskOrigin="tasks"
             />
           }
           list={
@@ -234,6 +241,9 @@ export default async function TeamTasksPage(
               teamSlug={team.slug}
               role={membership.role}
               actorId={user.id}
+              taskOrigin="tasks"
+              initialPage={initialPage}
+              initialPageSize={initialPageSize}
             />
           }
         />

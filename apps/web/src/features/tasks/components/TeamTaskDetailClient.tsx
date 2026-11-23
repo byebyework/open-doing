@@ -48,8 +48,10 @@ export interface TeamTaskDetailClientProps {
   /** 服务端组装的详情模型（含 `creatorName`）。 */
   task: TaskDetailModel;
   teamId: string;
-  /** 「← 返回项目」地址。 */
+  /** 返回链接地址（项目页，或来源为任务模块时的任务模块地址）。 */
   backHref: string;
+  /** 返回链接文案（缺省「← 返回项目」；任务模块来源传「← 返回任务」）。 */
+  backLabel?: string;
   /** 当前登录用户 ID（评论删除入口用）。 */
   currentUserId: string;
   /** 服务端按角色计算的权限位。 */
@@ -73,11 +75,13 @@ export function TeamTaskDetailClient({
   task,
   teamId,
   backHref,
+  backLabel,
   currentUserId,
   permissions,
   assigneeOptions,
   tagPool,
-    milestoneOptions,}: TeamTaskDetailClientProps) {
+  milestoneOptions,
+}: TeamTaskDetailClientProps) {
   const router = useRouter();
   const tErrors = useTranslations("errors");
   const tCommon = useTranslations("common");
@@ -168,6 +172,7 @@ export function TeamTaskDetailClient({
       permissions={permissions}
       onAction={onAction}
       backHref={backHref}
+      backLabel={backLabel}
       currentUserId={currentUserId}
       assigneeOptions={assigneeOptions}
       onAssign={handleAssign}

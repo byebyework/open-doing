@@ -103,10 +103,16 @@ export function TasksViewTabs({
     setDir(next === "list" ? 1 : -1);
     setView(next);
     if (next === "board") setFilters(DEFAULT_LIST_FILTERS);
-    // URL 同步：list 记 ?view=list，board 回归默认（删参）。
+    // URL 同步：list 记 ?view=list，board 回归默认（删参）；分页参数只对列表
+    // 有意义，切回看板时一并清掉，避免 `?page=3` 这类残留参数。
     const url = new URL(window.location.href);
-    if (next === "list") url.searchParams.set("view", "list");
-    else url.searchParams.delete("view");
+    if (next === "list") {
+      url.searchParams.set("view", "list");
+    } else {
+      url.searchParams.delete("view");
+      url.searchParams.delete("page");
+      url.searchParams.delete("size");
+    }
     window.history.replaceState(null, "", url);
     // 焦点随迁（键盘方向键切换时落到新激活 tab；点击本就聚焦，等价幂等）。
     (next === "board" ? boardTabRef : listTabRef).current?.focus();

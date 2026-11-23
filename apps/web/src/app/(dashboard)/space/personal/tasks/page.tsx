@@ -17,6 +17,7 @@ import {
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
+import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
 import { todayInShanghai } from "@/lib/today";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -39,14 +40,22 @@ export default async function PersonalTasksPage(
   const tNav = await getTranslations("nav");
   const user = await requireUser();
   const today = todayInShanghai();
-  const { project: projectParam, view: viewParam, ...statParams } =
-    await props.searchParams;
+  const {
+    project: projectParam,
+    view: viewParam,
+    page: pageParam,
+    size: sizeParam,
+    ...statParams
+  } = await props.searchParams;
   const requestedSlug = Array.isArray(projectParam)
     ? projectParam[0]
     : projectParam;
   // 双视图：`?view=list` 即列表，无 view（含非法值）回归看板默认。
   const requestedView = Array.isArray(viewParam) ? viewParam[0] : viewParam;
   const initialView = requestedView === "list" ? "list" : "board";
+  // 列表分页：详情页「← 返回任务」带回 `?page` / `?size`，非法值静默回默认。
+  const initialPage = parseTaskPage(pageParam) ?? undefined;
+  const initialPageSize = parseTaskPageSize(sizeParam) ?? undefined;
   const statFilter = parseStatFilterParams(statParams);
 
   // 筛选条件依赖项目列表（slug → id），故先取项目再取看板。
@@ -119,6 +128,7 @@ export default async function PersonalTasksPage(
               expandFilter={
                 activeProject ? { projectSlug: activeProject.slug } : undefined
               }
+              taskOrigin="tasks"
             />
           }
           list={
@@ -127,6 +137,9 @@ export default async function PersonalTasksPage(
               rows={rows}
               today={today}
               taskHrefs={taskHrefs}
+              taskOrigin="tasks"
+              initialPage={initialPage}
+              initialPageSize={initialPageSize}
             />
           }
         />
