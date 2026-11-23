@@ -5,7 +5,6 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
 import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
-import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
 import { PersonalKanbanNewTaskButton } from "@/features/kanban/components/PersonalKanbanNewTaskButton";
 import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
 import { sortTaskRows } from "@/features/kanban/sort-task-rows";
@@ -18,7 +17,7 @@ import {
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
-import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
+import { todayInShanghai } from "@/lib/today";
 
 export async function generateMetadata(): Promise<Metadata> {
   const t = await getTranslations("meta");
@@ -37,7 +36,6 @@ export default async function PersonalTasksPage(
   props: PageProps<"/space/personal/tasks">,
 ) {
   const t = await getTranslations("kanban");
-  const tDate = await getTranslations("date");
   const tNav = await getTranslations("nav");
   const user = await requireUser();
   const today = todayInShanghai();
@@ -80,10 +78,6 @@ export default async function PersonalTasksPage(
   // 列表视图行 = 三列卡片 + 窗口外已完成，默认排序由 sortTaskRows 统一口径。
   const rows = sortTaskRows(allCards);
 
-  // 「N 个任务」= 当前筛选下的全部卡片（含窗口外已完成，doneTotal 已按筛选计算）。
-  const total = board.todo.length + board.inProgress.length + board.doneTotal;
-  const projectName = activeProject?.name ?? t("allProjects");
-
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <PageHeader
@@ -111,17 +105,7 @@ export default async function PersonalTasksPage(
         }
       />
 
-      <SpaceKanbanFilterBar
-        variant="personal"
-        basePath={moduleHref("personal", "tasks")}
-        caption={t("captionPersonal", { project: projectName, count: total })}
-        todayCaption={tDate("todayCaption", {
-          date: today,
-          weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
-        })}
-      />
-
-      <div className="mt-5">
+      <div className="mt-6">
         <TasksViewTabs
           initialView={initialView}
           projects={projects}

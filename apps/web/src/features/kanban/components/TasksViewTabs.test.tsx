@@ -240,7 +240,7 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     // 激活面板留在文档流（撑起容器高度）；非激活面板 absolute 脱离高度。
     expect(board.className).not.toContain("absolute");
     expect(list.className).toContain("absolute");
-    expect(board.parentElement?.className).toBe("relative");
+    expect(board.parentElement?.className).toContain("relative");
   });
 
   it("点击列表 tab：list 变可见、board 变 inert，URL 同步为 ?view=list", () => {

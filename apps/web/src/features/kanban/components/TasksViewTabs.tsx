@@ -188,8 +188,9 @@ export function TasksViewTabs({
         </div>
         {/* 双面板常驻挂载：激活面板留在文档流，容器高度跟随激活视图；
             非激活面板 absolute 脱离布局高度（避免长列表把默认看板视图撑出
-            大片空白）。视觉显隐全靠 variants 的 opacity/x。 */}
-        <div className="relative">
+            大片空白）。视觉显隐全靠 variants 的 opacity/x。
+            mt-5 让工具栏行与内容之间留出呼吸空隙（两视图共用）。 */}
+        <div className="relative mt-5">
           {(["board", "list"] as TasksView[]).map((key) => {
             const active = view === key;
             return (

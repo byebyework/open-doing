@@ -75,26 +75,28 @@ test.describe("flow 6: 空间级 Kanban", () => {
         exact: true,
       }),
     ).toBeVisible();
-    // 「当前筛选：…」是计数 + 项目名混合文案，计数是被测行为。
-    await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
+    // 计数是被测行为：筛选条常驻提示已移除，改锚定列表行数
+    // （双视图两面板常驻挂载，行数 = 当前筛选下的全部任务）。
+    const table = page.getByTestId(TEST_IDS.kanban.taskTable);
+    await expect(table.locator("tbody tr")).toHaveCount(2);
 
     // 深链接：直接带 ?project= 进入，只保留该项目；刷新后仍是同一视图。
     // 双视图后看板卡片与列表行同屏（非激活面板常驻），标题断言需锚定看板面板。
     const filteredPath = `/space/personal/tasks?project=${personalProjectSlug(projectA)}`;
     const board = page.getByTestId(TEST_IDS.kanban.viewPanelBoard);
     await page.goto(filteredPath);
-    await expect(page.getByText(`当前筛选：${projectA} · 1 个任务`)).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(1);
     await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(page.getByText(taskB, { exact: true })).toHaveCount(0);
 
     await page.reload();
-    await expect(page.getByText(`当前筛选：${projectA} · 1 个任务`)).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(1);
     await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(page.getByText(taskB, { exact: true })).toHaveCount(0);
 
     // 非法 slug 静默回退为全部（不 500、不报错），与页面契约一致。
     await page.goto("/space/personal/tasks?project=not-a-real-project");
-    await expect(page.getByText("当前筛选：全部项目 · 2 个任务")).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(2);
     await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(board.getByText(taskB, { exact: true })).toBeVisible();
 
@@ -209,9 +211,12 @@ test.describe("flow 6: 空间级 Kanban", () => {
     }
 
     // 团队看板：默认「全部任务」= 两张卡；被移除成员的任务显示未指派 tag。
+    // 计数断言锚定列表行数（筛选条常驻提示已移除；本用例无已完成任务，
+    // 行数 = 未完成任务数）。
     await page.goto(`/space/${teamSlug}/tasks`);
     const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
-    await expect(page.getByText("当前筛选：全部项目 · 2 个未完成任务")).toBeVisible();
+    const table = page.getByTestId(TEST_IDS.kanban.taskTable);
+    await expect(table.locator("tbody tr")).toHaveCount(2);
     await expect(todo.getByText(ownerTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
     await expect(
@@ -226,20 +231,20 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(page).toHaveURL(
       new RegExp(`/space/${teamSlug}/tasks\\?assignee=unassigned$`),
     );
-    await expect(page.getByText("当前筛选：全部项目 · 1 个未完成任务")).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(1);
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(ownerTask, { exact: true })).toHaveCount(0);
 
     // 刷新还原同一筛选视图（RSC 按 query 重新过滤）。
     await page.reload();
-    await expect(page.getByText("当前筛选：全部项目 · 1 个未完成任务")).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(1);
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(ownerTask, { exact: true })).toHaveCount(0);
 
     // 切回「全部任务」：URL 回到干净地址，两张卡都回来。
     await filterBar.getByText("全部任务", { exact: true }).click();
     await expect(page).toHaveURL(new RegExp(`/space/${teamSlug}/tasks$`));
-    await expect(page.getByText("当前筛选：全部项目 · 2 个未完成任务")).toBeVisible();
+    await expect(table.locator("tbody tr")).toHaveCount(2);
     await expect(todo.getByText(ownerTask, { exact: true })).toBeVisible();
     await expect(todo.getByText(orphanTask, { exact: true })).toBeVisible();
 

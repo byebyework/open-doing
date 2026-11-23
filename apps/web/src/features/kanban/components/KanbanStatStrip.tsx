@@ -130,9 +130,9 @@ export function KanbanStatStrip({
   }
 
   return (
-    <div className="mt-5">
+    <div className="mt-6">
       {/* 口径说明收敛为 ⓘ 徽章：静态说明，触发器只留短摘要。 */}
-      <div className="mb-2 flex justify-end">
+      <div className="mb-3 flex justify-end">
         <HintBadge
           ariaLabel={t("statsHintAria")}
           summary={t("statsHintSummary")}

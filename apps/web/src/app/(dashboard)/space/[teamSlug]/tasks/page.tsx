@@ -26,7 +26,7 @@ import { listTags } from "@/features/tags/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { moduleHref, teamProjectNewHref, teamTaskHref } from "@/lib/routes";
-import { WEEKDAY_KEYS, todayInShanghai, weekdayIndex } from "@/lib/today";
+import { todayInShanghai } from "@/lib/today";
 
 export async function generateMetadata(
   props: PageProps<"/space/[teamSlug]/tasks">,
@@ -74,7 +74,6 @@ export default async function TeamTasksPage(
   const statFilter = parseStatFilterParams(statParams);
 
   const t = await getTranslations("kanban");
-  const tDate = await getTranslations("date");
   const tNav = await getTranslations("nav");
   const user = await requireUser();
 
@@ -152,10 +151,6 @@ export default async function TeamTasksPage(
         }
       : undefined;
 
-  // 「N 个未完成任务」= todo + in_progress（对照原型
-  // docs/prototypes/space-kanban-team.html 的 filterbar 文案，不含 done）。
-  const incompleteTotal = board.todo.length + board.inProgress.length;
-  const projectName = activeProject?.name ?? t("allProjects");
   // 新建项目入口与 /space/{teamSlug}/projects/new 的权限门槛保持一致：
   // 成员点击会直接 404，因此只对 owner / admin 渲染。
   const canManageProjects = can(membership.role, "team:manage_projects");
@@ -205,20 +200,11 @@ export default async function TeamTasksPage(
       />
 
       <SpaceKanbanFilterBar
-        variant="team"
         basePath={moduleHref(team.slug, "tasks")}
         unassignedOnly={unassignedOnly}
-        caption={t("captionTeam", {
-          project: projectName,
-          count: incompleteTotal,
-        })}
-        todayCaption={tDate("todayCaption", {
-          date: today,
-          weekday: tDate(WEEKDAY_KEYS[weekdayIndex(today)]),
-        })}
       />
 
-      <div className="mt-5">
+      <div className="mt-6">
         <TasksViewTabs
           initialView={initialView}
           projects={projects}
