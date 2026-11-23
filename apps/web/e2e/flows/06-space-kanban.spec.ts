@@ -98,24 +98,8 @@ test.describe("flow 6: 空间级 Kanban", () => {
     await expect(board.getByText(taskA, { exact: true })).toBeVisible();
     await expect(board.getByText(taskB, { exact: true })).toBeVisible();
 
-    // 列表视图右侧「项目」本地筛选：只收窄行，不写 URL（与上方 ?project=
-    // 服务端筛选语义独立）。
-    await page.goto("/space/personal/tasks?view=list");
-    const listTable = page.getByTestId(TEST_IDS.kanban.taskTable);
-    await expect(listTable.locator("tbody tr")).toHaveCount(2);
-    await page.getByTestId(TEST_IDS.kanban.listFilterProject).click();
-    await page
-      .getByRole("menu")
-      .getByRole("menuitem", { name: projectA, exact: true })
-      .click();
-    await expect(listTable.locator("tbody tr")).toHaveCount(1);
-    await expect(
-      listTable.getByRole("link", { name: taskA, exact: true }),
-    ).toBeVisible();
-    await expect(
-      listTable.getByRole("link", { name: taskB, exact: true }),
-    ).toHaveCount(0);
-    await expect(page).not.toHaveURL(/project=/);
+    // 项目筛选交还服务端 URL 驱动（TaskProjectFilter）的用例见
+    // 「项目筛选 URL 驱动接管」；此处深链/回退语义保持不变。
   });
 
   test("团队看板未指派筛选", async ({ page, browser }) => {

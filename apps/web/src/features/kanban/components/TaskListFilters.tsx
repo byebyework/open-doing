@@ -15,9 +15,10 @@ import { cn } from "@/lib/utils";
 import { useListFilters } from "../list-filters-context";
 
 /**
- * 列表视图本地筛选组（状态 / 优先级 / 项目）：挂在看板/列表 tab 行右侧，
- * 仅列表视图渲染。筛选只改客户端行数据，不读写 URL（与上方服务端筛选条
- * 语义独立）。选项文案沿用既有的 kanban / tasks 命名空间键。
+ * 列表视图本地筛选组（状态 / 优先级）：挂在看板/列表 tab 行右侧，仅列表
+ * 视图渲染。筛选只改客户端行数据，不读写 URL（与上方服务端筛选条语义
+ * 独立）。项目筛选由 URL 驱动的 `TaskProjectFilter` 承担（两视图共用）。
+ * 选项文案沿用既有的 kanban / tasks 命名空间键。
  */
 
 const STATUS_OPTIONS = [
@@ -74,7 +75,7 @@ function FilterOption({
 export function TaskListFilters() {
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
-  const { filters, setFilter, projects } = useListFilters();
+  const { filters, setFilter } = useListFilters();
 
   const statusLabel =
     filters.status === "all"
@@ -91,13 +92,6 @@ export function TaskListFilters() {
             (option) => option.value === filters.priority,
           )!.labelKey,
         );
-  const activeProject = projects.find(
-    (project) => project.id === filters.projectId,
-  );
-  const projectLabel =
-    filters.projectId === "all"
-      ? t("filterAll")
-      : (activeProject?.name ?? t("filterAll"));
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -105,7 +99,7 @@ export function TaskListFilters() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            data-testid="list-filter-status"
+            data-testid="task-filter-status"
             className={triggerClass(filters.status !== "all")}
           >
             <span className="text-[var(--ink-400)]">
@@ -117,7 +111,7 @@ export function TaskListFilters() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[132px]">
           <FilterOption
-            testid="list-filter-status-option-all"
+            testid="task-filter-status-option-all"
             label={t("filterAll")}
             selected={filters.status === "all"}
             onSelect={() => setFilter({ status: "all" })}
@@ -125,7 +119,7 @@ export function TaskListFilters() {
           {STATUS_OPTIONS.map((option) => (
             <FilterOption
               key={option.value}
-              testid={`list-filter-status-option-${option.value}`}
+              testid={`task-filter-status-option-${option.value}`}
               label={t(option.labelKey)}
               selected={filters.status === option.value}
               onSelect={() => setFilter({ status: option.value })}
@@ -138,7 +132,7 @@ export function TaskListFilters() {
         <DropdownMenuTrigger asChild>
           <button
             type="button"
-            data-testid="list-filter-priority"
+            data-testid="task-filter-priority"
             className={triggerClass(filters.priority !== "all")}
           >
             <span className="text-[var(--ink-400)]">
@@ -150,7 +144,7 @@ export function TaskListFilters() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="min-w-[132px]">
           <FilterOption
-            testid="list-filter-priority-option-all"
+            testid="task-filter-priority-option-all"
             label={t("filterAll")}
             selected={filters.priority === "all"}
             onSelect={() => setFilter({ priority: "all" })}
@@ -158,7 +152,7 @@ export function TaskListFilters() {
           {PRIORITY_OPTIONS.map((option) => (
             <FilterOption
               key={option.value}
-              testid={`list-filter-priority-option-${option.value}`}
+              testid={`task-filter-priority-option-${option.value}`}
               label={tTasks(option.labelKey)}
               selected={filters.priority === option.value}
               onSelect={() => setFilter({ priority: option.value })}
@@ -167,44 +161,6 @@ export function TaskListFilters() {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {/* 项目下拉只在项目池非空时渲染：零项目空间（个人散任务）仍保留
-          状态 / 优先级筛选。 */}
-      {projects.length > 0 ? (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <button
-              type="button"
-              data-testid="list-filter-project"
-              className={triggerClass(filters.projectId !== "all")}
-            >
-              <span className="text-[var(--ink-400)]">
-                {t("filterProjectLabel")}
-              </span>
-              <span className="max-w-[120px] truncate font-medium">
-                {projectLabel}
-              </span>
-              <ChevronDownIcon aria-hidden className="size-3.5 opacity-60" />
-            </button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[160px]">
-            <FilterOption
-              testid="list-filter-project-option-all"
-              label={t("filterAll")}
-              selected={filters.projectId === "all"}
-              onSelect={() => setFilter({ projectId: "all" })}
-            />
-            {projects.map((project) => (
-              <FilterOption
-                key={project.id}
-                testid={`list-filter-project-option-${project.id}`}
-                label={project.name}
-                selected={filters.projectId === project.id}
-                onSelect={() => setFilter({ projectId: project.id })}
-              />
-            ))}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      ) : null}
     </div>
   );
 }

@@ -31,7 +31,7 @@ function filters(patch: Partial<ListFilters>): ListFilters {
 }
 
 describe("filterTaskRows（列表视图本地行过滤）", () => {
-  it("默认三项全 all：不过滤任何行，且返回新数组", () => {
+  it("默认全 all：不过滤任何行，且返回新数组", () => {
     const result = filterTaskRows(ROWS, DEFAULT_LIST_FILTERS);
 
     expect(ids(result)).toEqual(["t1", "t2", "t3", "t4"]);
@@ -51,20 +51,9 @@ describe("filterTaskRows（列表视图本地行过滤）", () => {
     ).toEqual(["t2", "t4"]);
   });
 
-  it("按 projectId 过滤", () => {
+  it("status + priority 交集组合", () => {
     expect(
-      ids(filterTaskRows(ROWS, filters({ projectId: "p2" }))),
-    ).toEqual(["t3", "t4"]);
-  });
-
-  it("三字段交集组合", () => {
-    expect(
-      ids(
-        filterTaskRows(
-          ROWS,
-          filters({ status: "todo", priority: "medium", projectId: "p2" }),
-        ),
-      ),
+      ids(filterTaskRows(ROWS, filters({ status: "todo", priority: "medium" }))),
     ).toEqual(["t4"]);
   });
 
@@ -77,9 +66,17 @@ describe("filterTaskRows（列表视图本地行过滤）", () => {
   it("保序且不修改输入数组", () => {
     const before = ROWS.slice();
 
-    const result = filterTaskRows(ROWS, filters({ projectId: "p1" }));
+    const result = filterTaskRows(ROWS, filters({ status: "todo" }));
 
-    expect(ids(result)).toEqual(["t1", "t2"]);
+    expect(ids(result)).toEqual(["t1", "t4"]);
     expect(ROWS).toEqual(before);
+  });
+
+  it("ListFilters 不再含 projectId（类型层收缩，项目过滤已交还服务端 URL 筛选）", () => {
+    // @ts-expect-error projectId 字段已从 ListFilters 移除，传入应报类型错误。
+    const stale: ListFilters = { ...DEFAULT_LIST_FILTERS, projectId: "p2" };
+
+    // 运行时容忍多余字段（结构化类型）：按 status/priority 全 all 不过滤。
+    expect(ids(filterTaskRows(ROWS, stale))).toEqual(["t1", "t2", "t3", "t4"]);
   });
 });

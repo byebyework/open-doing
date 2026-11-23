@@ -4,18 +4,16 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import { DEFAULT_LIST_FILTERS, type ListFilters } from "./sort-task-rows";
 
-/** Task 2（TasksViewTabs 侧筛选 UI）依赖的上下文契约。 */
+/** TasksViewTabs 侧筛选 UI 依赖的上下文契约。 */
 export interface ListFiltersContextValue {
   filters: ListFilters;
   setFilter: (patch: Partial<ListFilters>) => void;
-  projects: { id: string; name: string; slug: string }[];
 }
 
-/** 无 provider（单测 / 独立渲染）时的兜底：全 "all"、无项目、setFilter 空操作。 */
+/** 无 provider（单测 / 独立渲染）时的兜底：全 "all"、setFilter 空操作。 */
 const FALLBACK_VALUE: ListFiltersContextValue = {
   filters: DEFAULT_LIST_FILTERS,
   setFilter: () => {},
-  projects: [],
 };
 
 const ListFiltersContext = createContext<ListFiltersContextValue | null>(null);

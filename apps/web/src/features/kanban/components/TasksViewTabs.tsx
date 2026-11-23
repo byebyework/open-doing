@@ -89,7 +89,6 @@ export function TasksViewTabs({
     setFilter: (patch) => {
       setFilters((current) => ({ ...current, ...patch }));
     },
-    projects: projects ?? [],
   };
 
   function switchTo(next: TasksView) {

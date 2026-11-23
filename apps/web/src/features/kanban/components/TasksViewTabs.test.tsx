@@ -20,9 +20,8 @@ const PROJECTS = [
 ];
 
 const FILTER_SELECTOR = {
-  status: '[data-testid="list-filter-status"]',
-  priority: '[data-testid="list-filter-priority"]',
-  project: '[data-testid="list-filter-project"]',
+  status: '[data-testid="task-filter-status"]',
+  priority: '[data-testid="task-filter-priority"]',
 } as const;
 
 /**
@@ -151,7 +150,7 @@ function clickFilterOption(
   value: string,
 ): void {
   const option = document.body.querySelector<HTMLElement>(
-    `[data-testid="list-filter-${field}-option-${value}"]`,
+    `[data-testid="task-filter-${field}-option-${value}"]`,
   );
   if (!option) throw new Error(`missing ${field} option ${value}`);
   act(() => {
@@ -311,24 +310,21 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(layoutIdOf(pillOnList as Element)).toBe("tasks-view-active-pill");
   });
 
-  it("列表视图 + 项目池：tab 行右侧渲染三个筛选触发器（label + 全部）", () => {
+  it("列表视图：tab 行右侧渲染状态 / 优先级筛选触发器（label + 全部）", () => {
     renderTabs("list", PROJECTS);
 
-    for (const field of ["status", "priority", "project"] as const) {
+    for (const field of ["status", "priority"] as const) {
       expect(filterTrigger(field), `missing ${field} filter`).not.toBeNull();
     }
 
-    // 触发器文案 = 标签 + 当前值；初始三项均为「全部」。
+    // 触发器文案 = 标签 + 当前值；初始均为「全部」。
     expect(filterTrigger("status")?.textContent).toContain(
       zh.kanban.filterStatusLabel,
     );
     expect(filterTrigger("priority")?.textContent).toContain(
       zh.kanban.filterPriorityLabel,
     );
-    expect(filterTrigger("project")?.textContent).toContain(
-      zh.kanban.filterProjectLabel,
-    );
-    for (const field of ["status", "priority", "project"] as const) {
+    for (const field of ["status", "priority"] as const) {
       expect(filterTrigger(field)?.textContent).toContain(zh.kanban.filterAll);
     }
 
@@ -347,7 +343,7 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(filterTrigger("status")).toBeNull();
   });
 
-  it("零项目空间（未传 projects / 空数组）：状态 + 优先级照常渲染，仅无项目下拉", () => {
+  it("零项目空间（未传 projects / 空数组）：状态 + 优先级照常渲染", () => {
     // 个人空间可只有散任务而无项目：筛选组不得整体消失，否则连状态 /
     // 优先级都无法筛选（生产回归：曾经按 projects?.length 整体门控）。
     const projectPools: ({ id: string; name: string; slug: string }[] | undefined)[] =
@@ -357,7 +353,6 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
 
       expect(filterTrigger("status")).not.toBeNull();
       expect(filterTrigger("priority")).not.toBeNull();
-      expect(filterTrigger("project")).toBeNull();
       // 状态 / 优先级初始值仍为「全部」。
       expect(filterTrigger("status")?.textContent).toContain(zh.kanban.filterAll);
       expect(filterTrigger("priority")?.textContent).toContain(

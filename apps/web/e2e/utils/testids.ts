@@ -66,14 +66,8 @@ export const TEST_IDS = {
     projectFilter: "kanban-project-filter",
     assigneeFilter: "kanban-assignee-filter",
     /** 列表视图右侧本地筛选（TaskListFilters）触发器。 */
-    listFilterStatus: "list-filter-status",
-    listFilterPriority: "list-filter-priority",
-    listFilterProject: "list-filter-project",
-    /** 本地筛选下拉选项（Radix 菜单 portal 到 body）。 */
-    listFilterOption: (
-      field: "status" | "priority" | "project",
-      value: string,
-    ) => `list-filter-${field}-option-${value}`,
+    taskFilterStatus: "task-filter-status",
+    taskFilterPriority: "task-filter-priority",
     /** 看板 / 列表双视图切换 tab（TasksViewTabs）。 */
     viewTabBoard: "tasks-view-tab-board",
     viewTabList: "tasks-view-tab-list",

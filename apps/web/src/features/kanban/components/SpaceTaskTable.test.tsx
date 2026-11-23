@@ -221,7 +221,7 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     rows: KanbanCardItem[] = [rowA, rowB, rowC, rowD],
   ): void {
     renderTable(
-      <ListFiltersProvider value={{ filters, setFilter: () => {}, projects: [] }}>
+      <ListFiltersProvider value={{ filters, setFilter: () => {} }}>
         <SpaceTaskTable
           variant="personal"
           rows={rows}
@@ -524,7 +524,14 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     });
   });
 
-  it("本地行过滤：status / priority / projectId 各自收窄，all 不过滤", () => {
+  it("状态 pill 单行展示：文本 + chevron 不折行", () => {
+    renderPersonalWithFilters(DEFAULT_LIST_FILTERS, [rowA]);
+
+    const pill = document.querySelector('[data-testid="task-status-pill"]');
+    expect(pill?.className).toContain("whitespace-nowrap");
+  });
+
+  it("本地行过滤：status / priority 各自收窄，all 不过滤（项目过滤已交还服务端）", () => {
     const rows = [
       personalRow({
         id: "f-1",
@@ -566,18 +573,9 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
       rows,
     );
     expect(bodyRows()).toHaveLength(2);
-
-    renderPersonalWithFilters(
-      { ...DEFAULT_LIST_FILTERS, projectId: "p2" },
-      rows,
-    );
-    expect(bodyRows()).toHaveLength(1);
-    expect(bodyRows()[0].querySelector("td:first-child")?.textContent).toBe(
-      "过滤C",
-    );
   });
 
-  it("本地行过滤：三字段交集组合", () => {
+  it("本地行过滤：status + priority 交集组合", () => {
     const rows = [
       personalRow({
         id: "c-1",
@@ -596,14 +594,6 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
         dueDate: "2026-11-21",
       }),
       personalRow({
-        id: "c-3",
-        title: "项目不符",
-        status: "todo",
-        priority: "high",
-        projectId: "p2",
-        dueDate: "2026-11-22",
-      }),
-      personalRow({
         id: "c-4",
         title: "状态不符",
         status: "in_progress",
@@ -617,7 +607,6 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
       {
         status: "todo",
         priority: "high",
-        projectId: "p1",
       },
       rows,
     );
@@ -681,9 +670,18 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     );
     expect(bodyRows()).toHaveLength(3);
 
+    // 项目筛选已摘除本组件的本地筛选组（交还服务端 URL 筛选，Task 2 以
+    // TaskProjectFilter 接管）：TaskListFilters 不应再渲染项目触发器。
+    expect(
+      document.querySelector('[data-testid="task-filter-project"]'),
+    ).toBeNull();
+    expect(
+      document.querySelector('[data-testid="list-filter-project"]'),
+    ).toBeNull();
+
     // 打开状态筛选下拉（Radix 由 pointerdown 触发），点「待办」。
     const trigger = document.querySelector<HTMLButtonElement>(
-      '[data-testid="list-filter-status"]',
+      '[data-testid="task-filter-status"]',
     );
     if (!trigger) throw new Error("missing status filter trigger");
     act(() => {
@@ -693,7 +691,7 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     });
 
     const option = document.body.querySelector<HTMLElement>(
-      '[data-testid="list-filter-status-option-todo"]',
+      '[data-testid="task-filter-status-option-todo"]',
     );
     if (!option) throw new Error("missing todo filter option");
     act(() => {

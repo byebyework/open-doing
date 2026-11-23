@@ -97,7 +97,7 @@ function TaskRowStatusPill({
       data-testid="task-status-pill"
       disabled={!editable || tablePending}
       aria-haspopup={editable ? "menu" : undefined}
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none transition-colors disabled:cursor-not-allowed ${STATUS_TONE[row.status]} ${
+      className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full px-2.5 py-1 text-[12px] font-semibold leading-none transition-colors disabled:cursor-not-allowed ${STATUS_TONE[row.status]} ${
         editable && !tablePending
           ? "cursor-pointer hover:shadow-[var(--shadow-rest)]"
           : ""
