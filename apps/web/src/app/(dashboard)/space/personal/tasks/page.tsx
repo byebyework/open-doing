@@ -114,8 +114,6 @@ export default async function PersonalTasksPage(
       <SpaceKanbanFilterBar
         variant="personal"
         basePath={moduleHref("personal", "tasks")}
-        projects={projects}
-        activeProjectSlug={activeProject?.slug}
         statParams={{
           ...(statFilter.status ? { status: statFilter.status } : {}),
           ...(statFilter.overdueOnly ? { overdue: "1" } : {}),

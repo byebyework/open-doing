@@ -30,6 +30,9 @@ const {
 
 vi.mock("next/navigation", () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh }),
+  // TaskProjectFilter（TasksViewTabs 右侧）读取路径拼 push URL。
+  usePathname: () => "/space/personal/tasks",
+  useSearchParams: () => new URLSearchParams(),
 }));
 
 vi.mock("next/link", () => ({
@@ -670,11 +673,11 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     );
     expect(bodyRows()).toHaveLength(3);
 
-    // 项目筛选已摘除本组件的本地筛选组（交还服务端 URL 筛选，Task 2 以
-    // TaskProjectFilter 接管）：TaskListFilters 不应再渲染项目触发器。
+    // 项目筛选由 TasksViewTabs 的 TaskProjectFilter 承担（URL 驱动，两视图
+    // 常驻）：新触发器在（来自 TaskProjectFilter），旧命名不在（历史残留）。
     expect(
       document.querySelector('[data-testid="task-filter-project"]'),
-    ).toBeNull();
+    ).not.toBeNull();
     expect(
       document.querySelector('[data-testid="list-filter-project"]'),
     ).toBeNull();

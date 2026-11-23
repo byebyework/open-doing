@@ -207,16 +207,12 @@ export default async function TeamTasksPage(
       <SpaceKanbanFilterBar
         variant="team"
         basePath={moduleHref(team.slug, "tasks")}
-        projects={projects}
-        activeProjectSlug={activeProject?.slug}
         unassignedOnly={unassignedOnly}
         statParams={{
           ...(statFilter.status ? { status: statFilter.status } : {}),
           ...(statFilter.overdueOnly ? { overdue: "1" } : {}),
           ...(statFilter.dueSoonOnly ? { dueSoon: "1" } : {}),
         }}
-        projectProgress={Object.fromEntries(progressBySlug)}
-        allProjectsProgress={allProjectsProgress}
         caption={t("captionTeam", {
           project: projectName,
           count: incompleteTotal,
@@ -231,6 +227,8 @@ export default async function TeamTasksPage(
         <TasksViewTabs
           initialView={initialView}
           projects={projects}
+          projectProgress={Object.fromEntries(progressBySlug)}
+          allProjectsProgress={allProjectsProgress}
           board={
             <SpaceKanban
               variant="team"

@@ -397,9 +397,10 @@ test.describe("flow 6: 看板统计带", () => {
     await expect(page).toHaveURL(/\/space\/personal\/tasks\?overdue=1$/);
 
     // 视角内细化：切到项目 A，已逾期视角必须跟着走（URL 仍带 overdue=1，chip 仍激活）。
-    await page.getByTestId(TEST_IDS.kanban.projectFilter).click();
+    // 项目筛选已由 tab 行右侧的 TaskProjectFilter 接管（DropdownMenu 菜单项）。
+    await page.getByTestId(TEST_IDS.kanban.taskFilterProject).click();
     await page
-      .getByRole("option", { name: new RegExp(`^${projectName}`) })
+      .getByRole("menuitem", { name: new RegExp(`^${projectName}`) })
       .click();
 
     await expect(page).toHaveURL(
@@ -418,7 +419,8 @@ test.describe("flow 6: 看板统计带", () => {
  * 不落入看板面板（inert）；3. ?view=list 深链接刷新首屏即列表；
  * 4. 统计 chip 导航保留 view=list（view 贯通）；
  * 5. 窗口外已完成（updatedAt > 7 天）入列表、看板 done 列（未展开）不可见；
- * 6. 团队：member 会话可见「新建任务」并经弹窗创建成功出现在列表。
+ * 6. 团队：member 会话可见「新建任务」并经弹窗创建成功出现在列表；
+ * 7. 项目筛选 URL 驱动接管：两视图常驻、列表保留 view、看板随 ?project= 过滤。
  */
 test.describe("flow 6: 任务页双视图", () => {
   test("个人任务页：tab 切换、深链接刷新、统计保留 view、更早已完成入列表", async ({
@@ -588,5 +590,63 @@ test.describe("flow 6: 任务页双视图", () => {
     } finally {
       await memberContext.close();
     }
+  });
+
+  test("项目筛选 URL 驱动接管：两视图常驻、列表保留 view、看板随 ?project= 过滤", async ({
+    page,
+  }) => {
+    const username = uniqueUsername("e2e_kpf");
+    const projectName = uniqueLabel("E2E kb pf project");
+    const projectTask = uniqueLabel("E2E kb pf in-project");
+    const looseTask = uniqueLabel("E2E kb pf loose");
+
+    await registerUser(page, username);
+    await createPersonalProject(page, projectName);
+    await openPersonalProject(page, projectName);
+    await createPersonalTask(page, { title: projectTask });
+    // 散任务（无项目）作为对照组：项目筛选激活时必须被筛掉。
+    await page.goto("/space/personal/tasks");
+    await createPersonalTask(page, { title: looseTask });
+
+    // 列表视图选项目：URL 写 project= 且 view=list 保留，行只剩项目内任务。
+    await page.goto("/space/personal/tasks?view=list");
+    const listTable = page.getByTestId(TEST_IDS.kanban.taskTable);
+    await expect(listTable.locator("tbody tr")).toHaveCount(2);
+    await page.getByTestId(TEST_IDS.kanban.taskFilterProject).click();
+    await page
+      .getByRole("menuitem", { name: new RegExp(`^${projectName}`) })
+      .click();
+    await expect(
+      page).toHaveURL(new RegExp(`project=${personalProjectSlug(projectName)}`));
+    await expect(page).toHaveURL(/view=list/);
+    await expect(listTable.locator("tbody tr")).toHaveCount(1);
+    await expect(
+      listTable.getByRole("link", { name: projectTask, exact: true }),
+    ).toBeVisible();
+    await expect(
+      listTable.getByRole("link", { name: looseTask, exact: true }),
+    ).toHaveCount(0);
+
+    // 刷新还原同一服务端筛选（深链语义不变）。
+    await page.reload();
+    await expect(listTable.locator("tbody tr")).toHaveCount(1);
+
+    // 切看板：项目筛选仍在，看板列只剩项目内任务卡（URL 未被 tab 切换改动）。
+    await page.getByTestId(TEST_IDS.kanban.viewTabBoard).click();
+    await expect(page).toHaveURL(/project=/);
+    const todo = page.getByTestId(TEST_IDS.kanban.spaceColumnTodo);
+    await expect(todo.getByText(projectTask, { exact: true })).toBeVisible();
+    await expect(todo.getByText(looseTask, { exact: true })).toHaveCount(0);
+    await expect(
+      page.getByTestId(TEST_IDS.kanban.taskFilterProject),
+    ).toBeVisible();
+
+    // 选「全部」：project= 删除，两视图数据恢复全量。
+    await page.getByTestId(TEST_IDS.kanban.taskFilterProject).click();
+    await page
+      .getByRole("menuitem", { name: /^全部/ })
+      .click();
+    await expect(page).not.toHaveURL(/project=/);
+    await expect(todo.getByText(looseTask, { exact: true })).toBeVisible();
   });
 });

@@ -876,7 +876,6 @@
     "teamSubtitle": "团队全部任务的状态全景：按项目筛选，拖拽卡片切换状态；未指派任务在这里认领。",
     "newProjectButton": "＋ 新建项目",
     "newTaskButton": "新建任务",
-    "filterByProject": "按项目筛选",
     "allProjects": "全部项目",
     "statTodo": "待开始",
     "statInProgress": "进行中",

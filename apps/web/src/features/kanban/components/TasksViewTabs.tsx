@@ -13,6 +13,7 @@ import {
 } from "../list-filters-context";
 import { DEFAULT_LIST_FILTERS, type ListFilters } from "../sort-task-rows";
 import { TaskListFilters } from "./TaskListFilters";
+import { TaskProjectFilter } from "./TaskProjectFilter";
 
 /** 双视图标识：board=看板（SpaceKanban），list=列表（任务表格）。 */
 export type TasksView = "board" | "list";
@@ -24,8 +25,12 @@ export interface TasksViewTabsProps {
   board: ReactNode;
   /** 列表视图内容（RSC 传入）。 */
   list: ReactNode;
-  /** 列表视图本地筛选的项目池（RSC 传入）；列表激活时渲染右侧筛选组。 */
+  /** 项目池（RSC 传入）；项目筛选两视图常驻，本地筛选组仅列表激活时渲染。 */
   projects?: { id: string; name: string; slug: string }[];
+  /** 项目进度（0~1，slug → 进度，团队空间）；透传 `TaskProjectFilter`。 */
+  projectProgress?: Record<string, number>;
+  /** 「全部项目」聚合进度；与 projectProgress 同时传入。 */
+  allProjectsProgress?: number;
 }
 
 /**
@@ -74,6 +79,8 @@ export function TasksViewTabs({
   board,
   list,
   projects,
+  projectProgress,
+  allProjectsProgress,
 }: TasksViewTabsProps) {
   const t = useTranslations("kanban");
   const [view, setView] = useState<TasksView>(initialView);
@@ -163,11 +170,19 @@ export function TasksViewTabs({
               );
             })}
           </div>
-          {/* 右侧本地筛选：列表视图即渲染（无项目时仅有状态 / 优先级）；
+          {/* 右侧筛选组：项目筛选（URL 驱动）两视图常驻；列表视图追加
+              状态 / 优先级本地筛选。无项目池且非列表视图时不渲染任何筛选。
               flex-wrap 让 375px 下筛选组折到 tab 行下方。 */}
-          {view === "list" ? (
-            <div className="ml-auto">
-              <TaskListFilters />
+          {projects?.length || view === "list" ? (
+            <div className="ml-auto flex flex-wrap items-center gap-2">
+              {view === "list" ? <TaskListFilters /> : null}
+              {projects?.length ? (
+                <TaskProjectFilter
+                  projects={projects}
+                  projectProgress={projectProgress}
+                  allProjectsProgress={allProjectsProgress}
+                />
+              ) : null}
             </div>
           ) : null}
         </div>

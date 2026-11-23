@@ -43,7 +43,7 @@ const PRIORITY_OPTIONS = [
 const TRIGGER_BASE =
   "inline-flex h-7 cursor-pointer items-center gap-1.5 rounded-[var(--radius-pill)] border px-2.5 text-[12.5px] leading-none transition-colors focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--primary)]";
 
-function triggerClass(active: boolean): string {
+export function filterTriggerClass(active: boolean): string {
   return cn(
     TRIGGER_BASE,
     active
@@ -100,7 +100,7 @@ export function TaskListFilters() {
           <button
             type="button"
             data-testid="task-filter-status"
-            className={triggerClass(filters.status !== "all")}
+            className={filterTriggerClass(filters.status !== "all")}
           >
             <span className="text-[var(--ink-400)]">
               {t("filterStatusLabel")}
@@ -133,7 +133,7 @@ export function TaskListFilters() {
           <button
             type="button"
             data-testid="task-filter-priority"
-            className={triggerClass(filters.priority !== "all")}
+            className={filterTriggerClass(filters.priority !== "all")}
           >
             <span className="text-[var(--ink-400)]">
               {t("filterPriorityLabel")}

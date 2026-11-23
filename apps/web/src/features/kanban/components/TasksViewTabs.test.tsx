@@ -6,6 +6,14 @@ import { createRoot, type Root } from "react-dom/client";
 import { NextIntlClientProvider } from "next-intl";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// TaskProjectFilter（tab 行右侧）读路径/参数拼 push URL；本文件只断言
+// DOM 形态，push 行为在 TaskProjectFilter.test.tsx 里专测。
+vi.mock("next/navigation", () => ({
+  useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }),
+  usePathname: () => "/space/personal/tasks",
+  useSearchParams: () => new URLSearchParams(),
+}));
+
 import en from "@/i18n/messages/en.json";
 import zh from "@/i18n/messages/zh.json";
 
@@ -310,12 +318,15 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(layoutIdOf(pillOnList as Element)).toBe("tasks-view-active-pill");
   });
 
-  it("列表视图：tab 行右侧渲染状态 / 优先级筛选触发器（label + 全部）", () => {
+  it("列表视图：tab 行右侧渲染状态 / 优先级 / 项目三个筛选触发器（label + 全部）", () => {
     renderTabs("list", PROJECTS);
 
-    for (const field of ["status", "priority"] as const) {
-      expect(filterTrigger(field), `missing ${field} filter`).not.toBeNull();
-    }
+    expect(filterTrigger("status"), "missing status filter").not.toBeNull();
+    expect(filterTrigger("priority"), "missing priority filter").not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="task-filter-project"]'),
+      "missing project filter",
+    ).not.toBeNull();
 
     // 触发器文案 = 标签 + 当前值；初始均为「全部」。
     expect(filterTrigger("status")?.textContent).toContain(
@@ -324,27 +335,42 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     expect(filterTrigger("priority")?.textContent).toContain(
       zh.kanban.filterPriorityLabel,
     );
-    for (const field of ["status", "priority"] as const) {
-      expect(filterTrigger(field)?.textContent).toContain(zh.kanban.filterAll);
-    }
+    expect(
+      document.querySelector('[data-testid="task-filter-project"]')
+        ?.textContent,
+    ).toContain(zh.kanban.filterAll);
 
     // 折行容器：375px 下筛选组落到 tab 行下方。
     expect(filterTrigger("status")?.closest(".flex-wrap")).not.toBeNull();
   });
 
-  it("筛选仅在列表视图渲染：切看板隐藏、切回列表重现", () => {
+  it("项目筛选两视图常驻：看板视图只有项目下拉，列表视图三者齐全", () => {
     renderTabs("board", PROJECTS);
+
+    // 看板视图：项目筛选保留（URL 驱动，服务端过滤两视图），本地状态 /
+    // 优先级筛选不出现。
+    expect(
+      document.querySelector('[data-testid="task-filter-project"]'),
+    ).not.toBeNull();
     expect(filterTrigger("status")).toBeNull();
+    expect(filterTrigger("priority")).toBeNull();
 
     click(tab("list"));
     expect(filterTrigger("status")).not.toBeNull();
+    expect(filterTrigger("priority")).not.toBeNull();
+    expect(
+      document.querySelector('[data-testid="task-filter-project"]'),
+    ).not.toBeNull();
 
     click(tab("board"));
     expect(filterTrigger("status")).toBeNull();
+    expect(
+      document.querySelector('[data-testid="task-filter-project"]'),
+    ).not.toBeNull();
   });
 
-  it("零项目空间（未传 projects / 空数组）：状态 + 优先级照常渲染", () => {
-    // 个人空间可只有散任务而无项目：筛选组不得整体消失，否则连状态 /
+  it("零项目空间（未传 projects / 空数组）：状态 + 优先级照常渲染，项目下拉不渲染", () => {
+    // 个人空间可只有散任务而无项目：本地筛选组不得整体消失，否则连状态 /
     // 优先级都无法筛选（生产回归：曾经按 projects?.length 整体门控）。
     const projectPools: ({ id: string; name: string; slug: string }[] | undefined)[] =
       [undefined, []];
@@ -353,6 +379,9 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
 
       expect(filterTrigger("status")).not.toBeNull();
       expect(filterTrigger("priority")).not.toBeNull();
+      expect(
+        document.querySelector('[data-testid="task-filter-project"]'),
+      ).toBeNull();
       // 状态 / 优先级初始值仍为「全部」。
       expect(filterTrigger("status")?.textContent).toContain(zh.kanban.filterAll);
       expect(filterTrigger("priority")?.textContent).toContain(

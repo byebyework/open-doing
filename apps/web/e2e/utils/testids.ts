@@ -68,6 +68,8 @@ export const TEST_IDS = {
     /** 列表视图右侧本地筛选（TaskListFilters）触发器。 */
     taskFilterStatus: "task-filter-status",
     taskFilterPriority: "task-filter-priority",
+    /** 项目筛选（TaskProjectFilter，URL 驱动、两视图常驻）触发器。 */
+    taskFilterProject: "task-filter-project",
     /** 看板 / 列表双视图切换 tab（TasksViewTabs）。 */
     viewTabBoard: "tasks-view-tab-board",
     viewTabList: "tasks-view-tab-list",
