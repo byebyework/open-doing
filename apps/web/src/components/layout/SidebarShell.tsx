@@ -61,7 +61,13 @@ export function toggleSidebarCollapsed(): void {
  * - 收起状态经 wrapper 上的 `data-collapsed` + `group/sidebar` 暴露，
  *   品牌区 / 空间切换器 / 导航项用 `group-data-[collapsed]/sidebar:*`
  *   自行隐藏文字、居中图标；
- * - ≤860px 侧栏整体隐藏；
+ * - 侧栏用视口级 `fixed` 定位，**不用 `position: sticky`**：sticky 是
+ *   相对所在 flex 容器的滚动行为，个别浏览器 / 内嵌 WebView 下会跟随
+ *   页面内容一起滚走（任务列表长页时侧栏被卷出视口）。fixed 锚定视口，
+ *   与文档滚动解耦；外层 wrapper 退化为等宽占位，内容区横向偏移不变。
+ *   约束：祖先链上不得出现 `transform` / `filter` / `perspective`
+ *   （否则 fixed 会锚到该祖先，侧栏重新变成随内容滚动）。
+ * - ≤860px 侧栏整体隐藏（隐藏 wrapper 即隐藏 fixed 后代）；
  * - 布局冻结约束：仅包装 `Sidebar` 的内部结构，不触碰 `AppShell`
  *   的 props 契约与 `(dashboard)/layout.tsx` 的导入关系。
  */
@@ -71,9 +77,9 @@ export function SidebarShell({ children }: { children: ReactNode }) {
   return (
     <div
       data-collapsed={collapsed || undefined}
-      className="group/sidebar sticky top-0 hidden h-screen w-[232px] shrink-0 flex-col transition-[width] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] data-[collapsed]:w-[68px] min-[861px]:flex"
+      className="group/sidebar hidden w-[232px] shrink-0 transition-[width] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] data-[collapsed]:w-[68px] min-[861px]:block"
     >
-      <aside className="flex min-h-0 flex-1 flex-col gap-2 border-r border-[var(--border-default)] bg-white px-3 py-4">
+      <aside className="fixed inset-y-0 left-0 z-10 flex w-[232px] flex-col gap-2 border-r border-[var(--border-default)] bg-white px-3 py-4 transition-[width] duration-[420ms] ease-[cubic-bezier(0.4,0,0.2,1)] group-data-[collapsed]/sidebar:w-[68px]">
         {children}
       </aside>
     </div>
