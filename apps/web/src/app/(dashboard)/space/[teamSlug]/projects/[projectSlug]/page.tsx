@@ -11,6 +11,8 @@ import {
 } from "@/features/projects/service";
 import { ProjectDetailLayout } from "@/features/projects/components/ProjectDetailLayout";
 import { ProjectDetailTabs } from "@/features/projects/components/ProjectDetailTabs";
+import { ProjectTimeline } from "@/features/projects/components/ProjectTimeline";
+import { listProjectTimeline } from "@/features/projects/activities";
 import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
 import { ProjectProgressPanel } from "@/features/projects/components/ProjectProgressPanel";
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
@@ -109,6 +111,19 @@ export default async function TeamProjectPage({
   // 面板用项目快照：members 由 listTeamProjectMembers 装载（getTeamProjectBySlug 不带成员），
   // Properties 卡据此回显成员；否则保存刷新后回显未设置。
   const detailProject = { ...project, members: projectMembers };
+
+  // ---- 动态 tab：活动 + 评论时间线（最近 100 条，createdAt 倒序）----
+  let activityTabContent: ReactNode = null;
+  if (tab === "activity") {
+    const timelineItems = await listProjectTimeline(project.id);
+    activityTabContent = (
+      <ProjectTimeline
+        projectId={project.id}
+        items={timelineItems}
+        currentUserId={user.id}
+      />
+    );
+  }
 
   // ---- 任务 tab：看板 / 列表 / 统计（项目过滤锁定，筛选与任务模块同构）----
   let tasksTabContent: ReactNode = null;
@@ -292,8 +307,9 @@ export default async function TeamProjectPage({
         <div className="mt-5">
           {tab === "tasks" ? (
             tasksTabContent
+          ) : tab === "activity" ? (
+            activityTabContent
           ) : (
-            /* TODO(task 9): tab=activity 在时间线任务接入前回落概览内容。 */
             <ProjectOverviewPanel
               project={detailProject}
               milestones={milestoneProgress}

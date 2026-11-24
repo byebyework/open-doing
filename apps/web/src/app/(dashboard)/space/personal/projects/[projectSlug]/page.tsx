@@ -10,6 +10,8 @@ import {
 } from "@/features/personal/projects/service";
 import { ProjectDetailLayout } from "@/features/projects/components/ProjectDetailLayout";
 import { ProjectDetailTabs } from "@/features/projects/components/ProjectDetailTabs";
+import { ProjectTimeline } from "@/features/projects/components/ProjectTimeline";
+import { listProjectTimeline } from "@/features/projects/activities";
 import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
 import { ProjectProgressPanel } from "@/features/projects/components/ProjectProgressPanel";
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
@@ -80,6 +82,19 @@ export default async function PersonalProjectPage({
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
   const today = todayInShanghai();
+
+  // ---- 动态 tab：活动 + 评论时间线（最近 100 条，createdAt 倒序）----
+  let activityTabContent: ReactNode = null;
+  if (tab === "activity") {
+    const timelineItems = await listProjectTimeline(project.id);
+    activityTabContent = (
+      <ProjectTimeline
+        projectId={project.id}
+        items={timelineItems}
+        currentUserId={user.id}
+      />
+    );
+  }
 
   // ---- 任务 tab：看板 / 列表 / 统计（项目过滤锁定，与个人任务模块同构）----
   let tasksTabContent: ReactNode = null;
@@ -231,8 +246,9 @@ export default async function PersonalProjectPage({
         <div className="mt-5">
           {tab === "tasks" ? (
             tasksTabContent
+          ) : tab === "activity" ? (
+            activityTabContent
           ) : (
-            /* TODO(task 9): tab=activity 在时间线任务接入前回落概览内容。 */
             <ProjectOverviewPanel
               project={project}
               milestones={milestoneProgress}
