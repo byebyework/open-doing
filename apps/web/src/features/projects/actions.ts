@@ -7,10 +7,12 @@ import { getCurrentUser } from "@/features/auth/session";
 import { TeamPermissionError } from "@/features/teams/permissions";
 import { DomainError } from "@/lib/domain-error";
 
-import type { ProjectMilestoneInput } from "./service";
+import type { ProjectComment, ProjectMilestoneInput } from "./service";
 import {
+  addProjectComment,
   addTeamProjectMilestone,
   createTeamProject,
+  deleteProjectComment,
   deleteTeamProject,
   deleteTeamProjectMilestone,
   listTeamProjectMilestones,
@@ -170,6 +172,42 @@ export async function deleteTeamProjectAction(input: {
 
   try {
     await deleteTeamProject({ ...input, actorId: user.id });
+    return { ok: true, data: true };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 新增项目评论（可见即可评：团队成员 / 个人 owner；服务层再次校验）。 */
+export async function addProjectCommentAction(input: {
+  projectId: string;
+  content: string;
+}): Promise<ActionResult<ProjectComment>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    const comment = await addProjectComment({ ...input, actorId: user.id });
+    return { ok: true, data: comment };
+  } catch (error) {
+    return toFailure(error);
+  }
+}
+
+/** 删除项目评论：仅作者本人；错 id / 非作者 → commentNotFound。 */
+export async function deleteProjectCommentAction(input: {
+  projectId: string;
+  commentId: string;
+}): Promise<ActionResult<true>> {
+  const user = await getCurrentUser();
+  if (!user) {
+    return (await standardFailuresForRequest()).notLoggedIn();
+  }
+
+  try {
+    await deleteProjectComment({ ...input, actorId: user.id });
     return { ok: true, data: true };
   } catch (error) {
     return toFailure(error);

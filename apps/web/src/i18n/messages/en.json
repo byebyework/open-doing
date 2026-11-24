@@ -792,7 +792,13 @@
     "propertiesTitle": "Properties",
     "sidebarToggle": "Toggle sidebar",
     "colActions": "Actions",
-    "progressTitle": "Progress"
+    "progressTitle": "Progress",
+    "commentPlaceholder": "Write a comment…",
+    "commentRequired": "Enter a comment",
+    "commentTooLong": "Comment cannot exceed {max} characters",
+    "commentNotFound": "The comment does not exist or you cannot delete it",
+    "commentCreateFailed": "Failed to create the comment. Please try again later.",
+    "postComment": "Post comment"
   },
   "dashboard": {
     "title": "Dashboard",

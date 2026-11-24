@@ -792,7 +792,13 @@
     "propertiesTitle": "属性",
     "sidebarToggle": "显示/隐藏侧栏",
     "colActions": "操作",
-    "progressTitle": "进度"
+    "progressTitle": "进度",
+    "commentPlaceholder": "写下你的评论…",
+    "commentRequired": "请输入评论内容",
+    "commentTooLong": "评论不能超过 {max} 个字符",
+    "commentNotFound": "评论不存在或无权删除",
+    "commentCreateFailed": "评论创建失败，请稍后重试",
+    "postComment": "发表评论"
   },
   "dashboard": {
     "title": "仪表盘",

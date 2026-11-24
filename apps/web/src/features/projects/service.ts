@@ -20,9 +20,10 @@ import { alias } from "drizzle-orm/pg-core";
 
 import { DomainError } from "@/lib/domain-error";
 import { generateUniqueSlug } from "@/lib/slug";
+import { isUuid, validateCommentContent } from "@/lib/task-fields";
 import type { DbClient } from "@/server/db/client";
 import { db } from "@/server/db/client";
-import { projectMembers, projectMilestones, projectTags, projects, subtasks, tasks, users } from "@/server/db/schema";
+import { projectComments, projectMembers, projectMilestones, projectTags, projects, subtasks, tasks, users } from "@/server/db/schema";
 import { assertCan, getMembership } from "@/features/teams/permissions";
 import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
 
@@ -685,6 +686,99 @@ export async function updateTeamProject(
 
   const tagsMap = await tagsByProjectId([row.id], client);
   return toProject(row, tagsMap.get(row.id) ?? []);
+}
+
+/** 项目评论（跨边界的领域模型；时间统一为 ISO 字符串）。 */
+export interface ProjectComment {
+  id: string;
+  projectId: string;
+  authorId: string;
+  authorName: string;
+  content: string;
+  createdAt: string;
+}
+
+/**
+ * 评论可见性断言：团队项目须为团队成员，个人项目须为 owner；
+ * 失败一律 projectNotFound（与页面 404 同口径，不泄露存在性）。
+ */
+async function requireVisibleProject(
+  projectId: string,
+  actorId: string,
+  client: DbClient,
+): Promise<ProjectRow> {
+  if (!isUuid(projectId)) {
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+  }
+  const [row] = await client
+    .select()
+    .from(projects)
+    .where(eq(projects.id, projectId))
+    .limit(1);
+  if (!row) {
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+  }
+  if (row.teamId !== null) {
+    const membership = await getMembership(row.teamId, actorId, client);
+    if (!membership) {
+      throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+    }
+  } else if (row.ownerId !== actorId) {
+    throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
+  }
+  return row;
+}
+
+/** 新增项目评论：可见即可评（成员 / owner），内容复用任务评论校验器。 */
+export async function addProjectComment(
+  input: { projectId: string; actorId: string; content: string },
+  client: DbClient = db,
+): Promise<ProjectComment> {
+  const project = await requireVisibleProject(input.projectId, input.actorId, client);
+  const content = validateCommentContent(input.content);
+
+  const [row] = await client
+    .insert(projectComments)
+    .values({ projectId: project.id, authorId: input.actorId, content })
+    .returning();
+  if (!row) {
+    throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });
+  }
+
+  const [author] = await resolveUserRefs([input.actorId], client);
+  return {
+    id: row.id,
+    projectId: row.projectId,
+    authorId: row.authorId,
+    authorName: author?.name ?? "",
+    content: row.content,
+    createdAt: row.createdAt.toISOString(),
+  };
+}
+
+/** 删除项目评论：仅作者本人（管理员也不行，与任务评论同口径）。 */
+export async function deleteProjectComment(
+  input: { projectId: string; actorId: string; commentId: string },
+  client: DbClient = db,
+): Promise<void> {
+  await requireVisibleProject(input.projectId, input.actorId, client);
+
+  if (!isUuid(input.commentId)) {
+    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
+  }
+  const [row] = await client
+    .delete(projectComments)
+    .where(
+      and(
+        eq(projectComments.id, input.commentId),
+        eq(projectComments.projectId, input.projectId),
+        eq(projectComments.authorId, input.actorId),
+      ),
+    )
+    .returning({ id: projectComments.id });
+  if (!row) {
+    throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
+  }
 }
 
 /**

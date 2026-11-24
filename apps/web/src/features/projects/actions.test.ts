@@ -6,8 +6,10 @@ import { TeamPermissionError } from "@/features/teams/permissions";
 import { DomainError } from "@/lib/domain-error";
 
 import {
+  addProjectCommentAction,
   addTeamProjectMilestoneAction,
   createTeamProjectAction,
+  deleteProjectCommentAction,
   deleteTeamProjectAction,
   deleteTeamProjectMilestoneAction,
   listTeamProjectMilestonesAction,
@@ -16,8 +18,10 @@ import {
   updateTeamProjectStatusAction,
 } from "./actions";
 import {
+  addProjectComment,
   addTeamProjectMilestone,
   createTeamProject,
+  deleteProjectComment,
   deleteTeamProject,
   deleteTeamProjectMilestone,
   listTeamProjectMilestones,
@@ -47,6 +51,8 @@ vi.mock("./service", async (importOriginal) => {
     listTeamProjectMilestones: vi.fn(),
     updateTeamProjectMilestone: vi.fn(),
     updateTeamProjectStatus: vi.fn(),
+    addProjectComment: vi.fn(),
+    deleteProjectComment: vi.fn(),
   };
 });
 
@@ -59,6 +65,8 @@ const mockDeleteMilestone = vi.mocked(deleteTeamProjectMilestone);
 const mockListMilestones = vi.mocked(listTeamProjectMilestones);
 const mockUpdateMilestone = vi.mocked(updateTeamProjectMilestone);
 const mockUpdateStatus = vi.mocked(updateTeamProjectStatus);
+const mockAddComment = vi.mocked(addProjectComment);
+const mockDeleteComment = vi.mocked(deleteProjectComment);
 
 const TEAM_ID = "00000000-0000-0000-0000-000000000002";
 
@@ -370,5 +378,68 @@ describe("团队项目 actions：优先级与里程碑透传", () => {
         milestoneId: fakeMilestone.id,
       }),
     ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
+  });
+});
+
+describe("项目评论 actions", () => {
+  afterEach(() => {
+    vi.resetAllMocks();
+  });
+
+  const fakeComment = {
+    id: "00000000-0000-0000-0000-000000000009",
+    projectId: fakeProject.id,
+    authorId: "u1",
+    authorName: "alice",
+    content: "hello",
+    createdAt: "2026-11-24T00:00:00.000Z",
+  };
+
+  it("未登录：两个 action 都返回「请先登录」且不触达 service", async () => {
+    mockGetCurrentUser.mockResolvedValue(null);
+
+    await expect(
+      addProjectCommentAction({ projectId: fakeProject.id, content: "hi" }),
+    ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
+    await expect(
+      deleteProjectCommentAction({ projectId: fakeProject.id, commentId: fakeComment.id }),
+    ).resolves.toEqual({ ok: false, errors: { form: "请先登录" } });
+
+    expect(mockAddComment).not.toHaveBeenCalled();
+    expect(mockDeleteComment).not.toHaveBeenCalled();
+  });
+
+  it("add 成功：透传 actorId 并返回数据", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockAddComment.mockResolvedValue(fakeComment);
+
+    await expect(
+      addProjectCommentAction({ projectId: fakeProject.id, content: "hello" }),
+    ).resolves.toEqual({ ok: true, data: fakeComment });
+    expect(mockAddComment).toHaveBeenCalledWith({
+      projectId: fakeProject.id,
+      content: "hello",
+      actorId: "u1",
+    });
+  });
+
+  it("delete 领域错误 commentNotFound → form 中文文案", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockDeleteComment.mockRejectedValue(
+      new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" }),
+    );
+
+    await expect(
+      deleteProjectCommentAction({ projectId: fakeProject.id, commentId: fakeComment.id }),
+    ).resolves.toEqual({ ok: false, errors: { form: "评论不存在或无权删除" } });
+  });
+
+  it("delete 成功返回 data: true", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockDeleteComment.mockResolvedValue(undefined);
+
+    await expect(
+      deleteProjectCommentAction({ projectId: fakeProject.id, commentId: fakeComment.id }),
+    ).resolves.toEqual({ ok: true, data: true });
   });
 });

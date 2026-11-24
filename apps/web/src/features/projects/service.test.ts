@@ -24,8 +24,10 @@ import { createTeam } from "@/features/teams/service";
 import { addPersonalProjectMilestone, createPersonalProject, listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 
 import {
+  addProjectComment,
   addTeamProjectMilestone,
   createTeamProject,
+  deleteProjectComment,
   listProjectMilestonesWithProgress,
   deleteTeamProject,
   deleteTeamProjectMilestone,
@@ -42,7 +44,7 @@ import {
   updateTeamProjectMilestone,
   updateTeamProjectStatus,
 } from "./service";
-import { projectMembers, projectMilestones } from "@/server/db/schema";
+import { projectComments, projectMembers, projectMilestones } from "@/server/db/schema";
 
 const hasTestDatabase = Boolean(process.env.TEST_DATABASE_URL);
 
@@ -1321,5 +1323,132 @@ describe("buildProjectProgressPercent（详情页进度卡口径）", () => {
 
   it("空项目返回 0%", () => {
     expect(buildProjectProgressPercent([], "2026-11-22")).toBe(0);
+  });
+});
+
+describe.skipIf(!hasTestDatabase)("项目评论 service", () => {
+  let db: DbClient;
+
+  beforeEach(async () => {
+    db = await setupTestDb();
+  });
+
+  afterAll(async () => {
+    await closeTestDb();
+  });
+
+  it("团队成员可评论，非成员拒绝 projectNotFound", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member = await createUser(db, "c-member");
+    const outsider = await createUser(db, "c-outsider");
+    await addMember(db, team.id, member.id, "member");
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Cmt Project" },
+      db,
+    );
+
+    const comment = await addProjectComment(
+      { projectId: project.id, actorId: member.id, content: "hello" },
+      db,
+    );
+    expect(comment).toMatchObject({
+      projectId: project.id,
+      authorId: member.id,
+      content: "hello",
+      authorName: "c-member",
+    });
+
+    await expect(
+      addProjectComment(
+        { projectId: project.id, actorId: outsider.id, content: "x" },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+  });
+
+  it("个人项目仅 owner 可评论", async () => {
+    const owner = await createUser(db, "p-c-owner");
+    const other = await createUser(db, "p-c-other");
+    const project = await createPersonalProject(owner.id, { name: "P Cmt" }, db);
+
+    await expect(
+      addProjectComment({ projectId: project.id, actorId: other.id, content: "x" }, db),
+    ).rejects.toMatchObject({ i18n: { key: "projectNotFound" } });
+
+    const comment = await addProjectComment(
+      { projectId: project.id, actorId: owner.id, content: "mine" },
+      db,
+    );
+    expect(comment.authorId).toBe(owner.id);
+  });
+
+  it("仅作者可删除评论（admin 也不行）；错 id / 错项目 → commentNotFound", async () => {
+    const { owner, team } = await setupTeam(db);
+    const member = await createUser(db, "d-member");
+    const admin = await createUser(db, "d-admin");
+    await addMember(db, team.id, member.id, "member");
+    await addMember(db, team.id, admin.id, "admin");
+    const projectA = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Del A" },
+      db,
+    );
+    const projectB = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Del B" },
+      db,
+    );
+    const comment = await addProjectComment(
+      { projectId: projectA.id, actorId: member.id, content: "to delete" },
+      db,
+    );
+
+    await expect(
+      deleteProjectComment(
+        { projectId: projectA.id, actorId: admin.id, commentId: comment.id },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "commentNotFound" } });
+
+    await expect(
+      deleteProjectComment(
+        { projectId: projectB.id, actorId: member.id, commentId: comment.id },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "commentNotFound" } });
+
+    await expect(
+      deleteProjectComment(
+        { projectId: projectA.id, actorId: member.id, commentId: crypto.randomUUID() },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "commentNotFound" } });
+
+    await deleteProjectComment(
+      { projectId: projectA.id, actorId: member.id, commentId: comment.id },
+      db,
+    );
+    const remaining = await db
+      .select()
+      .from(projectComments)
+      .where(eq(projectComments.projectId, projectA.id));
+    expect(remaining).toHaveLength(0);
+  });
+
+  it("空内容与超长内容报 commentRequired / commentTooLong", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Validate" },
+      db,
+    );
+
+    await expect(
+      addProjectComment({ projectId: project.id, actorId: owner.id, content: "   " }, db),
+    ).rejects.toMatchObject({ i18n: { key: "commentRequired" } });
+
+    await expect(
+      addProjectComment(
+        { projectId: project.id, actorId: owner.id, content: "x".repeat(501) },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "commentTooLong" } });
   });
 });
