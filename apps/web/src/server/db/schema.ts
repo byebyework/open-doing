@@ -34,6 +34,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgTable,
   primaryKey,
   text,
@@ -45,6 +46,7 @@ import {
 import type {
   Gender,
   NotificationType,
+  ProjectActivityType,
   ProjectStatus,
   SpaceType,
   TagColor,
@@ -492,6 +494,79 @@ export const comments = pgTable("comments", {
   content: text("content").notNull(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * 项目活动 payload（`project_activities.payload` 的 jsonb 形状）：
+ * - scalar：字段新旧值字符串（日期 `YYYY-MM-DD`；status/priority 为存储 key；
+ *   lead 用显示名，null 表示清空）。
+ * - refs：成员 / 标签的 {id, name} 快照列表（事件发生时的名字）。
+ * - milestone_*：里程碑事件；updated 按变化字段一行一条。
+ */
+export type ProjectActivityPayload =
+  | { kind: "scalar"; from: string | null; to: string | null }
+  | {
+      kind: "refs";
+      from: Array<{ id: string; name: string }>;
+      to: Array<{ id: string; name: string }>;
+    }
+  | { kind: "milestone_added"; name: string; dueDate: string | null }
+  | { kind: "milestone_removed"; name: string }
+  | {
+      kind: "milestone_updated";
+      name: string;
+      field: "name" | "dueDate" | "description";
+      from: string | null;
+      to: string | null;
+    };
+
+/** 项目活动（append-only 审计流；不可删、不可改）。 */
+export const projectActivities = pgTable(
+  "project_activities",
+  {
+    id: uuidPk(),
+    projectId: uuidRef("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    actorId: uuidRef("actor_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").$type<ProjectActivityType>().notNull(),
+    payload: jsonb("payload").$type<ProjectActivityPayload | null>(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("project_activities_project_id_created_at_idx").on(
+      t.projectId,
+      t.createdAt,
+    ),
+  ],
+);
+
+/** 项目评论（与任务 comments 表平行、互不相干）。 */
+export const projectComments = pgTable(
+  "project_comments",
+  {
+    id: uuidPk(),
+    projectId: uuidRef("project_id")
+      .notNull()
+      .references(() => projects.id, { onDelete: "cascade" }),
+    authorId: uuidRef("author_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true })
+      .notNull()
+      .defaultNow(),
+  },
+  (t) => [
+    index("project_comments_project_id_created_at_idx").on(
+      t.projectId,
+      t.createdAt,
+    ),
+  ],
+);
 
 /** 系统内通知：task_id 非空时同一 (user, task, type) 幂等。 */
 export const notifications = pgTable(

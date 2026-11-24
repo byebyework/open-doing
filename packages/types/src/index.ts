@@ -122,6 +122,23 @@ export interface TeamJoinRequest {
 /** 项目状态：Linear 五态（存储口径，2026-11-21 起替换进度推导）。 */
 export type ProjectStatus = "backlog" | "planned" | "in_progress" | "completed" | "canceled";
 
+/** 项目动态事件类型：append-only 项目活动流（`project_activities.type`）。 */
+export type ProjectActivityType =
+  | "created"
+  | "name"
+  | "summary"
+  | "description"
+  | "status"
+  | "priority"
+  | "start_date"
+  | "end_date"
+  | "lead"
+  | "members"
+  | "tags"
+  | "milestone_added"
+  | "milestone_removed"
+  | "milestone_updated";
+
 export const PROJECT_STATUSES: readonly ProjectStatus[] = [
   "backlog",
   "planned",
