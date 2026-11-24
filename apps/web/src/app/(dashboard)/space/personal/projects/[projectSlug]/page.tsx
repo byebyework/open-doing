@@ -1,5 +1,6 @@
 import { notFound } from "next/navigation";
 import { getTranslations } from "next-intl/server";
+import type { ReactNode } from "react";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
@@ -8,6 +9,7 @@ import {
   listPersonalProjects,
 } from "@/features/personal/projects/service";
 import { ProjectDetailLayout } from "@/features/projects/components/ProjectDetailLayout";
+import { ProjectDetailTabs } from "@/features/projects/components/ProjectDetailTabs";
 import { ProjectMilestonesPanel } from "@/features/projects/components/ProjectMilestonesPanel";
 import { ProjectProgressPanel } from "@/features/projects/components/ProjectProgressPanel";
 import { ProjectOverviewPanel } from "@/features/projects/components/ProjectOverviewPanel";
@@ -15,28 +17,51 @@ import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPr
 import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 import { buildProjectProgressPercent } from "@/features/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
+import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
+import { PersonalKanbanNewTaskButton } from "@/features/kanban/components/PersonalKanbanNewTaskButton";
+import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
+import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
+import { TasksViewTabs } from "@/features/kanban/components/TasksViewTabs";
+import {
+  getOlderDonePersonalTasks,
+  getPersonalKanbanStats,
+  getPersonalSpaceBoard,
+} from "@/features/kanban/service";
+import { parseStatFilterParams } from "@/features/kanban/stat-filter";
+import { sortTaskRows } from "@/features/kanban/sort-task-rows";
 import { listTags } from "@/features/tags/service";
 import { listPersonalProjectTasks } from "@/features/personal/tasks/service";
+import { parseProjectTabFrom } from "@/lib/project-tab";
+import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
+import { personalTaskHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 interface PersonalProjectPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
   params: Promise<{ projectSlug: string }>;
+  /** `?tab=` / `?view=` / `?page=` / `?size=` / 统计筛选：tab 外壳与任务 tab 解析。 */
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}
+
+function firstValue(value: string | string[] | undefined): string | undefined {
+  return Array.isArray(value) ? value[0] : value;
 }
 
 /**
- * 个人项目页（P-3）：仅概览。
+ * 个人项目页（P-3 → 详情 tabs）：概览 / 任务 / 动态。
  *
- * 任务列表 / 看板已收敛到任务模块（`/space/personal/tasks`，URL 契约
- * `?view=list&project={slug}` / `?project={slug}`）；页面本身保持 RSC：
- * 服务端读取项目、项目任务（进度用）与全部个人项目，交互（新建任务、
- * 行内编辑）全部下沉到 `"use client"` 组件。
- * 非本人或不存在一律 404，不泄露存在性。
+ * 任务 tab 内嵌任务模块组件（项目过滤锁定，`taskOrigin="project"`）；
+ * 动态 tab 的时间线由后续任务接入（当前回落概览内容）。
+ * 服务端读取项目、项目任务（进度用）与全部个人项目，交互全部下沉到
+ * `"use client"` 组件。非本人或不存在一律 404，不泄露存在性。
  */
 export default async function PersonalProjectPage({
   params,
+  searchParams,
 }: PersonalProjectPageProps) {
   const { projectSlug } = await params;
+  const sp = await searchParams;
+  const tab = parseProjectTabFrom(sp);
   const tCommon = await getTranslations("common");
   const tNav = await getTranslations("nav");
 
@@ -56,6 +81,79 @@ export default async function PersonalProjectPage({
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
   const today = todayInShanghai();
 
+  // ---- 任务 tab：看板 / 列表 / 统计（项目过滤锁定，与个人任务模块同构）----
+  let tasksTabContent: ReactNode = null;
+  if (tab === "tasks") {
+    const initialView = firstValue(sp.view) === "list" ? "list" : "board";
+    const initialPage = parseTaskPage(sp.page) ?? undefined;
+    const initialPageSize = parseTaskPageSize(sp.size) ?? undefined;
+    const statFilter = parseStatFilterParams(sp);
+    const filter = {
+      projectId: project.id,
+      ...statFilter,
+    };
+
+    const [board, stats, olderDone] = await Promise.all([
+      getPersonalSpaceBoard(user.id, today, filter),
+      getPersonalKanbanStats(user.id, today, filter),
+      getOlderDonePersonalTasks(user.id, today, filter),
+    ]);
+
+    const allCards = [
+      ...board.todo,
+      ...board.inProgress,
+      ...board.doneRecent,
+      ...olderDone,
+    ];
+    const taskHrefs = Object.fromEntries(
+      allCards.map((card) => [card.id, personalTaskHref(card.id)]),
+    );
+    const rows = sortTaskRows(allCards);
+
+    tasksTabContent = (
+      <>
+        <KanbanStatStrip
+          stats={stats}
+          today={today}
+          active={{
+            status: statFilter.status,
+            overdue: statFilter.overdueOnly,
+            dueSoon: statFilter.dueSoonOnly,
+          }}
+          basePath={`/space/personal/projects/${project.slug}`}
+          preserveParams={{ tab: "tasks" }}
+        />
+        <div className="mt-6">
+          <TasksViewTabs
+            initialView={initialView}
+            board={
+              <SpaceKanban
+                variant="personal"
+                board={board}
+                projects={projects}
+                today={today}
+                taskHrefs={taskHrefs}
+                expandFilter={{ projectSlug: project.slug }}
+                taskOrigin="project"
+              />
+            }
+            list={
+              <SpaceTaskTable
+                variant="personal"
+                rows={rows}
+                today={today}
+                taskHrefs={taskHrefs}
+                taskOrigin="project"
+                initialPage={initialPage}
+                initialPageSize={initialPageSize}
+              />
+            }
+          />
+        </div>
+      </>
+    );
+  }
+
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <nav
@@ -74,23 +172,36 @@ export default async function PersonalProjectPage({
         className="mt-2"
         title={undefined}
         actions={
-          <PersonalProjectPageActions
-            project={{
-              id: project.id,
-              name: project.name,
-              description: project.description,
-              startDate: project.startDate,
-              endDate: project.endDate,
-              priority: project.priority,
-              status: project.status,
-              tags: project.tags,
-            }}
-            projects={projectOptions}
-          />
+          <>
+            <PersonalProjectPageActions
+              project={{
+                id: project.id,
+                name: project.name,
+                description: project.description,
+                startDate: project.startDate,
+                endDate: project.endDate,
+                priority: project.priority,
+                status: project.status,
+                tags: project.tags,
+              }}
+              projects={projectOptions}
+            />
+            {tab === "tasks" ? (
+              <PersonalKanbanNewTaskButton
+                projects={projectOptions}
+                defaultProjectId={project.id}
+              />
+            ) : null}
+          </>
         }
       />
 
+      <div className="mt-4">
+        <ProjectDetailTabs active={tab} />
+      </div>
+
       <ProjectDetailLayout
+        key={tab}
         sidebar={
           <>
             <ProjectPropertiesPanel
@@ -118,14 +229,19 @@ export default async function PersonalProjectPage({
         }
       >
         <div className="mt-5">
-          <ProjectOverviewPanel
-            project={project}
-            milestones={milestoneProgress}
-            projectTagPool={projectTagPool}
-            displayLead={null}
-            canManage
-            space={{ kind: "personal" }}
-          />
+          {tab === "tasks" ? (
+            tasksTabContent
+          ) : (
+            /* TODO(task 9): tab=activity 在时间线任务接入前回落概览内容。 */
+            <ProjectOverviewPanel
+              project={project}
+              milestones={milestoneProgress}
+              projectTagPool={projectTagPool}
+              displayLead={null}
+              canManage
+              space={{ kind: "personal" }}
+            />
+          )}
         </div>
       </ProjectDetailLayout>
     </div>
