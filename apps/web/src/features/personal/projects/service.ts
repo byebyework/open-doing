@@ -16,6 +16,12 @@ import {
   type ProjectMilestoneInput,
   type ProjectTaskStatRow,
 } from "@/features/projects/service";
+import {
+  recordProjectActivity,
+  recordProjectScalarDiffActivity,
+  recordRefsDiffActivity,
+  resolveTagRefs,
+} from "@/features/projects/activities";
 import { generateUniqueSlug } from "@/lib/slug";
 import { db, type DbClient } from "@/server/db/client";
 import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
@@ -281,6 +287,11 @@ export async function createPersonalProject(
       await applyOwnedProjectTags(inserted!.id, Array.from(new Set(input.tagIds)), userId, tx);
     }
 
+    await recordProjectActivity(
+      { projectId: inserted!.id, actorId: userId, type: "created" },
+      tx,
+    );
+
     return inserted!;
   });
 
@@ -333,6 +344,16 @@ export async function addPersonalProjectMilestone(
     })
     .returning();
 
+  await recordProjectActivity(
+    {
+      projectId: project.id,
+      actorId: userId,
+      type: "milestone_added",
+      payload: { kind: "milestone_added", name: row!.name, dueDate: row!.dueDate },
+    },
+    client,
+  );
+
   return toMilestone(row!);
 }
 
@@ -353,11 +374,21 @@ export async function deletePersonalProjectMilestone(
         eq(projectMilestones.projectId, projectId),
       ),
     )
-    .returning({ id: projectMilestones.id });
+    .returning();
 
   if (!row) {
     throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
   }
+
+  await recordProjectActivity(
+    {
+      projectId,
+      actorId: userId,
+      type: "milestone_removed",
+      payload: { kind: "milestone_removed", name: row.name },
+    },
+    client,
+  );
 }
 
 /** 更新个人项目里程碑（owner-only）；仅写传入字段，空串日期归 null。 */
@@ -372,6 +403,18 @@ export async function updatePersonalProjectMilestone(
 
   const changes = validateMilestoneFields(input);
 
+  const [before] = await client
+    .select()
+    .from(projectMilestones)
+    .where(
+      and(eq(projectMilestones.id, milestoneId), eq(projectMilestones.projectId, projectId)),
+    )
+    .limit(1);
+
+  if (!before) {
+    throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
+  }
+
   const [row] = await client
     .update(projectMilestones)
     .set(changes)
@@ -383,6 +426,36 @@ export async function updatePersonalProjectMilestone(
   if (!row) {
     throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
   }
+
+  // 字段级 diff：name / dueDate / description 各落一行（值未变不记）。
+  const milestoneFieldDiffs: Array<{
+    field: "name" | "dueDate" | "description";
+    from: string | null;
+    to: string | null;
+  }> = [
+    { field: "name", from: before.name, to: row.name },
+    { field: "dueDate", from: before.dueDate, to: row.dueDate },
+    { field: "description", from: before.description, to: row.description },
+  ];
+  for (const diff of milestoneFieldDiffs) {
+    if (diff.from === diff.to) continue;
+    await recordProjectActivity(
+      {
+        projectId,
+        actorId: userId,
+        type: "milestone_updated",
+        payload: {
+          kind: "milestone_updated",
+          name: row.name,
+          field: diff.field,
+          from: diff.from,
+          to: diff.to,
+        },
+      },
+      client,
+    );
+  }
+
   return toMilestone(row);
 }
 
@@ -449,6 +522,12 @@ export async function updatePersonalProject(
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
 
+  // 活动 diff 的 before 快照：仅在 tagIds 被传入时读取。
+  const beforeTagIds =
+    input?.tagIds !== undefined
+      ? (await tagsByProjectId([projectId], client)).get(projectId)?.map((tag) => tag.id) ?? []
+      : null;
+
   const changes: Partial<
     Pick<ProjectRow, "name" | "summary" | "description" | "startDate" | "endDate" | "priority" | "status">
   > = {};
@@ -487,6 +566,20 @@ export async function updatePersonalProject(
     if (input.tagIds !== undefined) {
       await applyOwnedProjectTags(projectId, Array.from(new Set(input.tagIds)), userId, client);
     }
+    // 标量未变；标签集合仍可能变化，落一条 refs 快照行。
+    if (beforeTagIds !== null && input.tagIds !== undefined) {
+      await recordRefsDiffActivity(
+        {
+          projectId,
+          actorId: userId,
+          type: "tags",
+          fromIds: beforeTagIds,
+          toIds: Array.from(new Set(input.tagIds)),
+          resolve: resolveTagRefs,
+        },
+        client,
+      );
+    }
     const tagsMap = await tagsByProjectId([existing.id], client);
     return toProject(existing, tagsMap.get(existing.id) ?? []);
   }
@@ -504,6 +597,26 @@ export async function updatePersonalProject(
   if (input.tagIds !== undefined) {
     await applyOwnedProjectTags(projectId, Array.from(new Set(input.tagIds)), userId, client);
   }
+
+  // 字段级活动：标量按 row diff；标签按 before 快照集合 diff。
+  await recordProjectScalarDiffActivity(
+    { projectId: row.id, actorId: userId, existing, row },
+    client,
+  );
+  if (beforeTagIds !== null && input.tagIds !== undefined) {
+    await recordRefsDiffActivity(
+      {
+        projectId: row.id,
+        actorId: userId,
+        type: "tags",
+        fromIds: beforeTagIds,
+        toIds: Array.from(new Set(input.tagIds)),
+        resolve: resolveTagRefs,
+      },
+      client,
+    );
+  }
+
   const tagsMap = await tagsByProjectId([row.id], client);
   return toProject(row, tagsMap.get(row.id) ?? []);
 }
@@ -536,7 +649,7 @@ export async function updatePersonalProjectStatus(
   status: ProjectStatus,
   client: DbClient = db,
 ): Promise<Project> {
-  await requireOwnedProjectRow(userId, projectId, client);
+  const project = await requireOwnedProjectRow(userId, projectId, client);
   const normalized = normalizeProjectStatus(status);
 
   const [row] = await client
@@ -544,6 +657,18 @@ export async function updatePersonalProjectStatus(
     .set({ status: normalized })
     .where(and(eq(projects.id, projectId), eq(projects.ownerId, userId)))
     .returning();
+
+  if (project.status !== normalized) {
+    await recordProjectActivity(
+      {
+        projectId,
+        actorId: userId,
+        type: "status",
+        payload: { kind: "scalar", from: project.status, to: normalized },
+      },
+      client,
+    );
+  }
 
   return toProject(row!);
 }

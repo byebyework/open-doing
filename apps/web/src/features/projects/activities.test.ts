@@ -23,6 +23,15 @@ import {
   resolveUserRefs,
 } from "./activities";
 import {
+  addPersonalProjectMilestone,
+  createPersonalProject,
+  deletePersonalProjectMilestone,
+  updatePersonalProject,
+  updatePersonalProjectMilestone,
+  updatePersonalProjectStatus,
+} from "@/features/personal/projects/service";
+
+import {
   addTeamProjectMilestone,
   createTeamProject,
   deleteTeamProjectMilestone,
@@ -438,5 +447,146 @@ describe.skipIf(!hasTestDatabase)("项目活动基础设施", () => {
     expect(
       rows.find((row) => row.type === "milestone_removed")?.payload,
     ).toEqual({ kind: "milestone_removed", name: "MS-1" });
+  });
+
+  it("createPersonalProject 落 created 事件", async () => {
+    const owner = await createUser(db, "p-act-owner");
+    const project = await createPersonalProject(
+      owner.id,
+      { name: "Personal Act" },
+      db,
+    );
+
+    const rows = await listActivityRows(db, project.id);
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toMatchObject({
+      type: "created",
+      actorId: owner.id,
+      payload: null,
+    });
+  });
+
+  it("updatePersonalProject 多字段一次保存拆多行、无变化不记", async () => {
+    const owner = await createUser(db, "p-act-owner2");
+    const project = await createPersonalProject(
+      owner.id,
+      { name: "Old P Name" },
+      db,
+    );
+
+    await updatePersonalProject(
+      owner.id,
+      project.id,
+      { name: "New P Name", status: "in_progress" },
+      db,
+    );
+    let rows = (await listActivityRows(db, project.id)).filter(
+      (row) => row.type !== "created",
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row) => row.type === "name")?.payload).toEqual({
+      kind: "scalar",
+      from: "Old P Name",
+      to: "New P Name",
+    });
+    expect(rows.find((row) => row.type === "status")?.payload).toEqual({
+      kind: "scalar",
+      from: "backlog",
+      to: "in_progress",
+    });
+
+    await updatePersonalProject(owner.id, project.id, { name: "New P Name" }, db);
+    rows = (await listActivityRows(db, project.id)).filter(
+      (row) => row.type !== "created",
+    );
+    expect(rows).toHaveLength(2);
+  });
+
+  it("updatePersonalProject 仅打标也落 tags 快照行", async () => {
+    const owner = await createUser(db, "p-act-owner3");
+    const tag = await createTag(
+      { ownerId: owner.id, name: "PTag", color: TAG_COLORS[0], type: "project" },
+      db,
+    );
+    const project = await createPersonalProject(
+      owner.id,
+      { name: "Tagged P" },
+      db,
+    );
+
+    await updatePersonalProject(owner.id, project.id, { tagIds: [tag.id] }, db);
+
+    const rows = await listActivityRows(db, project.id);
+    const tagsRow = rows.find((row) => row.type === "tags");
+    expect(tagsRow?.payload).toEqual({
+      kind: "refs",
+      from: [],
+      to: [{ id: tag.id, name: "PTag" }],
+    });
+  });
+
+  it("updatePersonalProjectStatus 没变不记，变了记一条", async () => {
+    const owner = await createUser(db, "p-act-owner4");
+    const project = await createPersonalProject(
+      owner.id,
+      { name: "Status P" },
+      db,
+    );
+
+    await updatePersonalProjectStatus(owner.id, project.id, "backlog", db);
+    expect(await listActivityRows(db, project.id)).toHaveLength(1);
+
+    await updatePersonalProjectStatus(owner.id, project.id, "planned", db);
+    const rows = await listActivityRows(db, project.id);
+    expect(rows).toHaveLength(2);
+    expect(rows.find((row) => row.type === "status")?.payload).toEqual({
+      kind: "scalar",
+      from: "backlog",
+      to: "planned",
+    });
+  });
+
+  it("个人里程碑 add / update / delete 各落对应事件", async () => {
+    const owner = await createUser(db, "p-act-owner5");
+    const project = await createPersonalProject(
+      owner.id,
+      { name: "Ms P" },
+      db,
+    );
+
+    const milestone = await addPersonalProjectMilestone(
+      owner.id,
+      project.id,
+      { name: "P-MS", dueDate: "2026-12-01" },
+      db,
+    );
+    let rows = await listActivityRows(db, project.id);
+    expect(
+      rows.find((row) => row.type === "milestone_added")?.payload,
+    ).toEqual({ kind: "milestone_added", name: "P-MS", dueDate: "2026-12-01" });
+
+    await updatePersonalProjectMilestone(
+      owner.id,
+      project.id,
+      milestone.id,
+      { dueDate: "2026-12-20" },
+      db,
+    );
+    rows = await listActivityRows(db, project.id);
+    expect(
+      rows.find((row) => row.type === "milestone_updated")?.payload,
+    ).toEqual({
+      kind: "milestone_updated",
+      name: "P-MS",
+      field: "dueDate",
+      from: "2026-12-01",
+      to: "2026-12-20",
+    });
+
+    await deletePersonalProjectMilestone(owner.id, project.id, milestone.id, db);
+    rows = await listActivityRows(db, project.id);
+    expect(
+      rows.find((row) => row.type === "milestone_removed")?.payload,
+    ).toEqual({ kind: "milestone_removed", name: "P-MS" });
   });
 });

@@ -1,6 +1,5 @@
 import type {
   Project,
-  ProjectActivityType,
   ProjectMemberRef,
   ProjectMilestone,
   ProjectStats,
@@ -29,6 +28,8 @@ import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsBy
 
 import {
   recordProjectActivity,
+  recordProjectScalarDiffActivity,
+  recordRefsDiffActivity,
   resolveTagRefs,
   resolveUserRefs,
 } from "./activities";
@@ -54,109 +55,7 @@ export {
 type ProjectRow = typeof projects.$inferSelect;
 type MilestoneRow = typeof projectMilestones.$inferSelect;
 
-/** 标量字段 → 活动类型（diff 落动态的映射，spec §4）。 */
-const SCALAR_ACTIVITY_FIELDS: Array<{
-  field: "name" | "summary" | "description" | "startDate" | "endDate" | "priority" | "status";
-  type: ProjectActivityType;
-}> = [
-  { field: "name", type: "name" },
-  { field: "summary", type: "summary" },
-  { field: "description", type: "description" },
-  { field: "startDate", type: "start_date" },
-  { field: "endDate", type: "end_date" },
-  { field: "priority", type: "priority" },
-  { field: "status", type: "status" },
-];
-
-/** 集合相等（顺序无关）：无变化不落动态。 */
-function sameIdSet(a: string[], b: string[]): boolean {
-  return a.length === b.length && [...a].sort().join() === [...b].sort().join();
-}
-
-/** 成员 / 标签集合 diff：有变化才落一条 refs 快照行（按 name 稳定排序）。 */
-async function recordRefsDiffActivity(
-  input: {
-    projectId: string;
-    actorId: string;
-    type: "members" | "tags";
-    fromIds: string[];
-    toIds: string[];
-    resolve: (ids: string[], client: DbClient) => Promise<Array<{ id: string; name: string }>>;
-  },
-  client: DbClient,
-): Promise<void> {
-  if (sameIdSet(input.fromIds, input.toIds)) return;
-
-  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
-  const [from, to] = await Promise.all([
-    input.resolve(input.fromIds, client),
-    input.resolve(input.toIds, client),
-  ]);
-  from.sort(byName);
-  to.sort(byName);
-
-  await recordProjectActivity(
-    {
-      projectId: input.projectId,
-      actorId: input.actorId,
-      type: input.type,
-      payload: { kind: "refs", from, to },
-    },
-    client,
-  );
-}
-
-/**
- * 标量字段 + 负责人 diff 落动态：existing → row 实际变化的字段各一行
- * （lead 用显示名快照，null = 清空）。
- */
-async function recordProjectScalarDiffActivity(
-  input: { projectId: string; actorId: string; existing: ProjectRow; row: ProjectRow },
-  client: DbClient,
-): Promise<void> {
-  const { projectId, actorId, existing, row } = input;
-
-  for (const { field, type } of SCALAR_ACTIVITY_FIELDS) {
-    const from = existing[field];
-    const to = row[field];
-    if (from === to) continue;
-    await recordProjectActivity(
-      {
-        projectId,
-        actorId,
-        type,
-        payload: {
-          kind: "scalar",
-          from: (from as string | null) ?? null,
-          to: (to as string | null) ?? null,
-        },
-      },
-      client,
-    );
-  }
-
-  if (existing.leadId !== row.leadId) {
-    const ids = [existing.leadId, row.leadId].filter(
-      (id): id is string => id !== null,
-    );
-    const refs = await resolveUserRefs(ids, client);
-    const nameOf = (id: string | null): string | null =>
-      id === null ? null : refs.find((ref) => ref.id === id)?.name ?? null;
-    await recordProjectActivity(
-      {
-        projectId,
-        actorId,
-        type: "lead",
-        payload: {
-          kind: "scalar",
-          from: nameOf(existing.leadId),
-          to: nameOf(row.leadId),
-        },
-      },
-      client,
-    );
-  }
-}
+// diff 落动态的共享助手（团队 / 个人 service 同用）见 ./activities.ts。
 
 /** 数据库行 -> 可跨边界传递的领域 Project（时间统一为 ISO 字符串）。 */
 function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
