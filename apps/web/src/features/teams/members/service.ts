@@ -3,6 +3,11 @@ import { and, eq, inArray } from "drizzle-orm";
 import type { DomainErrorI18n } from "@/lib/domain-error";
 import { db, type DbClient } from "@/server/db/client";
 import { projectMembers, projects, tasks, teamMemberships, teams } from "@/server/db/schema";
+import {
+  recordProjectActivity,
+  recordRefsDiffActivity,
+  resolveUserRefs,
+} from "@/features/projects/activities";
 
 import {
   assertCan,
@@ -85,12 +90,46 @@ async function assertTeamExists(tx: DbClient, teamId: string): Promise<void> {
  *
  * 置空范围严格限定为 `project_id in (select id from projects where team_id = ?)`：
  * 其他团队项目与个人项目（含 projectId 为空）的任务不受影响。
+ * 同事务内为受影响项目补写 members / lead 活动（spec §4 成员写点）：
+ * 删除前先取快照，删除后按 diff 落 `project_activities`。
  * 调用方负责事务边界（本函数只接收同一个 client/tx）。
  */
 async function removeMembershipAndClearAssignments(
   tx: DbClient,
-  input: { teamId: string; userId: string },
+  input: { teamId: string; userId: string; actorId: string },
 ): Promise<void> {
+  // 删除前快照：目标参与成员关系的项目 ∪ 目标为负责人的项目。
+  const memberProjectRows = await tx
+    .select({ projectId: projectMembers.projectId })
+    .from(projectMembers)
+    .innerJoin(projects, eq(projectMembers.projectId, projects.id))
+    .where(
+      and(eq(projects.teamId, input.teamId), eq(projectMembers.userId, input.userId)),
+    );
+  const leadProjectRows = await tx
+    .select({ projectId: projects.id })
+    .from(projects)
+    .where(and(eq(projects.teamId, input.teamId), eq(projects.leadId, input.userId)));
+  const affectedIds = [
+    ...new Set([
+      ...memberProjectRows.map((row) => row.projectId),
+      ...leadProjectRows.map((row) => row.projectId),
+    ]),
+  ];
+  const leadProjectIdSet = new Set(leadProjectRows.map((row) => row.projectId));
+  const beforeMemberIdsByProject = new Map<string, string[]>();
+  if (affectedIds.length > 0) {
+    const memberRows = await tx
+      .select()
+      .from(projectMembers)
+      .where(inArray(projectMembers.projectId, affectedIds));
+    for (const row of memberRows) {
+      const list = beforeMemberIdsByProject.get(row.projectId) ?? [];
+      list.push(row.userId);
+      beforeMemberIdsByProject.set(row.projectId, list);
+    }
+  }
+
   await tx
     .delete(teamMemberships)
     .where(
@@ -135,6 +174,35 @@ async function removeMembershipAndClearAssignments(
     .update(projects)
     .set({ leadId: null })
     .where(and(eq(projects.teamId, input.teamId), eq(projects.leadId, input.userId)));
+
+  // 落活动：每个受影响项目一条 members diff（目标被移出）；
+  // 目标原为负责人再补一条 lead 清空事件。actor = 执行者（remove/leave 的调用方）。
+  for (const projectId of affectedIds) {
+    const beforeIds = beforeMemberIdsByProject.get(projectId) ?? [];
+    await recordRefsDiffActivity(
+      {
+        projectId,
+        actorId: input.actorId,
+        type: "members",
+        fromIds: beforeIds,
+        toIds: beforeIds.filter((id) => id !== input.userId),
+        resolve: resolveUserRefs,
+      },
+      tx,
+    );
+    if (leadProjectIdSet.has(projectId)) {
+      const [ref] = await resolveUserRefs([input.userId], tx);
+      await recordProjectActivity(
+        {
+          projectId,
+          actorId: input.actorId,
+          type: "lead",
+          payload: { kind: "scalar", from: ref?.name ?? null, to: null },
+        },
+        tx,
+      );
+    }
+  }
 }
 
 export interface RemoveMemberInput {
@@ -170,6 +238,7 @@ export async function removeMember(
     await removeMembershipAndClearAssignments(tx, {
       teamId: input.teamId,
       userId: input.targetUserId,
+      actorId: input.actorId,
     });
   };
 
@@ -204,6 +273,7 @@ export async function leaveTeam(
     await removeMembershipAndClearAssignments(tx, {
       teamId: input.teamId,
       userId: input.actorId,
+      actorId: input.actorId,
     });
   };
 

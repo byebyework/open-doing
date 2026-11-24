@@ -6,6 +6,7 @@ import type { DbClient } from "@/server/db/client";
 import {
   comments,
   notifications,
+  projectActivities,
   projectMembers,
   projects,
   subtasks,
@@ -354,6 +355,113 @@ describe.skipIf(!hasTestDatabase)("成员移除 / 主动退出 service", () => {
 
     // 本团队项目任务责任人不因非法调用而改变。
     expect((await taskById(db, ctx.teamTask.id)).assigneeId).toBe(ctx.member.id);
+  });
+
+  it("removeMember 对受影响项目落 members/lead 事件且 actor 是操作者", async () => {
+    const ctx = await seedTeam(db);
+    // A：member 是负责人兼成员。
+    await staffProject(db, ctx.team.id, ctx.teamProject.id, ctx.member.id, [
+      ctx.member.id,
+      ctx.admin.id,
+    ]);
+    // B：member 只是普通成员。
+    const projectB = { id: crypto.randomUUID() };
+    await db
+      .insert(projects)
+      .values({ id: projectB.id, teamId: ctx.team.id, name: "B", slug: "project-b" });
+    await db.insert(projectMembers).values([
+      { projectId: projectB.id, userId: ctx.member.id },
+      { projectId: projectB.id, userId: ctx.owner.id },
+    ]);
+    // C：member 未参与 → 零事件。
+    const projectC = { id: crypto.randomUUID() };
+    await db
+      .insert(projects)
+      .values({ id: projectC.id, teamId: ctx.team.id, name: "C", slug: "project-c" });
+    await db.insert(projectMembers).values([
+      { projectId: projectC.id, userId: ctx.owner.id },
+      { projectId: projectC.id, userId: ctx.admin.id },
+    ]);
+
+    await removeMember(
+      { teamId: ctx.team.id, targetUserId: ctx.member.id, actorId: ctx.admin.id },
+      db,
+    );
+
+    const rowsFor = (projectId: string) =>
+      db
+        .select()
+        .from(projectActivities)
+        .where(eq(projectActivities.projectId, projectId));
+
+    const rowsA = await rowsFor(ctx.teamProject.id);
+    expect(rowsA).toHaveLength(2);
+    expect(rowsA.every((row) => row.actorId === ctx.admin.id)).toBe(true);
+    expect(rowsA.find((row) => row.type === "lead")?.payload).toEqual({
+      kind: "scalar",
+      from: "member",
+      to: null,
+    });
+    expect(rowsA.find((row) => row.type === "members")?.payload).toEqual({
+      kind: "refs",
+      from: [
+        { id: ctx.admin.id, name: "admin" },
+        { id: ctx.member.id, name: "member" },
+      ],
+      to: [{ id: ctx.admin.id, name: "admin" }],
+    });
+
+    const rowsB = await rowsFor(projectB.id);
+    expect(rowsB).toHaveLength(1);
+    expect(rowsB[0]).toMatchObject({ type: "members", actorId: ctx.admin.id });
+
+    expect(await rowsFor(projectC.id)).toHaveLength(0);
+  });
+
+  it("leaveTeam 事件 actor 是退出者本人，未参与的项目零事件", async () => {
+    const ctx = await seedTeam(db);
+    await staffProject(db, ctx.team.id, ctx.teamProject.id, ctx.member.id, [
+      ctx.member.id,
+      ctx.owner.id,
+    ]);
+    const untouched = { id: crypto.randomUUID() };
+    await db
+      .insert(projects)
+      .values({ id: untouched.id, teamId: ctx.team.id, name: "D", slug: "project-d" });
+    await db.insert(projectMembers).values([
+      { projectId: untouched.id, userId: ctx.owner.id },
+      { projectId: untouched.id, userId: ctx.admin.id },
+    ]);
+
+    await leaveTeam({ teamId: ctx.team.id, actorId: ctx.member.id }, db);
+
+    const rows = await db
+      .select()
+      .from(projectActivities)
+      .where(eq(projectActivities.projectId, ctx.teamProject.id));
+    expect(rows).toHaveLength(2);
+    expect(rows.every((row) => row.actorId === ctx.member.id)).toBe(true);
+
+    const untouchedRows = await db
+      .select()
+      .from(projectActivities)
+      .where(eq(projectActivities.projectId, untouched.id));
+    expect(untouchedRows).toHaveLength(0);
+  });
+
+  it("目标未参与任何项目成员时 removeMember 零事件", async () => {
+    const ctx = await seedTeam(db);
+
+    await removeMember(
+      { teamId: ctx.team.id, targetUserId: ctx.member.id, actorId: ctx.admin.id },
+      db,
+    );
+
+    const rows = await db
+      .select()
+      .from(projectActivities)
+      .where(eq(projectActivities.projectId, ctx.teamProject.id));
+    expect(rows).toHaveLength(0);
   });
 });
 
