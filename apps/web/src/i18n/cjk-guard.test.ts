@@ -101,6 +101,7 @@ const E2E_WHITELIST: ReadonlyArray<{ prefix: string; reason: string }> = [
   { prefix: "apps/web/e2e/flows/16-moments.spec.ts", reason: "时刻模块空态/弹窗/徽标/速览/删除确认 zh 文案断言" },
   { prefix: "apps/web/e2e/flows/17-tags.spec.ts", reason: "中文 describe/test 标题 + 邀请流空态 zh 文案断言（沿 flow 02 口径）" },
   { prefix: "apps/web/e2e/flows/18-tags-module.spec.ts", reason: "中文 describe/test 标题（断言文案取自消息包/测试锚点，不硬编码）" },
+  { prefix: "apps/web/e2e/flows/19-project-detail-tabs.spec.ts", reason: "项目详情 tabs zh 文案断言（tab 标签/评论输入与动态行，断言文案取自消息包）" },
   { prefix: "apps/web/e2e/responsive.spec.ts", reason: "响应式路由 zh 就绪断言" },
 ];
 

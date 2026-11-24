@@ -20,7 +20,6 @@ import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/p
 import { buildProjectProgressPercent } from "@/features/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
 import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
-import { PersonalKanbanNewTaskButton } from "@/features/kanban/components/PersonalKanbanNewTaskButton";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
 import { TasksViewTabs } from "@/features/kanban/components/TasksViewTabs";
@@ -187,27 +186,19 @@ export default async function PersonalProjectPage({
         className="mt-2"
         title={undefined}
         actions={
-          <>
-            <PersonalProjectPageActions
-              project={{
-                id: project.id,
-                name: project.name,
-                description: project.description,
-                startDate: project.startDate,
-                endDate: project.endDate,
-                priority: project.priority,
-                status: project.status,
-                tags: project.tags,
-              }}
-              projects={projectOptions}
-            />
-            {tab === "tasks" ? (
-              <PersonalKanbanNewTaskButton
-                projects={projectOptions}
-                defaultProjectId={project.id}
-              />
-            ) : null}
-          </>
+          <PersonalProjectPageActions
+            project={{
+              id: project.id,
+              name: project.name,
+              description: project.description,
+              startDate: project.startDate,
+              endDate: project.endDate,
+              priority: project.priority,
+              status: project.status,
+              tags: project.tags,
+            }}
+            projects={projectOptions}
+          />
         }
       />
 

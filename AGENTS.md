@@ -76,6 +76,8 @@ Self-contained by domain: auth / users / teams / projects / tasks / tags / kanba
 
 `/space/{spaceRef}/tasks` is the single tasks surface: board by default, `?view=list` for the table (filters: `?project=`, `?assignee=unassigned`, `?status` / `?overdue` / `?dueSoon`). The list view paginates client-side (10 rows per page, 20 / 50 selectable) and carries its position only through task-detail origin params: `?from=tasks[&view=list&page&size]` on the detail link. `lib/task-origin.ts` is the single place that builds/parses these params; team and personal detail pages use it to render "← Back to tasks" (returning to the same list page) instead of "← Back to project". Entries from project / calendar / dashboard / notifications stay unchanged.
 
+Project detail pages (`/space/{spaceRef}/projects/{slug}`) carry tabs `?tab=tasks|activity` (default overview; parser in `lib/project-tab.ts`, tab row in `ProjectDetailTabs`). The tasks tab embeds the same kanban/list components with the project filter locked (`taskOrigin="project"`), so links from it carry `?from=project[&view=list&page&size]` and the detail pages render "← Back to project" back to `?tab=tasks` at the same view position (`projectTasksBackHref` in `lib/task-origin.ts`). The activity tab renders `project_activities` (append-only diff-based audit rows written in the services) merged with `project_comments` via `listProjectTimeline` (`features/projects/activities.ts`); comments are author-delete-only.
+
 ### Permission model (must follow)
 
 - **Every Server Action performs its own authorization** — never trust that a page merely hides the entry point; permission decisions are centralized in `features/teams` (`canEditTask({ role, actorId, assigneeId })`, etc.) and each feature's service.

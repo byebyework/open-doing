@@ -16,6 +16,8 @@ const TRUNCATE_TABLES = [
   "verifications",
   "notifications",
   "comments",
+  "project_activities",
+  "project_comments",
   "subtasks",
   "tasks",
   "team_invites",

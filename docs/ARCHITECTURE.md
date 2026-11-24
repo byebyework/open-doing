@@ -128,7 +128,7 @@ app/
 │       │   ├── calendar/page.tsx    # personal Calendar: month view + this-week / this-month lists (?month)
 │       │   ├── analysis/page.tsx    # personal Analysis: trends / backlog / on-time rate / project comparison (?range)
 │       │   ├── projects/[projectSlug]/
-│       │   │   └── page.tsx         # personal project page (overview only, owner only; tasks live in the tasks module)
+│       │   │   └── page.tsx         # personal project page (?tab=overview|tasks|activity, owner only; tasks tab embeds the tasks module components project-locked)
 │       │   └── tasks/[taskId]/page.tsx # personal task detail (incl. tasks in personal projects)
 │       ├── [teamSlug]/
 │       │   ├── dashboard/page.tsx   # team Dashboard: health + key milestones + member load
@@ -139,7 +139,7 @@ app/
 │       │   └── projects/
 │       │       ├── new/page.tsx      # create team project (edit/delete in project page header)
 │       │       └── [projectSlug]/
-│       │           ├── page.tsx      # team project page (overview only; tasks live in the tasks module)
+│       │           ├── page.tsx      # team project page (?tab=overview|tasks|activity; tasks tab embeds the tasks module components project-locked, activity tab = project_activities + project_comments timeline)
 │       │           └── tasks/[taskId]/ # team task detail
 └── api/
     └── cron/

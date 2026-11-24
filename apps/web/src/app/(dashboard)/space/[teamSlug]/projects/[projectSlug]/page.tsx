@@ -32,7 +32,6 @@ import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
 import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
 import { TasksViewTabs } from "@/features/kanban/components/TasksViewTabs";
-import { TeamTasksNewTaskButton } from "@/features/kanban/components/TeamTasksNewTaskButton";
 import {
   getOlderDoneTeamTasks,
   getTeamKanbanStats,
@@ -238,37 +237,25 @@ export default async function TeamProjectPage({
         className="mt-2"
         title={undefined}
         actions={
-          <>
-            <TeamProjectHeader
-              teamId={team.id}
-              project={{
-                id: project.id,
-                name: project.name,
-                description: project.description,
-                startDate: project.startDate,
-                endDate: project.endDate,
-                priority: project.priority,
-                status: project.status,
-                leadId: project.leadId,
-                memberIds: projectMembers.map((m) => m.id),
-                tags: project.tags,
-              }}
-              projects={projectOptions}
-              members={members}
-              actorId={user.id}
-              tagPool={taskTagPool}
-            />
-            {tab === "tasks" ? (
-              <TeamTasksNewTaskButton
-                teamId={team.id}
-                projects={projectOptions}
-                defaultProjectId={project.id}
-                members={members}
-                defaultAssigneeId={user.id}
-                tagPool={taskTagPool}
-              />
-            ) : null}
-          </>
+          <TeamProjectHeader
+            teamId={team.id}
+            project={{
+              id: project.id,
+              name: project.name,
+              description: project.description,
+              startDate: project.startDate,
+              endDate: project.endDate,
+              priority: project.priority,
+              status: project.status,
+              leadId: project.leadId,
+              memberIds: projectMembers.map((m) => m.id),
+              tags: project.tags,
+            }}
+            projects={projectOptions}
+            members={members}
+            actorId={user.id}
+            tagPool={taskTagPool}
+          />
         }
       />
 
