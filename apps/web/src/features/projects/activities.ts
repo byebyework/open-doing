@@ -1,0 +1,164 @@
+import { desc, eq, inArray } from "drizzle-orm";
+
+import { displayName, type ProjectActivityType } from "@open-doing/types";
+
+import type { DbClient } from "@/server/db/client";
+import { db } from "@/server/db/client";
+import {
+  projectActivities,
+  projectComments,
+  tags,
+  users,
+  type ProjectActivityPayload,
+} from "@/server/db/schema";
+
+/** 记录一条项目动态（append-only；调用方负责 diff 与鉴权）。 */
+export async function recordProjectActivity(
+  input: {
+    projectId: string;
+    actorId: string;
+    type: ProjectActivityType;
+    payload?: ProjectActivityPayload;
+  },
+  client: DbClient = db,
+): Promise<void> {
+  await client.insert(projectActivities).values({
+    projectId: input.projectId,
+    actorId: input.actorId,
+    type: input.type,
+    payload: input.payload ?? null,
+  });
+}
+
+/** 时间线条目：动态与评论合并后的判别联合（RSC → client 可序列化）。 */
+export type TimelineItem =
+  | {
+      kind: "activity";
+      id: string;
+      type: ProjectActivityType;
+      payload: ProjectActivityPayload | null;
+      createdAt: string;
+      actor: { id: string; name: string };
+    }
+  | {
+      kind: "comment";
+      id: string;
+      content: string;
+      createdAt: string;
+      author: { id: string; name: string };
+    };
+
+/**
+ * 项目时间线：动态 + 评论按 createdAt 倒序合并，取前 `limit` 条
+ * （缺省 100）。actor / author 显示名在读取时从 users 解析
+ * （与任务评论口径一致；用户删除随 FK 级联带走其动态）。
+ */
+export async function listProjectTimeline(
+  projectId: string,
+  options: { limit?: number } = {},
+  client: DbClient = db,
+): Promise<TimelineItem[]> {
+  const limit = options.limit ?? 100;
+
+  const [activities, comments] = await Promise.all([
+    client
+      .select()
+      .from(projectActivities)
+      .where(eq(projectActivities.projectId, projectId))
+      .orderBy(desc(projectActivities.createdAt))
+      .limit(limit),
+    client
+      .select()
+      .from(projectComments)
+      .where(eq(projectComments.projectId, projectId))
+      .orderBy(desc(projectComments.createdAt))
+      .limit(limit),
+  ]);
+
+  const userIds = [
+    ...new Set([
+      ...activities.map((row) => row.actorId),
+      ...comments.map((row) => row.authorId),
+    ]),
+  ];
+  const nameById = await resolveUserRefs(userIds, client).then((refs) =>
+    new Map(refs.map((ref) => [ref.id, ref.name])),
+  );
+
+  const items: TimelineItem[] = [
+    ...activities.map(
+      (row): TimelineItem => ({
+        kind: "activity",
+        id: row.id,
+        type: row.type,
+        payload: row.payload,
+        createdAt: row.createdAt.toISOString(),
+        actor: {
+          id: row.actorId,
+          name: nameById.get(row.actorId) ?? "",
+        },
+      }),
+    ),
+    ...comments.map(
+      (row): TimelineItem => ({
+        kind: "comment",
+        id: row.id,
+        content: row.content,
+        createdAt: row.createdAt.toISOString(),
+        author: {
+          id: row.authorId,
+          name: nameById.get(row.authorId) ?? "",
+        },
+      }),
+    ),
+  ];
+
+  items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return items.slice(0, limit);
+}
+
+/**
+ * 按入参顺序解析用户显示名（`users.name` 即 better-auth 的展示名）；
+ * 未知 id 丢弃。
+ */
+export async function resolveUserRefs(
+  ids: string[],
+  client: DbClient = db,
+): Promise<Array<{ id: string; name: string }>> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+
+  const rows = await client
+    .select({ id: users.id, nickname: users.name, username: users.username })
+    .from(users)
+    .where(inArray(users.id, unique));
+  const nameById = new Map(
+    rows.map((row) => [
+      row.id,
+      displayName({ nickname: row.nickname, username: row.username }),
+    ]),
+  );
+
+  return unique
+    .filter((id) => nameById.has(id))
+    .map((id) => ({ id, name: nameById.get(id)! }));
+}
+
+/** 按入参顺序解析标签名；未知 id 丢弃。 */
+export async function resolveTagRefs(
+  ids: string[],
+  client: DbClient = db,
+): Promise<Array<{ id: string; name: string }>> {
+  const unique = [...new Set(ids)];
+  if (unique.length === 0) return [];
+
+  const rows = await client
+    .select({ id: tags.id, name: tags.name })
+    .from(tags)
+    .where(inArray(tags.id, unique));
+  const nameById = new Map(rows.map((row) => [row.id, row.name]));
+
+  return unique
+    .filter((id) => nameById.has(id))
+    .map((id) => ({ id, name: nameById.get(id)! }));
+}
