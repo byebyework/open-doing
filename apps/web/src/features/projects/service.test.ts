@@ -235,6 +235,37 @@ describe.skipIf(!hasTestDatabase)("团队项目 service", () => {
     expect(members.map((m) => m.userId)).toEqual([member.id]);
   });
 
+  it("update：leadId 非空与 memberIds 一起提交时 leadId 生效（回归：编辑弹窗全量提交丢 lead）", async () => {
+    const { owner, team } = await setupTeam(db);
+    const memberA = await createUser(db, "lead-a");
+    const memberB = await createUser(db, "lead-b");
+    await addMember(db, team.id, memberA.id, "member");
+    await addMember(db, team.id, memberB.id, "member");
+
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Form Payload", leadId: memberA.id, memberIds: [memberA.id] },
+      db,
+    );
+
+    // ProjectForm 提交形状：leadId + memberIds 全量一起传。
+    const updated = await updateTeamProject(
+      {
+        teamId: team.id,
+        projectId: project.id,
+        actorId: owner.id,
+        leadId: memberB.id,
+        memberIds: [memberB.id, owner.id],
+      },
+      db,
+    );
+
+    expect(updated.leadId).toBe(memberB.id);
+    const [row] = await db.select().from(projects).where(eq(projects.id, project.id));
+    expect(row!.leadId).toBe(memberB.id);
+    const members = await db.select().from(projectMembers).where(eq(projectMembers.projectId, project.id));
+    expect(members.map((m) => m.userId).sort()).toEqual([memberB.id, owner.id].sort());
+  });
+
   it("删除项目级联清理任务、子任务、评论与通知；member 被拒绝", async () => {
     const { owner, team } = await setupTeam(db);
     const member = await createUser(db, "member");

@@ -1,5 +1,6 @@
 import type {
   Project,
+  ProjectActivityType,
   ProjectMemberRef,
   ProjectMilestone,
   ProjectStats,
@@ -26,6 +27,12 @@ import { projectMembers, projectMilestones, projectTags, projects, subtasks, tas
 import { assertCan, getMembership } from "@/features/teams/permissions";
 import { assertTagsAreProjectTags, assertTagsBelongToSpace, getTagsByIds, tagsByProjectId } from "@/features/tags/service";
 
+import {
+  recordProjectActivity,
+  resolveTagRefs,
+  resolveUserRefs,
+} from "./activities";
+
 // 限长常量唯一来源：features/projects/constants.ts（客户端安全）。
 // 服务端校验器仍在本模块（server-only），常量经重导出兼容既有引用。
 import {
@@ -46,6 +53,110 @@ export {
 
 type ProjectRow = typeof projects.$inferSelect;
 type MilestoneRow = typeof projectMilestones.$inferSelect;
+
+/** 标量字段 → 活动类型（diff 落动态的映射，spec §4）。 */
+const SCALAR_ACTIVITY_FIELDS: Array<{
+  field: "name" | "summary" | "description" | "startDate" | "endDate" | "priority" | "status";
+  type: ProjectActivityType;
+}> = [
+  { field: "name", type: "name" },
+  { field: "summary", type: "summary" },
+  { field: "description", type: "description" },
+  { field: "startDate", type: "start_date" },
+  { field: "endDate", type: "end_date" },
+  { field: "priority", type: "priority" },
+  { field: "status", type: "status" },
+];
+
+/** 集合相等（顺序无关）：无变化不落动态。 */
+function sameIdSet(a: string[], b: string[]): boolean {
+  return a.length === b.length && [...a].sort().join() === [...b].sort().join();
+}
+
+/** 成员 / 标签集合 diff：有变化才落一条 refs 快照行（按 name 稳定排序）。 */
+async function recordRefsDiffActivity(
+  input: {
+    projectId: string;
+    actorId: string;
+    type: "members" | "tags";
+    fromIds: string[];
+    toIds: string[];
+    resolve: (ids: string[], client: DbClient) => Promise<Array<{ id: string; name: string }>>;
+  },
+  client: DbClient,
+): Promise<void> {
+  if (sameIdSet(input.fromIds, input.toIds)) return;
+
+  const byName = (a: { name: string }, b: { name: string }) => a.name.localeCompare(b.name);
+  const [from, to] = await Promise.all([
+    input.resolve(input.fromIds, client),
+    input.resolve(input.toIds, client),
+  ]);
+  from.sort(byName);
+  to.sort(byName);
+
+  await recordProjectActivity(
+    {
+      projectId: input.projectId,
+      actorId: input.actorId,
+      type: input.type,
+      payload: { kind: "refs", from, to },
+    },
+    client,
+  );
+}
+
+/**
+ * 标量字段 + 负责人 diff 落动态：existing → row 实际变化的字段各一行
+ * （lead 用显示名快照，null = 清空）。
+ */
+async function recordProjectScalarDiffActivity(
+  input: { projectId: string; actorId: string; existing: ProjectRow; row: ProjectRow },
+  client: DbClient,
+): Promise<void> {
+  const { projectId, actorId, existing, row } = input;
+
+  for (const { field, type } of SCALAR_ACTIVITY_FIELDS) {
+    const from = existing[field];
+    const to = row[field];
+    if (from === to) continue;
+    await recordProjectActivity(
+      {
+        projectId,
+        actorId,
+        type,
+        payload: {
+          kind: "scalar",
+          from: (from as string | null) ?? null,
+          to: (to as string | null) ?? null,
+        },
+      },
+      client,
+    );
+  }
+
+  if (existing.leadId !== row.leadId) {
+    const ids = [existing.leadId, row.leadId].filter(
+      (id): id is string => id !== null,
+    );
+    const refs = await resolveUserRefs(ids, client);
+    const nameOf = (id: string | null): string | null =>
+      id === null ? null : refs.find((ref) => ref.id === id)?.name ?? null;
+    await recordProjectActivity(
+      {
+        projectId,
+        actorId,
+        type: "lead",
+        payload: {
+          kind: "scalar",
+          from: nameOf(existing.leadId),
+          to: nameOf(row.leadId),
+        },
+      },
+      client,
+    );
+  }
+}
 
 /** 数据库行 -> 可跨边界传递的领域 Project（时间统一为 ISO 字符串）。 */
 function toProject(row: ProjectRow, tags?: Project["tags"]): Project {
@@ -423,6 +534,11 @@ export async function createTeamProject(
         .onConflictDoNothing();
     }
 
+    await recordProjectActivity(
+      { projectId: inserted!.id, actorId: input.actorId, type: "created" },
+      tx,
+    );
+
     return inserted!;
   });
 
@@ -481,6 +597,21 @@ export async function updateTeamProject(
   if (!existing) {
     throw new DomainError("项目不存在或无权访问", undefined, { key: "projectNotFound" });
   }
+
+  // 活动 diff 的 before 快照：仅在对应字段被传入时读取（未传入即无 diff）。
+  const beforeMemberIds =
+    input?.memberIds !== undefined
+      ? (
+          await client
+            .select({ userId: projectMembers.userId })
+            .from(projectMembers)
+            .where(eq(projectMembers.projectId, input.projectId))
+        ).map((r) => r.userId)
+      : null;
+  const beforeTagIds =
+    input?.tagIds !== undefined
+      ? (await tagsByProjectId([input.projectId], client)).get(input.projectId)?.map((tag) => tag.id) ?? []
+      : null;
 
   const changes: Partial<
     Pick<
@@ -542,8 +673,12 @@ export async function updateTeamProject(
     await applyProjectMembers(input.projectId, finalMembers, client);
     if (input.leadId === null) {
       changes.leadId = null;
+    } else if (input.leadId !== undefined) {
+      // 显式指定新 lead（编辑弹窗全量提交 leadId + memberIds）：leadId 必须落库，
+      // 否则弹窗改负责人被静默丢弃。
+      changes.leadId = input.leadId;
     } else {
-      const effectiveLead = input.leadId !== undefined ? input.leadId : existing.leadId;
+      const effectiveLead = existing.leadId;
       if (effectiveLead && !finalMembers.includes(effectiveLead)) {
         changes.leadId = null;
       }
@@ -562,10 +697,37 @@ export async function updateTeamProject(
   }
 
   if (Object.keys(changes).length === 0) {
-    // 仅打标（无其他字段变更）：只写 project_tags，不触碰 projects 行。
+    // 仅打标 / 仅改成员（无标量字段变更）：只写 project_tags，不触碰 projects 行。
     if (input.tagIds !== undefined) {
       await applyProjectTags(
         { teamId: input.teamId, projectId: input.projectId, actorId: input.actorId, tagIds: Array.from(new Set(input.tagIds)) },
+        client,
+      );
+    }
+    // 标量与 lead 未变；成员 / 标签集合仍可能变化，各落一条 refs 快照行。
+    if (beforeMemberIds !== null && input.memberIds !== undefined) {
+      await recordRefsDiffActivity(
+        {
+          projectId: input.projectId,
+          actorId: input.actorId,
+          type: "members",
+          fromIds: beforeMemberIds,
+          toIds: input.memberIds,
+          resolve: resolveUserRefs,
+        },
+        client,
+      );
+    }
+    if (beforeTagIds !== null && input.tagIds !== undefined) {
+      await recordRefsDiffActivity(
+        {
+          projectId: input.projectId,
+          actorId: input.actorId,
+          type: "tags",
+          fromIds: beforeTagIds,
+          toIds: Array.from(new Set(input.tagIds)),
+          resolve: resolveTagRefs,
+        },
         client,
       );
     }
@@ -589,6 +751,39 @@ export async function updateTeamProject(
       client,
     );
   }
+
+  // 字段级活动：标量 + lead 按 row diff；成员 / 标签按 before 快照集合 diff。
+  await recordProjectScalarDiffActivity(
+    { projectId: row.id, actorId: input.actorId, existing, row },
+    client,
+  );
+  if (beforeMemberIds !== null && input.memberIds !== undefined) {
+    await recordRefsDiffActivity(
+      {
+        projectId: row.id,
+        actorId: input.actorId,
+        type: "members",
+        fromIds: beforeMemberIds,
+        toIds: input.memberIds,
+        resolve: resolveUserRefs,
+      },
+      client,
+    );
+  }
+  if (beforeTagIds !== null && input.tagIds !== undefined) {
+    await recordRefsDiffActivity(
+      {
+        projectId: row.id,
+        actorId: input.actorId,
+        type: "tags",
+        fromIds: beforeTagIds,
+        toIds: Array.from(new Set(input.tagIds)),
+        resolve: resolveTagRefs,
+      },
+      client,
+    );
+  }
+
   const tagsMap = await tagsByProjectId([row.id], client);
   return toProject(row, tagsMap.get(row.id) ?? []);
 }
@@ -631,6 +826,18 @@ export async function updateTeamProjectStatus(
     .set({ status })
     .where(and(eq(projects.id, project.id), eq(projects.teamId, input.teamId)))
     .returning();
+
+  if (project.status !== status) {
+    await recordProjectActivity(
+      {
+        projectId: project.id,
+        actorId: input.actorId,
+        type: "status",
+        payload: { kind: "scalar", from: project.status, to: status },
+      },
+      client,
+    );
+  }
 
   return toProject(row!);
 }
@@ -684,6 +891,16 @@ export async function addTeamProjectMilestone(
     })
     .returning();
 
+  await recordProjectActivity(
+    {
+      projectId: project.id,
+      actorId: input.actorId,
+      type: "milestone_added",
+      payload: { kind: "milestone_added", name: row!.name, dueDate: row!.dueDate },
+    },
+    client,
+  );
+
   return toMilestone(row!);
 }
 
@@ -703,11 +920,21 @@ export async function deleteTeamProjectMilestone(
         eq(projectMilestones.projectId, input.projectId),
       ),
     )
-    .returning({ id: projectMilestones.id });
+    .returning();
 
   if (!row) {
     throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
   }
+
+  await recordProjectActivity(
+    {
+      projectId: input.projectId,
+      actorId: input.actorId,
+      type: "milestone_removed",
+      payload: { kind: "milestone_removed", name: row.name },
+    },
+    client,
+  );
 }
 
 /**
@@ -770,6 +997,21 @@ export async function updateTeamProjectMilestone(
 
   const changes = validateMilestoneFields(input);
 
+  const [before] = await client
+    .select()
+    .from(projectMilestones)
+    .where(
+      and(
+        eq(projectMilestones.id, input.milestoneId),
+        eq(projectMilestones.projectId, input.projectId),
+      ),
+    )
+    .limit(1);
+
+  if (!before) {
+    throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
+  }
+
   const [row] = await client
     .update(projectMilestones)
     .set(changes)
@@ -784,6 +1026,36 @@ export async function updateTeamProjectMilestone(
   if (!row) {
     throw new DomainError("里程碑不存在或无权访问", "milestones", { key: "milestoneNotFound" });
   }
+
+  // 字段级 diff：name / dueDate / description 各落一行（值未变不记）。
+  const milestoneFieldDiffs: Array<{
+    field: "name" | "dueDate" | "description";
+    from: string | null;
+    to: string | null;
+  }> = [
+    { field: "name", from: before.name, to: row.name },
+    { field: "dueDate", from: before.dueDate, to: row.dueDate },
+    { field: "description", from: before.description, to: row.description },
+  ];
+  for (const diff of milestoneFieldDiffs) {
+    if (diff.from === diff.to) continue;
+    await recordProjectActivity(
+      {
+        projectId: input.projectId,
+        actorId: input.actorId,
+        type: "milestone_updated",
+        payload: {
+          kind: "milestone_updated",
+          name: row.name,
+          field: diff.field,
+          from: diff.from,
+          to: diff.to,
+        },
+      },
+      client,
+    );
+  }
+
   return toMilestone(row);
 }
 
