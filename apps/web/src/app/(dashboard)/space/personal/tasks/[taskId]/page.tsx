@@ -5,7 +5,7 @@ import { getTranslations } from "next-intl/server";
 import { requireUser } from "@/features/auth/session";
 import { listTags } from "@/features/tags/service";
 import { personalProjectHref, spaceDashboardHref } from "@/lib/routes";
-import { parseTaskOrigin, taskModuleBackHref } from "@/lib/task-origin";
+import { parseTaskOrigin, projectTasksBackHref, taskModuleBackHref } from "@/lib/task-origin";
 import { listPersonalProjects } from "@/features/personal/projects/service";
 import { TaskDetailClient } from "@/features/personal/tasks/components/TaskDetailClient";
 import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
@@ -48,7 +48,11 @@ export default async function PersonalTaskDetailPage({
     const projects = await listPersonalProjects(user.id);
     const project = projects.find((item) => item.id === task.projectId);
     if (project) {
-      backHref = personalProjectHref(project.slug);
+      const base = personalProjectHref(project.slug);
+      // 项目详情任务 tab 来源：回到 ?tab=tasks 同视图；否则回项目概览。
+      backHref = origin.fromProject
+        ? projectTasksBackHref(base, origin)
+        : base;
     }
   }
 

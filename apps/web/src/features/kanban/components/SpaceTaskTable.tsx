@@ -73,11 +73,12 @@ export interface SpaceTaskTableProps {
   role?: TeamRole;
   actorId?: string;
   /**
-   * 详情链接来源。传 `"tasks"` 时行标题链接带 `?from=tasks&view=list`
-   * （非首页再带 `page` / `size`），详情页据此把返回链接指回任务列表
-   * 同一页；RSC 只在任务模块传，其它入口保持「返回项目」。
+   * 详情链接来源。传 `"tasks"` 时行标题链接带 `?from=tasks&view=list`，
+   * 传 `"project"` 时带 `?from=project&view=list`（非首页再带 `page` /
+   * `size`），详情页据此把返回链接指回对应入口的列表同一页；RSC 按入口传，
+   * 其它入口保持「返回项目」。
    */
-  taskOrigin?: "tasks";
+  taskOrigin?: "tasks" | "project";
   /** URL `?page=` 解析出的初始页码（详情返回同一页时由 RSC 传入）。 */
   initialPage?: number;
   /** URL `?size=` 解析出的初始每页条数（白名单外由 RSC 过滤为 undefined）。 */
@@ -313,12 +314,13 @@ export function SpaceTaskTable({
   // 用户无法切回 10。
   const showPagination = visibleRows.length > DEFAULT_TASK_PAGE_SIZE;
 
-  /** 行标题链接：任务模块来源时带返回所需的来源参数（含当前页）。 */
+  /** 行标题链接：任务模块 / 项目任务 tab 来源时带返回所需的来源参数（含当前页）。 */
   function detailHref(taskId: string): string | undefined {
     const base = taskHrefs[taskId];
-    if (!base || taskOrigin !== "tasks") return base;
+    if (!base || (taskOrigin !== "tasks" && taskOrigin !== "project")) return base;
 
     return appendTaskOrigin(base, {
+      ...(taskOrigin === "project" ? { fromProject: true } : {}),
       view: "list",
       page: currentPage,
       pageSize,

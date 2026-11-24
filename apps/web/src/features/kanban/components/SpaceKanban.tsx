@@ -70,10 +70,11 @@ export interface SpaceKanbanProps {
   /** 当前 URL 筛选（project slug / 仅未指派），原样带给展开「更早」的 Server Action。 */
   expandFilter?: { projectSlug?: string; unassignedOnly?: boolean };
   /**
-   * 详情链接来源。传 `"tasks"` 时卡片链接带 `?from=tasks`（看板入口），
-   * 详情页据此把返回链接指回任务模块看板；RSC 只在任务模块传。
+   * 详情链接来源。传 `"tasks"` 时卡片链接带 `?from=tasks`（任务模块看板），
+   * 传 `"project"` 时带 `?from=project`（项目详情任务 tab 看板），
+   * 详情页据此把返回链接指回对应入口；RSC 按入口传，其它入口保持「返回项目」。
    */
-  taskOrigin?: "tasks";
+  taskOrigin?: "tasks" | "project";
 }
 
 /** 看板列顺序（导出给列表视图的状态按钮组共用）。 */
@@ -651,13 +652,17 @@ export function SpaceKanban({
   const tKanban = useTranslations("kanban");
   const isDesktop = useIsDesktop();
 
-  // 任务模块来源：卡片链接统一带 `?from=tasks`（详情页「← 返回任务」回落看板）。
+  // 来源入口：卡片链接统一带来源参数（任务模块 → 「← 返回任务」；
+  // 项目任务 tab → 「← 返回项目」回到 tab=tasks 看板）。
   const cardHrefs =
-    taskOrigin === "tasks"
+    taskOrigin === "tasks" || taskOrigin === "project"
       ? Object.fromEntries(
           Object.entries(taskHrefs).map(([id, href]) => [
             id,
-            appendTaskOrigin(href),
+            appendTaskOrigin(
+              href,
+              taskOrigin === "project" ? { fromProject: true } : {},
+            ),
           ]),
         )
       : taskHrefs;

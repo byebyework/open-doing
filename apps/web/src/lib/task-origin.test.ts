@@ -5,6 +5,7 @@ import {
   parseTaskOrigin,
   parseTaskPage,
   parseTaskPageSize,
+  projectTasksBackHref,
   taskModuleBackHref,
 } from "./task-origin";
 
@@ -34,6 +35,7 @@ describe("parseTaskOrigin", () => {
   it("无 from=tasks 时视为项目来源", () => {
     expect(parseTaskOrigin({})).toEqual({
       fromTasks: false,
+      fromProject: false,
       view: null,
       page: null,
       pageSize: null,
@@ -46,6 +48,7 @@ describe("parseTaskOrigin", () => {
       parseTaskOrigin({ from: "tasks", view: "list", page: "2", size: "20" }),
     ).toEqual({
       fromTasks: true,
+      fromProject: false,
       view: "list",
       page: 2,
       pageSize: 20,
@@ -55,6 +58,7 @@ describe("parseTaskOrigin", () => {
   it("看板来源没有 view / 分页参数", () => {
     expect(parseTaskOrigin({ from: "tasks" })).toEqual({
       fromTasks: true,
+      fromProject: false,
       view: null,
       page: null,
       pageSize: null,
@@ -66,6 +70,7 @@ describe("parseTaskOrigin", () => {
       parseTaskOrigin({ from: "tasks", view: "board", page: "x", size: "30" }),
     ).toEqual({
       fromTasks: true,
+      fromProject: false,
       view: null,
       page: null,
       pageSize: null,
@@ -106,6 +111,7 @@ describe("taskModuleBackHref", () => {
     expect(
       taskModuleBackHref("growth-squad", {
         fromTasks: true,
+        fromProject: false,
         view: "list",
         page: 2,
         pageSize: 20,
@@ -117,6 +123,7 @@ describe("taskModuleBackHref", () => {
     expect(
       taskModuleBackHref("personal", {
         fromTasks: true,
+        fromProject: false,
         view: null,
         page: null,
         pageSize: null,
@@ -128,10 +135,70 @@ describe("taskModuleBackHref", () => {
     expect(
       taskModuleBackHref("personal", {
         fromTasks: false,
+        fromProject: false,
         view: null,
         page: null,
         pageSize: null,
       }),
     ).toBe("/space/personal/tasks");
+  });
+});
+
+describe("from=project origin", () => {
+  it("parseTaskOrigin 解析 from=project 连同 view/page/size", () => {
+    expect(
+      parseTaskOrigin({ from: "project", view: "list", page: "2", size: "20" }),
+    ).toEqual({
+      fromTasks: false,
+      fromProject: true,
+      view: "list",
+      page: 2,
+      pageSize: 20,
+    });
+  });
+
+  it("appendTaskOrigin fromProject 优先于 fromTasks", () => {
+    expect(
+      appendTaskOrigin("/space/personal/projects/p", {
+        fromTasks: true,
+        fromProject: true,
+        view: "list",
+        page: 2,
+        pageSize: 20,
+      }),
+    ).toBe("/space/personal/projects/p?from=project&view=list&page=2&size=20");
+  });
+
+  it("projectTasksBackHref 看板来源 → ?tab=tasks；列表来源带 view/page/size", () => {
+    expect(
+      projectTasksBackHref("/space/personal/projects/p", {
+        fromTasks: false,
+        fromProject: true,
+        view: null,
+        page: null,
+        pageSize: null,
+      }),
+    ).toBe("/space/personal/projects/p?tab=tasks");
+    expect(
+      projectTasksBackHref("/space/growth-squad/projects/p", {
+        fromTasks: false,
+        fromProject: true,
+        view: "list",
+        page: 2,
+        pageSize: 20,
+      }),
+    ).toBe("/space/growth-squad/projects/p?tab=tasks&view=list&page=2&size=20");
+  });
+
+  it("fromProject=false 时 projectTasksBackHref 原样返回", () => {
+    expect(
+      projectTasksBackHref("/space/personal/projects/p", {
+        fromTasks: false,
+        fromProject: false,
+        view: null,
+        page: null,
+        pageSize: null,
+      }),
+    ).toBe("/space/personal/projects/p");
   });
 });

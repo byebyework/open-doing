@@ -16,7 +16,7 @@ import { getTeamTaskDetail } from "@/features/tasks/service";
 import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
 import { teamProjectHref } from "@/lib/routes";
-import { parseTaskOrigin, taskModuleBackHref } from "@/lib/task-origin";
+import { parseTaskOrigin, projectTasksBackHref, taskModuleBackHref } from "@/lib/task-origin";
 
 interface TeamTaskDetailPageProps {
   /** Next 16：动态路由参数为 Promise，必须 await。 */
@@ -92,7 +92,9 @@ export default async function TeamTaskDetailPage({
       backHref={
         origin.fromTasks
           ? taskModuleBackHref(team.slug, origin)
-          : teamProjectHref(team.slug, project.slug)
+          : origin.fromProject
+            ? projectTasksBackHref(teamProjectHref(team.slug, project.slug), origin)
+            : teamProjectHref(team.slug, project.slug)
       }
       backLabel={origin.fromTasks ? t("backToTasks") : undefined}
       currentUserId={user.id}
