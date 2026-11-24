@@ -114,18 +114,20 @@ test.describe("flow 19: 项目详情 tabs", () => {
       timeout: 30_000,
     });
 
-    // 切任务 tab 并新建任务。
+    // 切任务 tab，新建 11 个任务（超过单页容量才出分页行）。
     await page.locator('[role="tab"][data-value="tasks"]').click();
     await expect(page).toHaveURL(/tab=tasks/);
-    await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
-    const dialog = page.getByRole("dialog");
-    await expect(dialog).toBeVisible();
-    await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(taskTitle);
-    await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
-    await expect(dialog).toBeHidden();
+    for (let i = 0; i < 11; i += 1) {
+      await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
+      const dialog = page.getByRole("dialog");
+      await expect(dialog).toBeVisible();
+      await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(`${taskTitle} ${i}`);
+      await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
+      await expect(dialog).toBeHidden();
+    }
     // 双面板常驻挂载：标题同时存在于看板卡与列表行，限定活动面板断言。
     await expect(
-      page.getByTestId("tasks-view-panel-board").getByText(taskTitle),
+      page.getByTestId("tasks-view-panel-board").getByText(`${taskTitle} 0`),
     ).toBeVisible({ timeout: 30_000 });
 
     // 列表视图（客户端 replaceState：tab=tasks 保留）。
@@ -133,8 +135,23 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(page).toHaveURL(/view=list/);
     await expect(page).toHaveURL(/tab=tasks/);
 
-    // 打开任务详情：来源参数 from=project + view=list。
-    // 双面板常驻：看板卡的链接在列表视图下不可见，限定列表面板取行链接。
+    // 每页条数改 50：交互变化写回 URL（replaceState），tab 保留。
+    await page.getByTestId("task-list-page-size").click();
+    await page.getByTestId("task-list-page-size-50").click();
+    await expect(page).toHaveURL(/size=50/);
+    await expect(page).toHaveURL(/tab=tasks/);
+
+    // 切回每页 10 条并翻到第 2 页：page 写回 URL。
+    await page.getByTestId("task-list-page-size").click();
+    await page.getByTestId("task-list-page-size-10").click();
+    await expect(page).not.toHaveURL(/size=/);
+    await page.getByTestId("task-list-page-next").click();
+    await expect(page).toHaveURL(/page=2/);
+    await expect(page).toHaveURL(/tab=tasks/);
+
+    // 打开第 2 页的任务详情：来源参数 from=project + view=list + page=2。
+    // 双面板常驻：看板卡的链接在列表视图下不可见，限定列表面板取行链接；
+    // 第 2 页只有 1 行（11 任务 / 每页 10 条），列表面板内标题链接唯一。
     await page
       .getByTestId("tasks-view-panel-list")
       .locator("a")
@@ -143,14 +160,17 @@ test.describe("flow 19: 项目详情 tabs", () => {
       .click();
     await expect(page).toHaveURL(/from=project/);
     await expect(page).toHaveURL(/view=list/);
+    await expect(page).toHaveURL(/page=2/);
 
-    // 返回链接回项目任务 tab 同视图。
+    // 返回链接回项目任务 tab 同视图同页。
     const back = page.getByRole("link", { name: "返回项目" });
     await expect(back).toHaveAttribute("href", /tab=tasks/);
     await expect(back).toHaveAttribute("href", /view=list/);
+    await expect(back).toHaveAttribute("href", /page=2/);
     await back.click();
     await expect(page).toHaveURL(/tab=tasks/);
     await expect(page).toHaveURL(/view=list/);
+    await expect(page).toHaveURL(/page=2/);
     await expect(page.getByTestId("tasks-view-tab-list")).toBeVisible();
   });
 });

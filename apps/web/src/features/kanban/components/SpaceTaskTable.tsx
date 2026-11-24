@@ -205,15 +205,29 @@ export function SpaceTaskTable({
 
   const taskRows: TaskRow[] = rows;
 
-  // 分页：客户端切片（行数据本来就整批由 RSC 取回）。页码 / 每页条数只在
-  // 组件内维护，不进 URL；详情链接把它们作为来源参数带出去，返回时由
-  // RSC 读 `?page` / `?size` 还原（见 lib/task-origin）。
+  // 分页：客户端切片（行数据本来就整批由 RSC 取回）。页码 / 每页条数变化时
+  // 经 replaceState 写回 URL（不触发 RSC；先例 TasksViewTabs 的 view 同步）：
+  // 详情链接把它们作为来源参数带出去，项目详情任务 tab 切走再切回时由 RSC
+  // 读 `?page` / `?size` 还原位置（见 lib/task-origin / lib/project-tab）。
   const [page, setPage] = useState(() =>
     initialPage != null && initialPage > 0 ? initialPage : 1,
   );
   const [pageSize, setPageSize] = useState<TaskPageSize>(
     initialPageSize ?? DEFAULT_TASK_PAGE_SIZE,
   );
+
+  /** 分页状态 → URL（只动 page / size，tab / view 等参数原样保留）。 */
+  function syncPagingToUrl(nextPage: number, nextSize: TaskPageSize): void {
+    const url = new URL(window.location.href);
+    if (nextPage > 1) url.searchParams.set("page", String(nextPage));
+    else url.searchParams.delete("page");
+    if (nextSize !== DEFAULT_TASK_PAGE_SIZE) {
+      url.searchParams.set("size", String(nextSize));
+    } else {
+      url.searchParams.delete("size");
+    }
+    window.history.replaceState(null, "", url);
+  }
 
   // 服务端刷新（router.refresh）后以最新 props 为准；渲染期同步 props → state
   // 是 React 推荐写法（同 SpaceKanban），避免 effect 多跑一轮渲染。行集合
@@ -521,6 +535,7 @@ export function SpaceTaskTable({
                   onSelect={() => {
                     setPageSize(size);
                     setPage(1);
+                    syncPagingToUrl(1, size);
                   }}
                 >
                   <span className="flex-1">
@@ -550,7 +565,11 @@ export function SpaceTaskTable({
               aria-label={t("prevPageAria")}
               data-testid="task-list-page-prev"
               disabled={currentPage <= 1}
-              onClick={() => setPage(Math.max(1, currentPage - 1))}
+              onClick={() => {
+                const next = Math.max(1, currentPage - 1);
+                setPage(next);
+                syncPagingToUrl(next, pageSize);
+              }}
             >
               <ChevronLeftIcon className="size-4" aria-hidden="true" />
             </Button>
@@ -561,9 +580,11 @@ export function SpaceTaskTable({
               aria-label={t("nextPageAria")}
               data-testid="task-list-page-next"
               disabled={currentPage >= totalPages}
-              onClick={() =>
-                setPage(Math.min(totalPages, currentPage + 1))
-              }
+              onClick={() => {
+                const next = Math.min(totalPages, currentPage + 1);
+                setPage(next);
+                syncPagingToUrl(next, pageSize);
+              }}
             >
               <ChevronRightIcon className="size-4" aria-hidden="true" />
             </Button>

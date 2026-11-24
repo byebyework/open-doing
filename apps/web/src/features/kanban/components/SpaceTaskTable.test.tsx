@@ -955,4 +955,67 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
       bodyRows()[0]?.querySelector("a")?.getAttribute("href"),
     ).toBe(`/personal/tasks/${rowA.id}`);
   });
+
+  it("分页 / 每页条数写回 URL（replaceState，保留 tab 等其它参数）", () => {
+    // 项目详情任务 tab 的切 tab 还原依赖 URL 携带 page / size（focus 1）。
+    window.history.replaceState(
+      null,
+      "",
+      "/space/personal/projects/p?tab=tasks&view=list",
+    );
+    const replaceSpy = vi.spyOn(window.history, "replaceState");
+
+    try {
+      const rows = twelveRows();
+      renderTable(
+        <SpaceTaskTable
+          variant="personal"
+          rows={rows}
+          today={TODAY}
+          taskHrefs={Object.fromEntries(
+            rows.map((row) => [row.id, `/space/personal/tasks/${row.id}`]),
+          )}
+          taskOrigin="project"
+        />,
+      );
+
+      clickPageControl("task-list-page-next");
+      let url = replaceSpy.mock.calls.at(-1)?.[2] as URL;
+      expect(url.searchParams.get("page")).toBe("2");
+      expect(url.searchParams.get("tab")).toBe("tasks");
+      expect(url.searchParams.get("view")).toBe("list");
+
+      clickPageControl("task-list-page-prev");
+      url = replaceSpy.mock.calls.at(-1)?.[2] as URL;
+      expect(url.searchParams.get("page")).toBeNull();
+      expect(url.searchParams.get("tab")).toBe("tasks");
+
+      // 每页 20 条：size 写入并把页码重置回第 1 页（删 page）。
+      const trigger = document.querySelector<HTMLButtonElement>(
+        '[data-testid="task-list-page-size"]',
+      );
+      if (!trigger) throw new Error("missing page size trigger");
+      act(() => {
+        trigger.dispatchEvent(
+          new MouseEvent("pointerdown", { bubbles: true, cancelable: true }),
+        );
+      });
+      const option = document.body.querySelector<HTMLElement>(
+        '[data-testid="task-list-page-size-20"]',
+      );
+      if (!option) throw new Error("missing page size option");
+      act(() => {
+        option.dispatchEvent(
+          new MouseEvent("click", { bubbles: true, cancelable: true }),
+        );
+      });
+      url = replaceSpy.mock.calls.at(-1)?.[2] as URL;
+      expect(url.searchParams.get("size")).toBe("20");
+      expect(url.searchParams.get("page")).toBeNull();
+      expect(url.searchParams.get("tab")).toBe("tasks");
+    } finally {
+      replaceSpy.mockRestore();
+      window.history.replaceState(null, "", "/");
+    }
+  });
 });
