@@ -87,15 +87,34 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await page.getByRole("button", { name: "发表评论" }).click();
     await expect(page.getByText(commentText)).toBeVisible({ timeout: 30_000 });
 
+    // 线程默认收起：0 回复 pill「回复」；点开出现线程底部回复输入框。
+    const toggle = page.getByTestId("thread-replies-toggle");
+    await expect(toggle).toContainText("回复");
+    await toggle.click();
+    const replyBox = page.getByLabel("回复内容");
+    await expect(replyBox).toBeVisible();
+    await expect(replyBox).toHaveAttribute("rows", "6");
+
+    const replyText = "e2e thread reply";
+    await replyBox.fill(replyText);
+    // 主输入区空稿时提交按钮也存在：把发表按钮限定在线程块（ul）内。
+    await page
+      .locator("ul")
+      .getByRole("button", { name: "发表评论" })
+      .click();
+    await expect(page.getByText(replyText)).toBeVisible({ timeout: 30_000 });
+    await expect(toggle).toContainText("1 条回复");
+
     // 侧栏改状态（动态 tab 侧栏常驻）→ 时间线出现状态变更行。
     await page.getByTestId("properties-status-pill").click();
     await page.getByTestId("project-status-option-planned").click();
     await expect(page.getByText("将状态从")).toBeVisible({ timeout: 30_000 });
 
-    // 作者删除评论 → 消失；状态动态行保留（动态不可删）。
+    // 作者删除根评论 → 级联回复一并消失；状态动态行保留（动态不可删）。
     const commentRow = page.locator("li").filter({ hasText: commentText });
-    await commentRow.getByRole("button", { name: "删除" }).click();
+    await commentRow.getByRole("button", { name: "删除" }).first().click();
     await expect(page.getByText(commentText)).toBeHidden({ timeout: 30_000 });
+    await expect(page.getByText(replyText)).toBeHidden({ timeout: 30_000 });
     await expect(page.getByText("将状态从")).toBeVisible();
   });
 
