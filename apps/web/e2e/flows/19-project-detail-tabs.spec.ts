@@ -9,20 +9,20 @@ import {
 } from "../utils/flows";
 
 /**
- * 关键流 19：项目详情 tabs（概览 / 任务 / 动态）。
+ * 关键流 19：项目详情 tabs（概览 / 任务 / 动态，任务 tab 为纯列表）。
  *
- * 覆盖（对照实现计划 Task 10、spec 验收清单）：
- * 1. 个人项目三 tab 可达、缺省概览；任务 tab 内嵌统计 chip + 双视图，
- *    chip 切换保留 `tab=tasks`；
+ * 覆盖（对照实现计划 Task 6、spec 验收清单）：
+ * 1. 个人项目三 tab 可达、缺省概览；任务 tab 只有列表 + 状态/优先级筛选
+ *    （无看板 / 无统计 chip）；筛选写进 URL 且切 tab 往返后仍生效；
  * 2. 动态 tab：发评论 → 出现；侧栏改状态 → 状态动态出现；删评论（作者）
  *    → 消失，动态行无删除入口；
- * 3. 团队项目：任务 tab 建任务；列表视图打开任务详情，返回链接携带
- *    `tab=tasks&view=list` 并回到原视图。
+ * 3. 团队项目：任务 tab 建任务；列表打开任务详情，返回链接携带
+ *    `tab=tasks&view=list&page` 并回到原页。
  */
 test.describe.configure({ timeout: 120_000 });
 
 test.describe("flow 19: 项目详情 tabs", () => {
-  test("个人项目：tab 切换、统计 chip 保 tab、动态评论与状态时间线", async ({
+  test("个人项目：纯列表任务 tab + 筛选 URL 往返、动态评论与状态时间线", async ({
     page,
   }) => {
     const username = uniqueUsername("e2e_prj19");
@@ -52,22 +52,36 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(activityTab).toBeVisible();
     await expect(overviewTab).toHaveAttribute("data-state", "active");
 
-    // 任务 tab：内嵌统计 chip 与看板 / 列表双视图。
+    // 任务 tab：纯列表——只有状态/优先级筛选，没有看板切换与统计 chip。
     await tasksTab.click();
     await expect(page).toHaveURL(/tab=tasks/);
-    await expect(page.locator('[data-filter="overdue"]')).toBeVisible();
-    await expect(page.getByTestId("tasks-view-tab-board")).toBeVisible();
+    await expect(page.getByTestId("task-filter-status")).toBeVisible();
+    await expect(page.getByTestId("task-filter-priority")).toBeVisible();
+    await expect(page.getByTestId("tasks-view-tab-board")).toHaveCount(0);
+    await expect(page.locator('[data-filter="overdue"]')).toHaveCount(0);
 
-    // 统计 chip 切换保留 tab=tasks（KanbanStatStrip preserveParams）。
-    await page.locator('[data-filter="overdue"]').click();
+    // 状态筛选写进 URL 且保留 tab。
+    await page.getByTestId("task-filter-status").click();
+    await page.getByTestId("task-filter-status-option-in_progress").click();
+    await expect(page).toHaveURL(/status=in_progress/);
     await expect(page).toHaveURL(/tab=tasks/);
-    await expect(page).toHaveURL(/overdue=1/);
 
-    // 动态 tab：评论输入区 + 发表评论。
+    // 切到动态再切回：URL 仍带筛选，触发器回显已选值（重挂从 URL 还原）。
+    await activityTab.click();
+    await expect(page).toHaveURL(/tab=activity/);
+    await tasksTab.click();
+    await expect(page).toHaveURL(/tab=tasks/);
+    await expect(page).toHaveURL(/status=in_progress/);
+    await expect(page.getByTestId("task-filter-status")).toContainText(
+      "进行中",
+    );
+
+    // 动态 tab：评论输入区（rows=6）+ 发表评论。
     await activityTab.click();
     await expect(page).toHaveURL(/tab=activity/);
     const composer = page.getByLabel("评论内容");
     await expect(composer).toBeVisible();
+    await expect(composer).toHaveAttribute("rows", "6");
     const commentText = "e2e timeline comment";
     await composer.fill(commentText);
     await page.getByRole("button", { name: "发表评论" }).click();
@@ -85,7 +99,7 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(page.getByText("将状态从")).toBeVisible();
   });
 
-  test("团队项目：任务 tab 建任务，列表详情回跳保 tab 与 view", async ({
+  test("团队项目：任务 tab 建任务，列表详情回跳保 tab 与 page", async ({
     page,
   }) => {
     const username = uniqueUsername("e2e_prj19t");
@@ -125,15 +139,11 @@ test.describe("flow 19: 项目详情 tabs", () => {
       await dialog.getByTestId(TEST_IDS.tasks.createSubmitButton).click();
       await expect(dialog).toBeHidden();
     }
-    // 双面板常驻挂载：标题同时存在于看板卡与列表行，限定活动面板断言。
-    await expect(
-      page.getByTestId("tasks-view-panel-board").getByText(`${taskTitle} 0`),
-    ).toBeVisible({ timeout: 30_000 });
-
-    // 列表视图（客户端 replaceState：tab=tasks 保留）。
-    await page.getByTestId("tasks-view-tab-list").click();
-    await expect(page).toHaveURL(/view=list/);
-    await expect(page).toHaveURL(/tab=tasks/);
+    // 纯列表：第一页直接可见（无看板卡 / 无双面板）。
+    // 列表按创建倒序分页（10..1 在第 1 页，…0 在第 2 页），断首行。
+    await expect(page.getByText(`${taskTitle} 10`)).toBeVisible({
+      timeout: 30_000,
+    });
 
     // 每页条数改 50：交互变化写回 URL（replaceState），tab 保留。
     await page.getByTestId("task-list-page-size").click();
@@ -150,10 +160,8 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(page).toHaveURL(/tab=tasks/);
 
     // 打开第 2 页的任务详情：来源参数 from=project + view=list + page=2。
-    // 双面板常驻：看板卡的链接在列表视图下不可见，限定列表面板取行链接；
-    // 第 2 页只有 1 行（11 任务 / 每页 10 条），列表面板内标题链接唯一。
+    // 第 2 页只有 1 行（11 任务 / 每页 10 条），标题链接唯一。
     await page
-      .getByTestId("tasks-view-panel-list")
       .locator("a")
       .filter({ hasText: taskTitle })
       .first()
@@ -171,6 +179,6 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(page).toHaveURL(/tab=tasks/);
     await expect(page).toHaveURL(/view=list/);
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByTestId("tasks-view-tab-list")).toBeVisible();
+    await expect(page.getByTestId("task-filter-status")).toBeVisible();
   });
 });
