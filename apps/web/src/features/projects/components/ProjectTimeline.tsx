@@ -99,25 +99,38 @@ export function ProjectTimeline({
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   // 线程收展：Set 存已展开的根评论 id；组件本地态，不进 URL（重挂回默认收起）。
+  // 草稿按根评论分区——多线程可同时展开，共享草稿会串台/互清。
   const [expandedThreads, setExpandedThreads] = useState<Set<string>>(new Set());
-  const [replyDraft, setReplyDraft] = useState("");
-  const [replySubmitting, setReplySubmitting] = useState(false);
+  const [replyDrafts, setReplyDrafts] = useState<Record<string, string>>({});
+  const [replySubmittingRoot, setReplySubmittingRoot] = useState<string | null>(null);
 
   function toggleThread(rootId: string) {
+    // 收展不清草稿：误点 pill 不丢已输入的回复。
     setExpandedThreads((current) => {
       const next = new Set(current);
       if (next.has(rootId)) next.delete(rootId);
       else next.add(rootId);
       return next;
     });
-    setReplyDraft("");
+  }
+
+  function setThreadDraft(rootId: string, value: string) {
+    setReplyDrafts((current) => ({ ...current, [rootId]: value }));
+  }
+
+  function clearThreadDraft(rootId: string) {
+    setReplyDrafts((current) => {
+      const next = { ...current };
+      delete next[rootId];
+      return next;
+    });
   }
 
   async function handleReplySubmit(rootId: string) {
-    const content = replyDraft.trim();
-    if (!content || replySubmitting) return;
+    const content = (replyDrafts[rootId] ?? "").trim();
+    if (!content || replySubmittingRoot) return;
 
-    setReplySubmitting(true);
+    setReplySubmittingRoot(rootId);
     try {
       const result = await addProjectCommentAction({
         projectId,
@@ -129,12 +142,12 @@ export function ProjectTimeline({
         return;
       }
       // 发完保持展开：用户正处在该线程的对话里。
-      setReplyDraft("");
+      clearThreadDraft(rootId);
       router.refresh();
     } catch {
       toast.error(tCommon("networkError"));
     } finally {
-      setReplySubmitting(false);
+      setReplySubmittingRoot(null);
     }
   }
 
@@ -429,30 +442,41 @@ export function ProjectTimeline({
                     {/* 回复输入固定在线程最底部（Linear 同构）。 */}
                     <div className="mt-3">
                       <Textarea
-                        value={replyDraft}
+                        value={replyDrafts[item.id] ?? ""}
                         rows={6}
                         maxLength={COMMENT_MAX_LENGTH}
                         aria-label={t("replyAria")}
                         placeholder={t("replyPlaceholder")}
-                        disabled={replySubmitting}
-                        onChange={(event) => setReplyDraft(event.target.value)}
+                        disabled={replySubmittingRoot === item.id}
+                        onChange={(event) =>
+                          setThreadDraft(item.id, event.target.value)
+                        }
                       />
-                      <CharCounter value={replyDraft} max={COMMENT_MAX_LENGTH} />
+                      <CharCounter
+                        value={replyDrafts[item.id] ?? ""}
+                        max={COMMENT_MAX_LENGTH}
+                      />
                       <div className="mt-2.5 flex justify-end gap-2">
                         <Button
                           variant="outline"
-                          disabled={replySubmitting || replyDraft.length === 0}
-                          onClick={() => setReplyDraft("")}
+                          disabled={
+                            replySubmittingRoot === item.id ||
+                            (replyDrafts[item.id] ?? "").length === 0
+                          }
+                          onClick={() => clearThreadDraft(item.id)}
                         >
                           {tCommon("cancel")}
                         </Button>
                         <Button
-                          disabled={replySubmitting || !replyDraft.trim()}
+                          disabled={
+                            replySubmittingRoot === item.id ||
+                            !(replyDrafts[item.id] ?? "").trim()
+                          }
                           onClick={() => {
                             void handleReplySubmit(item.id);
                           }}
                         >
-                          {replySubmitting ? (
+                          {replySubmittingRoot === item.id ? (
                             <Loader2Icon className="animate-spin" aria-hidden="true" />
                           ) : null}
                           {t("postComment")}

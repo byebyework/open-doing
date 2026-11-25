@@ -355,4 +355,58 @@ describe("ProjectTimeline", () => {
     // 展开：根 + 自己的回复有删除；别人的回复没有 → 共2。
     expect(deleteButtons()).toHaveLength(2);
   });
+
+  it("多线程同时展开：回复草稿按线程独立，切换收展不清空其它线程的草稿", async () => {
+    const mkRoot = (id: string, content: string): TimelineItem => ({
+      kind: "comment",
+      id,
+      content,
+      createdAt: "2026-11-24T03:00:00.000Z",
+      author: { id: "u1", name: "林夏" },
+      replies: [],
+    });
+    render([mkRoot("c1", "线程A"), mkRoot("c2", "线程B")]);
+
+    const toggles = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="thread-replies-toggle"]',
+      ),
+    );
+    expect(toggles).toHaveLength(2);
+    await act(async () => {
+      toggles[0].click();
+      toggles[1].click();
+    });
+
+    const textareas = Array.from(
+      container.querySelectorAll<HTMLTextAreaElement>("ul textarea"),
+    );
+    expect(textareas).toHaveLength(2);
+
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLTextAreaElement.prototype,
+      "value",
+    )!.set!;
+    setter.call(textareas[0], "A 的草稿");
+    textareas[0].dispatchEvent(new Event("input", { bubbles: true }));
+
+    // 线程 A 的输入不串到线程 B。
+    expect(textareas[0].value).toBe("A 的草稿");
+    expect(textareas[1].value).toBe("");
+
+    // 收起再展开线程 B：不清空线程 A 的草稿。
+    const togglesAfter = Array.from(
+      container.querySelectorAll<HTMLButtonElement>(
+        '[data-testid="thread-replies-toggle"]',
+      ),
+    );
+    await act(async () => {
+      togglesAfter[1].click();
+      togglesAfter[1].click();
+    });
+    const textareasAfter = Array.from(
+      container.querySelectorAll<HTMLTextAreaElement>("ul textarea"),
+    );
+    expect(textareasAfter[0].value).toBe("A 的草稿");
+  });
 });
