@@ -28,11 +28,14 @@ describe("ProjectDetailLayout", () => {
     window.localStorage.clear();
   });
 
-  function render(): void {
+  function render(mainKey?: string): void {
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
-          <ProjectDetailLayout sidebar={<div data-testid="side" />}>
+          <ProjectDetailLayout
+            sidebar={<div data-testid="side" />}
+            mainKey={mainKey}
+          >
             <div data-testid="main" />
           </ProjectDetailLayout>
         </NextIntlClientProvider>,
@@ -68,5 +71,26 @@ describe("ProjectDetailLayout", () => {
     expect(shownWrapper.className).not.toContain("max-w-[976px]");
     expect(shownWrapper.className).not.toContain("mx-auto");
     expect(shownWrapper.className).toContain("grid");
+  });
+
+  it("mainKey 变化：主列重挂做入场，侧栏 DOM 节点不重挂", () => {
+    window.localStorage.setItem("project-detail-sidebar-hidden", "0");
+    render("overview");
+
+    const sideBefore = container.querySelector('[data-testid="side"]');
+    // mainKey 挂在主列 motion.div 上（testid 的直接父节点），不是外层分支容器。
+    const mainMotionBefore = container.querySelector(
+      '[data-testid="main"]',
+    )!.parentElement;
+    expect(sideBefore).not.toBeNull();
+
+    render("tasks");
+
+    // 侧栏是常驻 chrome：同一 DOM 节点（layout 未重挂）。
+    expect(container.querySelector('[data-testid="side"]')).toBe(sideBefore);
+    // 主列 motion.div 随 mainKey 重挂（入场重放仅限主列）。
+    expect(
+      container.querySelector('[data-testid="main"]')!.parentElement,
+    ).not.toBe(mainMotionBefore);
   });
 });

@@ -6,18 +6,24 @@ import { useTranslations } from "next-intl";
 import { Children, useEffect, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/shadcn/button";
+import { OD_EASE } from "@/components/ui/overlay-motion";
 
 export interface ProjectDetailLayoutProps {
   /** 右侧栏内容（Properties + Milestones 卡）。 */
   sidebar: ReactNode;
   /** 主列内容（概览面板）。 */
   children: ReactNode;
+  /**
+   * 主列内容的换页 key（tab 切换传 `tab`）：只重挂主列做入场，
+   * 侧栏是常驻 chrome 不随 tab 重放级联。
+   */
+  mainKey?: string;
 }
 
 const SIDEBAR_HIDDEN_KEY = "project-detail-sidebar-hidden";
 
 /** 主列与侧栏卡片入场：与站内动效语言一致（快、克制、无过冲）。 */
-const VIEW_TRANSITION = { duration: 0.2, ease: "easeOut" as const };
+const VIEW_TRANSITION = { duration: 0.2, ease: OD_EASE.decelerate };
 
 /** 侧栏卡片级联间隔：Properties → Milestones → Progress 依次入场。 */
 const SIDEBAR_STAGGER = 0.04;
@@ -29,7 +35,7 @@ const SIDEBAR_STAGGER = 0.04;
  *
  * 动效范围：主列与侧栏卡片首次挂载级联入场；收起/展开本身保持瞬时。
  */
-export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutProps) {
+export function ProjectDetailLayout({ sidebar, children, mainKey }: ProjectDetailLayoutProps) {
   const t = useTranslations("projects");
   const [hidden, setHidden] = useState<boolean>(() => {
     try {
@@ -49,6 +55,7 @@ export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutPr
 
   const main = (
     <motion.div
+      key={mainKey}
       initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={VIEW_TRANSITION}
@@ -91,7 +98,7 @@ export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutPr
                 key={index}
                 initial={{ opacity: 0, y: 6 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.18, ease: "easeOut", delay: SIDEBAR_STAGGER * (index + 1) }}
+                transition={{ duration: 0.18, ease: OD_EASE.decelerate, delay: SIDEBAR_STAGGER * (index + 1) }}
               >
                 {card}
               </motion.div>

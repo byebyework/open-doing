@@ -209,7 +209,7 @@ export default async function TeamProjectPage({
       </div>
 
       <ProjectDetailLayout
-        key={tab}
+        mainKey={tab}
         sidebar={
           <>
             <ProjectPropertiesPanel

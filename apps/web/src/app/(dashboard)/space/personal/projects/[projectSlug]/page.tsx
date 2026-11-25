@@ -169,7 +169,7 @@ export default async function PersonalProjectPage({
       </div>
 
       <ProjectDetailLayout
-        key={tab}
+        mainKey={tab}
         sidebar={
           <>
             <ProjectPropertiesPanel
