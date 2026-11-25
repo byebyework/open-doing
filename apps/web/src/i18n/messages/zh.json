@@ -802,6 +802,7 @@
     "commentNotFound": "评论不存在或无权删除",
     "commentCreateFailed": "评论创建失败，请稍后重试",
     "commentAria": "评论内容",
+    "commentReply": "回复",
     "postComment": "发表评论",
     "activityCreated": "创建了项目",
     "activityName": "将名称从 {from} 改为 {to}",

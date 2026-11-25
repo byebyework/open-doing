@@ -6,6 +6,7 @@ import {
   DiamondIcon,
   FileTextIcon,
   Loader2Icon,
+  MessageCircleIcon,
   SignalIcon,
   SparklesIcon,
   TagIcon,
@@ -97,6 +98,39 @@ export function ProjectTimeline({
   const [draft, setDraft] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [replyingTo, setReplyingTo] = useState<string | null>(null);
+  const [replyDraft, setReplyDraft] = useState("");
+  const [replySubmitting, setReplySubmitting] = useState(false);
+
+  function toggleReply(rootId: string) {
+    setReplyingTo((current) => (current === rootId ? null : rootId));
+    setReplyDraft("");
+  }
+
+  async function handleReplySubmit(rootId: string) {
+    const content = replyDraft.trim();
+    if (!content || replySubmitting) return;
+
+    setReplySubmitting(true);
+    try {
+      const result = await addProjectCommentAction({
+        projectId,
+        content,
+        parentId: rootId,
+      });
+      if (!result.ok) {
+        toast.error(result.errors.content ?? result.errors.form);
+        return;
+      }
+      setReplyDraft("");
+      setReplyingTo(null);
+      router.refresh();
+    } catch {
+      toast.error(tCommon("networkError"));
+    } finally {
+      setReplySubmitting(false);
+    }
+  }
 
   async function handleSubmit() {
     const content = draft.trim();
@@ -212,7 +246,7 @@ export function ProjectTimeline({
       <div>
         <Textarea
           value={draft}
-          rows={3}
+          rows={6}
           maxLength={COMMENT_MAX_LENGTH}
           aria-label={t("commentAria")}
           placeholder={t("commentPlaceholder")}
@@ -315,6 +349,104 @@ export function ProjectTimeline({
                 <p className="mt-1 whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-[var(--ink-700)]">
                   {item.content}
                 </p>
+
+                <div className="mt-1.5">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 px-2 text-[12.5px] text-[var(--ink-500)] hover:text-[var(--ink-900)]"
+                    aria-label={t("commentReply")}
+                    onClick={() => toggleReply(item.id)}
+                  >
+                    <MessageCircleIcon className="size-3.5" aria-hidden="true" />
+                    {t("commentReply")}
+                  </Button>
+                </div>
+
+                {replyingTo === item.id ? (
+                  <div className="mt-1">
+                    <Textarea
+                      value={replyDraft}
+                      rows={6}
+                      maxLength={COMMENT_MAX_LENGTH}
+                      aria-label={t("commentAria")}
+                      placeholder={t("commentPlaceholder")}
+                      disabled={replySubmitting}
+                      onChange={(event) => setReplyDraft(event.target.value)}
+                    />
+                    <CharCounter value={replyDraft} max={COMMENT_MAX_LENGTH} />
+                    <div className="mt-2.5 flex justify-end gap-2">
+                      <Button
+                        variant="outline"
+                        disabled={replySubmitting || replyDraft.length === 0}
+                        onClick={() => {
+                          setReplyDraft("");
+                          setReplyingTo(null);
+                        }}
+                      >
+                        {tCommon("cancel")}
+                      </Button>
+                      <Button
+                        disabled={replySubmitting || !replyDraft.trim()}
+                        onClick={() => {
+                          void handleReplySubmit(item.id);
+                        }}
+                      >
+                        {replySubmitting ? (
+                          <Loader2Icon className="animate-spin" aria-hidden="true" />
+                        ) : null}
+                        {t("postComment")}
+                      </Button>
+                    </div>
+                  </div>
+                ) : null}
+
+                {item.replies.length > 0 ? (
+                  <div className="mt-3 flex flex-col gap-3 border-l-2 border-[var(--border)] pl-3">
+                    {item.replies.map((reply) => (
+                      <div key={reply.id} className="group/reply flex gap-2.5">
+                        <UserAvatar
+                          userId={reply.author.id}
+                          name={reply.author.name}
+                          size={24}
+                        />
+                        <div className="min-w-0 flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[13px] font-semibold text-[var(--ink-900)]">
+                              {reply.author.name}
+                            </span>
+                            <span className="text-[12px] text-[var(--ink-400)]">
+                              {formatTaskTimestamp(reply.createdAt)}
+                            </span>
+
+                            {reply.author.id === currentUserId ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="ml-auto text-destructive opacity-0 hover:text-destructive focus-visible:opacity-100 group-hover/reply:opacity-100"
+                                disabled={deletingId === reply.id}
+                                onClick={() => {
+                                  void handleDelete(reply.id);
+                                }}
+                              >
+                                {deletingId === reply.id ? (
+                                  <Loader2Icon
+                                    className="animate-spin"
+                                    aria-hidden="true"
+                                  />
+                                ) : null}
+                                {tCommon("delete")}
+                              </Button>
+                            ) : null}
+                          </div>
+                          <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-[var(--ink-700)]">
+                            {reply.content}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
               </div>
             </motion.li>
           );

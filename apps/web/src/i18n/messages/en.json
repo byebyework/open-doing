@@ -802,6 +802,7 @@
     "commentNotFound": "The comment does not exist or you cannot delete it",
     "commentCreateFailed": "Failed to create the comment. Please try again later.",
     "commentAria": "Comment",
+    "commentReply": "Reply",
     "postComment": "Post comment",
     "activityCreated": "created the project",
     "activityName": "changed name from {from} to {to}",
