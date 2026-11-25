@@ -75,7 +75,7 @@ function FilterOption({
 export function TaskListFilters() {
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
-  const { filters, setFilter } = useListFilters();
+  const { filters, setFilter, tagOptions } = useListFilters();
 
   const statusLabel =
     filters.status === "all"
@@ -161,6 +161,43 @@ export function TaskListFilters() {
         </DropdownMenuContent>
       </DropdownMenu>
 
+      {tagOptions.length > 0 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-testid="task-filter-tag"
+              className={filterTriggerClass(filters.tag !== "all")}
+            >
+              <span className="text-[var(--ink-400)]">{t("filterTag")}</span>
+              <span className="font-medium">
+                {filters.tag === "all"
+                  ? t("filterAll")
+                  : (tagOptions.find((option) => option.id === filters.tag)
+                      ?.name ?? t("filterAll"))}
+              </span>
+              <ChevronDownIcon aria-hidden className="size-3.5 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[132px]">
+            <FilterOption
+              testid="task-filter-tag-option-all"
+              label={t("filterAll")}
+              selected={filters.tag === "all"}
+              onSelect={() => setFilter({ tag: "all" })}
+            />
+            {tagOptions.map((option) => (
+              <FilterOption
+                key={option.id}
+                testid={`task-filter-tag-option-${option.id}`}
+                label={option.name}
+                selected={filters.tag === option.id}
+                onSelect={() => setFilter({ tag: option.id })}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
     </div>
   );
 }

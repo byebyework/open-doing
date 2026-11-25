@@ -947,6 +947,7 @@
     "tabList": "List",
     "filterStatusLabel": "Status",
     "filterPriorityLabel": "Priority",
+    "filterTag": "Tag",
     "filterProjectLabel": "Project",
     "filterAll": "All",
     "listEmptyTitle": "No tasks",

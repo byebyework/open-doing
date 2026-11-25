@@ -30,6 +30,7 @@ const PROJECTS = [
 const FILTER_SELECTOR = {
   status: '[data-testid="task-filter-status"]',
   priority: '[data-testid="task-filter-priority"]',
+  tag: '[data-testid="task-filter-tag"]',
 } as const;
 
 /**
@@ -75,6 +76,7 @@ function renderTabs(
   initialView: TasksView = "board",
   projects?: { id: string; name: string; slug: string }[],
   listSlot: ReactNode = <div data-testid="slot-list">列表内容</div>,
+  tagOptions?: { id: string; name: string }[],
 ): void {
   act(() => {
     root.render(
@@ -84,6 +86,7 @@ function renderTabs(
           projects={projects}
           board={<div data-testid="slot-board">看板内容</div>}
           list={listSlot}
+          tagOptions={tagOptions}
         />
       </NextIntlClientProvider>,
     );
@@ -121,6 +124,7 @@ function FilterProbe() {
   return (
     <div>
       <span data-testid="filter-probe-status">{filters.status}</span>
+      <span data-testid="filter-probe-tag">{filters.tag}</span>
       <span data-testid="filter-probe-rows">
         {filterTaskRows(PROBE_ROWS, filters).length}
       </span>
@@ -132,6 +136,13 @@ function probeStatus(): string | null {
   return (
     container.querySelector('[data-testid="filter-probe-status"]')
       ?.textContent ?? null
+  );
+}
+
+function probeTag(): string | null {
+  return (
+    container.querySelector('[data-testid="filter-probe-tag"]')?.textContent ??
+    null
   );
 }
 
@@ -342,6 +353,31 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
 
     // 折行容器：375px 下筛选组落到 tab 行下方。
     expect(filterTrigger("status")?.closest(".flex-wrap")).not.toBeNull();
+  });
+
+  it("传入 tagOptions：列表视图渲染标签下拉，选择写入 filters.tag", () => {
+    renderTabs("list", PROJECTS, <FilterProbe />, [{ id: "tag-x", name: "设计" }]);
+
+    expect(
+      document.querySelector('[data-testid="task-filter-tag"]'),
+      "missing tag filter",
+    ).not.toBeNull();
+
+    openFilterMenu("tag");
+    clickFilterOption("tag", "tag-x");
+    expect(probeTag()).toBe("tag-x");
+
+    openFilterMenu("tag");
+    clickFilterOption("tag", "all");
+    expect(probeTag()).toBe("all");
+  });
+
+  it("tagOptions 缺省 / 为空数组：不渲染标签下拉", () => {
+    renderTabs("list", PROJECTS);
+    expect(document.querySelector('[data-testid="task-filter-tag"]')).toBeNull();
+
+    renderTabs("list", PROJECTS, undefined, []);
+    expect(document.querySelector('[data-testid="task-filter-tag"]')).toBeNull();
   });
 
   it("项目筛选两视图常驻：看板视图只有项目下拉，列表视图三者齐全", () => {

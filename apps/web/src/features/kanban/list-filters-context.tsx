@@ -4,16 +4,25 @@ import { createContext, useContext, type ReactNode } from "react";
 
 import { DEFAULT_LIST_FILTERS, type ListFilters } from "./sort-task-rows";
 
+/** 标签下拉选项（RSC 注入的 task 标签池切片）。 */
+export interface TagFilterOption {
+  id: string;
+  name: string;
+}
+
 /** TasksViewTabs 侧筛选 UI 依赖的上下文契约。 */
 export interface ListFiltersContextValue {
   filters: ListFilters;
   setFilter: (patch: Partial<ListFilters>) => void;
+  /** 标签筛选选项；空数组时 TaskListFilters 不渲染标签下拉。 */
+  tagOptions: TagFilterOption[];
 }
 
 /** 无 provider（单测 / 独立渲染）时的兜底：全 "all"、setFilter 空操作。 */
 const FALLBACK_VALUE: ListFiltersContextValue = {
   filters: DEFAULT_LIST_FILTERS,
   setFilter: () => {},
+  tagOptions: [],
 };
 
 const ListFiltersContext = createContext<ListFiltersContextValue | null>(null);

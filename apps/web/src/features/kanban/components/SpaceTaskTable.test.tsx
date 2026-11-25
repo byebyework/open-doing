@@ -224,7 +224,7 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     rows: KanbanCardItem[] = [rowA, rowB, rowC, rowD],
   ): void {
     renderTable(
-      <ListFiltersProvider value={{ filters, setFilter: () => {} }}>
+      <ListFiltersProvider value={{ filters, setFilter: () => {}, tagOptions: [] }}>
         <SpaceTaskTable
           variant="personal"
           rows={rows}

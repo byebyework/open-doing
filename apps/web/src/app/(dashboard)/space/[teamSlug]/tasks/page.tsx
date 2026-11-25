@@ -214,6 +214,7 @@ export default async function TeamTasksPage(
         <TasksViewTabs
           initialView={initialView}
           projects={projects}
+          tagOptions={taskTagPool.map(({ id, name }) => ({ id, name }))}
           projectProgress={Object.fromEntries(progressBySlug)}
           allProjectsProgress={allProjectsProgress}
           board={

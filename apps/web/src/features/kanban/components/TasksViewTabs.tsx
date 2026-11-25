@@ -31,6 +31,8 @@ export interface TasksViewTabsProps {
   projectProgress?: Record<string, number>;
   /** 「全部项目」聚合进度；与 projectProgress 同时传入。 */
   allProjectsProgress?: number;
+  /** 标签筛选选项（task 标签池切片）；缺省 / 空数组时不渲染标签下拉。 */
+  tagOptions?: { id: string; name: string }[];
 }
 
 /**
@@ -81,6 +83,7 @@ export function TasksViewTabs({
   projects,
   projectProgress,
   allProjectsProgress,
+  tagOptions,
 }: TasksViewTabsProps) {
   const t = useTranslations("kanban");
   const [view, setView] = useState<TasksView>(initialView);
@@ -96,6 +99,7 @@ export function TasksViewTabs({
     setFilter: (patch) => {
       setFilters((current) => ({ ...current, ...patch }));
     },
+    tagOptions: tagOptions ?? [],
   };
 
   function switchTo(next: TasksView) {

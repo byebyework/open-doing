@@ -16,6 +16,7 @@ import {
 } from "@/features/kanban/service";
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listPersonalProjects } from "@/features/personal/projects/service";
+import { listTags } from "@/features/tags/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
 import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
 import { todayInShanghai } from "@/lib/today";
@@ -69,11 +70,15 @@ export default async function PersonalTasksPage(
     ...statFilter,
   };
   // 卡片、统计与列表的窗口外已完成共用同一组筛选谓词（统计带数字与看板内容不叉）。
-  const [board, stats, olderDone] = await Promise.all([
+  const [board, stats, olderDone, tagPool] = await Promise.all([
     getPersonalSpaceBoard(user.id, today, filter),
     getPersonalKanbanStats(user.id, today, filter),
     getOlderDonePersonalTasks(user.id, today, filter),
+    listTags({ ownerId: user.id }),
   ]);
+  const taskTagOptions = tagPool
+    .filter((tag) => tag.type === "task")
+    .map(({ id, name }) => ({ id, name }));
 
   const allCards = [
     ...board.todo,
@@ -118,6 +123,7 @@ export default async function PersonalTasksPage(
         <TasksViewTabs
           initialView={initialView}
           projects={projects}
+          tagOptions={taskTagOptions}
           board={
             <SpaceKanban
               variant="personal"
