@@ -610,6 +610,7 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
       {
         status: "todo",
         priority: "high",
+        tag: "all",
       },
       rows,
     );
@@ -618,6 +619,25 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     expect(bodyRows()[0].querySelector("td:first-child")?.textContent).toBe(
       "交集命中",
     );
+  });
+
+  it("标签筛选按 tag id 收窄；无标签行在标签筛选下被排除", () => {
+    const rows = [
+      personalRow({ id: "tg-1", title: "带标签", tags: [tag] }),
+      personalRow({ id: "tg-2", title: "无标签", tags: [] }),
+    ];
+
+    renderPersonalWithFilters(
+      { ...DEFAULT_LIST_FILTERS, tag: "tag-1" },
+      rows,
+    );
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0].querySelector("td:first-child")?.textContent).toBe(
+      "带标签",
+    );
+
+    renderPersonalWithFilters({ ...DEFAULT_LIST_FILTERS, tag: "all" }, rows);
+    expect(bodyRows()).toHaveLength(2);
   });
 
   it("过滤后无匹配行：渲染空态（复用 kanban.listEmpty*）", () => {

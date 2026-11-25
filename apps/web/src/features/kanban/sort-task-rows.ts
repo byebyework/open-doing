@@ -1,4 +1,4 @@
-import type { TaskPriority, TaskStatus } from "@open-doing/types";
+import type { Tag, TaskPriority, TaskStatus } from "@open-doing/types";
 import { TASK_PRIORITY_ORDER } from "@open-doing/types";
 
 /** 无截止日期的任务排在最后。 */
@@ -32,26 +32,32 @@ export function sortTaskRows<
 export interface ListFilters {
   status: TaskStatus | "all";
   priority: TaskPriority | "all";
+  /** 标签 id；"all" 不过滤。项目任务 tab 经 URL `?tag=` 往返保持该值。 */
+  tag: string | "all";
 }
 
 export const DEFAULT_LIST_FILTERS: ListFilters = {
   status: "all",
   priority: "all",
+  tag: "all",
 };
 
 /**
  * 列表视图本地行过滤：字段按交集收窄，保序、纯函数（不改动入参）。
- * 过滤放在客户端完成，不进 URL（与上方服务端筛选条语义独立）。
+ * 收窄只在客户端做（行数据由 RSC 整批取回）；筛选值本身是否镜像进 URL
+ * 由调用方决定（任务模块本地态 / 项目任务 tab 经 `?status=&priority=&tag=`）。
  */
 export function filterTaskRows<
   T extends {
     status: TaskStatus;
     priority: TaskPriority;
+    tags?: Tag[];
   },
 >(rows: T[], filters: ListFilters): T[] {
   return rows.filter(
     (row) =>
       (filters.status === "all" || row.status === filters.status) &&
-      (filters.priority === "all" || row.priority === filters.priority),
+      (filters.priority === "all" || row.priority === filters.priority) &&
+      (filters.tag === "all" || row.tags?.some((item) => item.id === filters.tag)),
   );
 }

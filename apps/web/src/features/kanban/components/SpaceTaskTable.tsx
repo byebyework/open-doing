@@ -241,8 +241,8 @@ export function SpaceTaskTable({
     setLocalRows(sortTaskRows(taskRows));
   }
 
-  // 本地筛选（状态 / 优先级）变化时同样回第 1 页：结果集换了，旧页码没有意义。
-  const filterKey = `${filters.status}:${filters.priority}`;
+  // 本地筛选（状态 / 优先级 / 标签）变化时同样回第 1 页：结果集换了，旧页码没有意义。
+  const filterKey = `${filters.status}:${filters.priority}:${filters.tag}`;
   const [syncedFilterKey, setSyncedFilterKey] = useState(filterKey);
   if (filterKey !== syncedFilterKey) {
     setSyncedFilterKey(filterKey);
