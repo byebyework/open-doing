@@ -333,8 +333,16 @@ export function SpaceTaskTable({
     const base = taskHrefs[taskId];
     if (!base || (taskOrigin !== "tasks" && taskOrigin !== "project")) return base;
 
+    // 项目来源把非 all 的筛选一并带上：回跳「← 返回项目」还原筛选
+    // （任务模块来源不带——模块筛选是本地态，进 URL 会撞统计带语义）。
+    const isProject = taskOrigin === "project";
     return appendTaskOrigin(base, {
-      ...(taskOrigin === "project" ? { fromProject: true } : {}),
+      ...(isProject ? { fromProject: true } : {}),
+      ...(isProject && filters.status !== "all" ? { status: filters.status } : {}),
+      ...(isProject && filters.priority !== "all"
+        ? { priority: filters.priority }
+        : {}),
+      ...(isProject && filters.tag !== "all" ? { tag: filters.tag } : {}),
       view: "list",
       page: currentPage,
       pageSize,

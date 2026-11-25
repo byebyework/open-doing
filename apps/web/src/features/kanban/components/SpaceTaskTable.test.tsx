@@ -976,6 +976,33 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     ).toBe(`/personal/tasks/${rowA.id}`);
   });
 
+  it("项目来源：行标题链接携带非 all 的筛选参数，all 不写", () => {
+    const rows = [personalRow({ id: "f-origin", title: "筛选来源" })];
+    renderTable(
+      <ListFiltersProvider
+        value={{
+          filters: { status: "todo", priority: "all", tag: "all" },
+          setFilter: () => {},
+          tagOptions: [],
+        }}
+      >
+        <SpaceTaskTable
+          variant="personal"
+          rows={rows}
+          today={TODAY}
+          taskHrefs={{ "f-origin": "/space/personal/tasks/f-origin" }}
+          taskOrigin="project"
+        />
+      </ListFiltersProvider>,
+    );
+
+    const href = bodyRows()[0]?.querySelector("a")?.getAttribute("href");
+    expect(href).toContain("from=project");
+    expect(href).toContain("status=todo");
+    expect(href).not.toContain("priority=");
+    expect(href).not.toContain("tag=");
+  });
+
   it("分页 / 每页条数写回 URL（replaceState，保留 tab 等其它参数）", () => {
     // 项目详情任务 tab 的切 tab 还原依赖 URL 携带 page / size（focus 1）。
     window.history.replaceState(

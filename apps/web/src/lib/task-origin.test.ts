@@ -36,6 +36,9 @@ describe("parseTaskOrigin", () => {
     expect(parseTaskOrigin({})).toEqual({
       fromTasks: false,
       fromProject: false,
+      status: null,
+      priority: null,
+      tag: null,
       view: null,
       page: null,
       pageSize: null,
@@ -49,6 +52,9 @@ describe("parseTaskOrigin", () => {
     ).toEqual({
       fromTasks: true,
       fromProject: false,
+      status: null,
+      priority: null,
+      tag: null,
       view: "list",
       page: 2,
       pageSize: 20,
@@ -59,6 +65,9 @@ describe("parseTaskOrigin", () => {
     expect(parseTaskOrigin({ from: "tasks" })).toEqual({
       fromTasks: true,
       fromProject: false,
+      status: null,
+      priority: null,
+      tag: null,
       view: null,
       page: null,
       pageSize: null,
@@ -71,6 +80,9 @@ describe("parseTaskOrigin", () => {
     ).toEqual({
       fromTasks: true,
       fromProject: false,
+      status: null,
+      priority: null,
+      tag: null,
       view: null,
       page: null,
       pageSize: null,
@@ -112,6 +124,9 @@ describe("taskModuleBackHref", () => {
       taskModuleBackHref("growth-squad", {
         fromTasks: true,
         fromProject: false,
+        status: null,
+        priority: null,
+        tag: null,
         view: "list",
         page: 2,
         pageSize: 20,
@@ -124,6 +139,9 @@ describe("taskModuleBackHref", () => {
       taskModuleBackHref("personal", {
         fromTasks: true,
         fromProject: false,
+        status: null,
+        priority: null,
+        tag: null,
         view: null,
         page: null,
         pageSize: null,
@@ -136,6 +154,9 @@ describe("taskModuleBackHref", () => {
       taskModuleBackHref("personal", {
         fromTasks: false,
         fromProject: false,
+        status: null,
+        priority: null,
+        tag: null,
         view: null,
         page: null,
         pageSize: null,
@@ -151,6 +172,9 @@ describe("from=project origin", () => {
     ).toEqual({
       fromTasks: false,
       fromProject: true,
+      status: null,
+      priority: null,
+      tag: null,
       view: "list",
       page: 2,
       pageSize: 20,
@@ -162,6 +186,9 @@ describe("from=project origin", () => {
       appendTaskOrigin("/space/personal/projects/p", {
         fromTasks: true,
         fromProject: true,
+        status: null,
+        priority: null,
+        tag: null,
         view: "list",
         page: 2,
         pageSize: 20,
@@ -174,6 +201,9 @@ describe("from=project origin", () => {
       projectTasksBackHref("/space/personal/projects/p", {
         fromTasks: false,
         fromProject: true,
+        status: null,
+        priority: null,
+        tag: null,
         view: null,
         page: null,
         pageSize: null,
@@ -183,6 +213,9 @@ describe("from=project origin", () => {
       projectTasksBackHref("/space/growth-squad/projects/p", {
         fromTasks: false,
         fromProject: true,
+        status: null,
+        priority: null,
+        tag: null,
         view: "list",
         page: 2,
         pageSize: 20,
@@ -195,10 +228,66 @@ describe("from=project origin", () => {
       projectTasksBackHref("/space/personal/projects/p", {
         fromTasks: false,
         fromProject: false,
+        status: null,
+        priority: null,
+        tag: null,
         view: null,
         page: null,
         pageSize: null,
       }),
     ).toBe("/space/personal/projects/p");
+  });
+
+  it("parseTaskOrigin 解析筛选参数，缺省为 null", () => {
+    expect(
+      parseTaskOrigin({
+        from: "project",
+        status: "in_progress",
+        priority: "high",
+        tag: "t1",
+      }),
+    ).toEqual({
+      fromTasks: false,
+      fromProject: true,
+      status: "in_progress",
+      priority: "high",
+      tag: "t1",
+      view: null,
+      page: null,
+      pageSize: null,
+    });
+    expect(parseTaskOrigin({ from: "project" }).status).toBeNull();
+  });
+
+  it("projectTasksBackHref 附带筛选参数（缺省 null 不写）", () => {
+    expect(
+      projectTasksBackHref("/space/personal/projects/p", {
+        fromTasks: false,
+        fromProject: true,
+        status: "in_progress",
+        priority: null,
+        tag: "t1",
+        view: "list",
+        page: null,
+        pageSize: null,
+      }),
+    ).toBe(
+      "/space/personal/projects/p?tab=tasks&status=in_progress&tag=t1&view=list",
+    );
+  });
+
+  it("taskModuleBackHref 不携带筛选参数（任务模块筛选是本地态，不进 URL）", () => {
+    expect(
+      taskModuleBackHref("personal", {
+        fromTasks: true,
+        fromProject: false,
+        status: "todo",
+        priority: "high",
+        tag: "t1",
+        view: "list",
+        page: null,
+        pageSize: null,
+      }),
+    ).toBe("/space/personal/tasks?view=list");
   });
 });

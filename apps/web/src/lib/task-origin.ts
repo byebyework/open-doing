@@ -41,6 +41,10 @@ export interface TaskOrigin {
   fromTasks: boolean;
   /** 链接来自项目详情的「任务」tab（内嵌看板 / 列表）。 */
   fromProject: boolean;
+  /** 项目任务 tab 的列表筛选（回跳还原用；null = 未携带）。 */
+  status: string | null;
+  priority: string | null;
+  tag: string | null;
   /** 列表视图来源（看板入口不带 view）。 */
   view: "list" | null;
   /** 列表页码（仅 > 1 时由链接携带）。 */
@@ -53,6 +57,9 @@ export interface TaskOrigin {
 export interface TaskOriginParams {
   fromTasks?: boolean;
   fromProject?: boolean;
+  status?: string | null;
+  priority?: string | null;
+  tag?: string | null;
   view?: "list" | null;
   page?: number | null;
   pageSize?: TaskPageSize | null;
@@ -98,12 +105,24 @@ export function parseTaskOrigin(params: SearchParamsLike): TaskOrigin {
   const fromProject = from === TASK_ORIGIN_PROJECT;
 
   if (!fromTasks && !fromProject) {
-    return { fromTasks: false, fromProject: false, view: null, page: null, pageSize: null };
+    return {
+      fromTasks: false,
+      fromProject: false,
+      status: null,
+      priority: null,
+      tag: null,
+      view: null,
+      page: null,
+      pageSize: null,
+    };
   }
 
   return {
     fromTasks,
     fromProject,
+    status: first(params.status) || null,
+    priority: first(params.priority) || null,
+    tag: first(params.tag) || null,
     view: first(params.view) === "list" ? "list" : null,
     page: parseTaskPage(params.page),
     pageSize: parseTaskPageSize(params.size),
@@ -138,6 +157,9 @@ export function appendTaskOrigin(
   ) {
     search.set("size", String(params.pageSize));
   }
+  if (params.status) search.set("status", params.status);
+  if (params.priority) search.set("priority", params.priority);
+  if (params.tag) search.set("tag", params.tag);
 
   const query = search.toString();
   if (!query) return href;
@@ -184,6 +206,10 @@ export function projectTasksBackHref(
 
   const search = new URLSearchParams();
   search.set("tab", "tasks");
+  // 筛选随回跳还原（与 page/size 同理）；"all" 从不进 origin（详情链接侧剔除）。
+  if (origin.status) search.set("status", origin.status);
+  if (origin.priority) search.set("priority", origin.priority);
+  if (origin.tag) search.set("tag", origin.tag);
   if (origin.view === "list") {
     search.set("view", "list");
   }

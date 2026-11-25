@@ -145,6 +145,12 @@ test.describe("flow 19: 项目详情 tabs", () => {
       timeout: 30_000,
     });
 
+    // 状态筛选写进 URL（全部任务都是待办，行数不变）。
+    await page.getByTestId("task-filter-status").click();
+    await page.getByTestId("task-filter-status-option-todo").click();
+    await expect(page).toHaveURL(/status=todo/);
+    await expect(page).toHaveURL(/tab=tasks/);
+
     // 每页条数改 50：交互变化写回 URL（replaceState），tab 保留。
     await page.getByTestId("task-list-page-size").click();
     await page.getByTestId("task-list-page-size-50").click();
@@ -159,7 +165,7 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(page).toHaveURL(/page=2/);
     await expect(page).toHaveURL(/tab=tasks/);
 
-    // 打开第 2 页的任务详情：来源参数 from=project + view=list + page=2。
+    // 打开第 2 页的任务详情：来源参数 from=project + view=list + page=2 + 筛选。
     // 第 2 页只有 1 行（11 任务 / 每页 10 条），标题链接唯一。
     await page
       .locator("a")
@@ -169,16 +175,19 @@ test.describe("flow 19: 项目详情 tabs", () => {
     await expect(page).toHaveURL(/from=project/);
     await expect(page).toHaveURL(/view=list/);
     await expect(page).toHaveURL(/page=2/);
+    await expect(page).toHaveURL(/status=todo/);
 
-    // 返回链接回项目任务 tab 同视图同页。
+    // 返回链接回项目任务 tab：同视图同页 + 筛选一并还原。
     const back = page.getByRole("link", { name: "返回项目" });
     await expect(back).toHaveAttribute("href", /tab=tasks/);
     await expect(back).toHaveAttribute("href", /view=list/);
     await expect(back).toHaveAttribute("href", /page=2/);
+    await expect(back).toHaveAttribute("href", /status=todo/);
     await back.click();
     await expect(page).toHaveURL(/tab=tasks/);
     await expect(page).toHaveURL(/view=list/);
     await expect(page).toHaveURL(/page=2/);
-    await expect(page.getByTestId("task-filter-status")).toBeVisible();
+    await expect(page).toHaveURL(/status=todo/);
+    await expect(page.getByTestId("task-filter-status")).toContainText("待办");
   });
 });
