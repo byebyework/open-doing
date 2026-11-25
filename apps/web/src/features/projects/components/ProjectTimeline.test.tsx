@@ -51,6 +51,7 @@ describe("ProjectTimeline", () => {
     content: "自己的评论",
     createdAt: "2026-11-24T03:00:00.000Z",
     author: { id: "u1", name: "林夏" },
+    replies: [],
   };
 
   const otherComment: TimelineItem = {
@@ -59,6 +60,7 @@ describe("ProjectTimeline", () => {
     content: "别人的评论",
     createdAt: "2026-11-24T01:00:00.000Z",
     author: { id: "u2", name: "阿测" },
+    replies: [],
   };
 
   beforeEach(() => {

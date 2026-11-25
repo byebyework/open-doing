@@ -29,6 +29,7 @@
  */
 import { isNotNull, sql } from "drizzle-orm";
 import {
+  type AnyPgColumn,
   boolean,
   check,
   date,
@@ -555,6 +556,11 @@ export const projectComments = pgTable(
     authorId: uuidRef("author_id")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    /** 回复目标（单层楼中楼：服务层把回复的回复归并到根）；null = 根评论。 */
+    parentId: uuidRef("parent_id").references(
+      (): AnyPgColumn => projectComments.id,
+      { onDelete: "cascade" },
+    ),
     content: text("content").notNull(),
     createdAt: timestamp("created_at", { withTimezone: true })
       .notNull()
@@ -565,6 +571,7 @@ export const projectComments = pgTable(
       t.projectId,
       t.createdAt,
     ),
+    index("project_comments_parent_id_idx").on(t.parentId),
   ],
 );
 

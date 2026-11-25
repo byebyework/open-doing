@@ -423,6 +423,25 @@ describe("项目评论 actions", () => {
     });
   });
 
+  it("add 回复：parentId 透传给 service", async () => {
+    mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
+    mockAddComment.mockResolvedValue(fakeComment);
+
+    await expect(
+      addProjectCommentAction({
+        projectId: fakeProject.id,
+        content: "reply",
+        parentId: "00000000-0000-0000-0000-000000000009",
+      }),
+    ).resolves.toEqual({ ok: true, data: fakeComment });
+    expect(mockAddComment).toHaveBeenCalledWith({
+      projectId: fakeProject.id,
+      content: "reply",
+      parentId: "00000000-0000-0000-0000-000000000009",
+      actorId: "u1",
+    });
+  });
+
   it("delete 领域错误 commentNotFound → form 中文文案", async () => {
     mockGetCurrentUser.mockResolvedValue({ id: "u1" } as never);
     mockDeleteComment.mockRejectedValue(

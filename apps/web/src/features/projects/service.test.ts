@@ -1451,4 +1451,88 @@ describe.skipIf(!hasTestDatabase)("项目评论 service", () => {
       ),
     ).rejects.toMatchObject({ i18n: { key: "commentTooLong" } });
   });
+
+  it("回复：parentId 指向同项目根评论；回复的回复归并到根（单层）", async () => {
+    const { owner, team } = await setupTeam(db);
+    const project = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Reply P" },
+      db,
+    );
+
+    const root = await addProjectComment(
+      { projectId: project.id, actorId: owner.id, content: "root" },
+      db,
+    );
+    const reply = await addProjectComment(
+      { projectId: project.id, actorId: owner.id, content: "reply", parentId: root.id },
+      db,
+    );
+    expect(reply).toMatchObject({ content: "reply" });
+
+    const rows = await db
+      .select()
+      .from(projectComments)
+      .where(eq(projectComments.projectId, project.id));
+    const replyRow = rows.find((row) => row.content === "reply");
+    expect(replyRow?.parentId).toBe(root.id);
+
+    // 回复的回复：落库时归并到根（单层楼中楼）。
+    await addProjectComment(
+      { projectId: project.id, actorId: owner.id, content: "nested", parentId: reply.id },
+      db,
+    );
+    const afterNested = await db
+      .select()
+      .from(projectComments)
+      .where(eq(projectComments.projectId, project.id));
+    const nestedRow = afterNested.find((row) => row.content === "nested");
+    expect(nestedRow?.parentId).toBe(root.id);
+  });
+
+  it("parentId 指向别的项目 / 不存在 → commentNotFound；删根评论级联回复", async () => {
+    const { owner, team } = await setupTeam(db);
+    const projectA = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Cascade A" },
+      db,
+    );
+    const projectB = await createTeamProject(
+      { teamId: team.id, actorId: owner.id, name: "Cascade B" },
+      db,
+    );
+    const foreign = await addProjectComment(
+      { projectId: projectB.id, actorId: owner.id, content: "foreign" },
+      db,
+    );
+
+    await expect(
+      addProjectComment(
+        { projectId: projectA.id, actorId: owner.id, content: "x", parentId: foreign.id },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "commentNotFound" } });
+    await expect(
+      addProjectComment(
+        { projectId: projectA.id, actorId: owner.id, content: "x", parentId: crypto.randomUUID() },
+        db,
+      ),
+    ).rejects.toMatchObject({ i18n: { key: "commentNotFound" } });
+
+    const root = await addProjectComment(
+      { projectId: projectA.id, actorId: owner.id, content: "root2" },
+      db,
+    );
+    await addProjectComment(
+      { projectId: projectA.id, actorId: owner.id, content: "child", parentId: root.id },
+      db,
+    );
+    await deleteProjectComment(
+      { projectId: projectA.id, actorId: owner.id, commentId: root.id },
+      db,
+    );
+    const remaining = await db
+      .select()
+      .from(projectComments)
+      .where(eq(projectComments.projectId, projectA.id));
+    expect(remaining).toHaveLength(0);
+  });
 });

@@ -589,4 +589,57 @@ describe.skipIf(!hasTestDatabase)("项目活动基础设施", () => {
       rows.find((row) => row.type === "milestone_removed")?.payload,
     ).toEqual({ kind: "milestone_removed", name: "P-MS" });
   });
+
+  it("listProjectTimeline：根评论带 replies 升序，回复不占顶层，reply-to-reply 归根", async () => {
+    const user = await createUser(db, "thread-owner");
+    const project = await createPersonalProjectRow(db, user.id, "thread-project");
+
+    await db.insert(projectActivities).values({
+      projectId: project.id,
+      actorId: user.id,
+      type: "created",
+      createdAt: new Date("2026-01-01T00:00:00Z"),
+    });
+    const [root] = await db
+      .insert(projectComments)
+      .values({
+        projectId: project.id,
+        authorId: user.id,
+        content: "root-c",
+        createdAt: new Date("2026-01-02T00:00:00Z"),
+      })
+      .returning();
+    await db.insert(projectComments).values([
+      {
+        projectId: project.id,
+        authorId: user.id,
+        content: "reply-1",
+        parentId: root!.id,
+        createdAt: new Date("2026-01-03T00:00:00Z"),
+      },
+      {
+        projectId: project.id,
+        authorId: user.id,
+        content: "reply-2",
+        parentId: root!.id,
+        createdAt: new Date("2026-01-04T00:00:00Z"),
+      },
+    ]);
+
+    const items = await listProjectTimeline(project.id, {}, db);
+
+    // 顶层只有根评论 + 动态；回复全部挂在根下且按时间升序。
+    const topLevelComments = items.filter((item) => item.kind === "comment");
+    expect(topLevelComments).toHaveLength(1);
+    const rootItem = topLevelComments[0] as Extract<
+      (typeof items)[number],
+      { kind: "comment" }
+    >;
+    expect(rootItem.content).toBe("root-c");
+    expect(rootItem.replies.map((reply) => reply.content)).toEqual([
+      "reply-1",
+      "reply-2",
+    ]);
+    expect(items[0]?.kind).toBe("comment"); // 根评论比动态新，排最前
+  });
 });

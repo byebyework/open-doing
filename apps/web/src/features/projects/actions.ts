@@ -182,6 +182,8 @@ export async function deleteTeamProjectAction(input: {
 export async function addProjectCommentAction(input: {
   projectId: string;
   content: string;
+  /** 回复目标评论 id（单层楼中楼，服务层归并到根）。 */
+  parentId?: string;
 }): Promise<ActionResult<ProjectComment>> {
   const user = await getCurrentUser();
   if (!user) {

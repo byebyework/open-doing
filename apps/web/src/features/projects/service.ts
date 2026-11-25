@@ -731,15 +731,42 @@ async function requireVisibleProject(
 
 /** 新增项目评论：可见即可评（成员 / owner），内容复用任务评论校验器。 */
 export async function addProjectComment(
-  input: { projectId: string; actorId: string; content: string },
+  input: {
+    projectId: string;
+    actorId: string;
+    content: string;
+    /** 回复目标评论；必须属同一项目，回复的回复归并到其根（单层）。 */
+    parentId?: string | null;
+  },
   client: DbClient = db,
 ): Promise<ProjectComment> {
   const project = await requireVisibleProject(input.projectId, input.actorId, client);
   const content = validateCommentContent(input.content);
 
+  let parentId: string | null = null;
+  if (input.parentId) {
+    if (!isUuid(input.parentId)) {
+      throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
+    }
+    const [parent] = await client
+      .select()
+      .from(projectComments)
+      .where(
+        and(
+          eq(projectComments.id, input.parentId),
+          eq(projectComments.projectId, project.id),
+        ),
+      )
+      .limit(1);
+    if (!parent) {
+      throw new DomainError("评论不存在或无权删除", undefined, { key: "commentNotFound" });
+    }
+    parentId = parent.parentId ?? parent.id;
+  }
+
   const [row] = await client
     .insert(projectComments)
-    .values({ projectId: project.id, authorId: input.actorId, content })
+    .values({ projectId: project.id, authorId: input.actorId, content, parentId })
     .returning();
   if (!row) {
     throw new DomainError("评论创建失败，请稍后重试", undefined, { key: "commentCreateFailed" });

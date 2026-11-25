@@ -153,12 +153,20 @@ export type TimelineItem =
       content: string;
       createdAt: string;
       author: { id: string; name: string };
+      /** 回复（单层楼中楼，createdAt 升序）；回复本身不占顶层位置。 */
+      replies: Array<{
+        id: string;
+        content: string;
+        createdAt: string;
+        author: { id: string; name: string };
+      }>;
     };
 
 /**
- * 项目时间线：动态 + 评论按 createdAt 倒序合并，取前 `limit` 条
- * （缺省 100）。actor / author 显示名在读取时从 users 解析
- * （与任务评论口径一致；用户删除随 FK 级联带走其动态）。
+ * 项目时间线：动态 + 根评论按 createdAt 倒序合并，取前 `limit` 条
+ * （缺省 100）；回复嵌套在根评论的 `replies` 下（升序），不参与顶层
+ * 排序。actor / author 显示名在读取时从 users 解析（与任务评论口径
+ * 一致；用户删除随 FK 级联带走其动态）。
  */
 export async function listProjectTimeline(
   projectId: string,
@@ -192,6 +200,27 @@ export async function listProjectTimeline(
     new Map(refs.map((ref) => [ref.id, ref.name])),
   );
 
+  // 回复先按根分组；顶层只留根评论（回复随根参与倒序，自身不占位）。
+  const repliesByRoot = new Map<
+    string,
+    Array<{ id: string; content: string; createdAt: string; author: { id: string; name: string } }>
+  >();
+  for (const row of comments) {
+    if (!row.parentId) continue;
+    const reply = {
+      id: row.id,
+      content: row.content,
+      createdAt: row.createdAt.toISOString(),
+      author: { id: row.authorId, name: nameById.get(row.authorId) ?? "" },
+    };
+    const list = repliesByRoot.get(row.parentId) ?? [];
+    list.push(reply);
+    repliesByRoot.set(row.parentId, list);
+  }
+  for (const list of repliesByRoot.values()) {
+    list.sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  }
+
   const items: TimelineItem[] = [
     ...activities.map(
       (row): TimelineItem => ({
@@ -206,18 +235,21 @@ export async function listProjectTimeline(
         },
       }),
     ),
-    ...comments.map(
-      (row): TimelineItem => ({
-        kind: "comment",
-        id: row.id,
-        content: row.content,
-        createdAt: row.createdAt.toISOString(),
-        author: {
-          id: row.authorId,
-          name: nameById.get(row.authorId) ?? "",
-        },
-      }),
-    ),
+    ...comments
+      .filter((row) => row.parentId === null)
+      .map(
+        (row): TimelineItem => ({
+          kind: "comment",
+          id: row.id,
+          content: row.content,
+          createdAt: row.createdAt.toISOString(),
+          author: {
+            id: row.authorId,
+            name: nameById.get(row.authorId) ?? "",
+          },
+          replies: repliesByRoot.get(row.id) ?? [],
+        }),
+      ),
   ];
 
   items.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
