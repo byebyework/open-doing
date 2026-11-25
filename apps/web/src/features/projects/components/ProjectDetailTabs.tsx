@@ -1,10 +1,15 @@
 "use client";
 
+import { motion } from "motion/react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 
+import { OD_EASE, OD_MS } from "@/components/ui/overlay-motion";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/shadcn/tabs";
 import { PROJECT_TAB_PARAM, type ProjectTab } from "@/lib/project-tab";
+
+/** 激活指示胶囊的 layoutId：三个 tab 共享，切换时胶囊滑动（先例 TasksViewTabs）。 */
+const ACTIVE_PILL_LAYOUT_ID = "project-detail-active-pill";
 
 export interface ProjectDetailTabsProps {
   /** 当前激活的 tab（RSC 从 `?tab=` 解析后传入）。 */
@@ -44,10 +49,24 @@ export function ProjectDetailTabs({ active }: ProjectDetailTabsProps) {
 
   return (
     <Tabs value={active} onValueChange={(value) => goToTab(value as ProjectTab)}>
-      <TabsList>
+      {/* 胶囊轨道 + `!` 中和 vendored 触发器的静态激活底/影：底色只由滑动胶囊提供。 */}
+      <TabsList className="gap-0.5 rounded-[var(--radius-pill)] bg-(--ink-900)/[0.04]! rounded-[var(--radius-pill)]! p-[3px]">
         {tabs.map((tab) => (
-          <TabsTrigger key={tab.value} value={tab.value} data-value={tab.value}>
-            {tab.label}
+          <TabsTrigger
+            key={tab.value}
+            value={tab.value}
+            data-value={tab.value}
+            className="relative rounded-[var(--radius-pill)] px-3 text-[13px] data-[state=active]:bg-transparent! data-[state=active]:shadow-none! data-[state=active]:font-semibold"
+          >
+            {tab.value === active ? (
+              <motion.span
+                layoutId={ACTIVE_PILL_LAYOUT_ID}
+                aria-hidden="true"
+                className="absolute inset-0 rounded-[var(--radius-pill)] bg-card shadow-sm"
+                transition={{ duration: OD_MS.popIn / 1000, ease: OD_EASE.springIn }}
+              />
+            ) : null}
+            <span className="relative z-10">{tab.label}</span>
           </TabsTrigger>
         ))}
       </TabsList>

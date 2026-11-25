@@ -111,4 +111,39 @@ describe("ProjectDetailTabs", () => {
 
     expect(push).toHaveBeenCalledWith("/space/personal/projects/p");
   });
+
+  /** layoutId 不落 DOM 属性（motion 消费掉），沿 React fiber 链向上找
+   * memoizedProps 里的 layoutId（先例 TasksViewTabs.test）。 */
+  function layoutIdOf(element: Element): unknown {
+    const fiberKey = Object.keys(element).find((key) =>
+      key.startsWith("__reactFiber$"),
+    );
+    type FiberLike = { memoizedProps?: Record<string, unknown>; return?: FiberLike };
+    let fiber: FiberLike | undefined = fiberKey
+      ? ((element as unknown as Record<string, unknown>)[fiberKey] as FiberLike)
+      : undefined;
+    while (fiber) {
+      const props = fiber.memoizedProps;
+      if (props && typeof props === "object" && "layoutId" in props) {
+        return props.layoutId;
+      }
+      fiber = fiber.return ?? undefined;
+    }
+    return undefined;
+  }
+
+  it("激活 tab 内渲染共享 layoutId 指示胶囊，非激活没有", () => {
+    mockSearchParams.mockReturnValue(new URLSearchParams());
+    render("tasks");
+
+    const pillOnTasks = trigger("tasks").querySelector('span[aria-hidden="true"]');
+    expect(pillOnTasks).not.toBeNull();
+    expect(layoutIdOf(pillOnTasks as Element)).toBe("project-detail-active-pill");
+    expect(
+      trigger("overview").querySelector('span[aria-hidden="true"]'),
+    ).toBeNull();
+    expect(
+      trigger("activity").querySelector('span[aria-hidden="true"]'),
+    ).toBeNull();
+  });
 });
