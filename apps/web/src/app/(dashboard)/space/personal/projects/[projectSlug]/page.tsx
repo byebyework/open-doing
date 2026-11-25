@@ -19,20 +19,16 @@ import { ProjectPropertiesPanel } from "@/features/projects/components/ProjectPr
 import { listPersonalProjectMilestonesWithProgress } from "@/features/personal/projects/service";
 import { buildProjectProgressPercent } from "@/features/projects/service";
 import { PersonalProjectPageActions } from "@/features/personal/tasks/components/TaskRowActions";
-import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
-import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
 import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
-import { TasksViewTabs } from "@/features/kanban/components/TasksViewTabs";
 import {
   getOlderDonePersonalTasks,
-  getPersonalKanbanStats,
   getPersonalSpaceBoard,
 } from "@/features/kanban/service";
-import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { sortTaskRows } from "@/features/kanban/sort-task-rows";
+import { ProjectTasksList } from "@/features/projects/components/ProjectTasksList";
 import { listTags } from "@/features/tags/service";
 import { listPersonalProjectTasks } from "@/features/personal/tasks/service";
-import { parseProjectTabFrom } from "@/lib/project-tab";
+import { parseProjectTabFrom, parseProjectTaskFilters } from "@/lib/project-tab";
 import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
 import { personalTaskHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
@@ -44,15 +40,12 @@ interface PersonalProjectPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 /**
  * 个人项目页（P-3 → 详情 tabs）：概览 / 任务 / 动态。
  *
- * 任务 tab 内嵌任务模块组件（项目过滤锁定，`taskOrigin="project"`）；
- * 动态 tab 的时间线由后续任务接入（当前回落概览内容）。
+ * 任务 tab 为纯列表（`taskOrigin="project"` 回跳契约与任务模块一致），
+ * 状态/标签/优先级筛选经 `?status=&priority=&tag=` 往返保持；
+ * 动态 tab 为活动 + 评论时间线（`listProjectTimeline`）。
  * 服务端读取项目、项目任务（进度用）与全部个人项目，交互全部下沉到
  * `"use client"` 组件。非本人或不存在一律 404，不泄露存在性。
  */
@@ -78,6 +71,7 @@ export default async function PersonalProjectPage({
   ]);
   const milestoneProgress = await listPersonalProjectMilestonesWithProgress(user.id, project.id);
   const projectTagPool = tagPool.filter((tag) => tag.type === "project");
+  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
 
   const projectOptions = projects.map(({ id, name }) => ({ id, name }));
   const today = todayInShanghai();
@@ -95,22 +89,16 @@ export default async function PersonalProjectPage({
     );
   }
 
-  // ---- 任务 tab：看板 / 列表 / 统计（项目过滤锁定，与个人任务模块同构）----
+  // ---- 任务 tab：纯列表 + 状态/标签/优先级筛选（筛选值经 URL 往返保持）----
   let tasksTabContent: ReactNode = null;
   if (tab === "tasks") {
-    const initialView = firstValue(sp.view) === "list" ? "list" : "board";
     const initialPage = parseTaskPage(sp.page) ?? undefined;
     const initialPageSize = parseTaskPageSize(sp.size) ?? undefined;
-    const statFilter = parseStatFilterParams(sp);
-    const filter = {
-      projectId: project.id,
-      ...statFilter,
-    };
+    const listFilters = parseProjectTaskFilters(sp);
 
-    const [board, stats, olderDone] = await Promise.all([
-      getPersonalSpaceBoard(user.id, today, filter),
-      getPersonalKanbanStats(user.id, today, filter),
-      getOlderDonePersonalTasks(user.id, today, filter),
+    const [board, olderDone] = await Promise.all([
+      getPersonalSpaceBoard(user.id, today, { projectId: project.id }),
+      getOlderDonePersonalTasks(user.id, today, { projectId: project.id }),
     ]);
 
     const allCards = [
@@ -125,46 +113,20 @@ export default async function PersonalProjectPage({
     const rows = sortTaskRows(allCards);
 
     tasksTabContent = (
-      <>
-        <KanbanStatStrip
-          stats={stats}
+      <ProjectTasksList
+        initialFilters={listFilters}
+        tagOptions={taskTagPool.map(({ id, name }) => ({ id, name }))}
+      >
+        <SpaceTaskTable
+          variant="personal"
+          rows={rows}
           today={today}
-          active={{
-            status: statFilter.status,
-            overdue: statFilter.overdueOnly,
-            dueSoon: statFilter.dueSoonOnly,
-          }}
-          basePath={`/space/personal/projects/${project.slug}`}
-          preserveParams={{ tab: "tasks" }}
+          taskHrefs={taskHrefs}
+          taskOrigin="project"
+          initialPage={initialPage}
+          initialPageSize={initialPageSize}
         />
-        <div className="mt-6">
-          <TasksViewTabs
-            initialView={initialView}
-            board={
-              <SpaceKanban
-                variant="personal"
-                board={board}
-                projects={projects}
-                today={today}
-                taskHrefs={taskHrefs}
-                expandFilter={{ projectSlug: project.slug }}
-                taskOrigin="project"
-              />
-            }
-            list={
-              <SpaceTaskTable
-                variant="personal"
-                rows={rows}
-                today={today}
-                taskHrefs={taskHrefs}
-                taskOrigin="project"
-                initialPage={initialPage}
-                initialPageSize={initialPageSize}
-              />
-            }
-          />
-        </div>
-      </>
+      </ProjectTasksList>
     );
   }
 

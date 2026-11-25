@@ -27,21 +27,16 @@ import { listTags } from "@/features/tags/service";
 import { listTeamProjectTasks } from "@/features/tasks/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
-import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
-import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
-import { SpaceKanbanFilterBar } from "@/features/kanban/components/SpaceKanbanFilterBar";
 import { SpaceTaskTable } from "@/features/kanban/components/SpaceTaskTable";
-import { TasksViewTabs } from "@/features/kanban/components/TasksViewTabs";
 import {
   getOlderDoneTeamTasks,
-  getTeamKanbanStats,
   getTeamSpaceBoard,
 } from "@/features/kanban/service";
-import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { sortTaskRows } from "@/features/kanban/sort-task-rows";
-import { parseProjectTabFrom } from "@/lib/project-tab";
+import { ProjectTasksList } from "@/features/projects/components/ProjectTasksList";
+import { parseProjectTabFrom, parseProjectTaskFilters } from "@/lib/project-tab";
 import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
-import { teamProjectHref, teamTaskHref } from "@/lib/routes";
+import { teamTaskHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
 interface TeamProjectPageProps {
@@ -51,16 +46,12 @@ interface TeamProjectPageProps {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }
 
-function firstValue(value: string | string[] | undefined): string | undefined {
-  return Array.isArray(value) ? value[0] : value;
-}
-
 /**
  * 团队项目页（J-3 → 详情 tabs）：概览 / 任务 / 动态。
  *
- * 任务 tab 内嵌任务模块组件（项目过滤锁定，`taskOrigin="project"`），
- * 与 `/space/{teamSlug}/tasks?project=` 共享同一套看板 / 列表行为；
- * 动态 tab 的时间线由后续任务接入（当前回落概览内容）。
+ * 任务 tab 为纯列表（`taskOrigin="project"` 回跳契约与任务模块一致），
+ * 状态/标签/优先级筛选经 `?status=&priority=&tag=` 往返保持；
+ * 动态 tab 为活动 + 评论时间线（`listProjectTimeline`）。
  * 团队不存在、非成员、项目不属于该团队一律 404，不泄露存在性。
  * 页面保持 RSC：按 tab 取数，交互全部下沉到 `"use client"` 组件。
  */
@@ -124,24 +115,16 @@ export default async function TeamProjectPage({
     );
   }
 
-  // ---- 任务 tab：看板 / 列表 / 统计（项目过滤锁定，筛选与任务模块同构）----
+  // ---- 任务 tab：纯列表 + 状态/标签/优先级筛选（筛选值经 URL 往返保持）----
   let tasksTabContent: ReactNode = null;
   if (tab === "tasks") {
-    const initialView = firstValue(sp.view) === "list" ? "list" : "board";
     const initialPage = parseTaskPage(sp.page) ?? undefined;
     const initialPageSize = parseTaskPageSize(sp.size) ?? undefined;
-    const unassignedOnly = firstValue(sp.assignee) === "unassigned";
-    const statFilter = parseStatFilterParams(sp);
-    const filter = {
-      projectId: project.id,
-      unassignedOnly,
-      ...statFilter,
-    };
+    const listFilters = parseProjectTaskFilters(sp);
 
-    const [board, stats, olderDone] = await Promise.all([
-      getTeamSpaceBoard(team.id, today, filter),
-      getTeamKanbanStats(team.id, today, filter),
-      getOlderDoneTeamTasks(team.id, today, filter),
+    const [board, olderDone] = await Promise.all([
+      getTeamSpaceBoard(team.id, today, { projectId: project.id }),
+      getOlderDoneTeamTasks(team.id, today, { projectId: project.id }),
     ]);
 
     // 卡片只有 projectId；任务详情挂在项目 slug 下，href 直接用当前项目。
@@ -158,64 +141,26 @@ export default async function TeamProjectPage({
       ]),
     );
     const rows = sortTaskRows(allCards);
-    const projectHref = teamProjectHref(team.slug, project.slug);
 
     tasksTabContent = (
-      <>
-        <KanbanStatStrip
-          stats={stats}
+      <ProjectTasksList
+        initialFilters={listFilters}
+        tagOptions={taskTagPool.map(({ id, name }) => ({ id, name }))}
+      >
+        <SpaceTaskTable
+          variant="team"
+          rows={rows}
           today={today}
-          active={{
-            status: statFilter.status,
-            overdue: statFilter.overdueOnly,
-            dueSoon: statFilter.dueSoonOnly,
-          }}
-          basePath={projectHref}
-          preserveParams={{
-            tab: "tasks",
-            ...(unassignedOnly ? { assignee: "unassigned" } : {}),
-          }}
+          taskHrefs={taskHrefs}
+          teamId={team.id}
+          teamSlug={team.slug}
+          role={membership.role}
+          actorId={user.id}
+          taskOrigin="project"
+          initialPage={initialPage}
+          initialPageSize={initialPageSize}
         />
-        <SpaceKanbanFilterBar
-          basePath={projectHref}
-          unassignedOnly={unassignedOnly}
-        />
-        <div className="mt-6">
-          <TasksViewTabs
-            initialView={initialView}
-            board={
-              <SpaceKanban
-                variant="team"
-                board={board}
-                projects={projectList}
-                today={today}
-                teamId={team.id}
-                teamSlug={team.slug}
-                role={membership.role}
-                actorId={user.id}
-                taskHrefs={taskHrefs}
-                expandFilter={{ projectSlug: project.slug }}
-                taskOrigin="project"
-              />
-            }
-            list={
-              <SpaceTaskTable
-                variant="team"
-                rows={rows}
-                today={today}
-                taskHrefs={taskHrefs}
-                teamId={team.id}
-                teamSlug={team.slug}
-                role={membership.role}
-                actorId={user.id}
-                taskOrigin="project"
-                initialPage={initialPage}
-                initialPageSize={initialPageSize}
-              />
-            }
-          />
-        </div>
-      </>
+      </ProjectTasksList>
     );
   }
 
