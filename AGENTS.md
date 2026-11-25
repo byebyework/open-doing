@@ -112,6 +112,14 @@ Self-contained by domain: auth / users / teams / projects / tasks / tags / kanba
 - Cascading deletes rely on foreign keys `ON DELETE CASCADE` as the safety net; removing a member only deletes the membership and nulls the tasks' `assignee_id` — it does not delete tasks. Tasks link to milestones via nullable `tasks.milestone_id` (set null on milestone delete; cleared on task project move).
 - `server/db/testing.ts` replays migrations + truncates the test database.
 
+## Code Comments & Self-Documentation
+
+- **Zero "What" comments**: NEVER write comments that explain *what* the code is doing, restate the function/variable name, or act as section dividers (e.g., `// Helpers`, `// Fetch user`). Use clear naming, small functions, and TypeScript types instead.
+- **Zero "Excuse" comments**: NEVER write comments to justify a workaround, temporary patch, or `useEffect`/timer hack. Fix the root cause instead.
+- **Only `// WHY:` is allowed**: Only add a comment (prefixed with `// WHY: `) when explaining a non-obvious business rule, a deliberate trade-off, or a workaround for an external library/browser bug.
+- **Clean up before finishing**: Before completing a task, review your diff and delete any redundant comments you generated.
+
+
 ## React Coding Guidelines
 
 - **Strictly forbid using `useEffect` in business components.**
