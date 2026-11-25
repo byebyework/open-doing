@@ -74,7 +74,9 @@ export function ProjectDetailLayout({ sidebar, children }: ProjectDetailLayoutPr
         </Button>
       </div>
       {hidden ? (
-        <div className="min-w-0">{main}</div>
+        // WHY: 976 = 容器1320 − 侧栏320 − gap24，与侧栏展开时主列同宽；
+        // 收起后主列不再撑满整页而是居中，评论输入等宽度保持不变。
+        <div className="mx-auto min-w-0 max-w-[976px]">{main}</div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px]">
           {main}
