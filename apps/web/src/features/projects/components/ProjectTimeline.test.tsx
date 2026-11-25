@@ -167,18 +167,7 @@ describe("ProjectTimeline", () => {
     expect(container.querySelector("textarea")?.getAttribute("rows")).toBe("6");
   });
 
-  it("根评论有回复入口；点开展开 rows=6 回复框；提交带 parentId；回复嵌套渲染", async () => {
-    mockAdd.mockResolvedValue({
-      ok: true,
-      data: {
-        id: "r9",
-        projectId: "p1",
-        authorId: "u1",
-        authorName: "林夏",
-        content: "回复内容2",
-        createdAt: "2026-11-24T05:00:00.000Z",
-      },
-    });
+  it("线程默认收起：pill 计数可见、回复列表不在 DOM；点 pill 展开后回复与底部输入框出现", async () => {
     const rootWithReplies: TimelineItem = {
       kind: "comment",
       id: "c1",
@@ -196,22 +185,95 @@ describe("ProjectTimeline", () => {
     };
     render([rootWithReplies]);
 
-    // 回复嵌套渲染在根评论下。
-    expect(container.textContent).toContain("已有的回复");
-
-    const replyBtn = Array.from(container.querySelectorAll("button")).find(
-      (b) => b.textContent?.includes("回复"),
+    const toggle = container.querySelector<HTMLElement>(
+      '[data-testid="thread-replies-toggle"]',
     );
-    expect(replyBtn, "missing reply button").toBeTruthy();
+    expect(toggle, "missing thread toggle").not.toBeNull();
+    expect(toggle!.textContent).toContain("1 条回复");
+    // 默认收起：回复列表与回复输入框都不在 DOM。
+    expect(container.textContent).not.toContain("已有的回复");
+    expect(container.querySelector("ul textarea")).toBeNull();
+
     await act(async () => {
-      replyBtn!.click();
+      toggle!.click();
+    });
+    expect(container.textContent).toContain("已有的回复");
+    const textarea = container.querySelector("ul textarea")!;
+    expect(textarea.getAttribute("rows")).toBe("6");
+    expect(textarea.getAttribute("aria-label")).toBe("回复内容");
+    expect(toggle!.getAttribute("aria-expanded")).toBe("true");
+
+    // 再点收起：回复列表消失。
+    await act(async () => {
+      toggle!.click();
+    });
+    expect(container.textContent).not.toContain("已有的回复");
+    expect(container.querySelector("ul textarea")).toBeNull();
+  });
+
+  it("0 回复根评论：pill 文案「回复」，展开只有输入框", async () => {
+    const rootNoReplies: TimelineItem = {
+      kind: "comment",
+      id: "c1",
+      content: "孤根评论",
+      createdAt: "2026-11-24T03:00:00.000Z",
+      author: { id: "u1", name: "林夏" },
+      replies: [],
+    };
+    render([rootNoReplies]);
+
+    const toggle = container.querySelector<HTMLElement>(
+      '[data-testid="thread-replies-toggle"]',
+    )!;
+    expect(toggle.textContent).toContain("回复");
+    expect(toggle.textContent).not.toContain("条回复");
+
+    await act(async () => {
+      toggle.click();
+    });
+    expect(container.querySelector("ul textarea")).not.toBeNull();
+    // 没有回复行（只有输入框）。
+    expect(container.textContent).not.toContain("孤根评论的回复");
+  });
+
+  it("展开状态下提交回复带根 parentId；数据刷新后仍展开且计数更新", async () => {
+    mockAdd.mockResolvedValue({
+      ok: true,
+      data: {
+        id: "r9",
+        projectId: "p1",
+        authorId: "u1",
+        authorName: "林夏",
+        content: "回复内容2",
+        createdAt: "2026-11-24T05:00:00.000Z",
+      },
+    });
+    const oneReply: TimelineItem = {
+      kind: "comment",
+      id: "c1",
+      content: "根评论",
+      createdAt: "2026-11-24T03:00:00.000Z",
+      author: { id: "u1", name: "林夏" },
+      replies: [
+        {
+          id: "r1",
+          content: "已有的回复",
+          createdAt: "2026-11-24T03:30:00.000Z",
+          author: { id: "u2", name: "阿测" },
+        },
+      ],
+    };
+    render([oneReply]);
+
+    const toggle = container.querySelector<HTMLElement>(
+      '[data-testid="thread-replies-toggle"]',
+    )!;
+    await act(async () => {
+      toggle.click();
     });
 
-    // 回复输入框出现在根评论块内（不在主输入区），rows=6。
     const list = container.querySelector("ul")!;
     const replyTextarea = list.querySelector("textarea")!;
-    expect(replyTextarea.getAttribute("rows")).toBe("6");
-
     const setter = Object.getOwnPropertyDescriptor(
       window.HTMLTextAreaElement.prototype,
       "value",
@@ -232,9 +294,29 @@ describe("ProjectTimeline", () => {
       parentId: "c1",
     });
     expect(refresh).toHaveBeenCalled();
+
+    // 模拟 refresh：同组件挂载下带2 条回复重渲染 → 仍展开、计数更新。
+    const twoReplies: TimelineItem = {
+      ...(oneReply as Extract<TimelineItem, { kind: "comment" }>),
+      replies: [
+        ...(oneReply as Extract<TimelineItem, { kind: "comment" }>).replies,
+        {
+          id: "r2",
+          content: "第二条回复",
+          createdAt: "2026-11-24T05:01:00.000Z",
+          author: { id: "u1", name: "林夏" },
+        },
+      ],
+    };
+    render([twoReplies]);
+    expect(
+      container.querySelector('[data-testid="thread-replies-toggle"]')!
+        .textContent,
+    ).toContain("2 条回复");
+    expect(container.querySelector("ul textarea")).not.toBeNull();
   });
 
-  it("回复行仅作者可删；非作者回复无删除入口", () => {
+  it("回复行仅作者可删；非作者回复无删除入口（先展开）", async () => {
     const rootWithReplies: TimelineItem = {
       kind: "comment",
       id: "c1",
@@ -248,14 +330,29 @@ describe("ProjectTimeline", () => {
           createdAt: "2026-11-24T03:30:00.000Z",
           author: { id: "u2", name: "阿测" },
         },
+        {
+          id: "r2",
+          content: "自己的回复",
+          createdAt: "2026-11-24T03:40:00.000Z",
+          author: { id: "u1", name: "林夏" },
+        },
       ],
     };
     render([rootWithReplies]);
 
-    const deleteButtons = Array.from(
-      container.querySelectorAll("button"),
-    ).filter((b) => b.textContent?.includes("删除"));
-    // 只有根评论（作者 u1 = 当前用户）有删除；别人的回复没有。
-    expect(deleteButtons).toHaveLength(1);
+    const deleteButtons = () =>
+      Array.from(container.querySelectorAll("button")).filter((b) =>
+        b.textContent?.includes("删除"),
+      );
+    // 收起：只有根评论（作者 u1）的删除。
+    expect(deleteButtons()).toHaveLength(1);
+
+    await act(async () => {
+      container
+        .querySelector<HTMLElement>('[data-testid="thread-replies-toggle"]')!
+        .click();
+    });
+    // 展开：根 + 自己的回复有删除；别人的回复没有 → 共2。
+    expect(deleteButtons()).toHaveLength(2);
   });
 });
