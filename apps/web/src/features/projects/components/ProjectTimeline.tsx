@@ -23,8 +23,10 @@ import type { ProjectActivityType, ProjectStatus, TaskPriority } from "@open-doi
 
 import { CharCounter } from "@/components/ui/CharCounter";
 import { UserAvatar } from "@/components/ui/UserAvatar";
+import { OD_EASE } from "@/components/ui/overlay-motion";
 import { Button } from "@/components/ui/shadcn/button";
 import { Textarea } from "@/components/ui/shadcn/textarea";
+import { CollapseReveal } from "./CollapseReveal";
 import { COMMENT_MAX_LENGTH } from "@/lib/task-fields";
 import { formatTaskTimestamp } from "@/lib/date-display";
 import { toast } from "sonner";
@@ -78,8 +80,8 @@ const MILESTONE_FIELD_LABEL_KEY = {
   description: "activityMilestoneFieldDescription",
 } as const;
 
-/** 行进入动效：0.18s easeOut + 30ms 级联（MotionConfig reducedMotion 兜底）。 */
-const ROW_TRANSITION = { duration: 0.18, ease: "easeOut" as const };
+/** 行进入动效：0.18s 品牌入场曲线 + 30ms 级联（MotionConfig reducedMotion 兜底）。 */
+const ROW_TRANSITION = { duration: 0.18, ease: OD_EASE.decelerate };
 const ROW_STAGGER = 0.03;
 const ROW_STAGGER_CAP = 0.3;
 
@@ -373,7 +375,7 @@ export function ProjectTimeline({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-7 gap-1.5 rounded-[var(--radius-pill)] px-2.5 text-[12.5px] text-[var(--ink-500)] hover:text-[var(--ink-900)]"
+                    className="h-7 gap-1.5 rounded-[var(--radius-pill)] px-2.5 text-[12px] text-[var(--ink-500)] hover:text-[var(--ink-900)]"
                     data-testid="thread-replies-toggle"
                     aria-expanded={expandedThreads.has(item.id)}
                     onClick={() => toggleThread(item.id)}
@@ -385,13 +387,9 @@ export function ProjectTimeline({
                   </Button>
                 </div>
 
-                {expandedThreads.has(item.id) ? (
-                  <motion.div
-                    initial={{ opacity: 0, y: 2 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={ROW_TRANSITION}
-                    className="mt-2"
-                  >
+                {/* 收展走 CollapseReveal：与面板同款 height+opacity 退场（含 reduced-motion 门控）。 */}
+                <CollapseReveal open={expandedThreads.has(item.id)}>
+                  <div className="mt-2">
                     {item.replies.length > 0 ? (
                       <div className="flex flex-col gap-3 border-l-2 border-[var(--border)] pl-3">
                         {item.replies.map((reply) => (
@@ -403,7 +401,7 @@ export function ProjectTimeline({
                             />
                             <div className="min-w-0 flex-1">
                               <div className="flex items-center gap-2">
-                                <span className="text-[13px] font-semibold text-[var(--ink-900)]">
+                                <span className="text-[13.5px] font-semibold text-[var(--ink-900)]">
                                   {reply.author.name}
                                 </span>
                                 <span className="text-[12px] text-[var(--ink-400)]">
@@ -430,7 +428,7 @@ export function ProjectTimeline({
                                   </Button>
                                 ) : null}
                               </div>
-                              <p className="mt-0.5 whitespace-pre-wrap break-words text-[13px] leading-relaxed text-[var(--ink-700)]">
+                              <p className="mt-0.5 whitespace-pre-wrap break-words text-[13.5px] leading-relaxed text-[var(--ink-700)]">
                                 {reply.content}
                               </p>
                             </div>
@@ -483,8 +481,8 @@ export function ProjectTimeline({
                         </Button>
                       </div>
                     </div>
-                  </motion.div>
-                ) : null}
+                  </div>
+                </CollapseReveal>
               </div>
             </motion.li>
           );

@@ -203,12 +203,26 @@ describe("ProjectTimeline", () => {
     expect(textarea.getAttribute("aria-label")).toBe("回复内容");
     expect(toggle!.getAttribute("aria-expanded")).toBe("true");
 
-    // 再点收起：回复列表消失。
+    // H1 字号收敛：pill meta 档 12px，回复正文与根评论同档 13.5px。
+    expect(toggle!.className).toContain("text-[12px]");
+    expect(toggle!.className).not.toContain("text-[12.5px]");
+    const replyParagraph = Array.from(
+      container.querySelectorAll("ul p"),
+    ).find((p) => p.textContent?.includes("已有的回复"));
+    expect(replyParagraph?.className).toContain("text-[13.5px]");
+
+    // 再点收起：退出驻留（AnimatePresence exit），动画结束后才卸载。
     await act(async () => {
       toggle!.click();
     });
-    expect(container.textContent).not.toContain("已有的回复");
-    expect(container.querySelector("ul textarea")).toBeNull();
+    expect(container.textContent).toContain("已有的回复");
+    await vi.waitFor(
+      () => {
+        expect(container.textContent).not.toContain("已有的回复");
+        expect(container.querySelector("ul textarea")).toBeNull();
+      },
+      { timeout: 2_000 },
+    );
   });
 
   it("0 回复根评论：pill 文案「回复」，展开只有输入框", async () => {
