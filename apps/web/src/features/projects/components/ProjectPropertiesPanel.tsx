@@ -98,7 +98,7 @@ export function ProjectPropertiesPanel({
 
   const row = (label: string, value: React.ReactNode, testid?: string) => (
     <div className="flex items-center justify-between gap-2 py-1.5" data-testid={testid}>
-      <span className="text-[12.5px] text-[var(--color-text-muted)]">{label}</span>
+      <span className="text-[12px] text-[var(--color-text-muted)]">{label}</span>
       <span className="flex min-w-0 items-center justify-end">{value}</span>
     </div>
   );

@@ -258,4 +258,28 @@ describe("ProjectPropertiesPanel 成员行", () => {
       }),
     );
   });
+
+  it("属性行 label 用 12px meta 档", () => {
+    act(() => {
+      root.render(
+        <NextIntlClientProvider locale="zh" messages={zh}>
+          <ProjectPropertiesPanel
+            project={project}
+            memberPool={roster}
+            canManage
+            space={{ kind: "team", teamId: "team-1" }}
+          />
+        </NextIntlClientProvider>,
+      );
+    });
+
+    // testid 在状态 pill 上；行容器靠 .justify-between 上溯，行内首个 span 即 label。
+    const pill = document.querySelector(
+      '[data-testid="properties-status-pill"]',
+    )!;
+    const rowEl = pill.closest(".justify-between")!;
+    const label = rowEl.querySelector(":scope > span")!;
+    expect(label.className).toContain("text-[12px]");
+    expect(label.className).not.toContain("text-[12.5px]");
+  });
 });
