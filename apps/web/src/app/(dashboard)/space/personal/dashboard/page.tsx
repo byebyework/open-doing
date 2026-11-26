@@ -18,6 +18,7 @@ import { TodayTaskList } from "@/features/dashboard/personal-dashboard/component
 import { MomentsWidget } from "@/features/moments/components/MomentsWidget";
 import { listMoments } from "@/features/moments/service";
 import { NewPersonalProjectButton } from "@/features/personal/projects/components/NewPersonalProjectButton";
+import { listTags } from "@/features/tags/service";
 import { todayInShanghai } from "@/lib/today";
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -53,11 +54,14 @@ export default async function PersonalDashboardPage() {
   const today = todayInShanghai();
   const weekStart = getWeekStart(today);
 
-  const [stats, board, projects, moments] = await Promise.all([
+  const [stats, board, projects, moments, projectTagPool] = await Promise.all([
     getMyTaskStats({ userId: user.id, today, weekStart }),
     getTodayBoard({ userId: user.id, today }),
     listCrossSpaceProjects(user.id),
     listMoments({ userId: user.id, today, limit: 3 }),
+    listTags({ ownerId: user.id }).then((tags) =>
+      tags.filter((tag) => tag.type === "project"),
+    ),
   ]);
 
   // 「今日 / 明日到期」delta 使用不封顶的统计值：今天列表被 limit 截断，
@@ -82,7 +86,7 @@ export default async function PersonalDashboardPage() {
         subtitle={t("personalSubtitle")}
         actions={
           <>
-            <NewPersonalProjectButton />
+            <NewPersonalProjectButton projectTagPool={projectTagPool} />
             <NewTaskButton projects={projects} />
           </>
         }

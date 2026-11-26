@@ -13,7 +13,7 @@ import {
   ProjectListTable,
   type ProjectListRow,
 } from "@/features/projects/components/ProjectListTable";
-import { tagsByProjectId } from "@/features/tags/service";
+import { listTags, tagsByProjectId } from "@/features/tags/service";
 import { personalProjectHref } from "@/lib/routes";
 import { todayInShanghai } from "@/lib/today";
 
@@ -34,7 +34,12 @@ export default async function PersonalProjectsPage() {
   const user = await requireUser();
 
   const today = todayInShanghai();
-  const list = await getPersonalProjectListWithStats(user.id, today);
+  const [list, projectTagPool] = await Promise.all([
+    getPersonalProjectListWithStats(user.id, today),
+    listTags({ ownerId: user.id }).then((tags) =>
+      tags.filter((tag) => tag.type === "project"),
+    ),
+  ]);
   const projectTagsMap = await tagsByProjectId(list.map((item) => item.project.id));
 
   const rows: ProjectListRow[] = list.map((item) => ({
@@ -76,7 +81,7 @@ export default async function PersonalProjectsPage() {
           </>
         }
         subtitle={t("listSubtitlePersonal")}
-        actions={<NewPersonalProjectButton />}
+        actions={<NewPersonalProjectButton projectTagPool={projectTagPool} />}
       />
 
       {rows.length === 0 ? (
