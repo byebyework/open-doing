@@ -212,8 +212,9 @@ test.describe("flow 7: 空间级 Calendar", () => {
     await expect(page).toHaveURL(
       new RegExp(`/space/personal/calendar\\?month=${targetMonth}$`),
     );
+    // 限定 h2：同文案的 aria-live 月指示 span 会造成 strict violation。
     await expect(
-      page.getByText(monthHeading(targetMonth), { exact: true }),
+      page.locator("h2").filter({ hasText: monthHeading(targetMonth) }),
     ).toBeVisible();
     await expect(
       dayCell(page, targetDate).getByText(taskTitle, { exact: true }),

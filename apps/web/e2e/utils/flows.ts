@@ -175,7 +175,9 @@ export async function openPersonalTask(
   title: string,
 ): Promise<void> {
   await page.getByRole("link", { name: title, exact: true }).click();
-  await expect(page).toHaveURL(/\/space\/personal\/tasks\/[0-9a-f-]+$/);
+  // 列表行按 task-origin 契约带 ?from=tasks&view=…（见 lib/task-origin.ts），
+  // 详情路径断言允许尾部查询串。
+  await expect(page).toHaveURL(/\/space\/personal\/tasks\/[0-9a-f-]+(\?.*)?$/);
   await expect(
     page.getByRole("heading", { name: title, level: 1 }),
   ).toBeVisible();
