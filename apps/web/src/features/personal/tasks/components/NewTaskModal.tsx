@@ -55,7 +55,7 @@ export interface NewTaskModalProps {
   onSuccess: () => void;
   /** 取消 / 关闭。 */
   onCancel: () => void;
-  /** 本人标签池（RSC 注入；为空时不渲染标签选择区）。 */
+  /** 本人标签池（RSC 注入；为空时选择器显示空态文案）。 */
   tagPool?: Tag[];
 }
 
@@ -322,18 +322,17 @@ export function NewTaskModal({
             </Select>
           </div>
 
-          {tagPool.length > 0 ? (
-            <div className="mb-4 flex flex-col gap-2">
-              <Label>{tTags("tagNameLabel")}</Label>
-              <TaskTagPicker
-                space={{ kind: "personal" }}
-                pool={tagPool}
-                value={tagIds}
-                onChange={setTagIds}
-                canEdit={!submitting}
-              />
-            </div>
-          ) : null}
+          {/* 空池也渲染：TaskTagPicker 自带 tags.emptyPool 空态（入口常显）。 */}
+          <div className="mb-4 flex flex-col gap-2">
+            <Label>{tTags("tagNameLabel")}</Label>
+            <TaskTagPicker
+              space={{ kind: "personal" }}
+              pool={tagPool}
+              value={tagIds}
+              onChange={setTagIds}
+              canEdit={!submitting}
+            />
+          </div>
 
           {/* 开始 / 截止同行排布（两列）。 */}
           <div className="mb-4 grid grid-cols-2 gap-4">
