@@ -1,6 +1,6 @@
 "use client";
 
-import type { Subtask, Task, TaskStatus } from "@open-doing/types";
+import type { Subtask, Tag, Task, TaskStatus } from "@open-doing/types";
 import { ChevronDownIcon, Loader2Icon, PencilIcon, Trash2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
@@ -289,6 +289,8 @@ export interface PersonalProjectPageActionsProps {
   project: ProjectFormProject;
   /** 新建任务弹窗可选的个人项目。 */
   projects: { id: string; name: string }[];
+  /** 本人 task 标签池（必传——缺省空池会渲染假空态）。 */
+  tagPool: Tag[];
 }
 
 /**
@@ -300,6 +302,7 @@ export interface PersonalProjectPageActionsProps {
 export function PersonalProjectPageActions({
   project,
   projects,
+  tagPool,
 }: PersonalProjectPageActionsProps) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -315,6 +318,7 @@ export function PersonalProjectPageActions({
         open={newTaskOpen}
         projects={projects}
         defaultProjectId={project.id}
+        tagPool={tagPool}
         onSuccess={() => {
           setNewTaskOpen(false);
           router.refresh();

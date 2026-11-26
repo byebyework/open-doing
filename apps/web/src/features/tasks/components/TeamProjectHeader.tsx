@@ -21,7 +21,7 @@ export interface TeamProjectHeaderProps {
   /** 当前用户（新建任务默认责任人）。 */
   actorId: string;
   /** 本团队任务标签池（type='task'；新建任务弹窗用）。 */
-  tagPool?: Tag[];
+  tagPool: Tag[];
 }
 
 /**

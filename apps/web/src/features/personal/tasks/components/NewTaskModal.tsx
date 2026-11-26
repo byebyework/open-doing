@@ -55,8 +55,8 @@ export interface NewTaskModalProps {
   onSuccess: () => void;
   /** 取消 / 关闭。 */
   onCancel: () => void;
-  /** 本人标签池（RSC 注入；为空时选择器显示空态文案）。 */
-  tagPool?: Tag[];
+  /** 本人标签池（RSC 注入，必传——缺省空池会渲染假空态；为空时选择器显示空态文案）。 */
+  tagPool: Tag[];
 }
 
 /** 「不属于项目」在 Radix Select 里的哨兵值（不允许空字符串 item value）。 */

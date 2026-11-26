@@ -101,6 +101,7 @@ export default async function PersonalTasksPage(
           <PersonalKanbanNewTaskButton
             projects={projects.map(({ id, name }) => ({ id, name }))}
             defaultProjectId={activeProject?.id}
+            tagPool={tagPool.filter((tag) => tag.type === "task")}
           />
         }
       />

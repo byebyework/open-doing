@@ -27,7 +27,7 @@ export function TeamTasksNewTaskButton({
   /** 默认责任人（通常为当前用户）。 */
   defaultAssigneeId?: string | null;
   /** 本团队任务类型标签池（RSC 注入；为空时弹窗不渲染标签选择区）。 */
-  tagPool?: Tag[];
+  tagPool: Tag[];
 }) {
   const router = useRouter();
   const t = useTranslations("kanban");

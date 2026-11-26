@@ -60,8 +60,8 @@ export interface NewTeamTaskModalProps {
   onSuccess: () => void;
   /** 取消 / 关闭。 */
   onCancel: () => void;
-  /** 本团队标签池（RSC 注入；为空时选择器显示空态文案）。 */
-  tagPool?: Tag[];
+  /** 本团队标签池（RSC 注入，必传——缺省空池会渲染假空态；为空时选择器显示空态文案）。 */
+  tagPool: Tag[];
 }
 
 /**

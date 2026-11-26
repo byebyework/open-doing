@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
+import { listTags } from "@/features/tags/service";
 import { SpaceCalendar } from "@/features/calendar/components/SpaceCalendar";
 import { getTeamSpaceCalendar } from "@/features/calendar/service";
 import { listTeamProjects } from "@/features/projects/service";
@@ -65,7 +66,11 @@ export default async function TeamCalendarPage(
   // 卡片只有 projectId；href 需要 project slug，用当前项目列表反查。
   const projects = await listTeamProjects(team.id);
   // 格子「+」新建任务入口：项目选项 + 可指派成员（默认当前用户）。
-  const memberList = await listMembers(team.id);
+  const [memberList, tagPool] = await Promise.all([
+    listMembers(team.id),
+    listTags({ teamId: team.id }),
+  ]);
+  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
   const projectSlugById = new Map(
     projects.map((project) => [project.id, project.slug]),
   );
@@ -93,6 +98,7 @@ export default async function TeamCalendarPage(
           basePath={moduleHref(team.slug, "calendar")}
           createTask={{
             projects: projects.map(({ id, name }) => ({ id, name })),
+            tagPool: taskTagPool,
             teamId: team.id,
             members: memberList.map(({ user: member }) => ({
               id: member.id,

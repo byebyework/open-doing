@@ -1,6 +1,6 @@
 "use client";
 
-import { addDays } from "@open-doing/types";
+import { addDays, type Tag } from "@open-doing/types";
 import { enUS, zhCN } from "date-fns/locale";
 import { useLocale, useTranslations } from "next-intl";
 import Link from "next/link";
@@ -65,6 +65,8 @@ export interface SpaceCalendarProps {
 export interface SpaceCalendarCreateTask {
   /** 个人 / 团队项目选项（新建弹窗项目下拉）。 */
   projects: { id: string; name: string }[];
+  /** 本空间 task 标签池（必传——缺省空池会渲染假空态）。 */
+  tagPool: Tag[];
   /** 团队空间专用：团队 ID（variant=team 时必填）。 */
   teamId?: string;
   /** 团队空间专用：可指派成员。 */
@@ -1083,6 +1085,7 @@ export function SpaceCalendar({
           <NewTaskModal
             open={createDate !== null}
             projects={createTask.projects}
+            tagPool={createTask.tagPool}
             defaultDueDate={createDate}
             onSuccess={() => {
               setCreateDate(null);
@@ -1097,6 +1100,7 @@ export function SpaceCalendar({
             open={createDate !== null}
             teamId={createTask.teamId ?? ""}
             projects={createTask.projects}
+            tagPool={createTask.tagPool}
             members={createTask.members ?? []}
             defaultAssigneeId={createTask.defaultAssigneeId ?? null}
             defaultDueDate={createDate}

@@ -3,6 +3,7 @@ import { getTranslations } from "next-intl/server";
 
 import { PageHeader } from "@/components/ui/PageHeader";
 import { requireUser } from "@/features/auth/session";
+import { listTags } from "@/features/tags/service";
 import { SpaceCalendar } from "@/features/calendar/components/SpaceCalendar";
 import { getPersonalSpaceCalendar } from "@/features/calendar/service";
 import { listPersonalProjects } from "@/features/personal/projects/service";
@@ -37,9 +38,13 @@ export default async function PersonalCalendarPage(
       ? monthParam
       : today.slice(0, 7);
 
-  const data = await getPersonalSpaceCalendar(user.id, month, today);
-  // 格子「+」新建任务入口的项目选项（与 Kanban 页头新建弹窗同源）。
-  const projects = await listPersonalProjects(user.id);
+  const [data, projects, tagPool] = await Promise.all([
+    getPersonalSpaceCalendar(user.id, month, today),
+    // 格子「+」新建任务入口的项目选项（与 Kanban 页头新建弹窗同源）。
+    listPersonalProjects(user.id),
+    listTags({ ownerId: user.id }),
+  ]);
+  const taskTagPool = tagPool.filter((tag) => tag.type === "task");
 
   const taskHrefs = Object.fromEntries(
     [...data.items, ...data.weekItems, ...data.monthUpcoming].map((card) => [
@@ -63,6 +68,7 @@ export default async function PersonalCalendarPage(
           noDueHref={spaceDashboardHref("personal")}
           createTask={{
             projects: projects.map(({ id, name }) => ({ id, name })),
+            tagPool: taskTagPool,
           }}
         />
       </div>

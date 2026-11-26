@@ -149,6 +149,7 @@ export default async function PersonalProjectPage({
         title={undefined}
         actions={
           <PersonalProjectPageActions
+            tagPool={taskTagPool}
             project={{
               id: project.id,
               name: project.name,

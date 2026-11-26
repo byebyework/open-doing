@@ -1,5 +1,6 @@
 "use client";
 
+import type { Tag } from "@open-doing/types";
 import { useTranslations } from "next-intl";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -11,10 +12,13 @@ import { NewTaskModal } from "@/features/personal/tasks/components/NewTaskModal"
 export function PersonalKanbanNewTaskButton({
   projects,
   defaultProjectId,
+  tagPool,
 }: {
   projects: { id: string; name: string }[];
   /** 当前 URL 筛选的项目；作为弹窗默认选中项（可改）。 */
   defaultProjectId?: string;
+  /** 本人 task 标签池（必传——缺省空池会渲染假空态）。 */
+  tagPool: Tag[];
 }) {
   const router = useRouter();
   const t = useTranslations("tasks");
@@ -31,6 +35,7 @@ export function PersonalKanbanNewTaskButton({
         open={open}
         projects={projects}
         defaultProjectId={defaultProjectId}
+        tagPool={tagPool}
         onSuccess={() => {
           setOpen(false);
           router.refresh();
