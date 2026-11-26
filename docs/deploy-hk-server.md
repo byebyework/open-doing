@@ -1,5 +1,6 @@
 # 香港服务器部署运维手册
 
+> **数据库部分已被取代**：新部署（docker-compose 内置 PostgreSQL，替代 Supabase）见 `docs/deploy-hk-pg.md`；本文的 DNS / Cloudflare / 防火墙 / GHCR PAT / Docker 安装 / TLS 证书章节仍然有效。
 > 架构与决策依据见 `docs/superpowers/specs/2026-11-12-aliyun-ecs-deployment-design.md`（早期阿里云大陆方案的设计文档，香港方案的差异：标准 443、镜像源 GHCR、无备案约束）。
 > 部署目录统一为 `/opt/open-doing`。本文所有 `<域名>` / 密钥均为占位符，执行前替换；任何真实凭据不得提交进仓库。
 
@@ -147,7 +148,7 @@ chmod 600 /opt/open-doing/.env
 
 两个 secret 在服务器上生成：`openssl rand -base64 32`。
 
-> **`DATABASE_URL` 必须用 Supabase 的 session pooler（5432 端口）**并带 `?sslmode=require`；不要用直连地址（仅 IPv6），也不要用 transaction pooler（6543，prepared statements 会失效）。
+> ~~**`DATABASE_URL` 必须用 Supabase 的 session pooler（5432 端口）**并带 `?sslmode=require`~~ **已取代**：新部署的 `DATABASE_URL` 由 `docker-compose.hk-pg.yml` 内部组装（指向内置 postgres），见 `docs/deploy-hk-pg.md`；本段仅保留给回滚到 Supabase 的场景。
 > `BETTER_AUTH_URL` 写 `https://<域名>` 即可——443 是 https 默认端口，不需要端口号。
 
 ## 3. TLS 证书（Cloudflare Origin CA，15 年免续期）
@@ -188,7 +189,7 @@ openssl x509 -in /opt/open-doing/certs/fullchain.pem -noout -subject -enddate
 
 > Origin CA 证书 15 年免续期，crontab / acme.sh 续期钩子都不需要；若将来重建证书，覆盖这两个文件后 `docker compose -f docker-compose.hk.yml exec nginx nginx -s reload` 即可。
 
-## 4. 数据库迁移前检查（存量数据保护）
+## 4. 数据库迁移前检查（存量数据保护）（已被取代：新库流程见 `docs/deploy-hk-pg.md` §4）
 
 web 容器首启会自动对 `DATABASE_URL` 跑幂等迁移（`docker/entrypoint.sh` → `migrate.mjs`）。Supabase 库里有存量数据需要保留，所以**启动前先拍照**：
 
