@@ -586,29 +586,28 @@ export function ProjectForm({
             </div>
           )}
         </AttrPill>
-        {projectTagPool.length > 0 ? (
-          <AttrPill
-            testid={`${testIdPrefix}-labels-pill`}
-            icon={<TagIcon className="size-3.5" aria-hidden="true" />}
-            label={tTags("tagNameLabel")}
-            value={tagIds.length > 0 ? String(tagIds.length) : undefined}
-            disabled={submitting}
-          >
-            {() => (
-              <TagOptionList
-                pool={projectTagPool}
-                value={tagIds}
-                onToggle={(tagId) => {
-                  setTagIds((current) =>
-                    current.includes(tagId)
-                      ? current.filter((id) => id !== tagId)
-                      : [...current, tagId],
-                  );
-                }}
-              />
-            )}
-          </AttrPill>
-        ) : null}
+        {/* 空池也渲染：TagOptionList 自带 tags.emptyPool 空态（入口常显）。 */}
+        <AttrPill
+          testid={`${testIdPrefix}-labels-pill`}
+          icon={<TagIcon className="size-3.5" aria-hidden="true" />}
+          label={tTags("tagNameLabel")}
+          value={tagIds.length > 0 ? String(tagIds.length) : undefined}
+          disabled={submitting}
+        >
+          {() => (
+            <TagOptionList
+              pool={projectTagPool}
+              value={tagIds}
+              onToggle={(tagId) => {
+                setTagIds((current) =>
+                  current.includes(tagId)
+                    ? current.filter((id) => id !== tagId)
+                    : [...current, tagId],
+                );
+              }}
+            />
+          )}
+        </AttrPill>
       </div>
 
       <div className="my-3 border-t border-[var(--border)]" />

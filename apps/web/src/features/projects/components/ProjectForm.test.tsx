@@ -463,6 +463,18 @@ describe("ProjectForm", () => {
     expect(row?.textContent).toContain("新名");
   });
 
+  it("空标签池：labels 胶囊仍渲染，展开显示空态文案（不再隐藏）", () => {
+    renderForm({ projectTagPool: [] });
+
+    const pill = document.body.querySelector(
+      '[data-testid="test-project-labels-pill"]',
+    );
+    expect(pill, "labels pill hidden with empty pool").not.toBeNull();
+
+    click("test-project-labels-pill");
+    expect(document.body.textContent).toContain(zh.tags.emptyPool);
+  });
+
   it("编辑态标签池存在但未选任何标签：payload 带 tagIds: []（清空语义，不静默保留）", async () => {
     mockTeamUpdate.mockResolvedValue({ ok: true, data: fakeProjectResult() });
     renderForm({
