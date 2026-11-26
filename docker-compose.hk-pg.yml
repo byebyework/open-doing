@@ -1,0 +1,66 @@
+name: open-doing-hk-pg
+
+# 香港服务器生产编排（数据库自托管版）：以 docker-compose.hk.yml 为底，
+# 把 Supabase session pooler 换成本容器组内的 PostgreSQL 16（持久卷、
+# 不发布宿主端口）。镜像来自 GHCR（GitHub Actions 构建，push main 自动触发，
+# 见 .github/workflows/build-push-ghcr.yml），服务器手动 pull 升级。
+# web 启动时先对 DATABASE_URL 执行幂等迁移（docker/entrypoint.sh）。
+# 完整使用与 Supabase → PG 数据迁移见 docs/deploy-hk-pg.md。
+#
+# 与 docker-compose.prod.yml 的区别：那个用本地 `build: .`（本机场景），
+# 本文件用 GHCR 镜像 + nginx/443（服务器场景）。
+#
+# 密钥与配置从仓库根 .env 读取（compose 自动加载；不要提交真实值）：
+#   POSTGRES_PASSWORD      数据库口令（必填；openssl rand -base64 32 取一段）
+#   BETTER_AUTH_SECRET     会话签名密钥（必填；openssl rand -base64 32）
+#   CRON_SECRET            cron 路由鉴权密钥（必填）
+#   BETTER_AUTH_URL        对外基地址（必填；https://<域名>，443 默认不带端口）
+#   CERT_DIR               宿主机证书目录（Cloudflare Origin CA 证书，必填）
+
+services:
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: open-doing
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: open_doing
+    # 不发布宿主端口：仅 compose 内部网络可达；备份用
+    # `docker compose … exec -T postgres pg_dump …`（见指南）。
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U open-doing -d open_doing"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  web:
+    image: ghcr.io/byebyework/open-doing:latest
+    restart: unless-stopped
+    # 只发布到回环地址：公网流量一律经 nginx，cron 从宿主机 127.0.0.1 触发
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      # host=postgres（服务名）：容器间内网连接，密码与上面 POSTGRES_PASSWORD 同源
+      DATABASE_URL: postgres://open-doing:${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}@postgres:5432/open_doing
+      BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in .env (openssl rand -base64 32)}
+      CRON_SECRET: ${CRON_SECRET:?set CRON_SECRET in .env}
+      BETTER_AUTH_URL: ${BETTER_AUTH_URL:?set BETTER_AUTH_URL in .env (https://<domain>)}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  nginx:
+    image: ghcr.io/byebyework/open-doing-nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "443:443"
+    volumes:
+      - ./docker/nginx/hk.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${CERT_DIR:?set CERT_DIR in .env (Cloudflare Origin CA 证书目录)}:/etc/nginx/certs:ro
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:

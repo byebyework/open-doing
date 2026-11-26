@@ -1,4 +1,6 @@
 name: open-doing-hk
+# DEPRECATED: 数据库已改为 docker-compose.hk-pg.yml 内置 PostgreSQL（替代 Supabase）。
+# 本文件仅保留供回滚参考，新部署见 docs/deploy-hk-pg.md。
 
 # 香港服务器生产编排：标准 443（无备案约束），镜像来自 GHCR，数据库为 Supabase（session pooler），
 # 故不含 postgres 服务。与 docker-compose.prod.yml（本机 web+postgres 场景）互不影响。
