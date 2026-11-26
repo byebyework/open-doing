@@ -1,6 +1,9 @@
 name: build-push-ghcr
 
+# push main 自动构建镜像；部署仍在服务器手动 pull && up -d（见 docs/deploy-hk-pg.md）。
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 env:
