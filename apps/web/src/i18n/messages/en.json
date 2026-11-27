@@ -953,6 +953,7 @@
     "filterStatusLabel": "Status",
     "filterPriorityLabel": "Priority",
     "filterTag": "Tag",
+    "filterMilestone": "Milestone",
     "filterProjectLabel": "Project",
     "filterAll": "All",
     "listEmptyTitle": "No tasks",

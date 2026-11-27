@@ -75,7 +75,7 @@ function FilterOption({
 export function TaskListFilters() {
   const t = useTranslations("kanban");
   const tTasks = useTranslations("tasks");
-  const { filters, setFilter, tagOptions } = useListFilters();
+  const { filters, setFilter, tagOptions, milestoneOptions } = useListFilters();
 
   const statusLabel =
     filters.status === "all"
@@ -193,6 +193,46 @@ export function TaskListFilters() {
                 label={option.name}
                 selected={filters.tag === option.id}
                 onSelect={() => setFilter({ tag: option.id })}
+              />
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      ) : null}
+
+      {/* 方案 A：无项目上下文（milestoneOptions 为空）时不渲染。 */}
+      {milestoneOptions.length > 0 ? (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              type="button"
+              data-testid="task-filter-milestone"
+              className={filterTriggerClass(filters.milestone !== "all")}
+            >
+              <span className="text-[var(--ink-400)]">{t("filterMilestone")}</span>
+              <span className="font-medium">
+                {filters.milestone === "all"
+                  ? t("filterAll")
+                  : (milestoneOptions.find(
+                      (option) => option.id === filters.milestone,
+                    )?.name ?? t("filterAll"))}
+              </span>
+              <ChevronDownIcon aria-hidden className="size-3.5 opacity-60" />
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="min-w-[132px]">
+            <FilterOption
+              testid="task-filter-milestone-option-all"
+              label={t("filterAll")}
+              selected={filters.milestone === "all"}
+              onSelect={() => setFilter({ milestone: "all" })}
+            />
+            {milestoneOptions.map((option) => (
+              <FilterOption
+                key={option.id}
+                testid={`task-filter-milestone-option-${option.id}`}
+                label={option.name}
+                selected={filters.milestone === option.id}
+                onSelect={() => setFilter({ milestone: option.id })}
               />
             ))}
           </DropdownMenuContent>

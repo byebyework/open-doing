@@ -33,6 +33,8 @@ export interface TasksViewTabsProps {
   allProjectsProgress?: number;
   /** 标签筛选选项（task 标签池切片）；缺省 / 空数组时不渲染标签下拉。 */
   tagOptions?: { id: string; name: string }[];
+  /** 里程碑筛选选项（当前项目里程碑）；缺省 / 空数组时不渲染里程碑下拉。 */
+  milestoneOptions?: { id: string; name: string }[];
 }
 
 /**
@@ -84,6 +86,7 @@ export function TasksViewTabs({
   projectProgress,
   allProjectsProgress,
   tagOptions,
+  milestoneOptions,
 }: TasksViewTabsProps) {
   const t = useTranslations("kanban");
   const [view, setView] = useState<TasksView>(initialView);
@@ -100,6 +103,7 @@ export function TasksViewTabs({
       setFilters((current) => ({ ...current, ...patch }));
     },
     tagOptions: tagOptions ?? [],
+    milestoneOptions: milestoneOptions ?? [],
   };
 
   function switchTo(next: TasksView) {

@@ -34,12 +34,15 @@ export interface ListFilters {
   priority: TaskPriority | "all";
   /** 标签 id；"all" 不过滤。项目任务 tab 经 URL `?tag=` 往返保持该值。 */
   tag: string | "all";
+  /** 里程碑 id；"all" 不过滤（仅项目上下文有意义，选项为空时 UI 不渲染下拉）。 */
+  milestone: string | "all";
 }
 
 export const DEFAULT_LIST_FILTERS: ListFilters = {
   status: "all",
   priority: "all",
   tag: "all",
+  milestone: "all",
 };
 
 /**
@@ -52,12 +55,14 @@ export function filterTaskRows<
     status: TaskStatus;
     priority: TaskPriority;
     tags?: Tag[];
+    milestoneId?: string | null;
   },
 >(rows: T[], filters: ListFilters): T[] {
   return rows.filter(
     (row) =>
       (filters.status === "all" || row.status === filters.status) &&
       (filters.priority === "all" || row.priority === filters.priority) &&
-      (filters.tag === "all" || row.tags?.some((item) => item.id === filters.tag)),
+      (filters.tag === "all" || row.tags?.some((item) => item.id === filters.tag)) &&
+      (filters.milestone === "all" || row.milestoneId === filters.milestone),
   );
 }

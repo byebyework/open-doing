@@ -14,6 +14,8 @@ export interface ProjectTasksListProps {
   initialFilters: ListFilters;
   /** 标签筛选选项（task 标签池切片）；空数组不渲染标签下拉。 */
   tagOptions: TagFilterOption[];
+  /** 里程碑筛选选项（当前项目里程碑）；空数组不渲染里程碑下拉。 */
+  milestoneOptions: TagFilterOption[];
   /** 列表本体（RSC 组装的 SpaceTaskTable）。 */
   children: ReactNode;
 }
@@ -38,6 +40,7 @@ const FILTER_PARAM: Array<{
 export function ProjectTasksList({
   initialFilters,
   tagOptions,
+  milestoneOptions,
   children,
 }: ProjectTasksListProps) {
   const [filters, setFilters] = useState<ListFilters>(initialFilters);
@@ -56,7 +59,7 @@ export function ProjectTasksList({
   }
 
   return (
-    <ListFiltersProvider value={{ filters, setFilter, tagOptions }}>
+    <ListFiltersProvider value={{ filters, setFilter, tagOptions, milestoneOptions }}>
       <div className="mt-1 flex flex-col gap-4">
         <TaskListFilters />
         {children}

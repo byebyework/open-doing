@@ -953,6 +953,7 @@
     "filterStatusLabel": "状态",
     "filterPriorityLabel": "优先级",
     "filterTag": "标签",
+    "filterMilestone": "里程碑",
     "filterProjectLabel": "项目",
     "filterAll": "全部",
     "listEmptyTitle": "暂无任务",

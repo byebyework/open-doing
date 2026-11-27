@@ -50,6 +50,7 @@ export function parseProjectTaskFilters(
   const status = first(params.status);
   const priority = first(params.priority);
   const tag = first(params.tag);
+  const milestone = first(params.milestone);
 
   return {
     status:
@@ -61,5 +62,6 @@ export function parseProjectTaskFilters(
         ? (priority as ListFilters["priority"])
         : "all",
     tag: tag ? tag : "all",
+    milestone: milestone ? milestone : "all",
   };
 }

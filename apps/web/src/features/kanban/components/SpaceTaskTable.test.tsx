@@ -224,7 +224,9 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     rows: KanbanCardItem[] = [rowA, rowB, rowC, rowD],
   ): void {
     renderTable(
-      <ListFiltersProvider value={{ filters, setFilter: () => {}, tagOptions: [] }}>
+      <ListFiltersProvider
+        value={{ filters, setFilter: () => {}, tagOptions: [], milestoneOptions: [] }}
+      >
         <SpaceTaskTable
           variant="personal"
           rows={rows}
@@ -629,6 +631,7 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
         status: "todo",
         priority: "high",
         tag: "all",
+        milestone: "all",
       },
       rows,
     );
@@ -656,6 +659,30 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
 
     renderPersonalWithFilters({ ...DEFAULT_LIST_FILTERS, tag: "all" }, rows);
     expect(bodyRows()).toHaveLength(2);
+  });
+
+  it("里程碑筛选按 milestoneId 收窄；all 不过滤；与状态取交集", () => {
+    const rows = [
+      personalRow({ id: "ms-a", title: "里程碑A", milestoneId: "ms-1" }),
+      personalRow({ id: "ms-b", title: "里程碑B", milestoneId: "ms-1" }),
+      personalRow({ id: "ms-c", title: "无里程碑", milestoneId: null }),
+    ];
+
+    renderPersonalWithFilters(
+      { ...DEFAULT_LIST_FILTERS, milestone: "ms-1" },
+      rows,
+    );
+    expect(bodyRows()).toHaveLength(2);
+
+    renderPersonalWithFilters({ ...DEFAULT_LIST_FILTERS, milestone: "all" }, rows);
+    expect(bodyRows()).toHaveLength(3);
+
+    renderPersonalWithFilters(
+      { ...DEFAULT_LIST_FILTERS, milestone: "ms-1", status: "done" },
+      [rows[0], { ...rows[1], status: "done" as const }, rows[2]],
+    );
+    expect(bodyRows()).toHaveLength(1);
+    expect(bodyRows()[0].textContent).toContain("里程碑B");
   });
 
   it("过滤后无匹配行：渲染空态（复用 kanban.listEmpty*）", () => {
@@ -999,9 +1026,10 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     renderTable(
       <ListFiltersProvider
         value={{
-          filters: { status: "todo", priority: "all", tag: "all" },
+          filters: { status: "todo", priority: "all", tag: "all", milestone: "all" },
           setFilter: () => {},
           tagOptions: [],
+          milestoneOptions: [],
         }}
       >
         <SpaceTaskTable

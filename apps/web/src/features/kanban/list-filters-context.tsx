@@ -16,6 +16,8 @@ export interface ListFiltersContextValue {
   setFilter: (patch: Partial<ListFilters>) => void;
   /** 标签筛选选项；空数组时 TaskListFilters 不渲染标签下拉。 */
   tagOptions: TagFilterOption[];
+  /** 里程碑筛选选项；空数组时不渲染里程碑下拉（无项目上下文时即为空）。 */
+  milestoneOptions: TagFilterOption[];
 }
 
 /** 无 provider（单测 / 独立渲染）时的兜底：全 "all"、setFilter 空操作。 */
@@ -23,6 +25,7 @@ const FALLBACK_VALUE: ListFiltersContextValue = {
   filters: DEFAULT_LIST_FILTERS,
   setFilter: () => {},
   tagOptions: [],
+  milestoneOptions: [],
 };
 
 const ListFiltersContext = createContext<ListFiltersContextValue | null>(null);

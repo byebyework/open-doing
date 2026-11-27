@@ -146,6 +146,10 @@ export default async function TeamProjectPage({
       <ProjectTasksList
         initialFilters={listFilters}
         tagOptions={taskTagPool.map(({ id, name }) => ({ id, name }))}
+        milestoneOptions={milestoneProgress.map(({ milestone }) => ({
+          id: milestone.id,
+          name: milestone.name,
+        }))}
       >
         <SpaceTaskTable
           variant="team"

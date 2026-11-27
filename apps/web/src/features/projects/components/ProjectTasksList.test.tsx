@@ -37,8 +37,9 @@ describe("ProjectTasksList", () => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
           <ProjectTasksList
-            initialFilters={{ status: "all", priority: "all", tag: "all" }}
+            initialFilters={{ status: "all", priority: "all", tag: "all", milestone: "all" }}
             tagOptions={tagOptions}
+            milestoneOptions={[]}
           >
             <div data-testid="table-slot">rows</div>
           </ProjectTasksList>

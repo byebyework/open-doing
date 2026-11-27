@@ -31,6 +31,7 @@ const FILTER_SELECTOR = {
   status: '[data-testid="task-filter-status"]',
   priority: '[data-testid="task-filter-priority"]',
   tag: '[data-testid="task-filter-tag"]',
+  milestone: '[data-testid="task-filter-milestone"]',
 } as const;
 
 /**
@@ -77,6 +78,7 @@ function renderTabs(
   projects?: { id: string; name: string; slug: string }[],
   listSlot: ReactNode = <div data-testid="slot-list">列表内容</div>,
   tagOptions?: { id: string; name: string }[],
+  milestoneOptions?: { id: string; name: string }[],
 ): void {
   act(() => {
     root.render(
@@ -87,6 +89,7 @@ function renderTabs(
           board={<div data-testid="slot-board">看板内容</div>}
           list={listSlot}
           tagOptions={tagOptions}
+          milestoneOptions={milestoneOptions}
         />
       </NextIntlClientProvider>,
     );
@@ -125,6 +128,7 @@ function FilterProbe() {
     <div>
       <span data-testid="filter-probe-status">{filters.status}</span>
       <span data-testid="filter-probe-tag">{filters.tag}</span>
+      <span data-testid="filter-probe-milestone">{filters.milestone}</span>
       <span data-testid="filter-probe-rows">
         {filterTaskRows(PROBE_ROWS, filters).length}
       </span>
@@ -370,6 +374,30 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     openFilterMenu("tag");
     clickFilterOption("tag", "all");
     expect(probeTag()).toBe("all");
+  });
+
+  it("milestoneOptions 非空渲染里程碑下拉并可设值，空数组不渲染", () => {
+    renderTabs(
+      "list",
+      PROJECTS,
+      <FilterProbe />,
+      undefined,
+      [{ id: "ms1", name: "上线" }],
+    );
+
+    const trigger = document.querySelector('[data-testid="task-filter-milestone"]');
+    expect(trigger, "missing milestone filter").not.toBeNull();
+
+    openFilterMenu("milestone");
+    clickFilterOption("milestone", "ms1");
+    expect(
+      container.querySelector('[data-testid="filter-probe-milestone"]')?.textContent,
+    ).toBe("ms1");
+
+    renderTabs("list", PROJECTS, <FilterProbe />, undefined, []);
+    expect(
+      document.querySelector('[data-testid="task-filter-milestone"]'),
+    ).toBeNull();
   });
 
   it("tagOptions 缺省 / 为空数组：不渲染标签下拉", () => {
