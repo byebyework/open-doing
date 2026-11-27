@@ -74,6 +74,7 @@ describe("ProjectMilestonesSection", () => {
   function renderSection(props: {
     milestones: ProjectMilestone[];
     canManage?: boolean;
+    progress?: Record<string, { taskCount: number; doneCount: number; percent: number }>;
   }) {
     act(() => {
       root.render(
@@ -83,6 +84,7 @@ describe("ProjectMilestonesSection", () => {
             projectId={PROJECT_ID}
             milestones={props.milestones}
             canManage={props.canManage ?? true}
+            progress={props.progress}
           />
         </NextIntlClientProvider>,
       );
@@ -130,6 +132,15 @@ describe("ProjectMilestonesSection", () => {
     expect(document.body.textContent).toContain("2026-12-20");
     // 无节点描述为「-」占位
     expect(document.body.textContent).toContain("-");
+  });
+
+  it("带 progress：里程碑行显示 {percent}% of {taskCount}（需求 2 锚点）", () => {
+    const ms = milestone();
+    renderSection({
+      milestones: [ms],
+      progress: { [ms.id]: { taskCount: 2, doneCount: 1, percent: 50 } },
+    });
+    expect(document.body.textContent).toContain("50% of 2");
   });
 
   it("非管理态：无添加入口、无删除按钮", () => {
