@@ -78,4 +78,21 @@ describe("NewTeamTaskModal 空标签池", () => {
     });
     expect(document.body.textContent).toContain(zh.tags.emptyPool);
   });
+
+  it("空里程碑选项：里程碑下拉仍渲染，展开只有「无里程碑」", () => {
+    render();
+
+    const select = document.querySelector('[data-testid="task-milestone-select"]');
+    expect(select, "milestone select hidden with empty options").not.toBeNull();
+
+    act(() => {
+      select!.dispatchEvent(
+        new MouseEvent("click", { bubbles: true, cancelable: true }),
+      );
+    });
+    const items = document.body.querySelectorAll('[role="option"]');
+    expect(items).toHaveLength(1);
+    expect(items[0].textContent).toContain(zh.tasks.milestoneNone);
+  });
 });
+

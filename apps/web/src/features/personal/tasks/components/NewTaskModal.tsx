@@ -281,27 +281,26 @@ export function NewTaskModal({
             </Select>
           </div>
 
-          {watchProjectId && milestoneOptions.length > 0 ? (
-            <div className="mb-4 flex flex-col gap-2">
-              <Label>{tTasks("milestoneLabel")}</Label>
-              <Select
-                value={watchMilestoneId}
-                onValueChange={(value) => setValue("milestoneId", value)}
-              >
-                <SelectTrigger className="w-full" data-testid="task-milestone-select">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{tTasks("milestoneNone")}</SelectItem>
-                  {milestoneOptions.map((milestone) => (
-                    <SelectItem key={milestone.id} value={milestone.id}>
-                      {milestone.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
+          {/* 空选项 / 未选项目也渲染：仅剩「无里程碑」项即空态（入口常显，同标签字段）。 */}
+          <div className="mb-4 flex flex-col gap-2">
+            <Label>{tTasks("milestoneLabel")}</Label>
+            <Select
+              value={watchMilestoneId}
+              onValueChange={(value) => setValue("milestoneId", value)}
+            >
+              <SelectTrigger className="w-full" data-testid="task-milestone-select">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{tTasks("milestoneNone")}</SelectItem>
+                {milestoneOptions.map((milestone) => (
+                  <SelectItem key={milestone.id} value={milestone.id}>
+                    {milestone.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="mb-4 flex flex-col gap-2">
             <Label>{t("priority")}</Label>

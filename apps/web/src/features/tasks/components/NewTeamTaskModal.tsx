@@ -306,27 +306,31 @@ export function NewTeamTaskModal({
             ) : null}
           </div>
 
-          {milestoneOptions.length > 0 ? (
-            <div className="mb-4 flex flex-col gap-2">
-              <Label htmlFor="team-task-milestone">{t("milestoneLabel")}</Label>
-              <Select
-                value={watchMilestoneId}
-                onValueChange={(value) => setValue("milestoneId", value)}
+          {/* 空选项也渲染：仅剩「无里程碑」项即空态（入口常显，同标签字段）。 */}
+          <div className="mb-4 flex flex-col gap-2">
+            <Label htmlFor="team-task-milestone">{t("milestoneLabel")}</Label>
+            <Select
+              value={watchMilestoneId}
+              onValueChange={(value) => setValue("milestoneId", value)}
+            >
+              <SelectTrigger
+                id="team-task-milestone"
+                className="w-full"
+                data-testid="task-milestone-select"
+                disabled={submitting}
               >
-                <SelectTrigger id="team-task-milestone" className="w-full" disabled={submitting}>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">{t("milestoneNone")}</SelectItem>
-                  {milestoneOptions.map((milestone) => (
-                    <SelectItem key={milestone.id} value={milestone.id}>
-                      {milestone.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          ) : null}
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">{t("milestoneNone")}</SelectItem>
+                {milestoneOptions.map((milestone) => (
+                  <SelectItem key={milestone.id} value={milestone.id}>
+                    {milestone.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
 
           <div className="mb-4 flex flex-col gap-2">
             <Label htmlFor="team-task-assignee">{t("assigneeLabel")}</Label>
