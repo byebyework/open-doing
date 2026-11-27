@@ -22,12 +22,13 @@ export interface ProjectTasksListProps {
 
 /** 筛选字段 → URL 参数名（"all" 即删参，保持干净地址）。 */
 const FILTER_PARAM: Array<{
-  key: "status" | "priority" | "tag";
+  key: "status" | "priority" | "tag" | "milestone";
   field: keyof ListFilters;
 }> = [
   { key: "status", field: "status" },
   { key: "priority", field: "priority" },
   { key: "tag", field: "tag" },
+  { key: "milestone", field: "milestone" },
 ];
 
 /**

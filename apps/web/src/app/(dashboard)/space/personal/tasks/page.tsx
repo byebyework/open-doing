@@ -15,7 +15,7 @@ import {
   getPersonalSpaceBoard,
 } from "@/features/kanban/service";
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
-import { listPersonalProjects } from "@/features/personal/projects/service";
+import { listPersonalProjectMilestones, listPersonalProjects } from "@/features/personal/projects/service";
 import { listTags } from "@/features/tags/service";
 import { moduleHref, personalTaskHref } from "@/lib/routes";
 import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
@@ -64,6 +64,12 @@ export default async function PersonalTasksPage(
   const activeProject = projects.find(
     (project) => project.slug === requestedSlug,
   );
+  // 里程碑筛选选项：仅项目上下文（方案 A）；未选项目传空 → 下拉不渲染。
+  const milestoneOptions = activeProject
+    ? (
+        await listPersonalProjectMilestones(user.id, activeProject.id)
+      ).map(({ id, name }) => ({ id, name }))
+    : [];
 
   const filter = {
     ...(activeProject ? { projectId: activeProject.id } : {}),
@@ -125,6 +131,7 @@ export default async function PersonalTasksPage(
           initialView={initialView}
           projects={projects}
           tagOptions={taskTagOptions}
+          milestoneOptions={milestoneOptions}
           board={
             <SpaceKanban
               variant="personal"

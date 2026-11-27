@@ -21,7 +21,7 @@ import {
   getTeamSpaceBoard,
 } from "@/features/kanban/service";
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
-import { listTeamProjects } from "@/features/projects/service";
+import { listTeamProjectMilestones, listTeamProjects } from "@/features/projects/service";
 import { listTags } from "@/features/tags/service";
 import { can, getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
@@ -93,6 +93,12 @@ export default async function TeamTasksPage(
   const activeProject = projects.find(
     (project) => project.slug === requestedSlug,
   );
+  // 里程碑筛选选项：仅项目上下文（方案 A）；未选项目传空 → 下拉不渲染。
+  const milestoneOptions = activeProject
+    ? (
+        await listTeamProjectMilestones(team.id, activeProject.id)
+      ).map(({ id, name }) => ({ id, name }))
+    : [];
   const unassignedOnly = assigneeValue === "unassigned";
 
   const filter = {
@@ -215,6 +221,7 @@ export default async function TeamTasksPage(
           initialView={initialView}
           projects={projects}
           tagOptions={taskTagPool.map(({ id, name }) => ({ id, name }))}
+          milestoneOptions={milestoneOptions}
           projectProgress={Object.fromEntries(progressBySlug)}
           allProjectsProgress={allProjectsProgress}
           board={

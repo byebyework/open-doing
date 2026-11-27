@@ -32,14 +32,17 @@ describe("ProjectTasksList", () => {
     window.history.replaceState(null, "", "/");
   });
 
-  function render(tagOptions: { id: string; name: string }[] = []) {
+  function render(
+    tagOptions: { id: string; name: string }[] = [],
+    milestoneOptions: { id: string; name: string }[] = [],
+  ) {
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
           <ProjectTasksList
             initialFilters={{ status: "all", priority: "all", tag: "all", milestone: "all" }}
             tagOptions={tagOptions}
-            milestoneOptions={[]}
+            milestoneOptions={milestoneOptions}
           >
             <div data-testid="table-slot">rows</div>
           </ProjectTasksList>
@@ -101,6 +104,20 @@ describe("ProjectTasksList", () => {
 
     openAndClick("task-filter-priority", "task-filter-priority-option-high");
     expect(new URL(lastUrl()).searchParams.get("priority")).toBe("high");
+  });
+
+  it("选里程碑写入 ?milestone=，改回全部删参，tab 保留", () => {
+    render([], [{ id: "ms-9", name: "上线" }]);
+
+    openAndClick("task-filter-milestone", "task-filter-milestone-option-ms-9");
+    let url = new URL(lastUrl());
+    expect(url.searchParams.get("milestone")).toBe("ms-9");
+    expect(url.searchParams.get("tab")).toBe("tasks");
+
+    openAndClick("task-filter-milestone", "task-filter-milestone-option-all");
+    url = new URL(lastUrl());
+    expect(url.searchParams.get("milestone")).toBeNull();
+    expect(url.searchParams.get("tab")).toBe("tasks");
   });
 
   it("空标签池：不渲染标签下拉", () => {
