@@ -149,9 +149,9 @@ gunzip -c backups/open_doing_2026-11-27.sql.gz | docker compose -f docker-compos
 docker compose -f docker-compose.hk-pg.yml start web
 ```
 
-数据实际落在命名卷 `postgres_data`（`docker volume inspect
-deploy-selfhost-pg_postgres_data`，卷名前缀随 project name）；**卷在、数据在**
-，但卷快照/迁移机器不能替代 pg_dump（逻辑备份才是权威）。
+数据实际落在命名卷 `postgres_data`（完整名 = compose 顶层 `name` 加前缀：
+`docker volume inspect open-doing-hk-pg_postgres_data`）；**卷在、数据在**，
+但卷快照/迁移机器不能替代 pg_dump（逻辑备份才是权威）。
 
 ## 7. cron 到期扫描
 
