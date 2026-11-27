@@ -21,7 +21,7 @@ import {
 } from "drizzle-orm";
 
 import { db, type DbClient } from "@/server/db/client";
-import { projects, subtasks, tasks, users } from "@/server/db/schema";
+import { projectMilestones, projects, subtasks, tasks, users } from "@/server/db/schema";
 import { tagsByTaskId } from "@/features/tags/service";
 
 /** 空间类型（沿用共享领域类型，本模块对外导出以便看板组件消费）。 */
@@ -63,6 +63,9 @@ export interface KanbanCardItem {
   completedAt: string | null;
   /** 任务标签（可选扩展；一次 JOIN 组装，看板卡片渲染 pill）。 */
   tags?: Tag[];
+  /** 关联里程碑（LEFT JOIN 组装；未关联为 null）。 */
+  milestoneId?: string | null;
+  milestoneName?: string | null;
 }
 
 /** 个人空间看板：todo / in_progress 全量，done 收敛到近 7 天。 */
@@ -105,6 +108,8 @@ interface KanbanCardRow {
   subtaskTotal: number;
   subtaskDone: number;
   updatedAt: Date;
+  milestoneId: string | null;
+  milestoneName: string | null;
 }
 
 /** 团队 done 卡对外字段（SQL 行）：卡片公共字段 + 指派人。 */
@@ -531,9 +536,12 @@ async function selectCards(
       subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
       subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
       updatedAt: tasks.updatedAt,
+      milestoneId: projectMilestones.id,
+      milestoneName: projectMilestones.name,
     })
     .from(tasks)
     .leftJoin(projects, eq(tasks.projectId, projects.id))
+    .leftJoin(projectMilestones, eq(tasks.milestoneId, projectMilestones.id))
     .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
     .where(condition)
     .orderBy(...orderBy());
@@ -575,6 +583,8 @@ async function selectTeamCards(
       subtaskTotal: sql<number>`coalesce(${subtaskStats.subtaskTotal}, 0)::int`,
       subtaskDone: sql<number>`coalesce(${subtaskStats.subtaskDone}, 0)::int`,
       updatedAt: tasks.updatedAt,
+      milestoneId: projectMilestones.id,
+      milestoneName: projectMilestones.name,
       assigneeId: tasks.assigneeId,
       assigneeUsername: users.username,
       assigneeNickname: users.name,
@@ -583,6 +593,7 @@ async function selectTeamCards(
     // 必有项目（创建路径保证），join 类型只表达这一意图，与计数查询一致。
     .from(tasks)
     .innerJoin(projects, eq(tasks.projectId, projects.id))
+    .leftJoin(projectMilestones, eq(tasks.milestoneId, projectMilestones.id))
     .leftJoin(users, eq(tasks.assigneeId, users.id))
     .leftJoin(subtaskStats, eq(subtaskStats.taskId, tasks.id))
     .where(condition)
@@ -604,6 +615,8 @@ function toCard(row: KanbanCardRow): KanbanCardItem {
     subtaskTotal: row.subtaskTotal,
     subtaskDone: row.subtaskDone,
     completedAt: row.status === "done" ? row.updatedAt.toISOString() : null,
+    milestoneId: row.milestoneId ?? null,
+    milestoneName: row.milestoneName ?? null,
   };
 }
 

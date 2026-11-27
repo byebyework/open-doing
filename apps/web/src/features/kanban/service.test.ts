@@ -7,6 +7,7 @@ import { generateJoinCode } from "@/lib/join-code";
 import { generateUid } from "@/lib/uid";
 import type { DbClient } from "@/server/db/client";
 import {
+  projectMilestones,
   projects,
   subtasks,
   tasks,
@@ -398,6 +399,66 @@ describe.skipIf(!hasTestDatabase)("个人空间看板聚合", () => {
       projectName: "",
       status: "todo",
     });
+  });
+
+  it("卡片带里程碑字段：关联任务有 id+name，未关联为 null（含 olderDone）", async () => {
+    const user = await createUser(db, "ms-owner");
+    const project = await createPersonalProject(db, {
+      ownerId: user.id,
+      name: "里程碑项目",
+      slug: "ms-project",
+    });
+    const [milestone] = await db
+      .insert(projectMilestones)
+      .values({ projectId: project.id, name: "上线" })
+      .returning();
+
+    await db.insert(tasks).values([
+      {
+        id: crypto.randomUUID(),
+        spaceType: "personal",
+        projectId: project.id,
+        title: "linked-todo",
+        status: "todo",
+        assigneeId: user.id,
+        createdById: user.id,
+        milestoneId: milestone!.id,
+      },
+      {
+        id: crypto.randomUUID(),
+        spaceType: "personal",
+        projectId: project.id,
+        title: "plain-todo",
+        status: "todo",
+        assigneeId: user.id,
+        createdById: user.id,
+        milestoneId: null,
+      },
+      {
+        id: crypto.randomUUID(),
+        spaceType: "personal",
+        projectId: project.id,
+        title: "linked-old-done",
+        status: "done",
+        assigneeId: user.id,
+        createdById: user.id,
+        milestoneId: milestone!.id,
+        updatedAt: new Date("2026-09-01T12:00:00+08:00"),
+      },
+    ] satisfies (typeof tasks.$inferInsert)[]);
+
+    const board = await getPersonalSpaceBoard(user.id, TODAY, db);
+    const linked = board.todo.find((card) => card.title === "linked-todo")!;
+    const plain = board.todo.find((card) => card.title === "plain-todo")!;
+    expect(linked.milestoneId).toBe(milestone!.id);
+    expect(linked.milestoneName).toBe("上线");
+    expect(plain.milestoneId).toBeNull();
+    expect(plain.milestoneName).toBeNull();
+
+    const older = await getOlderDonePersonalTasks(user.id, TODAY, db);
+    const oldDone = older.find((card) => card.title === "linked-old-done")!;
+    expect(oldDone.milestoneId).toBe(milestone!.id);
+    expect(oldDone.milestoneName).toBe("上线");
   });
 
   it("只聚合本人的个人任务：他人个人任务与团队任务不出现", async () => {
@@ -882,6 +943,44 @@ describe.skipIf(!hasTestDatabase)("团队空间看板聚合", () => {
 
     expect(activeTitles).not.toContain("窗口内较新完成");
     expect(activeTitles).not.toContain("窗口下边界完成");
+  });
+
+  it("团队看板卡片带里程碑字段", async () => {
+    const owner = await createUser(db, "tms-owner");
+    const team = { id: crypto.randomUUID(), slug: "tms-team" };
+    await db.insert(teams).values({
+      id: team.id,
+      name: "TMS 团队",
+      slug: team.slug,
+      ownerId: owner.id,
+      joinCode: generateJoinCode(),
+    });
+    const project = { id: crypto.randomUUID(), slug: "tms-project" };
+    await db.insert(projects).values({
+      id: project.id,
+      teamId: team.id,
+      name: "TMS 项目",
+      slug: project.slug,
+    });
+    const [milestone] = await db
+      .insert(projectMilestones)
+      .values({ projectId: project.id, name: "联调" })
+      .returning();
+    await db.insert(tasks).values({
+      id: crypto.randomUUID(),
+      spaceType: "team",
+      projectId: project.id,
+      title: "tms-linked",
+      status: "todo",
+      assigneeId: owner.id,
+      createdById: owner.id,
+      milestoneId: milestone!.id,
+    } satisfies (typeof tasks.$inferInsert));
+
+    const board = await getTeamSpaceBoard(team.id, TODAY, db);
+    const card = board.todo.find((item) => item.title === "tms-linked")!;
+    expect(card.milestoneId).toBe(milestone!.id);
+    expect(card.milestoneName).toBe("联调");
   });
 
   it("卡片带 projectId / projectName 与子任务计数（2/5），跨项目聚合", async () => {
