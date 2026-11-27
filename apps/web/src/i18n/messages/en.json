@@ -264,6 +264,7 @@
     "assigneeCallout": "You are the assignee of this task; every team member can comment.",
     "statusLabel": "Status",
     "projectLabel": "Project",
+    "colMilestone": "Milestone",
     "markDone": "Mark as done",
     "markNotDone": "Mark as not done",
     "deleteTask": "Delete task",

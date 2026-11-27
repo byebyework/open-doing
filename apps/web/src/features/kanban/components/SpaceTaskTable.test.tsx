@@ -275,12 +275,13 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     );
   }
 
-  it("个人列表：7 列无操作列，行按排序输出", () => {
+  it("个人列表：8 列无操作列，行按排序输出", () => {
     renderPersonal();
 
     expect(headers()).toEqual([
       zh.tasks.colTask,
       zh.tasks.projectLabel,
+      zh.tasks.colMilestone,
       zh.tags.tagNameLabel,
       zh.tasks.priority,
       zh.tasks.statusLabel,
@@ -348,6 +349,7 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     expect(headers()).toEqual([
       zh.tasks.colTask,
       zh.tasks.projectLabel,
+      zh.tasks.colMilestone,
       zh.tags.tagNameLabel,
       zh.tasks.priority,
       zh.tasks.statusLabel,
@@ -357,6 +359,22 @@ describe("SpaceTaskTable（个人 / 团队列表视图）", () => {
     ]);
     expect(document.body.textContent).toContain("王工");
     expect(document.body.textContent).toContain(zh.tasks.unassigned);
+  });
+
+  it("里程碑列：关联显示名称，未关联显示 —", () => {
+    const rows = [
+      personalRow({ id: "m-1", title: "有里程碑", milestoneName: "上线" }),
+      personalRow({ id: "m-2", title: "无里程碑", milestoneName: null }),
+    ];
+    renderPersonal(rows);
+
+    const heads = headers();
+    expect(heads.indexOf(zh.tasks.colMilestone)).toBe(
+      heads.indexOf(zh.tasks.projectLabel) + 1,
+    );
+    const [first, second] = bodyRows();
+    expect(first.textContent).toContain("上线");
+    expect(second.textContent).toContain("—");
   });
 
   it("rows 为空：渲染 EmptyState（kanban.listEmptyTitle / listEmptyDescription）", () => {

@@ -264,6 +264,7 @@
     "assigneeCallout": "你是此任务的责任人；团队所有成员都可以发表评论。",
     "statusLabel": "状态",
     "projectLabel": "所属项目",
+    "colMilestone": "里程碑",
     "markDone": "标记为已完成",
     "markNotDone": "标记为未完成",
     "deleteTask": "删除任务",

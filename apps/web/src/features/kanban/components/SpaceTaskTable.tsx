@@ -362,6 +362,7 @@ export function SpaceTaskTable({
   const columns: { label: string; className: string }[] = [
     { label: t("colTask"), className: "" },
     { label: t("projectLabel"), className: "min-w-[110px]" },
+    { label: t("colMilestone"), className: "min-w-[90px]" },
     { label: tTags("tagNameLabel"), className: "min-w-[130px]" },
     { label: t("priority"), className: "min-w-[72px]" },
     { label: t("statusLabel"), className: "min-w-24" },
@@ -440,6 +441,16 @@ export function SpaceTaskTable({
 
                   <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
                     <ProjectTag variant={variant} projectName={row.projectName} />
+                  </td>
+
+                  <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
+                    {row.milestoneName ? (
+                      <span className="whitespace-nowrap text-[13px] text-[var(--color-text-secondary)]">
+                        {row.milestoneName}
+                      </span>
+                    ) : (
+                      <span className="text-[12.5px] text-[var(--ink-400)]">—</span>
+                    )}
                   </td>
 
                   <td className="border-b border-[var(--border-default)] px-3 py-3 align-middle">
