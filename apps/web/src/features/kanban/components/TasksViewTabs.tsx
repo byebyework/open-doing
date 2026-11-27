@@ -97,6 +97,17 @@ export function TasksViewTabs({
   const boardTabRef = useRef<HTMLButtonElement>(null);
   const listTabRef = useRef<HTMLButtonElement>(null);
 
+  // WHY: 里程碑选项是项目级的，而筛选 state 跨 ?project= 切换不重置——
+  // 选项集合变了、旧 id 失效时必须回 all，否则行被幽灵 id 滤空且下拉
+  // 可能已隐藏（无从清除）。渲染期派生同步（同 SpaceTaskTable filterKey）。
+  const milestoneOptionList = milestoneOptions ?? [];
+  if (
+    filters.milestone !== "all" &&
+    !milestoneOptionList.some((option) => option.id === filters.milestone)
+  ) {
+    setFilters((current) => ({ ...current, milestone: "all" }));
+  }
+
   const filtersContext: ListFiltersContextValue = {
     filters,
     setFilter: (patch) => {

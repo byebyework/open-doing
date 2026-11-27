@@ -136,6 +136,13 @@ function FilterProbe() {
   );
 }
 
+function probeMilestone(): string | null {
+  return (
+    container.querySelector('[data-testid="filter-probe-milestone"]')
+      ?.textContent ?? null
+  );
+}
+
 function probeStatus(): string | null {
   return (
     container.querySelector('[data-testid="filter-probe-status"]')
@@ -374,6 +381,39 @@ describe("TasksViewTabs（看板 / 列表双视图壳）", () => {
     openFilterMenu("tag");
     clickFilterOption("tag", "all");
     expect(probeTag()).toBe("all");
+  });
+
+  it("里程碑筛选在选项集合变化（切项目 / 清项目）后重置为 all", () => {
+    renderTabs(
+      "list",
+      PROJECTS,
+      <FilterProbe />,
+      undefined,
+      [{ id: "msA", name: "项目A里程碑" }],
+    );
+    openFilterMenu("milestone");
+    clickFilterOption("milestone", "msA");
+    expect(probeMilestone()).toBe("msA");
+
+    // 切到另一项目：选项换成 msB，旧 msA 失效 → 回 all。
+    renderTabs(
+      "list",
+      PROJECTS,
+      <FilterProbe />,
+      undefined,
+      [{ id: "msB", name: "项目B里程碑" }],
+    );
+    expect(probeMilestone()).toBe("all");
+
+    // 再设一次后清项目（选项空）：回 all 且下拉隐藏。
+    openFilterMenu("milestone");
+    clickFilterOption("milestone", "msB");
+    expect(probeMilestone()).toBe("msB");
+    renderTabs("list", PROJECTS, <FilterProbe />, undefined, []);
+    expect(probeMilestone()).toBe("all");
+    expect(
+      document.querySelector('[data-testid="task-filter-milestone"]'),
+    ).toBeNull();
   });
 
   it("milestoneOptions 非空渲染里程碑下拉并可设值，空数组不渲染", () => {

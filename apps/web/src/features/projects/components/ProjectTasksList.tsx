@@ -46,6 +46,16 @@ export function ProjectTasksList({
 }: ProjectTasksListProps) {
   const [filters, setFilters] = useState<ListFilters>(initialFilters);
 
+  // WHY: URL 里的 ?milestone= 可能指向已删除的里程碑——选项集合里没有
+  // 该 id 时回 all，否则触发器显示「全部」却仍高亮并滤空行（幽灵筛选）。
+  // 渲染期派生同步（同 TasksViewTabs / SpaceTaskTable filterKey 模式）。
+  if (
+    filters.milestone !== "all" &&
+    !milestoneOptions.some((option) => option.id === filters.milestone)
+  ) {
+    setFilters((current) => ({ ...current, milestone: "all" }));
+  }
+
   function setFilter(patch: Partial<ListFilters>) {
     const next = { ...filters, ...patch };
     setFilters(next);

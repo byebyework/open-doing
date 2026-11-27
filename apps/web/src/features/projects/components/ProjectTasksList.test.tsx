@@ -35,12 +35,13 @@ describe("ProjectTasksList", () => {
   function render(
     tagOptions: { id: string; name: string }[] = [],
     milestoneOptions: { id: string; name: string }[] = [],
+    initialFilters = { status: "all" as const, priority: "all" as const, tag: "all", milestone: "all" },
   ) {
     act(() => {
       root.render(
         <NextIntlClientProvider locale={"zh" as AppLocale} messages={zh}>
           <ProjectTasksList
-            initialFilters={{ status: "all", priority: "all", tag: "all", milestone: "all" }}
+            initialFilters={initialFilters}
             tagOptions={tagOptions}
             milestoneOptions={milestoneOptions}
           >
@@ -104,6 +105,18 @@ describe("ProjectTasksList", () => {
 
     openAndClick("task-filter-priority", "task-filter-priority-option-high");
     expect(new URL(lastUrl()).searchParams.get("priority")).toBe("high");
+  });
+
+  it("幽灵 ?milestone=（选项里已不存在）在选项集合变化后回 all", () => {
+    render(
+      [],
+      [{ id: "msB", name: "现存里程碑" }],
+      { status: "all", priority: "all", tag: "all", milestone: "msGone" },
+    );
+    const trigger = container.querySelector('[data-testid="task-filter-milestone"]');
+    // 初次挂载即触发派生同步：失效 id 回 all，触发器显示「全部」且非激活态。
+    expect(trigger?.textContent).toContain("全部");
+    expect(trigger?.className).not.toContain("border-[var(--primary)]");
   });
 
   it("选里程碑写入 ?milestone=，改回全部删参，tab 保留", () => {
