@@ -1,11 +1,9 @@
 import type { Metadata } from "next";
 import { aggregateProjectProgress, displayName } from "@open-doing/types";
 import { getTranslations } from "next-intl/server";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { PageHeader } from "@/components/ui/PageHeader";
-import { Button } from "@/components/ui/shadcn/button";
 import { requireUser } from "@/features/auth/session";
 import { KanbanStatStrip } from "@/features/kanban/components/KanbanStatStrip";
 import { SpaceKanban } from "@/features/kanban/components/SpaceKanban";
@@ -23,9 +21,9 @@ import {
 import { parseStatFilterParams } from "@/features/kanban/stat-filter";
 import { listTeamProjectMilestones, listTeamProjects } from "@/features/projects/service";
 import { listTags } from "@/features/tags/service";
-import { can, getMembership } from "@/features/teams/permissions";
+import { getMembership } from "@/features/teams/permissions";
 import { getTeamBySlug, listMembers } from "@/features/teams/service";
-import { moduleHref, teamProjectNewHref, teamTaskHref } from "@/lib/routes";
+import { moduleHref, teamTaskHref } from "@/lib/routes";
 import { parseTaskPage, parseTaskPageSize } from "@/lib/task-origin";
 import { todayInShanghai } from "@/lib/today";
 
@@ -163,36 +161,24 @@ export default async function TeamTasksPage(
         }
       : undefined;
 
-  // 新建项目入口与 /space/{teamSlug}/projects/new 的权限门槛保持一致：
-  // 成员点击会直接 404，因此只对 owner / admin 渲染。
-  const canManageProjects = can(membership.role, "team:manage_projects");
-
   return (
     <div className="mx-auto w-full min-w-0 max-w-[1320px]">
       <PageHeader
         title={tNav("tasks")}
         subtitle={t("teamSubtitle")}
         actions={
-          <>
-            {/* 新建任务对所有成员开放（service 层再做成员裁决）。 */}
-            <TeamTasksNewTaskButton
-              teamId={team.id}
-              projects={projects.map(({ id, name }) => ({ id, name }))}
-              defaultProjectId={activeProject?.id ?? null}
-              members={memberList.map(({ user: member }) => ({
-                id: member.id,
-                name: displayName(member),
-              }))}
-              defaultAssigneeId={user.id}
-              tagPool={taskTagPool}
-            />
-            {canManageProjects ? (
-              /* 用 next/link 包 Button 做客户端导航（`Button href` 是普通 <a>，无 prefetch）。 */
-              <Link href={teamProjectNewHref(team.slug)}>
-                <Button variant="outline">{t("newProjectButton")}</Button>
-              </Link>
-            ) : null}
-          </>
+          /* 新建任务对所有成员开放（service 层再做成员裁决）。 */
+          <TeamTasksNewTaskButton
+            teamId={team.id}
+            projects={projects.map(({ id, name }) => ({ id, name }))}
+            defaultProjectId={activeProject?.id ?? null}
+            members={memberList.map(({ user: member }) => ({
+              id: member.id,
+              name: displayName(member),
+            }))}
+            defaultAssigneeId={user.id}
+            tagPool={taskTagPool}
+          />
         }
       />
 

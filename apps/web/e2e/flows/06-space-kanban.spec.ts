@@ -581,7 +581,7 @@ test.describe("flow 6: 任务页双视图", () => {
         page.getByRole("heading", { name: projectName, level: 1 }),
       ).toBeVisible({ timeout: 30_000 });
 
-      // member 会话进团队任务页：新建任务可见（新建项目则仅 owner 可见）。
+      // member 会话进团队任务页：新建任务可见。
       await memberPage.goto(`/space/${teamSlug}/tasks`);
       const newTaskButton = memberPage.getByRole("button", {
         name: "新建任务",
