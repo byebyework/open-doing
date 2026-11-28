@@ -138,18 +138,16 @@ export async function createPersonalTask(
 ): Promise<void> {
   await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
-  const dialog = page.getByRole("dialog");
+  // 按可访问名限定：AttrPill 的 Popover content 也带 role="dialog"（forceMount 常驻）。
+  const dialog = page.getByRole("dialog", { name: "新建任务" });
   await expect(dialog).toBeVisible();
   // 同上：等 afterOpenChange 的 resetFields 执行完再填写。
   await page.waitForTimeout(500);
   await dialog.getByTestId(TEST_IDS.tasks.titleInput).fill(input.title);
   if (input.priority) {
-    // shadcn Select 的选项带 role="option"；档位文案取 zh 消息包固定值。
-    const PRIORITY_LABELS = { low: "低", medium: "中", high: "高" } as const;
+    // 胶囊 popover 选项为 plain button + testid（ProjectForm 同款，无 role=option）。
     await dialog.getByTestId(TEST_IDS.tasks.prioritySelect).click();
-    await page
-      .getByRole("option", { name: PRIORITY_LABELS[input.priority] })
-      .click();
+    await page.getByTestId(`task-priority-option-${input.priority}`).click();
   }
   if (input.dueDate) {
     await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);

@@ -453,7 +453,8 @@ async function createTeamTask(
 
   await page.getByTestId(TEST_IDS.tasks.newTaskButton).click();
 
-  const dialog = page.getByRole("dialog");
+  // 按可访问名限定：AttrPill 的 Popover content 也带 role="dialog"（forceMount 常驻）。
+  const dialog = page.getByRole("dialog", { name: "新建任务" });
   await expect(dialog).toBeVisible();
   // 等弹窗动效与初始值同步完成后再填写。
   await page.waitForTimeout(500);
@@ -461,10 +462,10 @@ async function createTeamTask(
   await dialog.getByTestId(TEST_IDS.tasks.dueDateInput).fill(input.dueDate);
 
   if (input.assignee) {
-    // shadcn Select 的选项带 role="option"（迁移前 antd 虚拟列表无此 role）。
-    await dialog.getByLabel("责任人").click();
+    // 胶囊 popover：trigger 走 testid，选项为 plain button + testid。
+    await dialog.getByTestId("task-assignee-select").click();
     await page
-      .getByRole("option")
+      .locator('[data-testid^="task-assignee-option-"]')
       .filter({ hasText: input.assignee })
       .click();
   }
