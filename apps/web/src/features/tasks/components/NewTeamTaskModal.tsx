@@ -4,7 +4,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TASK_PRIORITIES, type Tag, type TaskPriority } from "@open-doing/types";
-import { Loader2Icon } from "lucide-react";
+import { CheckIcon, DiamondIcon, FlagIcon, FolderIcon, Loader2Icon, UserIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -22,13 +22,6 @@ import {
 } from "@/components/ui/shadcn/dialog";
 import { Input } from "@/components/ui/shadcn/input";
 import { Label } from "@/components/ui/shadcn/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/shadcn/select";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { priorityLabelKey } from "@/components/ui/PriorityChip";
 import { applyActionErrors } from "@/lib/action-form";
@@ -37,7 +30,9 @@ import {
   TASK_TITLE_MAX_LENGTH,
 } from "@/lib/task-fields";
 
+import { AttrPill } from "@/features/projects/components/AttrPill";
 import { listTeamProjectMilestonesAction } from "@/features/projects/actions";
+import { UserAvatar } from "@/components/ui/UserAvatar";
 import { createTeamTaskAction } from "../actions";
 import { TaskTagPicker } from "@/features/tags/components/TaskTagPicker";
 
@@ -85,7 +80,6 @@ export function NewTeamTaskModal({
   tagPool = [],
 }: NewTeamTaskModalProps) {
   const t = useTranslations("tasks");
-  const tTags = useTranslations("tags");
   const tCommon = useTranslations("common");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -192,8 +186,6 @@ export function NewTeamTaskModal({
       window.clearTimeout(timer);
     };
   }, [open, watchProjectId, teamId]);
-
-  const titleValue = watch("title");
   const descriptionValue = watch("description");
 
   const onSubmit = handleSubmit(async (values) => {
@@ -242,144 +234,181 @@ export function NewTeamTaskModal({
         if (!next) onCancel();
       }}
     >
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="flex h-[min(90dvh,880px)] w-full flex-col gap-3 overflow-y-auto [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:max-w-[900px]">
         <DialogHeader>
           <DialogTitle>{t("newTaskTitle")}</DialogTitle>
         </DialogHeader>
 
-        {formError ? (
-          <Alert variant="destructive" role="alert" className="mb-4">
-            {formError}
-          </Alert>
-        ) : null}
+        <form onSubmit={onSubmit} noValidate className="flex h-full flex-col">
+          {formError ? (
+            <Alert variant="destructive" role="alert" className="mb-4">
+              {formError}
+            </Alert>
+          ) : null}
 
-        <form onSubmit={onSubmit} noValidate>
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="team-task-title">{t("title")}</Label>
-            <Input
-              id="team-task-title"
-              type="text"
-              data-testid="task-title-input"
-              placeholder={t("titlePlaceholder")}
-              maxLength={TASK_TITLE_MAX_LENGTH}
-              autoFocus
-              aria-invalid={errors.title ? true : undefined}
-              aria-describedby={errors.title ? "team-task-title-error" : undefined}
+          {/* 大标题内联输入（ProjectForm 同款：占位即标签）。 */}
+          <Input
+            type="text"
+            data-testid="task-title-input"
+            placeholder={t("titlePlaceholder")}
+            maxLength={TASK_TITLE_MAX_LENGTH}
+            autoFocus
+            aria-invalid={errors.title ? true : undefined}
+            aria-describedby={errors.title ? "team-task-title-error" : undefined}
+            disabled={submitting}
+            className="h-auto border-none bg-transparent px-0 text-[22px] font-semibold shadow-none focus-visible:ring-0 dark:bg-transparent"
+            {...register("title")}
+          />
+          {errors.title ? (
+            <p id="team-task-title-error" className="mb-2 text-[12.5px] text-[var(--error)]">
+              {errors.title.message}
+            </p>
+          ) : null}
+
+          {/* 属性胶囊行（ProjectForm 同款）；日期保留 DatePicker 行——e2e .fill 契约。 */}
+          <div className="my-3 flex flex-wrap items-center gap-2">
+            <AttrPill
+              testid="task-project-select"
+              icon={<FolderIcon className="size-3.5" aria-hidden="true" />}
+              label={t("projectLabel")}
+              value={projects.find((project) => project.id === watch("projectId"))?.name}
               disabled={submitting}
-              {...register("title")}
-            />
-                        <CharCounter value={titleValue} max={TASK_TITLE_MAX_LENGTH} />
-{errors.title ? (
-              <p id="team-task-title-error" className="text-[12.5px] text-[var(--error)]">
-                {errors.title.message}
-              </p>
-            ) : null}
-          </div>
-
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="team-task-project">{t("projectLabel")}</Label>
-            <Select
-              value={watch("projectId")}
-              onValueChange={(value) => setValue("projectId", value)}
             >
-              <SelectTrigger
-                id="team-task-project"
-                className="w-full"
-                data-testid="task-project-select"
-                aria-invalid={errors.projectId ? true : undefined}
-                disabled={submitting}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {projects.map((project) => (
-                  <SelectItem key={project.id} value={project.id}>
-                    {project.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {errors.projectId ? (
-              <p className="text-[12.5px] text-[var(--error)]">
-                {errors.projectId.message}
-              </p>
-            ) : null}
-          </div>
+              {(close) => (
+                <div className="flex flex-col">
+                  {projects.map((project) => (
+                    <button
+                      key={project.id}
+                      type="button"
+                      data-testid={`task-project-option-${project.id}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                      onClick={() => {
+                        setValue("projectId", project.id);
+                        close();
+                      }}
+                    >
+                      <FolderIcon className="size-3.5 text-[var(--color-text-muted)]" aria-hidden="true" />
+                      <span className="flex-1">{project.name}</span>
+                      {watch("projectId") === project.id ? (
+                        <CheckIcon className="size-3.5 text-[var(--color-text)]" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AttrPill>
 
-          {/* 空选项也渲染：仅剩「无里程碑」项即空态（入口常显，同标签字段）。 */}
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="team-task-milestone">{t("milestoneLabel")}</Label>
-            <Select
-              value={watchMilestoneId}
-              onValueChange={(value) => setValue("milestoneId", value)}
+            <AttrPill
+              testid="task-assignee-select"
+              icon={<UserIcon className="size-3.5" aria-hidden="true" />}
+              label={t("assigneeLabel")}
+              value={members.find((member) => member.id === watch("assigneeId"))?.name ?? t("unassigned")}
+              disabled={submitting}
             >
-              <SelectTrigger
-                id="team-task-milestone"
-                className="w-full"
-                data-testid="task-milestone-select"
-                disabled={submitting}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="">{t("milestoneNone")}</SelectItem>
-                {milestoneOptions.map((milestone) => (
-                  <SelectItem key={milestone.id} value={milestone.id}>
-                    {milestone.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              {(close) => (
+                <div className="flex flex-col">
+                  {members.map((member) => (
+                    <button
+                      key={member.id}
+                      type="button"
+                      data-testid={`task-assignee-option-${member.id}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                      onClick={() => {
+                        setValue("assigneeId", member.id);
+                        close();
+                      }}
+                    >
+                      <UserAvatar userId={member.id} name={member.name} size={22} />
+                      <span className="flex-1">
+                        {member.id === defaultAssigneeId
+                          ? t("memberSelf", { name: member.name })
+                          : member.name}
+                      </span>
+                      {watch("assigneeId") === member.id ? (
+                        <CheckIcon className="size-3.5 text-[var(--color-text)]" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AttrPill>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="team-task-assignee">{t("assigneeLabel")}</Label>
-            <Select
-              value={watch("assigneeId")}
-              onValueChange={(value) => setValue("assigneeId", value)}
+            <AttrPill
+              testid="task-priority-select"
+              icon={<FlagIcon className="size-3.5" aria-hidden="true" />}
+              label={t("priority")}
+              value={t(priorityLabelKey(watch("priority") as TaskPriority))}
+              valueActive
+              disabled={submitting}
             >
-              <SelectTrigger
-                id="team-task-assignee"
-                className="w-full"
-                disabled={submitting}
-              >
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {members.map((member) => (
-                  <SelectItem key={member.id} value={member.id}>
-                    {member.id === defaultAssigneeId
-                      ? t("memberSelf", { name: member.name })
-                      : member.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-[12.5px] text-[var(--ink-400)]">{t("assigneeHelp")}</p>
-          </div>
+              {(close) => (
+                <div className="flex flex-col">
+                  {TASK_PRIORITIES.map((candidate) => (
+                    <button
+                      key={candidate}
+                      type="button"
+                      data-testid={`task-priority-option-${candidate}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                      onClick={() => {
+                        setValue("priority", candidate);
+                        close();
+                      }}
+                    >
+                      <FlagIcon className="size-3.5 text-[var(--color-text-muted)]" aria-hidden="true" />
+                      {t(priorityLabelKey(candidate))}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AttrPill>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label>{t("priority")}</Label>
-            <Select
-              value={watch("priority")}
-              onValueChange={(value) => setValue("priority", value)}
+            <AttrPill
+              testid="task-milestone-select"
+              icon={<DiamondIcon className="size-3.5" aria-hidden="true" />}
+              label={t("milestoneLabel")}
+              value={
+                milestoneOptions.find((milestone) => milestone.id === watchMilestoneId)?.name ??
+                t("milestoneNone")
+              }
+              disabled={submitting}
             >
-              <SelectTrigger className="w-full" data-testid="task-priority-select">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {TASK_PRIORITIES.map((candidate) => (
-                  <SelectItem key={candidate} value={candidate}>
-                    {t(priorityLabelKey(candidate))}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              {(close) => (
+                <div className="flex flex-col">
+                  <button
+                    type="button"
+                    data-testid="task-milestone-option-none"
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                    onClick={() => {
+                      setValue("milestoneId", "");
+                      close();
+                    }}
+                  >
+                    <DiamondIcon className="size-3.5 text-[var(--color-text-muted)]" aria-hidden="true" />
+                    {t("milestoneNone")}
+                  </button>
+                  {milestoneOptions.map((milestone) => (
+                    <button
+                      key={milestone.id}
+                      type="button"
+                      data-testid={`task-milestone-option-${milestone.id}`}
+                      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] transition-colors hover:bg-[var(--color-surface-hover)]"
+                      onClick={() => {
+                        setValue("milestoneId", milestone.id);
+                        close();
+                      }}
+                    >
+                      <DiamondIcon className="size-3.5 text-[var(--color-text-muted)]" aria-hidden="true" />
+                      <span className="flex-1">{milestone.name}</span>
+                      {watchMilestoneId === milestone.id ? (
+                        <CheckIcon className="size-3.5 text-[var(--color-text)]" aria-hidden="true" />
+                      ) : null}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </AttrPill>
 
-          {/* 空池也渲染：TaskTagPicker 自带 tags.emptyPool 空态（入口常显）。 */}
-          <div className="mb-4 flex flex-col gap-2">
-            <Label>{tTags("tagNameLabel")}</Label>
+            {/* 空池也渲染：TaskTagPicker 自带 tags.emptyPool 空态（入口常显）。 */}
             <TaskTagPicker
               space={{ kind: "team", teamId }}
               pool={tagPool}
@@ -389,7 +418,12 @@ export function NewTeamTaskModal({
             />
           </div>
 
-          {/* 开始 / 截止同行排布（两列）。 */}
+          {errors.projectId ? (
+            <p className="text-[12.5px] text-[var(--error)]">{errors.projectId.message}</p>
+          ) : null}
+          <p className="text-[12.5px] text-[var(--ink-400)]">{t("assigneeHelp")}</p>
+
+          {/* 开始 / 截止同行排布（DatePicker 保留：e2e .fill 契约）。 */}
           <div className="mb-4 grid grid-cols-2 gap-4">
             <div className="flex flex-col gap-2">
               <Label htmlFor="team-task-start-date">{t("startDateLabel")}</Label>
@@ -438,29 +472,31 @@ export function NewTeamTaskModal({
             </div>
           </div>
 
-          <div className="mb-4 flex flex-col gap-2">
-            <Label htmlFor="team-task-description">{t("descriptionLabel")}</Label>
+          <div className="my-3 border-t border-[var(--border)]" />
+
+          {/* 描述区（ProjectForm 同款弹性大区）。 */}
+          <div className="flex min-h-0 flex-1 flex-col">
             <Textarea
               id="team-task-description"
-              rows={4}
               placeholder={t("descriptionPlaceholder")}
               aria-invalid={errors.description ? true : undefined}
               aria-describedby={
                 errors.description ? "team-task-description-error" : undefined
               }
               disabled={submitting}
+              className="min-h-[120px] flex-1 resize-none border-none bg-transparent px-0 text-[14px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
               {...register("description")}
             />
-                        <CharCounter value={descriptionValue} max={TASK_DESCRIPTION_MAX_LENGTH} />
-{errors.description ? (
-              <p
-                id="team-task-description-error"
-                className="text-[12.5px] text-[var(--error)]"
-              >
-                {errors.description.message}
-              </p>
-            ) : null}
+            <CharCounter value={descriptionValue} max={TASK_DESCRIPTION_MAX_LENGTH} />
           </div>
+          {errors.description ? (
+            <p
+              id="team-task-description-error"
+              className="text-[12.5px] text-[var(--error)]"
+            >
+              {errors.description.message}
+            </p>
+          ) : null}
 
           <DialogFooter>
             <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
