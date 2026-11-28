@@ -301,7 +301,6 @@
     "spaceProjectLabel": "Space / Project",
     "personalProjectOption": "Personal / {name}",
     "personalLooseOption": "Personal · not in a project",
-    "assigneeHelp": "Can be assigned to any team member",
     "memberSelf": "{name} (me)",
     "projectRequired": "Select a project",
     "taskNotFound": "The task does not exist or you do not have access",

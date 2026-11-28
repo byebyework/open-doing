@@ -301,7 +301,6 @@
     "spaceProjectLabel": "所属空间 / 项目",
     "personalProjectOption": "个人空间 / {name}",
     "personalLooseOption": "个人空间 · 不属于项目",
-    "assigneeHelp": "可指派给团队内任意成员",
     "memberSelf": "{name}（我）",
     "projectRequired": "请选择所属项目",
     "taskNotFound": "任务不存在或无权访问",
