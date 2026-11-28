@@ -302,7 +302,13 @@ export function NewTeamTaskModal({
               testid="task-assignee-select"
               icon={<UserIcon className="size-3.5" aria-hidden="true" />}
               label={t("assigneeLabel")}
-              value={members.find((member) => member.id === watch("assigneeId"))?.name ?? t("unassigned")}
+              value={(() => {
+                const current = members.find((member) => member.id === watch("assigneeId"));
+                if (!current) return t("unassigned");
+                return current.id === defaultAssigneeId
+                  ? t("memberSelf", { name: current.name })
+                  : current.name;
+              })()}
               disabled={submitting}
             >
               {(close) => (
@@ -498,7 +504,7 @@ export function NewTeamTaskModal({
             </p>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
               {tCommon("cancel")}
             </Button>

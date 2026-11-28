@@ -123,7 +123,15 @@ describe("NewTeamTaskModal 空标签池", () => {
     const submit = document.body.querySelector<HTMLButtonElement>(
       '[data-testid="task-create-submit-button"]',
     )!;
-    expect(submit.closest("div")?.className).toContain("justify-end");
+    const footer = submit.closest("div")!;
+    expect(footer.className).toContain("justify-end");
+    expect(footer.className).toContain("mt-4");
+
+    // 责任人胶囊值镜像旧 Select 的 memberSelf 语义（默认责任人显示「（我）」）。
+    const assigneePill = document.body.querySelector(
+      '[data-testid="task-assignee-select"]',
+    )!;
+    expect(assigneePill.textContent).toContain("（我）");
   });
 });
 

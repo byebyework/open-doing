@@ -465,7 +465,7 @@ export function NewTaskModal({
             </p>
           ) : null}
 
-          <DialogFooter>
+          <DialogFooter className="mt-4">
             <Button type="button" variant="outline" disabled={submitting} onClick={onCancel}>
               {tCommon("cancel")}
             </Button>

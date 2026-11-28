@@ -276,8 +276,9 @@ test.describe("375px 无横向溢出", () => {
         await createPersonalTask(pageA, { title: data.personalTaskTitle });
         await openPersonalTask(pageA, data.personalTaskTitle);
         data.personalTaskPath = pathOf(pageA);
+        // 列表行按 task-origin 契约带 ?from=tasks&view=…（允许尾部查询串）。
         expect(data.personalTaskPath).toMatch(
-          /\/space\/personal\/tasks\/[0-9a-f-]+$/,
+          /\/space\/personal\/tasks\/[0-9a-f-]+(\?.*)?$/,
         );
 
         // A：团队 → 团队项目 → 团队任务。
@@ -321,7 +322,7 @@ test.describe("375px 无横向溢出", () => {
           .getByRole("link", { name: data.teamTaskTitle, exact: true })
           .click();
         await expect(pageA).toHaveURL(
-          /\/space\/[^/]+\/projects\/[^/]+\/tasks\/[0-9a-f-]+$/,
+          /\/space\/[^/]+\/projects\/[^/]+\/tasks\/[0-9a-f-]+(\?.*)?$/,
         );
         data.teamTaskPath = pathOf(pageA);
       } finally {

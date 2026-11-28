@@ -119,7 +119,9 @@ describe("NewTaskModal（个人）空标签池", () => {
     const submit = document.body.querySelector<HTMLButtonElement>(
       '[data-testid="task-create-submit-button"]',
     )!;
-    expect(submit.closest("div")?.className).toContain("justify-end");
+    const footer = submit.closest("div")!;
+    expect(footer.className).toContain("justify-end");
+    expect(footer.className).toContain("mt-4");
   });
 });
 
