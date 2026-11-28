@@ -64,8 +64,7 @@ describe("NewTaskModal（个人）空标签池", () => {
   it("空标签池：标签选择区仍渲染，打开显示空态文案", () => {
     render();
 
-    expect(document.body.textContent).toContain(zh.tags.tagNameLabel);
-
+    // 胶囊行内 TaskTagPicker 自带触发器（独立 Label 已随结构移植移除）。
     const trigger = document.querySelector<HTMLButtonElement>(
       "[data-testid='task-tag-picker-trigger']",
     );
@@ -87,9 +86,40 @@ describe("NewTaskModal（个人）空标签池", () => {
         new MouseEvent("click", { bubbles: true, cancelable: true }),
       );
     });
-    const items = document.body.querySelectorAll('[role="option"]');
+    const items = document.body.querySelectorAll(
+      '[data-testid^="task-milestone-option-"]',
+    );
     expect(items).toHaveLength(1);
     expect(items[0].textContent).toContain(zh.tasks.milestoneNone);
+  });
+
+  it("结构对齐项目弹窗：900px 壳、内联大标题、属性胶囊行、footer 右对齐", () => {
+    render();
+
+    const dialog = document.body.querySelector('[role="dialog"]')!;
+    expect(dialog.className).toContain("sm:max-w-[900px]");
+
+    const title = document.body.querySelector<HTMLInputElement>(
+      '[data-testid="task-title-input"]',
+    )!;
+    expect(title.className).toContain("text-[22px]");
+    expect(title.closest("label")).toBeNull();
+
+    for (const id of [
+      "task-project-select",
+      "task-priority-select",
+      "task-milestone-select",
+      "task-tag-picker-trigger",
+      "task-start-date-input",
+      "task-due-date-input",
+    ]) {
+      expect(document.body.querySelector(`[data-testid="${id}"]`), id).not.toBeNull();
+    }
+
+    const submit = document.body.querySelector<HTMLButtonElement>(
+      '[data-testid="task-create-submit-button"]',
+    )!;
+    expect(submit.closest("div")?.className).toContain("justify-end");
   });
 });
 
