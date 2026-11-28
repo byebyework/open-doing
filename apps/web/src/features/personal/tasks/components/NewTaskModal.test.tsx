@@ -123,5 +123,24 @@ describe("NewTaskModal（个人）空标签池", () => {
     expect(footer.className).toContain("justify-end");
     expect(footer.className).toContain("mt-4");
   });
+
+  it("起止日期并入属性胶囊行，与 AttrPill 同风格", () => {
+    render();
+
+    const row = document.body.querySelector(
+      '[data-testid="task-project-select"]',
+    )!.parentElement!;
+    for (const id of ["task-start-date-input", "task-due-date-input"]) {
+      expect(row.querySelector(`[data-testid="${id}"]`), id).not.toBeNull();
+    }
+
+    const startLabel = document.body.querySelector<HTMLLabelElement>(
+      'label[for="personal-task-start-date"]',
+    )!;
+    expect(startLabel, "date field lost its label").not.toBeNull();
+    expect(startLabel.className).toContain("rounded-full");
+
+    expect(document.body.querySelector(".grid-cols-2")).toBeNull();
+  });
 });
 

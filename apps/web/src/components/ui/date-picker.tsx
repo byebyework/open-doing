@@ -27,6 +27,7 @@
  * 自动翻到输入框上方并平移回卡片内，与同弹窗 Select 的行为一致。
  */
 import { enUS, zhCN } from "date-fns/locale";
+import { CalendarPlusIcon } from "lucide-react";
 import { useLocale, useTranslations } from "next-intl";
 import { useState, type ReactNode } from "react";
 
@@ -170,5 +171,60 @@ export function DatePicker({
         />
       </PopoverContent>
     </Popover>
+  );
+}
+
+/** DatePill 入参：胶囊形态的日期字段（label + 内联原生 date input）。 */
+export interface DatePillProps {
+  id: string;
+  /** → data-testid（e2e `.fill()` 契约打在原生 input 上）。 */
+  testid?: string;
+  label: string;
+  /** 受控值：YYYY-MM-DD 或空串。 */
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  /** → 胶囊红边 + input aria-invalid。 */
+  invalid?: boolean;
+}
+
+/**
+ * 胶囊形态日期字段：AttrPill 同款外壳（rounded-full / border / card 底），
+ * 内嵌透明原生 date input。
+ *
+ * WHY: 保留原生 input 常驻可见而非收进 popover——e2e 依赖 testid `.fill()`
+ * 直填（见 e2e/utils/flows.ts）；点 label 即经浏览器默认行为把点击转发给
+ * input，触发同一套弹日历逻辑。
+ */
+export function DatePill({
+  id,
+  testid,
+  label,
+  value,
+  onChange,
+  disabled,
+  invalid,
+}: DatePillProps): ReactNode {
+  return (
+    <label
+      htmlFor={id}
+      className={cn(
+        "inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] leading-none text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)]",
+        disabled && "cursor-not-allowed opacity-50",
+        invalid && "border-[var(--error)]",
+      )}
+    >
+      <CalendarPlusIcon className="size-3.5 text-[var(--color-text-muted)]" aria-hidden />
+      <span>{label}</span>
+      <DatePicker
+        id={id}
+        testid={testid}
+        value={value}
+        onChange={onChange}
+        disabled={disabled}
+        invalid={invalid}
+        className="h-auto w-[112px] border-none bg-transparent px-0 py-0 text-[13px] leading-none text-[var(--color-text-secondary)] shadow-none focus-visible:ring-0 dark:bg-transparent md:text-[13px]"
+      />
+    </label>
   );
 }

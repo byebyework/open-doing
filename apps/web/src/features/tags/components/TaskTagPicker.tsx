@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckIcon, ChevronsUpDownIcon, PlusIcon } from "lucide-react";
+import { CheckIcon, PlusIcon, TagIcon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useState } from "react";
 
@@ -97,7 +97,7 @@ function EmptyPoolHint() {
 /**
  * 任务标签多选控件：popover + 选项列表（≤50 个标签无需虚拟化，spec §6.6）。
  *
- * `trigger="pills"`（表单默认）：触发器显示已选 pills + 加号；
+ * `trigger="pills"`（表单默认）：AttrPill 同款胶囊，显示标签图标 + 已选 pills；
  * `trigger="icon"`（表格 / 详情统一编辑入口）：小图标按钮，pill 展示
  * 与编辑动作分离（Hallmark 审计：chips represent values，动作集中一处）。
  * `canEdit=false` 时退化为已选标签的只读 pills。
@@ -149,21 +149,20 @@ export function TaskTagPicker({
           <button
             type="button"
             data-testid="task-tag-picker-trigger"
-            className="inline-flex min-h-8 items-center gap-1.5 rounded-md border border-[var(--line-200)] bg-transparent px-2 py-1 text-xs text-[var(--muted-foreground)] transition-colors hover:bg-[var(--purple-08)] focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-[var(--color-focus-ring)]"
+            className="inline-flex cursor-pointer items-center gap-1.5 rounded-full border border-[var(--border)] bg-[var(--card)] px-3 py-1.5 text-[13px] leading-none text-[var(--color-text)] transition-colors hover:bg-[var(--color-surface-hover)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-focus-ring)]"
             aria-label={t("editTags")}
             aria-expanded={open}
           >
+            <span className="text-[var(--color-text-muted)]">
+              <TagIcon className="size-3.5" aria-hidden />
+            </span>
             {selected.length === 0 ? (
-              <>
-                <PlusIcon className="size-3.5" aria-hidden />
-                <span>{t("tagPickerEmpty")}</span>
-              </>
+              <span>{t("tagPickerEmpty")}</span>
             ) : (
               selected.map((tag) => (
                 <TagPill key={tag.id} name={tag.name} color={tag.color} />
               ))
             )}
-            <ChevronsUpDownIcon className="size-3.5 shrink-0 opacity-60" aria-hidden />
           </button>
         )}
       </PopoverTrigger>

@@ -107,6 +107,17 @@ describe("TaskTagPicker", () => {
     const pills = document.querySelectorAll("[data-testid='tag-pill']");
     expect(pills.length).toBe(2);
   });
+
+  it("pills 触发器与 AttrPill 胶囊同风格", () => {
+    harness.renderPicker({ value: [] });
+    const trigger = document.querySelector<HTMLButtonElement>(
+      "[data-testid='task-tag-picker-trigger']",
+    )!;
+    expect(trigger.className).toContain("rounded-full");
+    expect(trigger.className).toContain("bg-[var(--card)]");
+    expect(trigger.className).toContain("text-[13px]");
+    expect(trigger.className).not.toContain("rounded-md");
+  });
 });
 
 describe("TaskTags", () => {

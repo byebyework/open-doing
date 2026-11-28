@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CharCounter } from "@/components/ui/CharCounter";
-import { DatePicker } from "@/components/ui/date-picker";
+import { DatePill } from "@/components/ui/date-picker";
 import { CheckIcon, DiamondIcon, FlagIcon, FolderIcon, Loader2Icon } from "lucide-react";
 import { useTranslations } from "next-intl";
 import { useEffect, useState } from "react";
@@ -20,7 +20,6 @@ import {
   DialogTitle,
 } from "@/components/ui/shadcn/dialog";
 import { Input } from "@/components/ui/shadcn/input";
-import { Label } from "@/components/ui/shadcn/label";
 import { Textarea } from "@/components/ui/shadcn/textarea";
 import { applyActionErrors } from "@/lib/action-form";
 import { TASK_PRIORITIES, type Tag, type TaskPriority } from "@open-doing/types";
@@ -249,7 +248,6 @@ export function NewTaskModal({
             </p>
           ) : null}
 
-          {/* 属性胶囊行（ProjectForm 同款）；日期保留 DatePicker 行——e2e .fill 契约。 */}
           <div className="my-3 flex flex-wrap items-center gap-2">
             <AttrPill
               testid="task-project-select"
@@ -388,56 +386,45 @@ export function NewTaskModal({
               onChange={setTagIds}
               canEdit={!submitting}
             />
+
+            <Controller
+              control={control}
+              name="startDate"
+              render={({ field }) => (
+                <DatePill
+                  id="personal-task-start-date"
+                  testid="task-start-date-input"
+                  label={t("startDateLabel")}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  disabled={submitting}
+                  invalid={errors.startDate ? true : undefined}
+                />
+              )}
+            />
+            <Controller
+              control={control}
+              name="dueDate"
+              render={({ field }) => (
+                <DatePill
+                  id="personal-task-due-date"
+                  testid="task-due-date-input"
+                  label={t("dueDateLabel")}
+                  value={field.value ?? ""}
+                  onChange={field.onChange}
+                  disabled={submitting}
+                  invalid={errors.dueDate ? true : undefined}
+                />
+              )}
+            />
           </div>
 
-          {/* 开始 / 截止同行排布（DatePicker 保留：e2e .fill 契约）。 */}
-          <div className="mb-4 grid grid-cols-2 gap-4">
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="personal-task-start-date">{t("startDateLabel")}</Label>
-              <Controller
-                control={control}
-                name="startDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="personal-task-start-date"
-                    testid="task-start-date-input"
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    disabled={submitting}
-                    invalid={errors.startDate ? true : undefined}
-                  />
-                )}
-              />
-              {errors.startDate ? (
-                <p className="text-[12.5px] text-[var(--error)]">
-                  {errors.startDate.message}
-                </p>
-              ) : null}
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="personal-task-due-date">{t("dueDateLabel")}</Label>
-              <Controller
-                control={control}
-                name="dueDate"
-                render={({ field }) => (
-                  <DatePicker
-                    id="personal-task-due-date"
-                    testid="task-due-date-input"
-                    value={field.value ?? ""}
-                    onChange={field.onChange}
-                    disabled={submitting}
-                    invalid={errors.dueDate ? true : undefined}
-                  />
-                )}
-              />
-              {errors.dueDate ? (
-                <p className="text-[12.5px] text-[var(--error)]">
-                  {errors.dueDate.message}
-                </p>
-              ) : null}
-            </div>
-          </div>
+          {errors.startDate ? (
+            <p className="text-[12.5px] text-[var(--error)]">{errors.startDate.message}</p>
+          ) : null}
+          {errors.dueDate ? (
+            <p className="text-[12.5px] text-[var(--error)]">{errors.dueDate.message}</p>
+          ) : null}
 
           <div className="my-3 border-t border-[var(--border)]" />
 
